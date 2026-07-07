@@ -24,6 +24,8 @@ class _ExecutorShellState extends State<ExecutorShell> {
   int _index = 0;
   final Set<String> _shownDispatches = {};
   final Set<String> _notifiedOrders = {};
+  final Set<String> _notifiedAutoAccepts = {};
+  bool _autoAcceptPrimed = false;
   Timer? _feedWatch;
   bool _feedPrimed = false;
 
@@ -85,10 +87,35 @@ class _ExecutorShellState extends State<ExecutorShell> {
         for (final d in live) {
           if (!_shownDispatches.contains(d.id)) {
             _shownDispatches.add(d.id);
-            Notify.show('VIP заказ! ⚡', 'Жауапқа 20 секунд — ашыңыз!', id: 1);
+            Notify.show('VIP заказ! ⚡', 'Жауапқа 25 секунд — ашыңыз!', id: 1);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) showVipDispatchDialog(context, d);
             });
+          }
+        }
+        // "автоматты қабылдау" арқылы терезесіз тағайындалған VIP заказдар
+        final all = snap.data ?? [];
+        if (!_autoAcceptPrimed) {
+          if (snap.hasData) {
+            for (final d in all) {
+              _notifiedAutoAccepts.add(d.id);
+            }
+            _autoAcceptPrimed = true;
+          }
+        } else {
+          for (final d in all.where((d) => d.status == 'accepted')) {
+            if (!_notifiedAutoAccepts.contains(d.id)) {
+              _notifiedAutoAccepts.add(d.id);
+              Notify.show('VIP заказ автоматты тағайындалды! ⚡',
+                  'Жолға шығуға дайындалыңыз — заказ ашылды.',
+                  id: 1);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ActiveOrderScreen(orderId: d.orderId)));
+                }
+              });
+            }
           }
         }
         return Scaffold(

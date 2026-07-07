@@ -71,8 +71,49 @@ class Geo {
 
   static String? _cityOf(Map<String, dynamic>? a) {
     if (a == null) return null;
-    final c = a['city'] ?? a['town'] ?? a['village'] ?? a['county'];
+    final c = a['city'] ?? a['town'] ?? a['municipality'] ?? a['village'] ?? a['county'];
     return c is String ? c : null;
+  }
+
+  static const _cityAdminSuffixes = [
+    'қалалық әкімшілігі',
+    'қаласының әкімшілігі',
+    'әкімшілігі',
+    'қаласы',
+    'ауданы',
+    'облысы',
+    'селолық округі',
+    'ауылдық округі',
+    'городская администрация',
+    'администрация города',
+    'города',
+    'город',
+  ];
+
+  /// Қала атауын салыстыруға дайындайды: әкімшілік жұрнақтарын алып тастайды.
+  /// («Тараз қаласы» мен «Тараз қалалық әкімшілігі» бір қала болып саналуы үшін.)
+  static String normalizeCity(String raw) {
+    var s = raw.trim().toLowerCase();
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final suf in _cityAdminSuffixes) {
+        if (s.endsWith(suf)) {
+          s = s.substring(0, s.length - suf.length).trim();
+          changed = true;
+        }
+      }
+    }
+    return s;
+  }
+
+  /// Екі қала атауы шын мәнінде бір қала ма (әкімшілік жұрнақтарды алып тастап салыстыру).
+  static bool sameCity(String? a, String? b) {
+    if (a == null || b == null) return false;
+    final na = normalizeCity(a);
+    final nb = normalizeCity(b);
+    if (na.isEmpty || nb.isEmpty) return false;
+    return na == nb || na.contains(nb) || nb.contains(na);
   }
 
   /// Координатадан адрес атауы (қала атауынсыз).

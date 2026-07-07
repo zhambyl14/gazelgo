@@ -252,10 +252,28 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 color: Gz.violet,
                 icon: Icons.flash_on,
                 description:
-                    'Жедел заказдар тікелей сізге түседі. Бағаны платформа қояды. Жауапқа 10 секунд.',
+                    'Жедел заказдар тікелей сізге түседі. Бағаны платформа қояды. Жауапқа 25 секунд.',
                 price: s.priceVip,
                 activeUntil: s.vipUntil,
                 onBuy: () => _buy(context, ref, 'vip', s.priceVip),
+              ),
+              const SizedBox(height: 8),
+              SectionCard(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: s.autoAcceptVip,
+                  activeThumbColor: Gz.violet,
+                  title: const Text('VIP заказды автоматты қабылдау',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  subtitle: Text(
+                    s.autoAcceptVip
+                        ? 'Терезе жоқ — VIP заказ бірден сізге тағайындалады, жіберіп алу мүмкін емес'
+                        : 'Қосылса, VIP заказды растаусыз бірден өзіңізге тағайындайды',
+                    style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                  ),
+                  onChanged: (v) => _toggleAutoAccept(context, ref, v),
+                ),
               ),
               const SizedBox(height: 10),
               const Text(
@@ -276,6 +294,16 @@ class ExecutorDashboardScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, bool value) async {
     try {
       await Repo.setOnLine(value);
+      ref.invalidate(executorStatsStreamProvider);
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _toggleAutoAccept(
+      BuildContext context, WidgetRef ref, bool value) async {
+    try {
+      await Repo.setAutoAcceptVip(value);
       ref.invalidate(executorStatsStreamProvider);
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);

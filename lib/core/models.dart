@@ -339,6 +339,7 @@ class ExecutorStats {
   final int priceSimple;
   final int priceVip;
   final bool onLine;
+  final bool autoAcceptVip;
 
   ExecutorStats.fromMap(Map<String, dynamic> m)
       : balance = _i(m['balance']),
@@ -351,7 +352,8 @@ class ExecutorStats {
         isNight = m['is_night'] as bool? ?? false,
         priceSimple = _i(m['price_simple']),
         priceVip = _i(m['price_vip']),
-        onLine = m['on_line'] as bool? ?? true;
+        onLine = m['on_line'] as bool? ?? true,
+        autoAcceptVip = m['auto_accept_vip'] as bool? ?? false;
 
   bool get simpleActive => simpleUntil != null && simpleUntil!.isAfter(DateTime.now());
   bool get vipActive => vipUntil != null && vipUntil!.isAfter(DateTime.now());

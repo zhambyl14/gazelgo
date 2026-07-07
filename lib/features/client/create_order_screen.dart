@@ -41,10 +41,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   late PickedAddress _to = widget.to;
 
   /// Қайдан/қайда қалалары әртүрлі болса — межгород.
+  /// (Әкімшілік жұрнақтарын алып тастап салыстырады: «Тараз қаласы» мен
+  /// «Тараз қалалық әкімшілігі» бір қала болып есептеледі.)
   bool get _intercity =>
       _from.city != null &&
       _to.city != null &&
-      _from.city!.trim().toLowerCase() != _to.city!.trim().toLowerCase();
+      !Geo.sameCity(_from.city, _to.city);
 
   @override
   void initState() {

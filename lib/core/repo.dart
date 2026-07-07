@@ -247,6 +247,10 @@ class Repo {
   static Future<void> setOnLine(bool value) =>
       c.rpc('set_on_line', params: {'p_value': value});
 
+  /// VIP заказды терезесіз, бірден автоматты қабылдау (жіберіп алмау үшін).
+  static Future<void> setAutoAcceptVip(bool value) =>
+      c.rpc('set_auto_accept_vip', params: {'p_value': value});
+
   static Future<int> instantQuote(VehicleSize size, double distanceKm) async =>
       (await c.rpc('instant_quote', params: {
         'p_size': size.db,

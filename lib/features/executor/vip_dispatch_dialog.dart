@@ -41,7 +41,7 @@ class _VipDialog extends StatefulWidget {
 
 class _VipDialogState extends State<_VipDialog> {
   Timer? _timer;
-  int _left = 20;
+  int _left = 25;
 
   @override
   void initState() {
@@ -126,7 +126,7 @@ class _VipDialogState extends State<_VipDialog> {
                       width: 40,
                       height: 40,
                       child: CircularProgressIndicator(
-                        value: _left / 20,
+                        value: _left / 25,
                         strokeWidth: 4,
                         color: _left <= 5 ? Gz.red : Gz.violet,
                         backgroundColor: Gz.border,

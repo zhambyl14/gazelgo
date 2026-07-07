@@ -82,6 +82,15 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     });
   }
 
+  /// Автоматты анықталған «Қайдан» адресін сәл өзгертуге мүмкіндік береді.
+  Future<void> _editFrom() async {
+    final res = await AddressSearchSheet.show(context,
+        title: 'Қайдан аламыз?',
+        initial: _from?.point,
+        initialQuery: _from?.address);
+    if (res != null && mounted) setState(() => _from = res);
+  }
+
   Future<void> _pickTo() async {
     final res = await AddressSearchSheet.show(context,
         title: 'Қайда жеткіземіз?', initial: _to?.point);
@@ -268,42 +277,46 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // Қайдан — картамен байланысты, тек көрсету үшін
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 13),
-                        decoration: BoxDecoration(
-                          color: Gz.bg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.trip_origin,
-                                size: 18, color: Gz.green),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _resolvingFrom
-                                    ? 'Анықталуда…'
-                                    : (_from?.address ?? 'Картаны жылжытыңыз'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Gz.ink,
-                                    fontSize: 14.5),
+                      // Қайдан — картамен байланысты, бірақ түртіп сәл өзгертуге болады
+                      InkWell(
+                        onTap: _resolvingFrom ? null : _editFrom,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 13),
+                          decoration: BoxDecoration(
+                            color: Gz.bg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.trip_origin,
+                                  size: 18, color: Gz.green),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _resolvingFrom
+                                      ? 'Анықталуда…'
+                                      : (_from?.address ?? 'Картаны жылжытыңыз'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: Gz.ink,
+                                      fontSize: 14.5),
+                                ),
                               ),
-                            ),
-                            if (_resolvingFrom)
-                              const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2))
-                            else
-                              const Icon(Icons.map_outlined,
-                                  size: 16, color: Gz.textSecondary),
-                          ],
+                              if (_resolvingFrom)
+                                const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                              else
+                                const Icon(Icons.edit_outlined,
+                                    size: 16, color: Gz.textSecondary),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -369,17 +382,28 @@ class _ProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shape = RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24));
     return Material(
       elevation: 2,
-      shape: const CircleBorder(),
+      shape: shape,
+      color: Gz.surface,
       child: InkWell(
-        customBorder: const CircleBorder(),
+        customBorder: shape,
         onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ProfileScreen())),
         child: Padding(
-          padding: const EdgeInsets.all(3),
-          child: InitialsAvatar(profile?.fullName ?? '?',
-              radius: 17, imageUrl: profile?.avatarUrl),
+          padding: const EdgeInsets.fromLTRB(6, 3, 12, 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InitialsAvatar(profile?.fullName ?? '?',
+                  radius: 17, imageUrl: profile?.avatarUrl),
+              const SizedBox(width: 8),
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 18, color: Gz.textSecondary.withValues(alpha: 0.7)),
+            ],
+          ),
         ),
       ),
     );
