@@ -243,6 +243,10 @@ class Repo {
           Map<String, dynamic>.from(await c.rpc('executor_stats') as Map)),
       every: const Duration(seconds: 4));
 
+  /// Орындаушы линияға кіру/шығуы (жаңа заказ хабарламалары мен VIP тағайындау үшін).
+  static Future<void> setOnLine(bool value) =>
+      c.rpc('set_on_line', params: {'p_value': value});
+
   static Future<int> instantQuote(VehicleSize size, double distanceKm) async =>
       (await c.rpc('instant_quote', params: {
         'p_size': size.db,

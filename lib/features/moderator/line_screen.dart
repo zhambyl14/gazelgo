@@ -59,6 +59,8 @@ class _LineScreenState extends State<LineScreen> {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
     final busy = online.where((e) => e['busy_order_id'] != null).length;
+    final resting = online.where((e) => e['on_line'] == false).length;
+    final free = online.length - busy - resting;
 
     return RefreshIndicator(
       color: Gz.ink,
@@ -91,7 +93,7 @@ class _LineScreenState extends State<LineScreen> {
                     Icons.hourglass_bottom)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile('Бос', '${online.length - busy}', 'күтуде',
+                child: _tile('Бос', '$free', 'күтуде',
                     Gz.green, Icons.check_circle_outline)),
           ]),
           const SizedBox(height: 16),
@@ -131,7 +133,9 @@ class _LineScreenState extends State<LineScreen> {
                       if (e['simple_on'] == true)
                         _chip('Қарапайым', Gz.blue),
                       if (e['vip_on'] == true) _chip('VIP', Gz.violet),
-                      if (e['busy_order_id'] != null)
+                      if (e['on_line'] == false)
+                        _chip('Демалыста', Gz.textSecondary)
+                      else if (e['busy_order_id'] != null)
                         _chip('Заказда', Gz.red)
                       else
                         _chip('Бос', Gz.green),

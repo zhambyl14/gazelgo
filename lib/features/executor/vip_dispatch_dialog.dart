@@ -149,11 +149,19 @@ class _VipDialogState extends State<_VipDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(fmtT(o.systemPrice),
-                      style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Gz.violet)),
+                  const Row(
+                    children: [
+                      Icon(Icons.lock_outline, size: 18, color: Gz.violet),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text('Баға қабылдағаннан кейін көрінеді',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Gz.violet)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   RouteLine(from: o.fromAddress, to: o.toAddress),
                   const SizedBox(height: 8),

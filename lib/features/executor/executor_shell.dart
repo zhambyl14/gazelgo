@@ -45,7 +45,9 @@ class _ExecutorShellState extends State<ExecutorShell> {
   Future<void> _checkNewOrders() async {
     try {
       final stats = await Repo.executorStats();
-      if (!stats.simpleActive || stats.busyOrderId != null) return;
+      if (!stats.simpleActive || !stats.onLine || stats.busyOrderId != null) {
+        return;
+      }
       final ep = await Repo.myExecutorProfile();
       if (ep == null) return;
       final rows = await Repo.c

@@ -126,23 +126,19 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                s.simpleActive || s.vipActive
-                                    ? Icons.wifi
-                                    : Icons.wifi_off,
+                                _isLive(s) ? Icons.wifi : Icons.wifi_off,
                                 size: 13,
-                                color: s.simpleActive || s.vipActive
+                                color: _isLive(s)
                                     ? const Color(0xFF4ADE80)
                                     : Colors.white38,
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                s.simpleActive || s.vipActive
-                                    ? 'Линиядасыз'
-                                    : 'Линияда емессіз',
+                                _isLive(s) ? 'Линиядасыз' : 'Линияда емессіз',
                                 style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
-                                    color: s.simpleActive || s.vipActive
+                                    color: _isLive(s)
                                         ? const Color(0xFF4ADE80)
                                         : Colors.white38),
                               ),
@@ -170,6 +166,25 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       label: const Text('Баланс толтыру'),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Линияда/демалыста ауыстырғыш
+              SectionCard(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: s.onLine,
+                  activeThumbColor: Gz.green,
+                  title: const Text('Линияда',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                  subtitle: Text(
+                    s.onLine
+                        ? 'Жаңа заказ хабарламалары мен VIP тағайындау келеді'
+                        : 'Демалыстасыз — жаңа заказ ұсынылмайды',
+                    style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                  ),
+                  onChanged: (v) => _toggleOnLine(context, ref, v),
                 ),
               ),
               const SizedBox(height: 12),
@@ -253,6 +268,18 @@ class ExecutorDashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  bool _isLive(dynamic s) => (s.simpleActive || s.vipActive) && s.onLine;
+
+  Future<void> _toggleOnLine(
+      BuildContext context, WidgetRef ref, bool value) async {
+    try {
+      await Repo.setOnLine(value);
+      ref.invalidate(executorStatsStreamProvider);
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
   }
 
   Widget _statTile(String label, String value) {
