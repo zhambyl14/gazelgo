@@ -13,21 +13,18 @@ class ExecutorDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(executorStatsProvider);
+    final statsAsync = ref.watch(executorStatsStreamProvider);
     final ep = ref.watch(myExecutorProfileProvider).value;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const GazelGoLogo(size: 22),
-        actions: [
-          IconButton(
-            onPressed: () => ref.invalidate(executorStatsProvider),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const GazelGoLogo(size: 22)),
       body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(executorStatsProvider),
+        color: Gz.ink,
+        onRefresh: () async {
+          ref.invalidate(executorStatsStreamProvider);
+          ref.invalidate(myExecutorProfileProvider);
+          await Future.delayed(const Duration(milliseconds: 600));
+        },
         child: statsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => ListView(children: [
@@ -37,7 +34,29 @@ class ExecutorDashboardScreen extends ConsumerWidget {
           data: (s) => ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (ep != null && ep.docsUpdateRequested)
+              if (ep != null && ep.docsReviewPending)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF3FF),
+                      borderRadius: BorderRadius.circular(Gz.radius),
+                      border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(children: [
+                      Icon(Icons.hourglass_top, color: Gz.blue),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Жаңартылған құжаттар модератор тексеруінде…',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ]),
+                  ),
+                )
+              else if (ep != null && ep.docsUpdateRequested)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: InkWell(
@@ -240,7 +259,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     if (ok != true) return;
     try {
       await Repo.buyTariff(kind);
-      ref.invalidate(executorStatsProvider);
+      ref.invalidate(executorStatsStreamProvider);
       if (context.mounted) {
         showSnack(context, 'Тариф қосылды! Линиядасыз 🚚');
       }

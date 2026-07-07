@@ -94,17 +94,15 @@ class _ChatViewState extends State<ChatView> {
                   builder: (context, snap) {
                     final msgs = snap.data ?? [];
                     if (msgs.isEmpty) return const _IntroPlaceholder();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (_scroll.hasClients) {
-                        _scroll.jumpTo(_scroll.position.maxScrollExtent);
-                      }
-                    });
+                    // reverse:true — жаңа хабарлама астында (кіру өрісінің үстінде)
+                    final ordered = msgs.reversed.toList();
                     return ListView.builder(
                       controller: _scroll,
+                      reverse: true,
                       padding: const EdgeInsets.all(12),
-                      itemCount: msgs.length,
+                      itemCount: ordered.length,
                       itemBuilder: (_, i) =>
-                          _Bubble(msg: msgs[i], mine: _isMine(msgs[i])),
+                          _Bubble(msg: ordered[i], mine: _isMine(ordered[i])),
                     );
                   },
                 ),

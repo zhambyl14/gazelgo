@@ -65,7 +65,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final statsAsync = ref.watch(executorStatsProvider);
+    final statsAsync = ref.watch(executorStatsStreamProvider);
     final cfgAsync = ref.watch(appConfigProvider);
     final cfg = cfgAsync.value ?? AppConfig();
 

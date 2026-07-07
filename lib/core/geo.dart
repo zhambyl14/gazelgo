@@ -12,6 +12,13 @@ class Geo {
   /// Әдепкі орталық — Алматы.
   static const almaty = LatLng(43.238949, 76.889709);
 
+  /// Нүкте Қазақстан шекарасында ма? (шамамен bounding box)
+  static bool inKazakhstan(LatLng p) =>
+      p.latitude >= 40 &&
+      p.latitude <= 56 &&
+      p.longitude >= 46 &&
+      p.longitude <= 88;
+
   static Future<Position?> currentPosition() async {
     try {
       var perm = await Geolocator.checkPermission();

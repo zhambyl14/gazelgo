@@ -288,34 +288,47 @@ class RouteLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget dot(Color c) => Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+    // A нүктесі — жасыл сақина (домалақ емес), B — қызыл пин
+    Widget originRing() => Container(
+          width: 15,
+          height: 15,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Gz.green, width: 3.5),
+            color: Colors.white,
+          ),
         );
-    Widget row(Widget lead, String text) => Row(
+    Widget row(Widget lead, String label, String text) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 16, child: Center(child: lead)),
+            SizedBox(width: 18, child: Center(child: lead)),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 14.5, fontWeight: FontWeight.w600)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 10.5, color: Gz.textSecondary)),
+                  Text(text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700)),
+                ],
+              ),
             ),
           ],
         );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        row(dot(Gz.green), from),
+        row(originRing(), 'Қайдан', from),
         Padding(
-          padding: const EdgeInsets.only(left: 7),
-          child: Container(width: 2, height: 12, color: Gz.border),
+          padding: const EdgeInsets.only(left: 8.5),
+          child: Container(width: 2, height: 14, color: Gz.border),
         ),
-        row(const Icon(Icons.location_on, size: 16, color: Gz.red), to),
+        row(const Icon(Icons.location_on, size: 18, color: Gz.red), 'Қайда', to),
       ],
     );
   }

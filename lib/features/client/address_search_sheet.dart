@@ -12,10 +12,12 @@ import 'address_picker.dart';
 class AddressSearchSheet extends StatefulWidget {
   final String title;
   final LatLng? initial;
-  const AddressSearchSheet({super.key, required this.title, this.initial});
+  final String? initialQuery;
+  const AddressSearchSheet(
+      {super.key, required this.title, this.initial, this.initialQuery});
 
   static Future<PickedAddress?> show(BuildContext context,
-      {required String title, LatLng? initial}) {
+      {required String title, LatLng? initial, String? initialQuery}) {
     return showModalBottomSheet<PickedAddress>(
       context: context,
       isScrollControlled: true,
@@ -23,7 +25,8 @@ class AddressSearchSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => AddressSearchSheet(title: title, initial: initial),
+      builder: (_) => AddressSearchSheet(
+          title: title, initial: initial, initialQuery: initialQuery),
     );
   }
 
@@ -36,6 +39,14 @@ class _AddressSearchSheetState extends State<AddressSearchSheet> {
   Timer? _debounce;
   List<GeoPlace> _results = [];
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      _search.text = widget.initialQuery!;
+    }
+  }
 
   @override
   void dispose() {
@@ -73,6 +84,13 @@ class _AddressSearchSheetState extends State<AddressSearchSheet> {
       return;
     }
     final p = LatLng(pos.latitude, pos.longitude);
+    if (!Geo.inKazakhstan(p)) {
+      if (mounted) {
+        setState(() => _loading = false);
+        showSnack(context, 'Тек Қазақстан ішінде', error: true);
+      }
+      return;
+    }
     final addr = await Geo.reverse(p);
     if (mounted) Navigator.pop(context, PickedAddress(addr, p));
   }
@@ -80,7 +98,13 @@ class _AddressSearchSheetState extends State<AddressSearchSheet> {
   Future<void> _openMap() async {
     final res = await AddressPickerScreen.pick(context,
         title: widget.title, initial: widget.initial);
-    if (res != null && mounted) Navigator.pop(context, res);
+    if (res != null && mounted) {
+      if (!Geo.inKazakhstan(res.point)) {
+        showSnack(context, 'Тек Қазақстан ішінде', error: true);
+        return;
+      }
+      Navigator.pop(context, res);
+    }
   }
 
   @override

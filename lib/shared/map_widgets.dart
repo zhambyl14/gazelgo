@@ -23,6 +23,21 @@ Marker pointMarker(LatLng p, {Color color = Gz.green, IconData? icon}) =>
       ),
     );
 
+/// A нүктесінің таза белгісі — жасыл сақина (домалақ емес).
+Marker originMarker(LatLng p) => Marker(
+      point: p,
+      width: 26,
+      height: 26,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: Gz.green, width: 5),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+      ),
+    );
+
 /// Маршрутты көрсететін шағын карта (A → B + сызық).
 class RouteMap extends StatelessWidget {
   final LatLng from;
@@ -61,7 +76,7 @@ class RouteMap extends StatelessWidget {
                 Polyline(points: points, strokeWidth: 4, color: Gz.blue),
               ]),
               MarkerLayer(markers: [
-                pointMarker(from, color: Gz.green, icon: Icons.trip_origin),
+                originMarker(from),
                 pointMarker(to, color: Gz.red),
               ]),
             ],

@@ -13,22 +13,11 @@ class ExecutorFeedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(executorStatsProvider);
+    final statsAsync = ref.watch(executorStatsStreamProvider);
     final epAsync = ref.watch(myExecutorProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Заказдар лентасы'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              ref.invalidate(executorStatsProvider);
-              ref.invalidate(myExecutorProfileProvider);
-            },
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Заказдар лентасы')),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) =>

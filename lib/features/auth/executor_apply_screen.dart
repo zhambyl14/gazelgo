@@ -133,21 +133,54 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         if (p != null) photos.add(p);
       }
 
-      await Repo.submitExecutorApplication(
-        size: _size,
-        brand: _brand.text,
-        model: _model.text,
-        year: int.tryParse(_year.text),
-        plate: _plate.text,
-        vehiclePhotos: photos,
-        idDocPath: idPath,
-        licensePath: licPath,
-        techPassportPath: techPath,
-        isResubmit: widget.existing != null,
-      );
+      final e = widget.existing;
+      final isDocsResponse =
+          e != null && e.status == 'approved' && e.docsUpdateRequested;
+
+      if (isDocsResponse) {
+        // Тек құжат жаңарту — модератор ревьюіне түседі
+        await Repo.submitDocsUpdate(
+          idDocPath: idPath,
+          licensePath: licPath,
+          techPath: techPath,
+          photos: photos,
+        );
+        // ескі, ауысқан құжаттарды өшіру
+        final oldPaths = <String>[];
+        for (final (oldP, newP) in [
+          (e.idDocPath, idPath),
+          (e.licensePath, licPath),
+          (e.techPassportPath, techPath),
+        ]) {
+          if (oldP != null && oldP != newP) oldPaths.add(oldP);
+        }
+        for (final oldPh in e.vehiclePhotos) {
+          if (!photos.contains(oldPh)) oldPaths.add(oldPh);
+        }
+        if (oldPaths.isNotEmpty) {
+          try {
+            await Repo.c.storage.from('docs').remove(oldPaths);
+          } catch (_) {}
+        }
+      } else {
+        await Repo.submitExecutorApplication(
+          size: _size,
+          brand: _brand.text,
+          model: _model.text,
+          year: int.tryParse(_year.text),
+          plate: _plate.text,
+          vehiclePhotos: photos,
+          idDocPath: idPath,
+          licensePath: licPath,
+          techPassportPath: techPath,
+          isResubmit: widget.existing != null,
+        );
+      }
       ref.invalidate(myExecutorProfileProvider);
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
+      if (mounted) {
+        showSnack(context,
+            isDocsResponse ? 'Жіберілді — модератор тексереді' : 'Жіберілді');
+        if (Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -227,6 +260,45 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.existing?.docsUpdateRequested == true) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F0),
+                      borderRadius: BorderRadius.circular(Gz.radius),
+                      border: Border.all(color: Gz.red.withValues(alpha: 0.35)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [
+                          Icon(Icons.assignment_late, color: Gz.red, size: 20),
+                          SizedBox(width: 8),
+                          Text('Модератор мынаны жаңартуды сұрады:',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
+                        ]),
+                        const SizedBox(height: 6),
+                        ...widget.existing!.docsUpdateFields.map((f) => Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                  '•  ${ExecutorProfile.docFieldLabel(f)}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                            )),
+                        if (widget.existing!.docsUpdateComment?.isNotEmpty ==
+                            true) ...[
+                          const SizedBox(height: 6),
+                          Text('«${widget.existing!.docsUpdateComment}»',
+                              style: const TextStyle(
+                                  color: Gz.textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 13)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 const Text('Көлік туралы',
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),

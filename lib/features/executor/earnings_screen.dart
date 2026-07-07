@@ -11,24 +11,22 @@ class EarningsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(executorStatsProvider);
+    final statsAsync = ref.watch(executorStatsStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Табыс'),
-        actions: [
-          IconButton(
-            onPressed: () => ref.invalidate(executorStatsProvider),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Табыс')),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
-        data: (s) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+        data: (s) => RefreshIndicator(
+          color: Gz.ink,
+          onRefresh: () async {
+            ref.invalidate(executorStatsStreamProvider);
+            await Future.delayed(const Duration(milliseconds: 600));
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
             Row(
               children: [
                 Expanded(child: _tile('Бүгін', fmtT(s.today), Gz.green)),
@@ -94,6 +92,7 @@ class EarningsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
           ],
+          ),
         ),
       ),
     );

@@ -96,6 +96,8 @@ class ExecutorProfile {
   final String? busyOrderId;
   final bool docsUpdateRequested;
   final String? docsUpdateComment;
+  final List<String> docsUpdateFields;
+  final bool docsReviewPending;
   final DateTime? createdAt;
 
   ExecutorProfile.fromMap(Map<String, dynamic> m)
@@ -116,7 +118,19 @@ class ExecutorProfile {
         busyOrderId = m['busy_order_id'] as String?,
         docsUpdateRequested = m['docs_update_requested'] as bool? ?? false,
         docsUpdateComment = m['docs_update_comment'] as String?,
+        docsUpdateFields =
+            (m['docs_update_fields'] as List?)?.cast<String>() ?? const [],
+        docsReviewPending = m['docs_review_pending'] as bool? ?? false,
         createdAt = _dt(m['created_at']);
+
+  /// Құжат өрісінің қазақша атауы.
+  static String docFieldLabel(String f) => switch (f) {
+        'id' => 'Жеке куәлік',
+        'license' => 'Жүргізуші куәлігі',
+        'tech' => 'Техпаспорт',
+        'photos' => 'Көлік фотолары',
+        _ => f,
+      };
 
   String get vehicleTitle =>
       [vehicleBrand, vehicleModel, if (vehicleYear != null) '$vehicleYear']

@@ -237,6 +237,12 @@ class Repo {
       ExecutorStats.fromMap(
           Map<String, dynamic>.from(await c.rpc('executor_stats') as Map));
 
+  /// Орындаушы статистикасы — тікелей байланыс (polling, ~4с).
+  static Stream<ExecutorStats> executorStatsStream() => _poll(() async =>
+      ExecutorStats.fromMap(
+          Map<String, dynamic>.from(await c.rpc('executor_stats') as Map)),
+      every: const Duration(seconds: 4));
+
   static Future<int> instantQuote(VehicleSize size, double distanceKm) async =>
       (await c.rpc('instant_quote', params: {
         'p_size': size.db,
@@ -370,11 +376,46 @@ class Repo {
         'p_note': note,
       });
 
-  static Future<void> modRequestDocs(String userId, String comment) =>
+  static Future<void> modRequestDocs(
+          String userId, List<String> fields, String comment) =>
       c.rpc('mod_request_docs', params: {
         'p_user': userId,
+        'p_fields': fields,
         'p_comment': comment,
       });
+
+  static Future<void> modApproveDocs(String userId) =>
+      c.rpc('mod_approve_docs', params: {'p_user': userId});
+
+  static Future<void> modRejectDocs(String userId, String comment) =>
+      c.rpc('mod_reject_docs', params: {'p_user': userId, 'p_comment': comment});
+
+  /// Орындаушының тек сұралған құжаттарды жаңартуы (ревьюге түседі).
+  static Future<void> submitDocsUpdate({
+    String? idDocPath,
+    String? licensePath,
+    String? techPath,
+    List<String>? photos,
+  }) =>
+      c.rpc('submit_docs_update', params: {
+        'p_id_doc': idDocPath,
+        'p_license': licensePath,
+        'p_tech': techPath,
+        'p_photos': photos,
+      });
+
+  /// Ревью күтіп тұрған құжат жаңартулары (модератор үшін).
+  static Future<List<ExecutorProfile>> docsReviewPending() async {
+    final rows = await c
+        .from('executor_profiles')
+        .select()
+        .eq('docs_review_pending', true)
+        .order('updated_at', ascending: false)
+        .limit(100);
+    return (rows as List)
+        .map((m) => ExecutorProfile.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
 
   static Future<void> modCancelOrder(String orderId, String reason) =>
       c.rpc('mod_cancel_order', params: {
@@ -699,3 +740,7 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
 
 final executorStatsProvider =
     FutureProvider<ExecutorStats>((ref) => Repo.executorStats());
+
+/// Тікелей жаңарып отыратын статистика стримі.
+final executorStatsStreamProvider =
+    StreamProvider<ExecutorStats>((ref) => Repo.executorStatsStream());

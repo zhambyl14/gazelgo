@@ -14,27 +14,28 @@ class ApplicationsScreen extends StatefulWidget {
 }
 
 class _ApplicationsScreenState extends State<ApplicationsScreen> {
-  late Future<List<ExecutorProfile>> _future = Repo.executorsByStatus('pending');
+  late Future<List<List<ExecutorProfile>>> _future = _load();
 
-  void _reload() {
-    final f = Repo.executorsByStatus('pending');
-    setState(() {
-      _future = f;
-    });
-  }
+  Future<List<List<ExecutorProfile>>> _load() => Future.wait([
+        Repo.executorsByStatus('pending'),
+        Repo.docsReviewPending(),
+      ]);
+
+  void _reload() => setState(() => _future = _load());
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
-      child: FutureBuilder<List<ExecutorProfile>>(
+      child: FutureBuilder<List<List<ExecutorProfile>>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final rows = snap.data ?? [];
-          if (rows.isEmpty) {
+          final pending = snap.data?[0] ?? [];
+          final docsReview = snap.data?[1] ?? [];
+          if (pending.isEmpty && docsReview.isEmpty) {
             return ListView(children: const [
               SizedBox(height: 120),
               EmptyState(
@@ -43,18 +44,167 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                   subtitle: 'Барлық өтінімдер қаралған.'),
             ]);
           }
-          return ListView.separated(
+          return ListView(
             padding: const EdgeInsets.all(12),
-            itemCount: rows.length,
-            separatorBuilder: (_, i) => const SizedBox(height: 8),
-            itemBuilder: (_, i) => _ApplicationTile(
-              ep: rows[i],
-              onChanged: _reload,
-            ),
+            children: [
+              if (docsReview.isNotEmpty) ...[
+                const _SectionLabel('Құжат жаңартулары (ревью)'),
+                for (final ep in docsReview) ...[
+                  _DocsReviewTile(ep: ep, onChanged: _reload),
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 8),
+              ],
+              if (pending.isNotEmpty) ...[
+                const _SectionLabel('Жаңа өтінімдер'),
+                for (final ep in pending) ...[
+                  _ApplicationTile(ep: ep, onChanged: _reload),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ],
           );
         },
       ),
     );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+        child: Text(text,
+            style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                color: Gz.textSecondary)),
+      );
+}
+
+/// Құжат жаңартуын ревьюлеу тайлы (қабылдау / қайтару).
+class _DocsReviewTile extends StatelessWidget {
+  final ExecutorProfile ep;
+  final VoidCallback onChanged;
+  const _DocsReviewTile({required this.ep, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Profile?>(
+      future: Repo.profileOf(ep.userId),
+      builder: (context, snap) {
+        final p = snap.data;
+        final fields =
+            ep.docsUpdateFields.map(ExecutorProfile.docFieldLabel).join(', ');
+        return SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  InitialsAvatar(p?.fullName ?? '?',
+                      radius: 20, imageUrl: p?.avatarUrl),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(p?.fullName ?? '…',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15)),
+                  ),
+                ],
+              ),
+              if (fields.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('Жаңартылды: $fields',
+                    style: const TextStyle(
+                        fontSize: 12.5, color: Gz.textSecondary)),
+              ],
+              const SizedBox(height: 10),
+              // Жаңартылған құжаттар
+              SizedBox(
+                height: 110,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    if (ep.docsUpdateFields.contains('id'))
+                      _doc(ep.idDocPath, 'Жеке куәлік'),
+                    if (ep.docsUpdateFields.contains('license'))
+                      _doc(ep.licensePath, 'Жүргізуші'),
+                    if (ep.docsUpdateFields.contains('tech'))
+                      _doc(ep.techPassportPath, 'Техпаспорт'),
+                    if (ep.docsUpdateFields.contains('photos'))
+                      for (final ph in ep.vehiclePhotos) _doc(ph, 'Көлік'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: BusyButton(
+                      label: 'Қайтару',
+                      outlined: true,
+                      onPressed: () => _reject(context),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: BusyButton(
+                      label: 'Қабылдау ✓',
+                      onPressed: () => _approve(context),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _doc(String? path, String label) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: SizedBox(width: 150, child: DocImage(path: path, label: label)),
+      );
+
+  Future<void> _approve(BuildContext context) async {
+    try {
+      await Repo.modApproveDocs(ep.userId);
+      if (context.mounted) showSnack(context, 'Құжаттар қабылданды');
+      onChanged();
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _reject(BuildContext context) async {
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Қайтару себебі'),
+        content: TextField(controller: c, autofocus: true),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Болдырмау')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Қайтару')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Repo.modRejectDocs(ep.userId, c.text);
+      if (context.mounted) showSnack(context, 'Қайтарылды');
+      onChanged();
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
   }
 }
 

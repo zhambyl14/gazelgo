@@ -201,29 +201,18 @@ class _ExecutorTile extends StatelessWidget {
     try {
       switch (action) {
         case 'request_docs':
-          final c = TextEditingController();
-          final ok = await showDialog<bool>(
+          final res = await showDialog<(List<String>, String)>(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Құжат жаңартуды сұрау'),
-              content: TextField(
-                controller: c,
-                autofocus: true,
-                decoration: const InputDecoration(
-                    hintText: 'Не жаңарту керек? (мыс: техпаспорт анық емес)'),
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Болдырмау')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Жіберу')),
-              ],
-            ),
+            builder: (ctx) => const _RequestDocsDialog(),
           );
-          if (ok != true) return;
-          await Repo.modRequestDocs(ep.userId, c.text);
+          if (res == null) return;
+          if (res.$1.isEmpty) {
+            if (context.mounted) {
+              showSnack(context, 'Кемінде бір құжат таңдаңыз', error: true);
+            }
+            return;
+          }
+          await Repo.modRequestDocs(ep.userId, res.$1, res.$2);
           if (context.mounted) {
             showSnack(context, 'Сұраным жіберілді');
           }
@@ -300,6 +289,75 @@ class _ExecutorTile extends StatelessWidget {
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
+  }
+}
+
+/// Құжат жаңартуды сұрау диалогы — қай құжатты + түсініктеме.
+class _RequestDocsDialog extends StatefulWidget {
+  const _RequestDocsDialog();
+
+  @override
+  State<_RequestDocsDialog> createState() => _RequestDocsDialogState();
+}
+
+class _RequestDocsDialogState extends State<_RequestDocsDialog> {
+  final _fields = <String>{};
+  final _comment = TextEditingController();
+
+  static const _options = [
+    ('id', 'Жеке куәлік'),
+    ('license', 'Жүргізуші куәлігі'),
+    ('tech', 'Техпаспорт'),
+    ('photos', 'Көлік фотолары'),
+  ];
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Қай құжатты жаңарту керек?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (key, label) in _options)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(label),
+              value: _fields.contains(key),
+              onChanged: (v) => setState(() {
+                if (v == true) {
+                  _fields.add(key);
+                } else {
+                  _fields.remove(key);
+                }
+              }),
+            ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _comment,
+            decoration: const InputDecoration(
+                hintText: 'Түсініктеме (мыс: анық емес, ескірген)'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Болдырмау')),
+        FilledButton(
+          onPressed: () =>
+              Navigator.pop(context, (_fields.toList(), _comment.text)),
+          child: const Text('Жіберу'),
+        ),
+      ],
+    );
   }
 }
 

@@ -48,7 +48,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _editFrom() async {
     final res = await AddressSearchSheet.show(context,
-        title: 'Қайдан аламыз?', initial: _from.point);
+        title: 'Қайдан аламыз?',
+        initial: _from.point,
+        initialQuery: _from.address);
     if (res != null && mounted) {
       setState(() {
         _from = res;
@@ -60,7 +62,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _editTo() async {
     final res = await AddressSearchSheet.show(context,
-        title: 'Қайда жеткіземіз?', initial: _to.point);
+        title: 'Қайда жеткіземіз?',
+        initial: _to.point,
+        initialQuery: _to.address);
     if (res != null && mounted) {
       setState(() {
         _to = res;
@@ -141,6 +145,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
     if (_cargo.text.trim().isEmpty) {
       showSnack(context, 'Не таситыныңызды жазыңыз', error: true);
+      return;
+    }
+    if (!Geo.inKazakhstan(_from.point) || !Geo.inKazakhstan(_to.point)) {
+      showSnack(context, 'Заказ тек Қазақстан ішінде болуы керек', error: true);
       return;
     }
     int? clientPrice;

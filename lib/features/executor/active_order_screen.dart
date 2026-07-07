@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/geo.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -14,12 +15,49 @@ class ActiveOrderScreen extends StatelessWidget {
   final String orderId;
   const ActiveOrderScreen({super.key, required this.orderId});
 
+  /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
+  static const _proximityKm = 1.0;
+
   static const _next = {
     'accepted': ('arrived', 'Келдім', Icons.location_on),
     'arrived': ('loading', 'Тиеуді бастадық', Icons.upload),
     'loading': ('in_transit', 'Жолға шықтық', Icons.local_shipping),
     'in_transit': ('completed', 'Заказды аяқтау', Icons.check_circle),
   };
+
+  /// Геолокация + жақындықты тексереді. Қажет болмаса — true.
+  Future<bool> _checkProximity(
+      BuildContext context, String nextStatus, Order o) async {
+    // «Келдім» → A нүктесіне жақын; «Аяқтау» → B нүктесіне жақын
+    LatLng? target;
+    String farErr = '';
+    if (nextStatus == 'arrived') {
+      target = LatLng(o.fromLat, o.fromLng);
+      farErr = 'TOO_FAR_FROM_A';
+    } else if (nextStatus == 'completed') {
+      target = LatLng(o.toLat, o.toLng);
+      farErr = 'TOO_FAR_FROM_B';
+    }
+    if (target == null) return true; // басқа қадамдар — тексеріссіз
+
+    final pos = await Geo.currentPosition();
+    if (pos == null) {
+      if (context.mounted) showSnack(context, errText('LOCATION_OFF'), error: true);
+      return false;
+    }
+    final dist =
+        Geo.haversineKm(LatLng(pos.latitude, pos.longitude), target);
+    if (dist > _proximityKm) {
+      if (context.mounted) {
+        showSnack(
+            context,
+            '${errText(farErr)} (${dist.toStringAsFixed(1)} км қашықтық)',
+            error: true);
+      }
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +148,10 @@ class ActiveOrderScreen extends StatelessWidget {
                     icon: next.$3,
                     color: o.status == 'in_transit' ? Gz.green : null,
                     onPressed: () async {
+                      // A/B нүктесіне жақындықты тексеру
+                      final ok =
+                          await _checkProximity(context, next.$1, o);
+                      if (!ok) return;
                       try {
                         await Repo.orderAdvance(o.id, next.$1);
                         if (next.$1 == 'completed' && context.mounted) {
