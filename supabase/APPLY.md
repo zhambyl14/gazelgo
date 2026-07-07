@@ -29,8 +29,10 @@ Backend толығымен осы папкада дайын. Оны нақты S
    - `migrations/0006_features.sql`           ← аватар, рейтинг, чат, фото т.б.
    - `migrations/0007_mod_and_support.sql`    ← чат-заказ, мод. әрекеттер, статистика
    - `migrations/0008_docs_review_geo.sql`    ← құжат ревью, VIP 20с, тек ҚР ішінде
+   - `migrations/0009_line_modstatus.sql`     ← Линия панелі, модератор статус мәжбүрлеу
+   - `migrations/0010_storage_cleanup.sql`    ← ескі қолдау чат суреттерін тазалау
 
-   Егер 0001–0004 бұрын орындалған болса, тек **0005, 0006, 0007, 0008**-ді
+   Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
 2. Edge function: Dashboard → Edge Functions → **Deploy new function** →
    аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF**.

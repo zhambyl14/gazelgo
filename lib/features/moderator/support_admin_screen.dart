@@ -8,8 +8,20 @@ import '../support/chat_view.dart';
 import 'order_admin.dart';
 
 /// Модератор жағы: барлық қолдау тредтері + әр тредке жауап беру.
-class SupportAdminScreen extends StatelessWidget {
+class SupportAdminScreen extends StatefulWidget {
   const SupportAdminScreen({super.key});
+
+  @override
+  State<SupportAdminScreen> createState() => _SupportAdminScreenState();
+}
+
+class _SupportAdminScreenState extends State<SupportAdminScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // жабылған тредтердің ескі суреттерін фондық режимде тазалау
+    Repo.cleanupSupportImages();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -73,6 +73,10 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     if (ok != true) return;
     try {
       await Repo.modSetOrderStatus(widget.orderId, status);
+      if ((status == 'completed' || status == 'cancelled') &&
+          _order!.photos.isNotEmpty) {
+        Repo.deleteOrderPhotos(_order!.photos);
+      }
       widget.onChanged?.call();
       await _load();
       if (mounted) showSnack(context, 'Статус өзгертілді: $label');

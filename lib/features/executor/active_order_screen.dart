@@ -154,9 +154,14 @@ class ActiveOrderScreen extends StatelessWidget {
                       if (!ok) return;
                       try {
                         await Repo.orderAdvance(o.id, next.$1);
-                        if (next.$1 == 'completed' && context.mounted) {
-                          showSnack(context,
-                              'Заказ аяқталды! Табысыңызға ${fmtT(o.finalPrice)} қосылды 🎉');
+                        if (next.$1 == 'completed') {
+                          if (o.photos.isNotEmpty) {
+                            Repo.deleteOrderPhotos(o.photos);
+                          }
+                          if (context.mounted) {
+                            showSnack(context,
+                                'Заказ аяқталды! Табысыңызға ${fmtT(o.finalPrice)} қосылды 🎉');
+                          }
                         }
                       } catch (e) {
                         if (context.mounted) {

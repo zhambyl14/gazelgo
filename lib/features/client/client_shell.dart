@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
 import '../../core/repo.dart';
-import '../profile/profile_screen.dart';
 import 'home_screen.dart';
-import 'my_orders_screen.dart';
 
+/// Клиенттің қабығы: төменгі навбар жоқ — тек Басты бет (профиль/тапсырыстар
+/// енді сонда, оң жақ жоғарғы бұрыштағы профиль батырмасы арқылы қолжетімді).
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
 
@@ -15,7 +15,6 @@ class ClientShell extends StatefulWidget {
 }
 
 class _ClientShellState extends State<ClientShell> {
-  int _index = 0;
   final Map<String, String> _lastStatus = {};
   bool _primed = false;
 
@@ -46,34 +45,7 @@ class _ClientShellState extends State<ClientShell> {
       stream: Repo.myOrdersStream(),
       builder: (context, snap) {
         if (snap.hasData) _watchStatuses(snap.data!);
-        return Scaffold(
-          body: IndexedStack(
-            index: _index,
-            children: const [
-              ClientHomeScreen(),
-              MyOrdersScreen(),
-              ProfileScreen(),
-            ],
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
-              NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Басты'),
-              NavigationDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  selectedIcon: Icon(Icons.receipt_long),
-                  label: 'Тапсырыстар'),
-              NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Профиль'),
-            ],
-          ),
-        );
+        return const ClientHomeScreen();
       },
     );
   }

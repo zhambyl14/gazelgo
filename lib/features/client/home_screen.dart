@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
@@ -7,41 +10,76 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
+import '../../shared/transitions.dart';
 import '../../shared/widgets.dart';
+import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'address_search_sheet.dart';
 import 'create_order_screen.dart';
 import 'order_detail_screen.dart';
 
-class ClientHomeScreen extends StatefulWidget {
+class ClientHomeScreen extends ConsumerStatefulWidget {
   const ClientHomeScreen({super.key});
 
   @override
-  State<ClientHomeScreen> createState() => _ClientHomeScreenState();
+  ConsumerState<ClientHomeScreen> createState() => _ClientHomeScreenState();
 }
 
-class _ClientHomeScreenState extends State<ClientHomeScreen> {
+class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   final _map = MapController();
+  Timer? _moveDebounce;
   PickedAddress? _from;
+  bool _resolvingFrom = true;
   PickedAddress? _to;
 
   @override
   void initState() {
     super.initState();
+    _resolveFrom(Geo.almaty);
     _initLocation();
+  }
+
+  @override
+  void dispose() {
+    _moveDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _initLocation() async {
     final pos = await Geo.currentPosition();
     if (pos != null && mounted) {
-      _map.move(LatLng(pos.latitude, pos.longitude), 14.5);
+      final p = LatLng(pos.latitude, pos.longitude);
+      _map.move(p, 15.5);
+      _resolveFrom(p);
     }
   }
 
-  Future<void> _pickFrom() async {
-    final res = await AddressSearchSheet.show(context,
-        title: 'Қайдан аламыз?', initial: _from?.point);
-    if (res != null) setState(() => _from = res);
+  Future<void> _goToMyLocation() async {
+    final pos = await Geo.currentPosition();
+    if (pos == null) {
+      if (mounted) showSnack(context, 'Локация қолжетімсіз', error: true);
+      return;
+    }
+    final p = LatLng(pos.latitude, pos.longitude);
+    _map.move(p, 16);
+    _resolveFrom(p);
+  }
+
+  void _onMapMove(MapCamera camera, bool hasGesture) {
+    if (!hasGesture) return;
+    _moveDebounce?.cancel();
+    _moveDebounce = Timer(
+        const Duration(milliseconds: 500), () => _resolveFrom(camera.center));
+  }
+
+  Future<void> _resolveFrom(LatLng center) async {
+    setState(() => _resolvingFrom = true);
+    final (addr, city) = await Geo.reverseWithCity(center);
+    if (!mounted) return;
+    setState(() {
+      _from = PickedAddress(addr, center, city);
+      _resolvingFrom = false;
+    });
   }
 
   Future<void> _pickTo() async {
@@ -82,64 +120,57 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     }
     if (!mounted) return;
 
-    // Адрестерді сақтап қоямыз (create/cancel-ден кейін қайта жазбау үшін).
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CreateOrderScreen(from: _from!, to: _to!),
-    ));
-  }
-
-  Widget _addressField({
-    required IconData icon,
-    required Color color,
-    required String hint,
-    required PickedAddress? value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        decoration: BoxDecoration(
-          color: Gz.bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                value?.address ?? hint,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight:
-                      value == null ? FontWeight.w500 : FontWeight.w700,
-                  color: value == null ? Gz.textSecondary : Gz.ink,
-                  fontSize: 14.5,
-                ),
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Gz.textSecondary),
-          ],
-        ),
-      ),
+    await Navigator.of(context).push(
+      slideUpRoute(CreateOrderScreen(from: _from!, to: _to!)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(myProfileProvider);
     return Scaffold(
       body: Stack(
         children: [
           FlutterMap(
             mapController: _map,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: Geo.almaty,
               initialZoom: 13,
+              onPositionChanged: _onMapMove,
             ),
             children: [osmTileLayer()],
+          ),
+          // орталық пин — картаның нақ ортасы = «Қайдан аламыз»
+          IgnorePointer(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedScale(
+                      duration: const Duration(milliseconds: 150),
+                      scale: _resolvingFrom ? 0.85 : 1,
+                      child: const Icon(Icons.location_on,
+                          size: 44,
+                          color: Gz.green,
+                          shadows: [
+                            Shadow(color: Colors.black38, blurRadius: 8)
+                          ]),
+                    ),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           SafeArea(
             child: Column(
@@ -158,15 +189,39 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         ),
                       ),
                       const Spacer(),
+                      _ProfileButton(profile: profileAsync.value),
                     ],
                   ),
                 ),
                 const Spacer(),
                 // белсенді заказ баннері
                 const _ActiveOrdersBanner(),
+                // менің локациям батырмасы
+                Padding(
+                  padding: const EdgeInsets.only(right: 12, bottom: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Material(
+                        elevation: 3,
+                        shape: const CircleBorder(),
+                        color: Gz.surface,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _goToMyLocation,
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child:
+                                Icon(Icons.my_location, color: Gz.ink, size: 22),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 // негізгі панель
                 Container(
-                  margin: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Gz.surface,
@@ -202,7 +257,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                         fontSize: 19,
                                         fontWeight: FontWeight.w900)),
                                 Text(
-                                  'Бірнеше минутта орындаушы табыңыз',
+                                  'Картаны жылжытып, орныңызды белгілеңіз',
                                   style: TextStyle(
                                       color: Gz.textSecondary,
                                       fontSize: 12.5),
@@ -213,32 +268,87 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _addressField(
-                        icon: Icons.trip_origin,
-                        color: Gz.green,
-                        hint: 'Қайдан аламыз?',
-                        value: _from,
-                        onTap: _pickFrom,
+                      // Қайдан — картамен байланысты, тек көрсету үшін
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 13),
+                        decoration: BoxDecoration(
+                          color: Gz.bg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.trip_origin,
+                                size: 18, color: Gz.green),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _resolvingFrom
+                                    ? 'Анықталуда…'
+                                    : (_from?.address ?? 'Картаны жылжытыңыз'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Gz.ink,
+                                    fontSize: 14.5),
+                              ),
+                            ),
+                            if (_resolvingFrom)
+                              const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2))
+                            else
+                              const Icon(Icons.map_outlined,
+                                  size: 16, color: Gz.textSecondary),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      _addressField(
-                        icon: Icons.location_on,
-                        color: Gz.red,
-                        hint: 'Қайда жеткіземіз?',
-                        value: _to,
+                      InkWell(
                         onTap: _pickTo,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 13),
+                          decoration: BoxDecoration(
+                            color: Gz.bg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on,
+                                  size: 18, color: Gz.red),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _to?.address ?? 'Қайда жеткіземіз?',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: _to == null
+                                        ? FontWeight.w500
+                                        : FontWeight.w700,
+                                    color: _to == null
+                                        ? Gz.textSecondary
+                                        : Gz.ink,
+                                    fontSize: 14.5,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right,
+                                  color: Gz.textSecondary),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 14),
                       FilledButton(
-                        onPressed: () {
-                          if (_from == null) {
-                            _pickFrom();
-                          } else if (_to == null) {
-                            _pickTo();
-                          } else {
-                            _maybeContinue();
-                          }
-                        },
+                        onPressed: (_from == null || _resolvingFrom)
+                            ? null
+                            : (_to == null ? _pickTo : _maybeContinue),
                         child: const Text('Газель шақыру'),
                       ),
                     ],
@@ -248,6 +358,29 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileButton extends StatelessWidget {
+  final Profile? profile;
+  const _ProfileButton({this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 2,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProfileScreen())),
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: InitialsAvatar(profile?.fullName ?? '?',
+              radius: 17, imageUrl: profile?.avatarUrl),
+        ),
       ),
     );
   }
@@ -269,7 +402,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => OrderDetailScreen(orderId: o.id))),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(

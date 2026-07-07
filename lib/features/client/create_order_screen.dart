@@ -40,6 +40,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   late PickedAddress _from = widget.from;
   late PickedAddress _to = widget.to;
 
+  /// Қайдан/қайда қалалары әртүрлі болса — межгород.
+  bool get _intercity =>
+      _from.city != null &&
+      _to.city != null &&
+      _from.city!.trim().toLowerCase() != _to.city!.trim().toLowerCase();
+
   @override
   void initState() {
     super.initState();
@@ -259,13 +265,80 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget build(BuildContext context) {
     final route = _route;
     return Scaffold(
-      appBar: AppBar(title: const Text('Заказ құру')),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Gz.bg,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Gz.border, borderRadius: BorderRadius.circular(2)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 10, 8, 2),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Заказ құру',
+                            style: TextStyle(
+                                fontSize: 19, fontWeight: FontWeight.w900)),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_from.city != null && _to.city != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: (_intercity ? Gz.violet : Gz.green)
+                        .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                          _intercity
+                              ? Icons.alt_route
+                              : Icons.location_city_outlined,
+                          size: 18,
+                          color: _intercity ? Gz.violet : Gz.green),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _intercity
+                              ? 'Сіз қалалар аралық (межгород) заказ бересіз: '
+                                  '${_from.city} → ${_to.city}'
+                              : 'Қала ішіндегі тасымал',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                              color: _intercity ? Gz.violet : Gz.green),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               RouteMap(
                 from: _from.point,
                 to: _to.point,
@@ -462,6 +535,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 style: TextStyle(color: Gz.textSecondary, fontSize: 12),
               ),
             ],
+          ),
+                ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

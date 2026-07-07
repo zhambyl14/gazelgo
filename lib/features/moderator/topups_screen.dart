@@ -199,7 +199,8 @@ class _TopupCard extends StatelessWidget {
     }
     if (!context.mounted) return;
     try {
-      await Repo.modReviewTopup(t.id, approve, note);
+      await Repo.modReviewTopup(t.id, approve, note,
+          receiptPath: t.receiptPath);
       if (context.mounted) {
         showSnack(context,
             approve ? 'Баланс толтырылды' : 'Сұраным қабылданбады');

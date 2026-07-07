@@ -49,6 +49,7 @@ class Geo {
         'format': 'jsonv2',
         'countrycodes': 'kz',
         'limit': '8',
+        'addressdetails': '1',
         'accept-language': 'kk,ru',
       });
       final res = await http.get(uri, headers: _ua)
@@ -60,6 +61,7 @@ class Geo {
                 name: (e['display_name'] as String).split(',').take(3).join(','),
                 point: LatLng(double.parse(e['lat'] as String),
                     double.parse(e['lon'] as String)),
+                city: _cityOf(e['address'] as Map<String, dynamic>?),
               ))
           .toList();
     } catch (_) {
@@ -67,8 +69,17 @@ class Geo {
     }
   }
 
-  /// Координатадан адрес атауы.
-  static Future<String> reverse(LatLng p) async {
+  static String? _cityOf(Map<String, dynamic>? a) {
+    if (a == null) return null;
+    final c = a['city'] ?? a['town'] ?? a['village'] ?? a['county'];
+    return c is String ? c : null;
+  }
+
+  /// Координатадан адрес атауы (қала атауынсыз).
+  static Future<String> reverse(LatLng p) async => (await reverseWithCity(p)).$1;
+
+  /// Координатадан адрес атауы + қала атауы (межгород анықтау үшін).
+  static Future<(String, String?)> reverseWithCity(LatLng p) async {
     try {
       final uri = Uri.parse('https://nominatim.openstreetmap.org/reverse')
           .replace(queryParameters: {
@@ -79,21 +90,22 @@ class Geo {
       });
       final res = await http.get(uri, headers: _ua)
           .timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return _coordLabel(p);
+      if (res.statusCode != 200) return (_coordLabel(p), null);
       final j = jsonDecode(res.body) as Map<String, dynamic>;
       final a = j['address'] as Map<String, dynamic>?;
+      final city = _cityOf(a);
       if (a != null) {
         final parts = [
           a['road'] ?? a['pedestrian'] ?? a['neighbourhood'] ?? a['suburb'],
           a['house_number'],
           a['city'] ?? a['town'] ?? a['village'] ?? a['county'],
         ].whereType<String>().toList();
-        if (parts.isNotEmpty) return parts.join(', ');
+        if (parts.isNotEmpty) return (parts.join(', '), city);
       }
       final dn = j['display_name'] as String?;
-      return dn == null ? _coordLabel(p) : dn.split(',').take(3).join(',');
+      return (dn == null ? _coordLabel(p) : dn.split(',').take(3).join(','), city);
     } catch (_) {
-      return _coordLabel(p);
+      return (_coordLabel(p), null);
     }
   }
 
@@ -154,7 +166,8 @@ class Geo {
 class GeoPlace {
   final String name;
   final LatLng point;
-  GeoPlace({required this.name, required this.point});
+  final String? city;
+  GeoPlace({required this.name, required this.point, this.city});
 }
 
 class GeoRoute {

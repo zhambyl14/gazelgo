@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import '../client/my_orders_screen.dart';
 import '../support/support_screen.dart';
 import 'reviews_screen.dart';
 
@@ -181,6 +182,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _ => 'Бұғатталған',
                       }),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (p.role == 'client') ...[
+                SectionCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: const Icon(Icons.receipt_long, color: Gz.blue),
+                    title: const Text('Тапсырыстар',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text('Белсенді және өткен заказдар'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const MyOrdersScreen())),
                   ),
                 ),
                 const SizedBox(height: 10),

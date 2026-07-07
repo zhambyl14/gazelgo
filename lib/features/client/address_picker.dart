@@ -11,7 +11,8 @@ import '../../shared/map_widgets.dart';
 class PickedAddress {
   final String address;
   final LatLng point;
-  PickedAddress(this.address, this.point);
+  final String? city;
+  PickedAddress(this.address, this.point, [this.city]);
 }
 
 /// Картадан немесе іздеу арқылы адрес таңдау экраны.
@@ -39,6 +40,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   Timer? _moveDebounce;
   List<GeoPlace> _results = [];
   String _centerAddress = 'Картаны жылжытыңыз…';
+  String? _centerCity;
   LatLng _center = Geo.almaty;
   bool _resolving = false;
 
@@ -70,10 +72,11 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
 
   Future<void> _resolveCenter() async {
     setState(() => _resolving = true);
-    final addr = await Geo.reverse(_center);
+    final (addr, city) = await Geo.reverseWithCity(_center);
     if (mounted) {
       setState(() {
         _centerAddress = addr;
+        _centerCity = city;
         _resolving = false;
       });
     }
@@ -94,13 +97,14 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
       _search.text = p.name;
       _center = p.point;
       _centerAddress = p.name;
+      _centerCity = p.city;
     });
     _map.move(p.point, 16.5);
   }
 
   void _confirm() {
     Navigator.of(context)
-        .pop(PickedAddress(_centerAddress, _center));
+        .pop(PickedAddress(_centerAddress, _center, _centerCity));
   }
 
   @override

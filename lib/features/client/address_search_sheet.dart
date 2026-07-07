@@ -91,8 +91,8 @@ class _AddressSearchSheetState extends State<AddressSearchSheet> {
       }
       return;
     }
-    final addr = await Geo.reverse(p);
-    if (mounted) Navigator.pop(context, PickedAddress(addr, p));
+    final (addr, city) = await Geo.reverseWithCity(p);
+    if (mounted) Navigator.pop(context, PickedAddress(addr, p, city));
   }
 
   Future<void> _openMap() async {
@@ -205,8 +205,8 @@ class _AddressSearchSheetState extends State<AddressSearchSheet> {
                             maxLines: 2, overflow: TextOverflow.ellipsis),
                         onTap: () => Navigator.pop(
                             context,
-                            PickedAddress(
-                                _results[i].name, _results[i].point)),
+                            PickedAddress(_results[i].name, _results[i].point,
+                                _results[i].city)),
                       ),
                     ),
             ),

@@ -369,12 +369,31 @@ class Repo {
         'p_comment': comment,
       });
 
-  static Future<void> modReviewTopup(String id, bool approve, String note) =>
-      c.rpc('mod_review_topup', params: {
-        'p_topup': id,
-        'p_approve': approve,
-        'p_note': note,
-      });
+  static Future<void> modReviewTopup(String id, bool approve, String note,
+      {String? receiptPath}) async {
+    await c.rpc('mod_review_topup', params: {
+      'p_topup': id,
+      'p_approve': approve,
+      'p_note': note,
+    });
+    // чек суреті қаралып біткен соң қажет емес — орынды босатамыз
+    if (receiptPath != null) {
+      try {
+        await c.storage.from('docs').remove([receiptPath]);
+      } catch (_) {}
+    }
+  }
+
+  /// Жабылған қолдау тредтерінің суреттерін тазалау (модератор ғана).
+  static Future<void> cleanupSupportImages() async {
+    try {
+      final paths =
+          (await c.rpc('mod_pending_support_images') as List).cast<String>();
+      if (paths.isNotEmpty) {
+        await c.storage.from('support').remove(paths);
+      }
+    } catch (_) {}
+  }
 
   static Future<void> modRequestDocs(
           String userId, List<String> fields, String comment) =>
