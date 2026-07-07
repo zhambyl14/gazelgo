@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Gradle/Kotlin build cache (session-specific, churns on every build)
+/android/.kotlin/
