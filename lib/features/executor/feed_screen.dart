@@ -8,11 +8,26 @@ import '../../shared/widgets.dart';
 import 'executor_order_screen.dart';
 
 /// Қарапайым тарифтегі заказдар лентасы.
-class ExecutorFeedScreen extends ConsumerWidget {
+class ExecutorFeedScreen extends ConsumerStatefulWidget {
   const ExecutorFeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExecutorFeedScreen> createState() =>
+      _ExecutorFeedScreenState();
+}
+
+class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
+  int _streamGen = 0; // pull-to-refresh кезінде стримді қайта құру
+
+  Future<void> _manualRefresh() async {
+    ref.invalidate(executorStatsStreamProvider);
+    ref.invalidate(myExecutorProfileProvider);
+    setState(() => _streamGen++);
+    await Future.delayed(const Duration(milliseconds: 600));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
     final epAsync = ref.watch(myExecutorProfileProvider);
 
@@ -24,15 +39,26 @@ class ExecutorFeedScreen extends ConsumerWidget {
             EmptyState(icon: Icons.wifi_off, title: errText(e)),
         data: (stats) {
           if (!stats.simpleActive) {
-            return const EmptyState(
-              icon: Icons.power_settings_new,
-              title: 'Сіз линияда емессіз',
-              subtitle:
-                  'Заказдарды көру үшін Басты беттен «Қарапайым тариф»-ке кіріңіз.',
+            return RefreshIndicator(
+              color: Gz.ink,
+              onRefresh: _manualRefresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  EmptyState(
+                    icon: Icons.power_settings_new,
+                    title: 'Сіз линияда емессіз',
+                    subtitle:
+                        'Заказдарды көру үшін Басты беттен «Қарапайым тариф»-ке кіріңіз.',
+                  ),
+                ],
+              ),
             );
           }
           final size = epAsync.value?.vehicleSize ?? VehicleSize.small;
           return StreamBuilder<List<Order>>(
+            key: ValueKey('feed$_streamGen'),
             stream: Repo.feedStream(size),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting &&
@@ -41,14 +67,28 @@ class ExecutorFeedScreen extends ConsumerWidget {
               }
               final orders = (snap.data ?? []).reversed.toList();
               if (orders.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.hourglass_empty,
-                  title: 'Әзірге заказ жоқ',
-                  subtitle:
-                      'Жаңа заказдар осы жерде автоматты түрде пайда болады.',
+                return RefreshIndicator(
+                  color: Gz.ink,
+                  onRefresh: _manualRefresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 120),
+                      EmptyState(
+                        icon: Icons.hourglass_empty,
+                        title: 'Әзірге заказ жоқ',
+                        subtitle:
+                            'Жаңа заказдар осы жерде автоматты пайда болады.',
+                      ),
+                    ],
+                  ),
                 );
               }
-              return ListView.separated(
+              return RefreshIndicator(
+                color: Gz.ink,
+                onRefresh: _manualRefresh,
+                child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(12),
                 itemCount: orders.length,
                 separatorBuilder: (_, i) => const SizedBox(height: 8),
@@ -96,6 +136,7 @@ class ExecutorFeedScreen extends ConsumerWidget {
                     ),
                   );
                 },
+                ),
               );
             },
           );

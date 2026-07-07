@@ -75,10 +75,11 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Gz.ink,
-              borderRadius: BorderRadius.circular(20),
+              gradient: Gz.heroGradient,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: Gz.cardShadow,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,8 +91,9 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                   fmtT(statsAsync.value?.balance),
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900),
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5),
                 ),
               ],
             ),

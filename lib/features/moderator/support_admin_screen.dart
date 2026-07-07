@@ -5,6 +5,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../support/chat_view.dart';
+import 'order_admin.dart';
 
 /// Модератор жағы: барлық қолдау тредтері + әр тредке жауап беру.
 class SupportAdminScreen extends StatelessWidget {
@@ -187,39 +188,21 @@ class _OrderContextBar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 12, color: Gz.textSecondary)),
-                if (!['completed', 'cancelled', 'expired'].contains(o.status)) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 38),
-                              foregroundColor: Gz.blue,
-                              side: const BorderSide(color: Gz.border)),
-                          onPressed: () => _reopen(context),
-                          icon: const Icon(Icons.published_with_changes,
-                              size: 16),
-                          label: const Text('Қайта ұсыну',
-                              style: TextStyle(fontSize: 12.5)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 38),
-                              foregroundColor: Gz.red,
-                              side: const BorderSide(color: Gz.border)),
-                          onPressed: () => _cancel(context),
-                          icon: const Icon(Icons.cancel, size: 16),
-                          label: const Text('Тоқтату',
-                              style: TextStyle(fontSize: 12.5)),
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        foregroundColor: Gz.ink,
+                        side: const BorderSide(color: Gz.border)),
+                    onPressed: () =>
+                        showOrderAdminSheet(context, orderId),
+                    icon: const Icon(Icons.tune, size: 16),
+                    label: const Text('Заказды басқару (статус, тоқтату…)',
+                        style: TextStyle(fontSize: 12.5)),
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -228,63 +211,4 @@ class _OrderContextBar extends StatelessWidget {
     );
   }
 
-  Future<void> _reopen(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Заказды қайта ұсыну'),
-        content: const Text(
-            'Заказ қайтадан іздеуге түседі, ағымдағы орындаушы босатылады. '
-            'Жалғастырамыз ба?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Жоқ')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Иә')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await Repo.modReopenOrder(orderId);
-      if (context.mounted) showSnack(context, 'Заказ қайта ұсынылды');
-    } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
-    }
-  }
-
-  Future<void> _cancel(BuildContext context) async {
-    final c = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Заказды тоқтату'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Себебі'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Жоқ')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Gz.red, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Тоқтату'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await Repo.modCancelOrder(orderId, c.text);
-      if (context.mounted) showSnack(context, 'Заказ тоқтатылды');
-    } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
-    }
-  }
 }

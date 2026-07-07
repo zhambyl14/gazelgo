@@ -19,6 +19,22 @@ class Gz {
 
   static const radius = 16.0;
 
+  /// Қара-көк hero-карталарға арналған градиент.
+  static const heroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1B2836), Color(0xFF0F1720)],
+  );
+
+  /// Карталарға жұмсақ көлеңке.
+  static const cardShadow = [
+    BoxShadow(
+      color: Color(0x0F0F1720),
+      blurRadius: 14,
+      offset: Offset(0, 4),
+    ),
+  ];
+
   static ThemeData theme() {
     final base = ThemeData(
       useMaterial3: true,
@@ -110,6 +126,33 @@ class Gz {
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: surface,
+        elevation: 3,
+        height: 68,
+        indicatorColor: yellow.withValues(alpha: 0.9),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black26,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? ink
+                : textSecondary,
+            size: 24,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 12,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w800
+                : FontWeight.w600,
+            color: states.contains(WidgetState.selected)
+                ? ink
+                : textSecondary,
+          ),
+        ),
       ),
       tabBarTheme: const TabBarThemeData(
         labelColor: ink,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/env.dart';
+import 'core/notify.dart';
 import 'core/repo.dart';
 import 'core/theme.dart';
 import 'features/auth/executor_apply_screen.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
       anonKey: Env.supabaseAnonKey,
     );
   }
+  await Notify.init();
   runApp(const ProviderScope(child: GazelGoApp()));
 }
 

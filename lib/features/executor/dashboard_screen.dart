@@ -98,41 +98,76 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              // Баланс картасы
+              // Баланс hero-картасы
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Gz.ink,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: Gz.heroGradient,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: Gz.cardShadow,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Баланс',
-                        style:
-                            TextStyle(color: Colors.white60, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(fmtT(s.balance),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 14),
                     Row(
                       children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                                minimumSize: const Size.fromHeight(46)),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => const BalanceScreen()),
-                            ),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Толтыру'),
+                        const Text('Баланс',
+                            style: TextStyle(
+                                color: Colors.white60, fontSize: 13)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                s.simpleActive || s.vipActive
+                                    ? Icons.wifi
+                                    : Icons.wifi_off,
+                                size: 13,
+                                color: s.simpleActive || s.vipActive
+                                    ? const Color(0xFF4ADE80)
+                                    : Colors.white38,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                s.simpleActive || s.vipActive
+                                    ? 'Линиядасыз'
+                                    : 'Линияда емессіз',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: s.simpleActive || s.vipActive
+                                        ? const Color(0xFF4ADE80)
+                                        : Colors.white38),
+                              ),
+                            ],
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(fmtT(s.balance),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5)),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48)),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const BalanceScreen()),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Баланс толтыру'),
                     ),
                   ],
                 ),
@@ -295,10 +330,21 @@ class _TariffCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Gz.surface,
+        gradient: active
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color.withValues(alpha: 0.06),
+                  Gz.surface,
+                ],
+              )
+            : null,
+        color: active ? null : Gz.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
             color: active ? color : Gz.border, width: active ? 1.8 : 1.2),
+        boxShadow: active ? Gz.cardShadow : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

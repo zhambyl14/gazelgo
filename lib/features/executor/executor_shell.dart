@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
+import '../../core/notify.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../profile/profile_screen.dart';
@@ -20,17 +23,67 @@ class ExecutorShell extends StatefulWidget {
 class _ExecutorShellState extends State<ExecutorShell> {
   int _index = 0;
   final Set<String> _shownDispatches = {};
+  final Set<String> _notifiedOrders = {};
+  Timer? _feedWatch;
+  bool _feedPrimed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Линиядағы орындаушыға жаңа заказ туралы хабарлау (әр 25с)
+    _feedWatch = Timer.periodic(
+        const Duration(seconds: 25), (_) => _checkNewOrders());
+    _checkNewOrders();
+  }
+
+  @override
+  void dispose() {
+    _feedWatch?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkNewOrders() async {
+    try {
+      final stats = await Repo.executorStats();
+      if (!stats.simpleActive || stats.busyOrderId != null) return;
+      final ep = await Repo.myExecutorProfile();
+      if (ep == null) return;
+      final rows = await Repo.c
+          .from('orders')
+          .select('id')
+          .eq('status', 'searching')
+          .eq('type', 'bidding')
+          .eq('size', ep.vehicleSize.db)
+          .order('created_at', ascending: false)
+          .limit(10);
+      final ids = (rows as List).map((m) => m['id'] as String).toList();
+      final fresh =
+          ids.where((id) => !_notifiedOrders.contains(id)).toList();
+      _notifiedOrders.addAll(ids);
+      // алғашқы жүктеуде ескілерге хабарламай, тек белгілеп қоямыз
+      if (!_feedPrimed) {
+        _feedPrimed = true;
+        return;
+      }
+      if (fresh.isNotEmpty) {
+        Notify.show('Жаңа заказ бар! 🚚',
+            'Лентада ${fresh.length} жаңа заказ күтіп тұр — қараңыз.',
+            id: 2);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<VipDispatch>>(
       stream: Repo.myDispatchesStream(),
       builder: (context, snap) {
-        // жаңа VIP заказ түскенде диалог көрсету
+        // жаңа VIP заказ түскенде диалог + уведомление
         final live = (snap.data ?? []).where((d) => d.isLive).toList();
         for (final d in live) {
           if (!_shownDispatches.contains(d.id)) {
             _shownDispatches.add(d.id);
+            Notify.show('VIP заказ! ⚡', 'Жауапқа 20 секунд — ашыңыз!', id: 1);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) showVipDispatchDialog(context, d);
             });
@@ -53,25 +106,25 @@ class _ExecutorShellState extends State<ExecutorShell> {
               const _BusyOrderBanner(),
             ],
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _index,
-            onTap: (i) => setState(() => _index = i),
-            items: const [
-              BottomNavigationBarItem(
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: (i) => setState(() => _index = i),
+            destinations: const [
+              NavigationDestination(
                   icon: Icon(Icons.dashboard_outlined),
-                  activeIcon: Icon(Icons.dashboard),
+                  selectedIcon: Icon(Icons.dashboard),
                   label: 'Басты'),
-              BottomNavigationBarItem(
+              NavigationDestination(
                   icon: Icon(Icons.list_alt_outlined),
-                  activeIcon: Icon(Icons.list_alt),
+                  selectedIcon: Icon(Icons.list_alt),
                   label: 'Заказдар'),
-              BottomNavigationBarItem(
+              NavigationDestination(
                   icon: Icon(Icons.payments_outlined),
-                  activeIcon: Icon(Icons.payments),
+                  selectedIcon: Icon(Icons.payments),
                   label: 'Табыс'),
-              BottomNavigationBarItem(
+              NavigationDestination(
                   icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
+                  selectedIcon: Icon(Icons.person),
                   label: 'Профиль'),
             ],
           ),
@@ -96,7 +149,11 @@ class _BusyOrderBanner extends StatelessWidget {
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => ActiveOrderScreen(orderId: busyId))),
           child: Container(
-            color: Gz.green,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Gz.green, Color(0xFF0E8A3E)],
+              ),
+            ),
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: const SafeArea(

@@ -4,17 +4,18 @@ import '../../core/repo.dart';
 import '../../shared/widgets.dart';
 import 'applications_screen.dart';
 import 'executors_screen.dart';
+import 'line_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
 
-/// Модератор панелі: өтінімдер, толтырулар, орындаушылар, қолдау.
+/// Модератор панелі: линия, өтінімдер, толтырулар, орындаушылар, қолдау.
 class ModeratorShell extends StatelessWidget {
   const ModeratorShell({super.key});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Row(
@@ -32,6 +33,7 @@ class ModeratorShell extends StatelessWidget {
             ),
           ],
           bottom: const TabBar(isScrollable: true, tabs: [
+            Tab(text: 'Линия'),
             Tab(text: 'Өтінімдер'),
             Tab(text: 'Толтырулар'),
             Tab(text: 'Орындаушылар'),
@@ -40,6 +42,7 @@ class ModeratorShell extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
+            LineScreen(),
             ApplicationsScreen(),
             TopupsScreen(),
             ExecutorsScreen(),

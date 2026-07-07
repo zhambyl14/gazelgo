@@ -430,6 +430,33 @@ class Repo {
       Map<String, dynamic>.from(
           await c.rpc('mod_executor_summary', params: {'p_user': userId}) as Map);
 
+  static Future<void> modSetOrderStatus(String orderId, String status) =>
+      c.rpc('mod_set_order_status', params: {
+        'p_order': orderId,
+        'p_status': status,
+      });
+
+  static Future<Map<String, dynamic>> modLineStats() async =>
+      Map<String, dynamic>.from(await c.rpc('mod_line_stats') as Map);
+
+  /// Модератор: барлық іздеудегі заказдар (линия көрінісі үшін).
+  static Future<List<Order>> searchingOrders() async {
+    final rows = await c
+        .from('orders')
+        .select()
+        .eq('status', 'searching')
+        .order('created_at', ascending: false)
+        .limit(50);
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  static Future<Order?> orderById(String id) async {
+    final m = await c.from('orders').select().eq('id', id).maybeSingle();
+    return m == null ? null : Order.fromMap(m);
+  }
+
   // ================= SUPPORT CHAT =================
   static Future<String> supportSend(String body,
           {String? imagePath, String? orderId}) async =>

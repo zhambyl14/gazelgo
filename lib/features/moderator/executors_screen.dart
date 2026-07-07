@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../profile/reviews_screen.dart';
 import 'applications_screen.dart' show DocImage;
+import 'order_admin.dart';
 
 /// Барлық орындаушылар: қарау, бұғаттау, баланс түзету.
 class ExecutorsScreen extends StatefulWidget {
@@ -165,6 +166,21 @@ class _ExecutorTile extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),
+                    if (ep.busyOrderId != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Gz.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('🚚 Заказ орындауда',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Gz.green)),
+                      ),
                     if (p != null)
                       RatingStars(p.rating, count: p.ratingCount, size: 12),
                   ],
@@ -476,6 +492,26 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                   );
                 },
               ),
+              if (ep.busyOrderId != null) ...[
+                const SizedBox(height: 12),
+                const Text('Қазіргі заказы',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 8),
+                FutureBuilder<Order?>(
+                  future: Repo.orderById(ep.busyOrderId!),
+                  builder: (context, snap) {
+                    final o = snap.data;
+                    if (o == null) return const SizedBox.shrink();
+                    return OrderCard(
+                      order: o,
+                      onTap: () =>
+                          showOrderAdminSheet(context, o.id,
+                              onChanged: () => setState(() {})),
+                    );
+                  },
+                ),
+              ],
               const SizedBox(height: 12),
               SectionCard(
                 child: Column(

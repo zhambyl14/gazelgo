@@ -167,27 +167,52 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 // негізгі панель
                 Container(
                   margin: const EdgeInsets.all(12),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Gz.surface,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 16)
+                      BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 20,
+                          offset: Offset(0, 6))
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Газель керек пе?',
-                          style: TextStyle(
-                              fontSize: 19, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Көшуге, жүк тасуға — бірнеше минутта орындаушы табыңыз',
-                        style: TextStyle(
-                            color: Gz.textSecondary, fontSize: 13),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                              color: Gz.yellow,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.local_shipping,
+                                size: 22, color: Gz.ink),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Газель керек пе?',
+                                    style: TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w900)),
+                                Text(
+                                  'Бірнеше минутта орындаушы табыңыз',
+                                  style: TextStyle(
+                                      color: Gz.textSecondary,
+                                      fontSize: 12.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _addressField(
                         icon: Icons.trip_origin,
                         color: Gz.green,

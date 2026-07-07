@@ -16,7 +16,7 @@ class ActiveOrderScreen extends StatelessWidget {
   const ActiveOrderScreen({super.key, required this.orderId});
 
   /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
-  static const _proximityKm = 1.0;
+  static const _proximityKm = 1.5;
 
   static const _next = {
     'accepted': ('arrived', 'Келдім', Icons.location_on),
