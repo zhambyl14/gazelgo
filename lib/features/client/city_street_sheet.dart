@@ -375,6 +375,30 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
     }
   }
 
+  /// Карта ұсынған нұсқаларда жазған адресі болмаса — клиент жазғанын дәл сол
+  /// күйінде қолдана алады. Координата: ең жақын көше нәтижесі болса — соны,
+  /// әйтпесе қала орталығын алады (бағаны/маршрутты болжау үшін жеткілікті).
+  Future<void> _useTyped() async {
+    final text = _search.text.trim();
+    if (text.length < 2) return;
+    LatLng? point = _results.isNotEmpty ? _results.first.point : null;
+    if (point == null) {
+      setState(() => _loading = true);
+      var res = await Geo.searchStreet(city: widget.city, street: text);
+      if (res.isEmpty) res = await Geo.search(widget.city);
+      point = res.isNotEmpty ? res.first.point : null;
+      if (mounted) setState(() => _loading = false);
+    }
+    if (!mounted) return;
+    if (point == null) {
+      showSnack(context,
+          'Орналасуын анықтау мүмкін болмады — картадан таңдаңыз',
+          error: true);
+      return;
+    }
+    Navigator.of(context).pop(PickedAddress(text, point, widget.city));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -421,6 +445,42 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                 ),
               ),
             ),
+            if (_search.text.trim().length >= 2)
+              InkWell(
+                onTap: _loading ? null : _useTyped,
+                child: Container(
+                  color: Gz.green.withValues(alpha: 0.08),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add_location_alt_outlined,
+                          size: 20, color: Gz.green),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            style: const TextStyle(
+                                color: Gz.ink, fontSize: 13.5),
+                            children: [
+                              const TextSpan(text: 'Осы адресті қолдану: '),
+                              TextSpan(
+                                text: '«${_search.text.trim()}»',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800),
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right,
+                          size: 20, color: Gz.textSecondary),
+                    ],
+                  ),
+                ),
+              ),
             InkWell(
               onTap: _findOnMap,
               child: const Padding(
@@ -445,7 +505,10 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                         child: Text(
                           _search.text.trim().length < 2
                               ? 'Көше мен үй нөмірін жазыңыз'
-                              : (_loading ? '' : 'Ештеңе табылмады'),
+                              : (_loading
+                                  ? ''
+                                  : 'Тізімнен табылмады — жоғарыдағы «Осы адресті '
+                                      'қолдану» арқылы жазғаныңызды қоя аласыз'),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                               color: Gz.textSecondary, fontSize: 13.5),
