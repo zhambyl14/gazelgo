@@ -30,6 +30,8 @@ class _ClientShellState extends State<ClientShell> {
         'in_transit' => 'Жүгіңіз жолда',
         'completed' => 'Заказ аяқталды. Орындаушыны бағалаңыз ⭐',
         'cancelled' => 'Заказ тоқтатылды',
+        'searching' when prev != 'searching' =>
+          'Орындаушы бас тартты — заказыңыз қайта іздеуде 🔄',
         _ => null,
       };
       if (msg != null) {

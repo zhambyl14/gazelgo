@@ -272,6 +272,8 @@ class Repo {
     required VehicleSize size,
     int? clientPrice,
     List<String> photos = const [],
+    String? fromCity,
+    String? toCity,
   }) async {
     final res = await c.rpc('create_order', params: {
       'p_type': type,
@@ -287,6 +289,8 @@ class Repo {
       'p_size': size.db,
       'p_client_price': clientPrice,
       'p_photos': photos,
+      'p_from_city': fromCity,
+      'p_to_city': toCity,
     });
     return (res as Map)['id'] as String;
   }

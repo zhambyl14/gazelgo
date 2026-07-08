@@ -183,6 +183,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         size: _size,
         clientPrice: clientPrice,
         photos: photoPaths,
+        fromCity: _from.city,
+        toCity: _to.city,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);

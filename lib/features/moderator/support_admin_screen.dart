@@ -195,7 +195,7 @@ class _OrderContextBar extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text('${o.fromAddress} → ${o.toAddress}',
+                Text('${o.fromDisplay} → ${o.toDisplay}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

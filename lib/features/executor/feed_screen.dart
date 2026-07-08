@@ -96,6 +96,7 @@ class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
                   final o = orders[i];
                   return OrderCard(
                     order: o,
+                    showMap: true,
                     trailing: Text(
                       fmtTime(o.createdAt),
                       style: const TextStyle(

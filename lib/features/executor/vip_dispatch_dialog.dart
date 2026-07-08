@@ -163,7 +163,7 @@ class _VipDialogState extends State<_VipDialog> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  RouteLine(from: o.fromAddress, to: o.toAddress),
+                  RouteLine(from: o.fromDisplay, to: o.toDisplay),
                   const SizedBox(height: 8),
                   Text(
                     '${o.cargoDesc} · ${o.size.label}'

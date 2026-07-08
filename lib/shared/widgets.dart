@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../core/models.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
+import 'map_widgets.dart';
 
 /// Async-әрекеті бар батырма: басқанда spinner көрсетеді.
 class BusyButton extends StatefulWidget {
@@ -398,13 +400,15 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? trailing;
   final Widget? footer;
+  final bool showMap;
 
   const OrderCard(
       {super.key,
       required this.order,
       this.onTap,
       this.trailing,
-      this.footer});
+      this.footer,
+      this.showMap = false});
 
   @override
   Widget build(BuildContext context) {
@@ -430,7 +434,15 @@ class OrderCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              RouteLine(from: order.fromAddress, to: order.toAddress),
+              RouteLine(from: order.fromDisplay, to: order.toDisplay),
+              if (showMap) ...[
+                const SizedBox(height: 10),
+                RouteMap(
+                  from: LatLng(order.fromLat, order.fromLng),
+                  to: LatLng(order.toLat, order.toLng),
+                  height: 130,
+                ),
+              ],
               const SizedBox(height: 10),
               Wrap(
                 spacing: 6,
@@ -443,6 +455,13 @@ class OrderCard extends StatelessWidget {
                     order.type == 'instant' ? Icons.flash_on : Icons.gavel,
                     order.type == 'instant' ? 'Жедел' : 'Баға ұсыну',
                   ),
+                  if (order.fromCity != null && order.toCity != null)
+                    _tag(
+                      order.intercity
+                          ? Icons.alt_route
+                          : Icons.location_city_outlined,
+                      order.intercity ? 'Межгород' : 'Қала ішінде',
+                    ),
                   if (order.createdAt != null)
                     _tag(Icons.schedule, fmtTime(order.createdAt)),
                 ],

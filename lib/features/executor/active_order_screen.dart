@@ -120,7 +120,7 @@ class ActiveOrderScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      RouteLine(from: o.fromAddress, to: o.toAddress),
+                      RouteLine(from: o.fromDisplay, to: o.toDisplay),
                       const Divider(height: 20),
                       InfoRow('Жүк', o.cargoDesc),
                       if (o.comment.isNotEmpty)

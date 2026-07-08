@@ -1,8 +1,14 @@
 /// GazelGo модельдері — Supabase кестелерінің Dart көрінісі.
 library;
 
+import 'geo.dart';
+
 DateTime? _dt(dynamic v) =>
     v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
+
+/// Дисплейге арналған адрес: қала белгілі болса «Қала, көше» түрінде.
+String _cityAddr(String? city, String addr) =>
+    (city == null || city.isEmpty) ? addr : '$city, $addr';
 
 /// Realtime numeric мәндерді string түрінде жіберуі мүмкін — екеуіне де төзімді.
 int _i(dynamic v) {
@@ -145,6 +151,7 @@ class Order {
   final String type; // bidding | instant
   final String status;
   final String fromAddress, toAddress;
+  final String? fromCity, toCity;
   final double fromLat, fromLng, toLat, toLng;
   final double distanceKm;
   final String cargoDesc;
@@ -166,6 +173,8 @@ class Order {
         status = m['status'] as String,
         fromAddress = m['from_address'] as String? ?? '',
         toAddress = m['to_address'] as String? ?? '',
+        fromCity = m['from_city'] as String?,
+        toCity = m['to_city'] as String?,
         fromLat = _d(m['from_lat']),
         fromLng = _d(m['from_lng']),
         toLat = _d(m['to_lat']),
@@ -187,6 +196,13 @@ class Order {
 
   bool get isActive => kActiveOrderStatuses.contains(status);
   int? get displayPrice => finalPrice ?? systemPrice ?? clientPrice;
+
+  /// Қалалар аралық (межгород) заказ ба — қала аттары белгілі болса ғана есептеледі.
+  bool get intercity =>
+      fromCity != null && toCity != null && !Geo.sameCity(fromCity, toCity);
+
+  String get fromDisplay => _cityAddr(fromCity, fromAddress);
+  String get toDisplay => _cityAddr(toCity, toAddress);
 }
 
 // ---------- Offer ----------

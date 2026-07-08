@@ -453,7 +453,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
                             fontSize: 14),
                       ),
                       Text(
-                        '${o.fromAddress} → ${o.toAddress}',
+                        '${o.fromDisplay} → ${o.toDisplay}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
