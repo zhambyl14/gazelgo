@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/geo.dart';
-import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -29,7 +28,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _comment = TextEditingController();
   final _price = TextEditingController();
 
-  VehicleSize _size = VehicleSize.small;
+  String _tariff = 'simple'; // simple | vip — заказ санаты
   GeoRoute? _route;
   final List<Uint8List> _photos = [];
   final _picker = ImagePicker();
@@ -157,7 +156,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         photoPaths.add(await Repo.uploadOrderPhoto(_photos[i], i));
       }
       final id = await Repo.createOrder(
-        type: 'bidding',
+        tariff: _tariff,
         fromAddress: _from.address,
         fromLat: _from.point.latitude,
         fromLng: _from.point.longitude,
@@ -167,7 +166,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         distanceKm: double.parse(route.distanceKm.toStringAsFixed(2)),
         cargo: _cargo.text,
         comment: _comment.text,
-        size: _size,
         clientPrice: clientPrice,
         photos: photoPaths,
         fromCity: _from.city,
@@ -314,12 +312,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Қандай газель керек?',
+              const Text('Заказ түрі',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
               const SizedBox(height: 8),
-              VehicleSizeSelector(
-                value: _size,
-                onChanged: (s) => setState(() => _size = s),
+              _CategoryCard(
+                selected: _tariff == 'simple',
+                icon: Icons.local_shipping_outlined,
+                color: Gz.blue,
+                title: 'Простой',
+                subtitle:
+                    'Кәдімгі тасымал. Асығыс емес — газелист бос кезінде алады.',
+                onTap: () => setState(() => _tariff = 'simple'),
+              ),
+              const SizedBox(height: 8),
+              _CategoryCard(
+                selected: _tariff == 'vip',
+                icon: Icons.workspace_premium_outlined,
+                color: Gz.violet,
+                title: 'VIP',
+                subtitle:
+                    'Жедел не бағалы жүк (мыс. таңертең 1 т ет). VIP газелисттер '
+                    'көреді әрі тез алады.',
+                onTap: () => setState(() => _tariff = 'vip'),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -495,6 +509,71 @@ class _EditableAddr extends StatelessWidget {
               ),
             ),
             const Icon(Icons.edit, size: 16, color: Gz.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Заказ санатын таңдау картасы (Простой / VIP).
+class _CategoryCard extends StatelessWidget {
+  final bool selected;
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _CategoryCard({
+    required this.selected,
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Gz.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? color : Gz.border,
+            width: selected ? 1.8 : 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: Gz.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: selected ? color : Gz.textSecondary),
           ],
         ),
       ),

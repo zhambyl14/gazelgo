@@ -45,9 +45,17 @@ Backend толығымен осы папкада дайын. Оны нақты S
      `create_order`, `place_offer`, `accept_offer`, `executor_stats`, `tariff_price_now`,
      `mod_set_executor_status`. «instant» авто-тарату кроны өшіріледі.
 
+   - `migrations/0014_tariff_orders_corrections.sql` ← **МАҢЫЗДЫ**: газель ӨЛШЕМІ
+     алынды; заказ түрі = Простой/VIP санаты (клиент таңдайды, екеуі де bidding);
+     орындаушы өз тарифінің заказдарын ғана көреді (лента бөлек), әр тарифтің
+     лимиті өз тұсында; VIP тариф тек көлік жылы жаңа болса қосылады
+     (`app_settings.vehicle_rules.vip_min_year`, әдепкі 2010); адрес түзетулері
+     (`address_corrections` + `nearby_address`/`save_address_correction`); жаңа
+     құжат өрістері (права+селфи, куәлік+селфи, шетел паспорты+селфи).
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
-   **0013-ті ең соңынан, 0001–0012 қолданылған соң орындаңыз.**
+   **0013, содан соң 0014-ті ең соңынан, 0001–0012 қолданылған соң орындаңыз.**
 2. Edge function: Dashboard → Edge Functions → **Deploy new function** →
    аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF**.
 3. Dashboard → Settings → API → `anon` / `publishable` key-ді көшіріп,

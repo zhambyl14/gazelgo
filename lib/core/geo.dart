@@ -5,14 +5,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-import 'env.dart';
 import 'kz_cities.dart';
 
-/// Гео-қызметтер: адрес іздеу, маршрут (OSRM), локация.
+/// Гео-қызметтер: адрес іздеу (Nominatim/OSM), маршрут (OSRM), локация.
 ///
-/// Адрес геокодтауы: [Env.has2gis] болса — алдымен 2GIS (Қазақстанда адресті
-/// дәл табады, шағын аудандарды да біледі), нәтиже болмаса ғана Nominatim (OSM).
-/// Кілт жоқ болса — тек Nominatim қолданылады.
+/// Ескерту: тегін OSM деректері Қазақстанның кейбір шағын аудандарын білмейді.
+/// Сол себепті клиент адресті таппаса, картадан дәл жерді өзі белгілейді, ал
+/// түзетілген атаулар серверде (address_corrections) жиналып, кейін ұсынылады.
 class Geo {
   static const _ua = {'User-Agent': 'GazelGo/1.0 (gazelgo.kz)'};
 
@@ -45,31 +44,18 @@ class Geo {
     }
   }
 
-  /// Адрес іздеу (Қазақстан шегінде). Алдымен 2GIS, болмаса Nominatim.
+  /// Адрес іздеу (Қазақстан шегінде) — Nominatim (OSM).
   static Future<List<GeoPlace>> search(String query) async {
     final q = query.trim();
     if (q.length < 3) return [];
-    if (Env.has2gis) {
-      final r = await _geocode2gis(q);
-      if (r.isNotEmpty) return r;
-    }
     return _searchNominatim(q);
   }
 
-  /// Көше/үй іздеу — таңдалған қала ішінде.
-  ///
-  /// Клиент «желтоксан 56» деп жазса — оны білдіртпей 2GIS-ке салып, дәл сол
-  /// қаладан табады (қала атауын сұранысқа қосып, орталығын bias ретінде береді).
-  /// Нәтиже болмаса ғана Nominatim-ның структуралық іздеуіне түседі.
+  /// Көше/үй іздеу — таңдалған қала ішінде (структуралық сұраныс, OSM).
   static Future<List<GeoPlace>> searchStreet(
       {required String city, required String street}) async {
     final s = street.trim();
     if (s.length < 2) return [];
-    if (Env.has2gis) {
-      final r = await _geocode2gis('$city, $s',
-          bias: _cityCenter(city), cityFallback: city);
-      if (r.isNotEmpty) return r;
-    }
     return _searchStreetNominatim(city: city, street: s);
   }
 
@@ -115,97 +101,6 @@ class Geo {
       return list.map((e) => _placeFrom(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return [];
-    }
-  }
-
-  // ── 2GIS геокодері ───────────────────────────────────────────────────────
-
-  /// Мәтіндік адресті 2GIS арқылы координатаға айналдырады (алға/тура геокод).
-  /// [bias] — іздеуді қай нүктенің маңайынан бастау (қала орталығы).
-  static Future<List<GeoPlace>> _geocode2gis(String query,
-      {LatLng? bias, String? cityFallback}) async {
-    try {
-      final params = <String, String>{
-        'q': query,
-        'fields': 'items.point,items.adm_div,items.full_name,items.address_name',
-        'key': Env.twogisKey,
-        'locale': 'ru_KZ',
-        'page_size': '10',
-        'page': '1',
-      };
-      if (bias != null) {
-        params['location'] = '${bias.longitude},${bias.latitude}';
-      }
-      final uri = Uri.parse('https://catalog.api.2gis.com/3.0/items/geocode')
-          .replace(queryParameters: params);
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return [];
-      final j = jsonDecode(res.body) as Map<String, dynamic>;
-      final items = ((j['result'] as Map?)?['items'] as List?) ?? const [];
-      final places = items
-          .map((e) => _place2gis(e as Map<String, dynamic>, cityFallback))
-          .whereType<GeoPlace>()
-          .toList();
-      // Қазақстан шегінен тыс нәтижелерді алып тастаймыз.
-      return places.where((p) => inKazakhstan(p.point)).toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  /// 2GIS элементінен «көше, үй нөмірі» + қала атауын құрайды.
-  static GeoPlace? _place2gis(Map<String, dynamic> e, String? cityFallback) {
-    final pt = e['point'] as Map<String, dynamic>?;
-    if (pt == null) return null;
-    final lat = (pt['lat'] as num?)?.toDouble();
-    final lon = (pt['lon'] as num?)?.toDouble();
-    if (lat == null || lon == null) return null;
-
-    String? city;
-    final adm = e['adm_div'] as List?;
-    if (adm != null) {
-      for (final d in adm.cast<Map<String, dynamic>>()) {
-        final t = d['type'];
-        if (t == 'city' || t == 'settlement' || t == 'division') {
-          final n = d['name'];
-          if (n is String && n.isNotEmpty) city = n;
-        }
-      }
-    }
-
-    // Қала атауынсыз, тек «көше, үй нөмірі» түрі (басқа жерде қала қосылады).
-    final name = (e['address_name'] ?? e['name'] ?? e['full_name']) as String? ??
-        _coordLabel(LatLng(lat, lon));
-
-    return GeoPlace(
-      name: name,
-      point: LatLng(lat, lon),
-      city: city ?? cityFallback,
-    );
-  }
-
-  /// Координатадан адрес (кері геокод) — 2GIS.
-  static Future<(String, String?)?> _reverse2gis(LatLng p) async {
-    try {
-      final uri = Uri.parse('https://catalog.api.2gis.com/3.0/items/geocode')
-          .replace(queryParameters: {
-        'lat': '${p.latitude}',
-        'lon': '${p.longitude}',
-        'fields': 'items.point,items.adm_div,items.full_name,items.address_name',
-        'key': Env.twogisKey,
-        'locale': 'ru_KZ',
-        'radius': '250',
-      });
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return null;
-      final j = jsonDecode(res.body) as Map<String, dynamic>;
-      final items = ((j['result'] as Map?)?['items'] as List?) ?? const [];
-      if (items.isEmpty) return null;
-      final place = _place2gis(items.first as Map<String, dynamic>, null);
-      if (place == null) return null;
-      return (place.name, place.city);
-    } catch (_) {
-      return null;
     }
   }
 
@@ -297,13 +192,8 @@ class Geo {
   /// Координатадан адрес атауы (қала атауынсыз).
   static Future<String> reverse(LatLng p) async => (await reverseWithCity(p)).$1;
 
-  /// Координатадан адрес атауы + қала атауы (межгород анықтау үшін).
-  /// Алдымен 2GIS, болмаса Nominatim.
+  /// Координатадан адрес атауы + қала атауы (межгород анықтау үшін) — Nominatim.
   static Future<(String, String?)> reverseWithCity(LatLng p) async {
-    if (Env.has2gis) {
-      final r = await _reverse2gis(p);
-      if (r != null) return r;
-    }
     try {
       final uri = Uri.parse('https://nominatim.openstreetmap.org/reverse')
           .replace(queryParameters: {

@@ -228,7 +228,7 @@ class _ApplicationTile extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text(
               '${ep.vehicleTitle} · ${ep.vehiclePlate}\n'
-              '${ep.vehicleSize.label} · ${fmtDate(ep.createdAt)}',
+              '${ep.city ?? '—'} · ${fmtDate(ep.createdAt)}',
               style: const TextStyle(fontSize: 12.5),
             ),
             isThreeLine: true,
@@ -296,7 +296,7 @@ class ApplicationDetailScreen extends StatelessWidget {
                           fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 8),
                   InfoRow('Маркасы', ep.vehicleTitle),
-                  InfoRow('Өлшемі', ep.vehicleSize.label),
+                  if (ep.city != null) InfoRow('Қала', ep.city!),
                   InfoRow('Мемнөмір', ep.vehiclePlate),
                   InfoRow('Өтінім күні', fmtDate(ep.createdAt)),
                 ],

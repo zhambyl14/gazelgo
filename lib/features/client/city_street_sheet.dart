@@ -457,38 +457,23 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
               ),
             ),
             if (_search.text.trim().length >= 2)
-              InkWell(
-                onTap: _loading ? null : _useTyped,
-                child: Container(
-                  color: Gz.green.withValues(alpha: 0.08),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.add_location_alt_outlined,
-                          size: 20, color: Gz.green),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            style: const TextStyle(
-                                color: Gz.ink, fontSize: 13.5),
-                            children: [
-                              const TextSpan(text: 'Осы адресті қолдану: '),
-                              TextSpan(
-                                text: '«${_search.text.trim()}»',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800),
-                              ),
-                            ],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right,
-                          size: 20, color: Gz.textSecondary),
-                    ],
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: FilledButton.icon(
+                  onPressed: _loading ? null : _useTyped,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Gz.green,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(50),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 14.5),
+                  ),
+                  icon: const Icon(Icons.add_location_alt, size: 20),
+                  label: Text(
+                    'Осы адресті қолдану: «${_search.text.trim()}»',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

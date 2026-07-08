@@ -10,7 +10,9 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 
-/// Газелист өтінімі: көлік деректері + құжат фотолары.
+/// Газелист өтінімі: құжаттар (права + селфі, куәлік + селфі, шетел паспорты),
+/// көлік деректері (маркасы, моделі, ЖЫЛЫ, гос нөмір) және 4 таңбаланған
+/// көлік фотосы. Газель ӨЛШЕМІ сұралмайды.
 class ExecutorApplyScreen extends ConsumerStatefulWidget {
   final ExecutorProfile? existing; // қайта жіберу кезінде
   const ExecutorApplyScreen({super.key, this.existing});
@@ -36,13 +38,21 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       text: widget.existing?.vehicleYear?.toString() ?? '');
   late final _plate =
       TextEditingController(text: widget.existing?.vehiclePlate ?? '');
-  late VehicleSize _size = widget.existing?.vehicleSize ?? VehicleSize.small;
   late String? _city = widget.existing?.city;
 
-  final _idDoc = _PickedDoc();
-  final _license = _PickedDoc();
-  final _techPassport = _PickedDoc();
-  final List<_PickedDoc> _vehiclePhotos = [];
+  // Құжаттар
+  final _license = _PickedDoc();          // жүргізуші куәлігі (права)
+  final _licenseSelfie = _PickedDoc();     // правамен селфи
+  final _idDoc = _PickedDoc();             // жеке куәлік (удостоверение)
+  final _idSelfie = _PickedDoc();          // куәлікпен селфи
+  final _passport = _PickedDoc();          // шетел паспорты (міндетті емес)
+  final _passportSelfie = _PickedDoc();    // паспортпен селфи (міндетті емес)
+
+  // Көлік фотолары (4 таңбаланған)
+  final _vehFront = _PickedDoc();
+  final _vehBack = _PickedDoc();
+  final _vehRight = _PickedDoc();
+  final _vehLeft = _PickedDoc();
 
   final _picker = ImagePicker();
 
@@ -51,12 +61,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     super.initState();
     final e = widget.existing;
     if (e != null) {
-      _idDoc.existingPath = e.idDocPath;
       _license.existingPath = e.licensePath;
-      _techPassport.existingPath = e.techPassportPath;
-      for (final p in e.vehiclePhotos) {
-        _vehiclePhotos.add(_PickedDoc()..existingPath = p);
-      }
+      _licenseSelfie.existingPath = e.licenseSelfiePath;
+      _idDoc.existingPath = e.idDocPath;
+      _idSelfie.existingPath = e.idSelfiePath;
+      _passport.existingPath = e.passportPath;
+      _passportSelfie.existingPath = e.passportSelfiePath;
+      final ph = e.vehiclePhotos;
+      if (ph.isNotEmpty) _vehFront.existingPath = ph[0];
+      if (ph.length > 1) _vehBack.existingPath = ph[1];
+      if (ph.length > 2) _vehRight.existingPath = ph[2];
+      if (ph.length > 3) _vehLeft.existingPath = ph[3];
     }
   }
 
@@ -102,14 +117,6 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     if (bytes != null) setState(() => doc.bytes = bytes);
   }
 
-  Future<void> _addVehiclePhoto() async {
-    if (_vehiclePhotos.length >= 4) return;
-    final bytes = await _pick();
-    if (bytes != null) {
-      setState(() => _vehiclePhotos.add(_PickedDoc()..bytes = bytes));
-    }
-  }
-
   Future<void> _pickCity() async {
     final picked = await showModalBottomSheet<String>(
       context: context,
@@ -130,12 +137,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           error: true);
       return;
     }
-    if (!_idDoc.isSet || !_license.isSet || !_techPassport.isSet) {
-      showSnack(context, 'Барлық құжат фотосын жүктеңіз', error: true);
+    if (!_license.isSet || !_licenseSelfie.isSet || !_idDoc.isSet ||
+        !_idSelfie.isSet) {
+      showSnack(context, 'Права, куәлік және селфилерді толық жүктеңіз',
+          error: true);
       return;
     }
-    if (_vehiclePhotos.isEmpty) {
-      showSnack(context, 'Көліктің кемінде 1 фотосын қосыңыз', error: true);
+    if (_passport.isSet && !_passportSelfie.isSet) {
+      showSnack(context, 'Шетел паспортымен селфиді де жүктеңіз', error: true);
+      return;
+    }
+    if (!_vehFront.isSet || !_vehBack.isSet || !_vehRight.isSet ||
+        !_vehLeft.isSet) {
+      showSnack(context, 'Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)',
+          error: true);
       return;
     }
     try {
@@ -144,12 +159,21 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         return d.existingPath;
       }
 
-      final idPath = await up(_idDoc, 'id');
       final licPath = await up(_license, 'license');
-      final techPath = await up(_techPassport, 'tech');
+      final licSelfie = await up(_licenseSelfie, 'license_selfie');
+      final idPath = await up(_idDoc, 'id');
+      final idSelfie = await up(_idSelfie, 'id_selfie');
+      final passportPath = _passport.isSet ? await up(_passport, 'passport') : null;
+      final passportSelfie =
+          _passportSelfie.isSet ? await up(_passportSelfie, 'passport_selfie') : null;
       final photos = <String>[];
-      for (var i = 0; i < _vehiclePhotos.length; i++) {
-        final p = await up(_vehiclePhotos[i], 'vehicle_$i');
+      for (final (d, n) in [
+        (_vehFront, 'veh_front'),
+        (_vehBack, 'veh_back'),
+        (_vehRight, 'veh_right'),
+        (_vehLeft, 'veh_left'),
+      ]) {
+        final p = await up(d, n);
         if (p != null) photos.add(p);
       }
 
@@ -158,33 +182,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           e != null && e.status == 'approved' && e.docsUpdateRequested;
 
       if (isDocsResponse) {
-        // Тек құжат жаңарту — модератор ревьюіне түседі
         await Repo.submitDocsUpdate(
           idDocPath: idPath,
           licensePath: licPath,
-          techPath: techPath,
+          idSelfiePath: idSelfie,
+          licenseSelfiePath: licSelfie,
+          passportPath: passportPath,
+          passportSelfiePath: passportSelfie,
           photos: photos,
         );
-        // ескі, ауысқан құжаттарды өшіру
-        final oldPaths = <String>[];
-        for (final (oldP, newP) in [
-          (e.idDocPath, idPath),
-          (e.licensePath, licPath),
-          (e.techPassportPath, techPath),
-        ]) {
-          if (oldP != null && oldP != newP) oldPaths.add(oldP);
-        }
-        for (final oldPh in e.vehiclePhotos) {
-          if (!photos.contains(oldPh)) oldPaths.add(oldPh);
-        }
-        if (oldPaths.isNotEmpty) {
-          try {
-            await Repo.c.storage.from('docs').remove(oldPaths);
-          } catch (_) {}
-        }
       } else {
         await Repo.submitExecutorApplication(
-          size: _size,
           brand: _brand.text,
           model: _model.text,
           year: int.tryParse(_year.text),
@@ -192,12 +200,14 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           vehiclePhotos: photos,
           idDocPath: idPath,
           licensePath: licPath,
-          techPassportPath: techPath,
+          idSelfiePath: idSelfie,
+          licenseSelfiePath: licSelfie,
+          passportPath: passportPath,
+          passportSelfiePath: passportSelfie,
           city: _city,
           isResubmit: widget.existing != null,
         );
       }
-      // §6: расталған орындаушы қаласын өзгертсе де серверде жаңартылады
       if (_city != null && _city!.trim().isNotEmpty) {
         try {
           await Repo.setExecutorCity(_city!.trim());
@@ -214,7 +224,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     }
   }
 
-  Widget _docTile(String title, _PickedDoc doc) {
+  Widget _docTile(String title, _PickedDoc doc, {String? hint}) {
     return SectionCard(
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -246,8 +256,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 Text(title,
                     style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 14)),
+                if (hint != null)
+                  Text(hint,
+                      style: const TextStyle(
+                          fontSize: 11.5, color: Gz.textSecondary)),
                 Text(
-                  doc.isSet ? 'Жүктелді' : 'Фото қажет',
+                  doc.isSet ? 'Жүктелді ✓' : 'Фото қажет',
                   style: TextStyle(
                       fontSize: 12,
                       color: doc.isSet ? Gz.green : Gz.textSecondary),
@@ -301,8 +315,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                         const Row(children: [
                           Icon(Icons.assignment_late, color: Gz.red, size: 20),
                           SizedBox(width: 8),
-                          Text('Модератор мынаны жаңартуды сұрады:',
-                              style: TextStyle(fontWeight: FontWeight.w800)),
+                          Expanded(
+                            child: Text('Модератор мынаны жаңартуды сұрады:',
+                                style: TextStyle(fontWeight: FontWeight.w800)),
+                          ),
                         ]),
                         const SizedBox(height: 6),
                         ...widget.existing!.docsUpdateFields.map((f) => Padding(
@@ -361,10 +377,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
-                                color: _city == null ? Gz.textSecondary : Gz.ink),
+                                color:
+                                    _city == null ? Gz.textSecondary : Gz.ink),
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: Gz.textSecondary),
+                        const Icon(Icons.chevron_right,
+                            color: Gz.textSecondary),
                       ],
                     ),
                   ),
@@ -374,11 +392,6 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 10),
-                VehicleSizeSelector(
-                  value: _size,
-                  onChanged: (s) => setState(() => _size = s),
-                ),
-                const SizedBox(height: 12),
                 Row(children: [
                   Expanded(
                     child: TextFormField(
@@ -402,7 +415,14 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: TextFormField(
                       controller: _year,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: 'Жылы'),
+                      decoration: const InputDecoration(hintText: 'Шығарылған жылы'),
+                      validator: (v) {
+                        final y = int.tryParse(v?.trim() ?? '');
+                        if (y == null || y < 1980 || y > DateTime.now().year + 1) {
+                          return 'Жылын дұрыс жазыңыз';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -419,74 +439,52 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     ),
                   ),
                 ]),
+                const SizedBox(height: 6),
+                const Text(
+                  'Көлік жылы маңызды: VIP тарифті тек жаңарақ көлікке қосуға болады.',
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                ),
                 const SizedBox(height: 20),
                 const Text('Құжаттар',
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 10),
-                _docTile('Жеке куәлік', _idDoc),
+                _docTile('Жүргізуші куәлігі (права)', _license),
                 const SizedBox(height: 8),
-                _docTile('Жүргізуші куәлігі', _license),
+                _docTile('Правамен селфи', _licenseSelfie,
+                    hint: 'Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
                 const SizedBox(height: 8),
-                _docTile('Техпаспорт', _techPassport),
+                _docTile('Жеке куәлік (удостоверение)', _idDoc),
+                const SizedBox(height: 8),
+                _docTile('Куәлікпен селфи', _idSelfie,
+                    hint: 'Куәлікті ұстап тұрған селфи'),
+                const SizedBox(height: 8),
+                _docTile('Шетел паспорты', _passport,
+                    hint: 'ҚР азаматы болмасаңыз ғана'),
+                const SizedBox(height: 8),
+                _docTile('Паспортпен селфи', _passportSelfie,
+                    hint: 'Шетел паспортын жүктесеңіз ғана'),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text('Көлік фотолары',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 16)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _addVehiclePhoto,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Қосу'),
-                    ),
-                  ],
+                const Text('Көлік фотолары',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.',
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),
-                if (_vehiclePhotos.isNotEmpty)
-                  SizedBox(
-                    height: 90,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _vehiclePhotos.length,
-                      separatorBuilder: (_, i) => const SizedBox(width: 8),
-                      itemBuilder: (_, i) {
-                        final d = _vehiclePhotos[i];
-                        return Stack(
-                          children: [
-                            Container(
-                              width: 110,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                color: Gz.bg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: d.bytes != null
-                                  ? Image.memory(d.bytes!, fit: BoxFit.cover)
-                                  : const Icon(Icons.image,
-                                      color: Gz.textSecondary),
-                            ),
-                            Positioned(
-                              top: 2,
-                              right: 2,
-                              child: GestureDetector(
-                                onTap: () => setState(
-                                    () => _vehiclePhotos.removeAt(i)),
-                                child: const CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: Colors.black54,
-                                  child: Icon(Icons.close,
-                                      size: 14, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                const SizedBox(height: 10),
+                _docTile('Алдынан (гос нөмір көрінсін)', _vehFront,
+                    hint: 'Көліктің алды, нөмірі анық көрінуі керек'),
+                const SizedBox(height: 8),
+                _docTile('Артынан (гос нөмір көрінсін)', _vehBack,
+                    hint: 'Көліктің арты, нөмірі анық көрінуі керек'),
+                const SizedBox(height: 8),
+                _docTile('Оң жағынан', _vehRight,
+                    hint: 'Көлікке қарап тұрсаңыз — оң бүйірі'),
+                const SizedBox(height: 8),
+                _docTile('Сол жағынан', _vehLeft,
+                    hint: 'Көлікке қарап тұрсаңыз — сол бүйірі'),
                 const SizedBox(height: 24),
                 BusyButton(
                   label: resubmit ? 'Қайта жіберу' : 'Өтінім жіберу',

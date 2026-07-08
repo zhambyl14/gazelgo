@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -127,19 +126,21 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                _isLive(s) ? Icons.wifi : Icons.wifi_off,
+                                s.hasTariff
+                                    ? Icons.check_circle
+                                    : Icons.remove_circle_outline,
                                 size: 13,
-                                color: _isLive(s)
+                                color: s.hasTariff
                                     ? const Color(0xFF4ADE80)
                                     : Colors.white38,
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                _isLive(s) ? 'Линиядасыз' : 'Линияда емессіз',
+                                s.hasTariff ? 'Тариф белсенді' : 'Тариф жоқ',
                                 style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
-                                    color: _isLive(s)
+                                    color: s.hasTariff
                                         ? const Color(0xFF4ADE80)
                                         : Colors.white38),
                               ),
@@ -167,25 +168,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       label: const Text('Баланс толтыру'),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Линияда/демалыста ауыстырғыш
-              SectionCard(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: s.onLine,
-                  activeThumbColor: Gz.green,
-                  title: const Text('Линияда',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
-                  subtitle: Text(
-                    s.onLine
-                        ? 'Жаңа заказдар лентада көрінеді'
-                        : 'Демалыстасыз — жаңа заказдар көрсетілмейді',
-                    style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
-                  ),
-                  onChanged: (v) => _toggleOnLine(context, ref, v),
                 ),
               ),
               const SizedBox(height: 20),
@@ -263,18 +245,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  bool _isLive(ExecutorStats s) => s.hasTariff && s.onLine;
-
-  Future<void> _toggleOnLine(
-      BuildContext context, WidgetRef ref, bool value) async {
-    try {
-      await Repo.setOnLine(value);
-      ref.invalidate(executorStatsStreamProvider);
-    } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
-    }
   }
 
   Future<void> _buy(

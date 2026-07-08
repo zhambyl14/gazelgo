@@ -134,12 +134,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       InfoRow('Жүк', o.cargoDesc),
                       if (o.comment.isNotEmpty)
                           InfoRow('Түсініктеме', o.comment),
-                      InfoRow('Газель', o.size.label),
+                      InfoRow('Түрі', o.isVip ? 'VIP' : 'Простой'),
                       if (o.distanceKm > 0)
                         InfoRow('Қашықтық',
                             '${o.distanceKm.toStringAsFixed(1)} км'),
-                      InfoRow('Тәсіл',
-                          o.type == 'instant' ? 'Жедел (VIP)' : 'Баға ұсыну'),
+                      InfoRow('Бағыты',
+                          o.intercity ? 'Қалааралық (межгород)' : 'Қала ішінде'),
                       if (o.createdAt != null)
                         InfoRow('Құрылды', fmtDate(o.createdAt)),
                     ],
@@ -490,9 +490,10 @@ class _ExecutorBrief extends StatelessWidget {
                                 fontSize: 11.5, color: Gz.textSecondary)),
                     ],
                   ),
+                  // Ұсыныс кезінде газель нөмірі көрсетілмейді (тек маркасы)
                   if (ep != null)
                     Text(
-                      '${ep.vehicleTitle} · ${ep.vehiclePlate}',
+                      ep.vehicleTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -529,7 +530,7 @@ class _VipSearchSection extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
           Text(
-            'Баға: ${fmtT(order.systemPrice)} · ${order.size.label}',
+            'Баға: ${fmtT(order.systemPrice)}',
             style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
           ),
           const SizedBox(height: 10),
@@ -639,7 +640,7 @@ class _ExecutorCard extends StatelessWidget {
                         ]),
                         if (ep != null)
                           Text(
-                            '${ep.vehicleTitle} · ${ep.vehiclePlate} · ${ep.vehicleSize.label}',
+                            '${ep.vehicleTitle} · ${ep.vehiclePlate}',
                             style: const TextStyle(
                                 fontSize: 12.5, color: Gz.textSecondary),
                           ),

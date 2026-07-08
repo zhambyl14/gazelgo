@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'balance_screen.dart';
 import 'dashboard_screen.dart';
+import 'docs_banner.dart';
 import 'feed_screen.dart';
 
 /// Орындаушының басты беті — клиенттегідей бір экранды дизайн:
@@ -18,6 +19,7 @@ class ExecutorHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(executorStatsStreamProvider).value;
+    final ep = ref.watch(myExecutorProfileProvider).value;
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -38,11 +40,17 @@ class ExecutorHomeScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            // линия/тариф басқару жолағы
+            // тариф басқару жолағы
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: _LineControlBar(stats: s),
             ),
+            // модератордың құжат жаңарту хабары (басты бетте де)
+            if (ep != null && (ep.docsUpdateRequested || ep.docsReviewPending))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: ExecutorDocsBanner(ep: ep),
+              ),
             // заказдар лентасы (негізгі мазмұн)
             const Expanded(child: ExecutorFeedBody()),
           ],
@@ -100,23 +108,12 @@ class _LineControlBar extends ConsumerWidget {
         builder: (_) => const ExecutorDashboardScreen()));
   }
 
-  Future<void> _toggleOnLine(
-      BuildContext context, WidgetRef ref, bool value) async {
-    try {
-      await Repo.setOnLine(value);
-      ref.invalidate(executorStatsStreamProvider);
-    } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = stats;
     final hasTariff = s != null && s.hasTariff;
-    final online = hasTariff && s.onLine;
 
-    // Тариф жоқ — линияға шақыру картасы
+    // Тариф жоқ — тариф сатып алуға шақыру картасы
     if (!hasTariff) {
       return InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -175,38 +172,31 @@ class _LineControlBar extends ConsumerWidget {
       );
     }
 
-    // Тариф белсенді — статус + жедел ауыстырғыш + басқару
+    // Тариф белсенді — статус + басқару (линия/демалыс тумблері жоқ)
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
       decoration: BoxDecoration(
         color: Gz.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: online ? Gz.green.withValues(alpha: 0.4) : Gz.border),
+        border: Border.all(color: Gz.green.withValues(alpha: 0.4)),
         boxShadow: Gz.cardShadow,
       ),
       child: Row(
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-                color: online ? Gz.green : Gz.textSecondary,
-                shape: BoxShape.circle),
-          ),
+          const Icon(Icons.check_circle, color: Gz.green, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(online ? 'Линиядасыз' : 'Демалыстасыз',
+                const Text('Тариф белсенді',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14.5,
-                        color: online ? Gz.green : Gz.ink)),
+                        color: Gz.green)),
                 Text(_tariffLabel(s),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -214,11 +204,6 @@ class _LineControlBar extends ConsumerWidget {
                         color: Gz.textSecondary, fontSize: 12)),
               ],
             ),
-          ),
-          Switch(
-            value: s.onLine,
-            activeThumbColor: Gz.green,
-            onChanged: (v) => _toggleOnLine(context, ref, v),
           ),
           IconButton(
             tooltip: 'Тариф пен баланс',

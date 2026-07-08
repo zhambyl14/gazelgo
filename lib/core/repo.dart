@@ -149,9 +149,8 @@ class Repo {
     return m == null ? null : ExecutorProfile.fromMap(m);
   }
 
-  /// Орындаушы өтінімі (жаңа немесе қайта жіберу).
+  /// Орындаушы өтінімі (жаңа немесе қайта жіберу). Газель ӨЛШЕМІ сұралмайды.
   static Future<void> submitExecutorApplication({
-    required VehicleSize size,
     required String brand,
     required String model,
     int? year,
@@ -159,14 +158,17 @@ class Repo {
     required List<String> vehiclePhotos,
     String? idDocPath,
     String? licensePath,
-    String? techPassportPath,
+    String? idSelfiePath,
+    String? licenseSelfiePath,
+    String? passportPath,
+    String? passportSelfiePath,
     String? city,
     required bool isResubmit,
   }) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final data = {
-      'vehicle_size': size.db,
+      'vehicle_size': 'small', // өлшем ескерілмейді (кестеде not-null болғандықтан)
       'vehicle_brand': brand.trim(),
       'vehicle_model': model.trim(),
       'vehicle_year': year,
@@ -174,25 +176,39 @@ class Repo {
       'vehicle_photos': vehiclePhotos,
       'id_doc_path': idDocPath,
       'license_path': licensePath,
-      'tech_passport_path': techPassportPath,
+      'id_selfie_path': idSelfiePath,
+      'license_selfie_path': licenseSelfiePath,
+      'passport_path': passportPath,
+      'passport_selfie_path': passportSelfiePath,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
     };
     if (isResubmit) {
       // ескі құжат жолдарын жинап, жаңасына сай еместерін өшіреміз
       final old = await c
           .from('executor_profiles')
-          .select('status, id_doc_path, license_path, tech_passport_path, vehicle_photos')
+          .select('status, id_doc_path, license_path, id_selfie_path, '
+              'license_selfie_path, passport_path, passport_selfie_path, vehicle_photos')
           .eq('user_id', id)
           .maybeSingle();
       final newPaths = <String?>{
         idDocPath,
         licensePath,
-        techPassportPath,
+        idSelfiePath,
+        licenseSelfiePath,
+        passportPath,
+        passportSelfiePath,
         ...vehiclePhotos,
       };
       final oldPaths = <String>[];
       if (old != null) {
-        for (final k in ['id_doc_path', 'license_path', 'tech_passport_path']) {
+        for (final k in [
+          'id_doc_path',
+          'license_path',
+          'id_selfie_path',
+          'license_selfie_path',
+          'passport_path',
+          'passport_selfie_path'
+        ]) {
           final p = old[k] as String?;
           if (p != null && !newPaths.contains(p)) oldPaths.add(p);
         }
@@ -261,7 +277,7 @@ class Repo {
           .toInt();
 
   static Future<String> createOrder({
-    required String type, // bidding | instant
+    required String tariff, // simple | vip — заказ санаты
     required String fromAddress,
     required double fromLat,
     required double fromLng,
@@ -271,14 +287,13 @@ class Repo {
     required double distanceKm,
     required String cargo,
     required String comment,
-    required VehicleSize size,
     int? clientPrice,
     List<String> photos = const [],
     String? fromCity,
     String? toCity,
   }) async {
     final res = await c.rpc('create_order', params: {
-      'p_type': type,
+      'p_type': 'bidding',
       'p_from_address': fromAddress,
       'p_from_lat': fromLat,
       'p_from_lng': fromLng,
@@ -288,11 +303,12 @@ class Repo {
       'p_distance_km': distanceKm,
       'p_cargo': cargo,
       'p_comment': comment,
-      'p_size': size.db,
+      'p_size': 'small', // өлшем ескерілмейді (кері үйлесімділік үшін)
       'p_client_price': clientPrice,
       'p_photos': photos,
       'p_from_city': fromCity,
       'p_to_city': toCity,
+      'p_tariff': tariff,
     });
     return (res as Map)['id'] as String;
   }
@@ -313,6 +329,28 @@ class Repo {
 
   static String orderPhotoUrl(String path) =>
       c.storage.from('orders').getPublicUrl(path);
+
+  // ============ АДРЕС ТҮЗЕТУЛЕРІ (crowd-fix) ============
+  /// Нүктенің маңайында клиенттер бұрын түзеткен атау бар ма (болса — соны).
+  static Future<String?> nearbyAddress(double lat, double lng) async {
+    try {
+      final r = await c.rpc('nearby_address',
+          params: {'p_lat': lat, 'p_lng': lng});
+      if (r is String && r.trim().isNotEmpty) return r;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Клиент нүктенің атын түзетсе — сол координатаға сақтау (кейін ұсыну үшін).
+  static Future<void> saveAddressCorrection(
+      double lat, double lng, String label) async {
+    try {
+      await c.rpc('save_address_correction',
+          params: {'p_lat': lat, 'p_lng': lng, 'p_label': label});
+    } catch (_) {}
+  }
 
   /// Аяқталған/бас тартылған заказдың фотоларын өшіру (best-effort).
   static Future<void> deleteOrderPhotos(List<String> paths) async {
@@ -427,14 +465,21 @@ class Repo {
   static Future<void> submitDocsUpdate({
     String? idDocPath,
     String? licensePath,
-    String? techPath,
+    String? idSelfiePath,
+    String? licenseSelfiePath,
+    String? passportPath,
+    String? passportSelfiePath,
     List<String>? photos,
   }) =>
       c.rpc('submit_docs_update', params: {
         'p_id_doc': idDocPath,
         'p_license': licensePath,
-        'p_tech': techPath,
+        'p_tech': null,
         'p_photos': photos,
+        'p_id_selfie': idSelfiePath,
+        'p_license_selfie': licenseSelfiePath,
+        'p_passport': passportPath,
+        'p_passport_selfie': passportSelfiePath,
       });
 
   /// Ревью күтіп тұрған құжат жаңартулары (модератор үшін).

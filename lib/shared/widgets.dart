@@ -417,43 +417,46 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Gz.radius),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
+                  if (order.isVip) ...[
+                    const Icon(Icons.workspace_premium,
+                        size: 18, color: Gz.violet),
+                    const SizedBox(width: 4),
+                  ],
                   Expanded(
                     child: Text(
                       fmtT(order.displayPrice),
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800),
+                          fontSize: 16.5, fontWeight: FontWeight.w900),
                     ),
                   ),
                   trailing ?? StatusChip(order.status),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               RouteLine(from: order.fromDisplay, to: order.toDisplay),
               if (showMap) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 RouteMap(
                   from: LatLng(order.fromLat, order.fromLng),
                   to: LatLng(order.toLat, order.toLng),
-                  height: 130,
+                  height: 104,
                 ),
               ],
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(Icons.local_shipping, order.size.label),
-                  if (order.distanceKm > 0)
-                    _tag(Icons.route, '${order.distanceKm.toStringAsFixed(1)} км'),
                   _tag(
-                    order.type == 'instant' ? Icons.flash_on : Icons.gavel,
-                    order.type == 'instant' ? 'Жедел' : 'Баға ұсыну',
+                    order.isVip ? Icons.workspace_premium : Icons.local_shipping_outlined,
+                    order.isVip ? 'VIP' : 'Простой',
+                    color: order.isVip ? Gz.violet : null,
                   ),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
@@ -462,21 +465,23 @@ class OrderCard extends StatelessWidget {
                           : Icons.location_city_outlined,
                       order.intercity ? 'Межгород' : 'Қала ішінде',
                     ),
-                  if (order.createdAt != null)
+                  if (order.distanceKm > 0)
+                    _tag(Icons.route, '${order.distanceKm.toStringAsFixed(1)} км'),
+                  if (order.createdAt != null && trailing == null)
                     _tag(Icons.schedule, fmtTime(order.createdAt)),
                 ],
               ),
               if (order.cargoDesc.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   order.cargoDesc,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
               ],
               if (footer != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 footer!,
               ],
             ],
@@ -486,21 +491,21 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(IconData icon, String text) => Container(
+  Widget _tag(IconData icon, String text, {Color? color}) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Gz.bg,
+          color: color == null ? Gz.bg : color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: Gz.textSecondary),
+            Icon(icon, size: 14, color: color ?? Gz.textSecondary),
             const SizedBox(width: 4),
             Text(text,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12,
-                    color: Gz.ink,
+                    color: color ?? Gz.ink,
                     fontWeight: FontWeight.w600)),
           ],
         ),

@@ -7,6 +7,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../client/my_orders_screen.dart';
+import '../executor/docs_banner.dart';
 import '../executor/earnings_screen.dart';
 import '../support/support_screen.dart';
 import 'reviews_screen.dart';
@@ -164,6 +165,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              if (p.role == 'executor' &&
+                  ep != null &&
+                  (ep.docsUpdateRequested || ep.docsReviewPending)) ...[
+                ExecutorDocsBanner(ep: ep),
+                const SizedBox(height: 10),
+              ],
               if (p.role == 'executor') ...[
                 const _ExecEarningsCard(),
                 const SizedBox(height: 10),
@@ -178,7 +185,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       const SizedBox(height: 8),
                       InfoRow('Көлік', ep.vehicleTitle),
-                      InfoRow('Өлшемі', ep.vehicleSize.label),
+                      if (ep.city != null) InfoRow('Қала', ep.city!),
                       InfoRow('Мемнөмір', ep.vehiclePlate),
                       InfoRow('Статус', switch (ep.status) {
                         'approved' => 'Расталған',

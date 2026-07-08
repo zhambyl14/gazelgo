@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
+import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 
@@ -36,10 +37,12 @@ class AddressPickerScreen extends StatefulWidget {
 class _AddressPickerScreenState extends State<AddressPickerScreen> {
   final _map = MapController();
   final _search = TextEditingController();
+  final _addr = TextEditingController(); // редакцияланатын мекенжай аты
   Timer? _debounce;
   Timer? _moveDebounce;
   List<GeoPlace> _results = [];
-  String _centerAddress = 'Картаны жылжытыңыз…';
+  String _rawAddress = ''; // геокодер қайтарған «шикі» атау (түзетуді анықтау үшін)
+  bool _corrected = false; // маңайдағы клиент түзетуі қолданылды ма
   String? _centerCity;
   LatLng _center = Geo.almaty;
   bool _resolving = false;
@@ -57,6 +60,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     _debounce?.cancel();
     _moveDebounce?.cancel();
     _search.dispose();
+    _addr.dispose();
     super.dispose();
   }
 
@@ -71,15 +75,29 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   }
 
   Future<void> _resolveCenter() async {
+    final target = _center;
     setState(() => _resolving = true);
-    final (addr, city) = await Geo.reverseWithCity(_center);
-    if (mounted) {
-      setState(() {
-        _centerAddress = addr;
-        _centerCity = city;
-        _resolving = false;
-      });
+    final (addr, city) = await Geo.reverseWithCity(target);
+    // Осы маңда клиенттер бұрын түзеткен атау бар ма?
+    final corr = await Repo.nearbyAddress(target.latitude, target.longitude);
+    if (!mounted || target != _center) return;
+    setState(() {
+      _rawAddress = addr;
+      _centerCity = city;
+      _corrected = corr != null;
+      _addr.text = corr ?? addr;
+      _resolving = false;
+    });
+  }
+
+  void _confirmSave() {
+    final label = _addr.text.trim().isEmpty ? _rawAddress : _addr.text.trim();
+    // Клиент атын түзеткен болса — сол координатаға сақтаймыз (кейін ұсыну үшін).
+    // Мәтінді қайта геокодтамаймыз: нүкте — картаның нақ ортасы.
+    if (label.isNotEmpty && label != _rawAddress) {
+      Repo.saveAddressCorrection(_center.latitude, _center.longitude, label);
     }
+    Navigator.of(context).pop(PickedAddress(label, _center, _centerCity));
   }
 
   void _onSearchChanged(String q) {
@@ -96,15 +114,12 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
       _results = [];
       _search.text = p.name;
       _center = p.point;
-      _centerAddress = p.name;
+      _rawAddress = p.name;
+      _corrected = false;
+      _addr.text = p.name;
       _centerCity = p.city;
     });
     _map.move(p.point, 16.5);
-  }
-
-  void _confirm() {
-    Navigator.of(context)
-        .pop(PickedAddress(_centerAddress, _center, _centerCity));
   }
 
   @override
@@ -219,27 +234,31 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Gz.red, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _resolving
-                              ? const Text('Анықталуда…',
-                                  style: TextStyle(color: Gz.textSecondary))
-                              : Text(
-                                  _centerAddress,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700),
-                                ),
-                        ),
-                      ],
+                    TextField(
+                      controller: _addr,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.location_on,
+                            color: Gz.red, size: 20),
+                        hintText: _resolving ? 'Анықталуда…' : 'Мекенжай аты',
+                        labelText: 'Осы жердің аты (түзетуге болады)',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _corrected
+                          ? 'Бұл маңайдағы атау бұрын клиенттер арқылы түзетілген.'
+                          : 'Картадағы белгі дұрыс емес пе? Атын түзетіңіз — осы '
+                              'нүктеге сол атпен сақталады, қаладағы басқа жерге '
+                              'ауыспайды.',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: _corrected ? Gz.green : Gz.textSecondary),
                     ),
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: _resolving ? null : _confirm,
+                      onPressed: _resolving ? null : _confirmSave,
                       child: const Text('Осы жерді таңдау'),
                     ),
                   ],

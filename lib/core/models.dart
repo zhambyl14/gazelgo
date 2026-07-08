@@ -96,6 +96,10 @@ class ExecutorProfile {
   final String? idDocPath;
   final String? licensePath;
   final String? techPassportPath;
+  final String? idSelfiePath;
+  final String? licenseSelfiePath;
+  final String? passportPath;
+  final String? passportSelfiePath;
   final String? moderationComment;
   final int balance;
   final int totalEarned;
@@ -120,6 +124,10 @@ class ExecutorProfile {
         idDocPath = m['id_doc_path'] as String?,
         licensePath = m['license_path'] as String?,
         techPassportPath = m['tech_passport_path'] as String?,
+        idSelfiePath = m['id_selfie_path'] as String?,
+        licenseSelfiePath = m['license_selfie_path'] as String?,
+        passportPath = m['passport_path'] as String?,
+        passportSelfiePath = m['passport_selfie_path'] as String?,
         moderationComment = m['moderation_comment'] as String?,
         balance = _i(m['balance']),
         totalEarned = _i(m['total_earned']),
@@ -150,7 +158,8 @@ class ExecutorProfile {
 class Order {
   final String id;
   final String clientId;
-  final String type; // bidding | instant
+  final String type; // bidding (барлығы)
+  final String tariff; // simple | vip — заказ санаты
   final String status;
   final String fromAddress, toAddress;
   final String? fromCity, toCity;
@@ -172,6 +181,7 @@ class Order {
       : id = m['id'] as String,
         clientId = m['client_id'] as String,
         type = m['type'] as String,
+        tariff = m['tariff'] as String? ?? 'simple',
         status = m['status'] as String,
         fromAddress = m['from_address'] as String? ?? '',
         toAddress = m['to_address'] as String? ?? '',
@@ -197,6 +207,7 @@ class Order {
         cancelledBy = m['cancelled_by'] as String?;
 
   bool get isActive => kActiveOrderStatuses.contains(status);
+  bool get isVip => tariff == 'vip';
   int? get displayPrice => finalPrice ?? systemPrice ?? clientPrice;
 
   /// Қалалар аралық (межгород) заказ ба — қала аттары белгілі болса ғана есептеледі.
@@ -354,6 +365,9 @@ class ExecutorStats {
   final int month;
   final String? busyOrderId;
   final int ordersLeft;
+  final int simpleLeft;
+  final int vipLeft;
+  final int? vehicleYear;
   final DateTime? trialUntil;
   final bool hasTariff;
   final bool simpleActive;
@@ -371,6 +385,9 @@ class ExecutorStats {
         month = _i(m['month']),
         busyOrderId = m['busy_order_id'] as String?,
         ordersLeft = _i(m['orders_left']),
+        simpleLeft = _i(m['simple_left']),
+        vipLeft = _i(m['vip_left']),
+        vehicleYear = m['vehicle_year'] == null ? null : _i(m['vehicle_year']),
         trialUntil = _dt(m['trial_until']),
         // жаңа RPC bool қайтарады; ескі RPC- те simple_until болса — соған сүйенеміз
         hasTariff = m['has_tariff'] as bool? ??

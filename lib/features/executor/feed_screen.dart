@@ -54,92 +54,147 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
               ),
             );
           }
-          return StreamBuilder<List<Order>>(
-            key: ValueKey('feed$_streamGen'),
-            stream: Repo.executorFeedStream(),
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting &&
-                  !snap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final orders = (snap.data ?? []).reversed.toList();
-              if (orders.isEmpty) {
-                return RefreshIndicator(
-                  color: Gz.ink,
-                  onRefresh: _manualRefresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      EmptyState(
-                        icon: Icons.hourglass_empty,
-                        title: 'Әзірге заказ жоқ',
-                        subtitle:
-                            'Жаңа заказдар осы жерде автоматты пайда болады.',
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return RefreshIndicator(
-                color: Gz.ink,
-                onRefresh: _manualRefresh,
-                child: ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(12),
-                itemCount: orders.length,
-                separatorBuilder: (_, i) => const SizedBox(height: 8),
-                itemBuilder: (_, i) {
-                  final o = orders[i];
-                  return OrderCard(
-                    order: o,
-                    showMap: true,
-                    trailing: Text(
-                      fmtTime(o.createdAt),
-                      style: const TextStyle(
-                          color: Gz.textSecondary, fontSize: 12),
-                    ),
-                    footer: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Divider(height: 4),
-                        const SizedBox(height: 8),
-                        _ClientBrief(clientId: o.clientId),
-                        if (o.photos.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          OrderPhotosStrip(paths: o.photos),
-                        ],
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: BusyButton(
-                                label: 'Келісу · ${fmtT(o.clientPrice)}',
-                                onPressed: () =>
-                                    _offer(context, o, o.clientPrice!, ''),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(48)),
-                                onPressed: () => _counterOffer(context, o),
-                                child: const Text('Өз бағам'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
+          // §: Простой мен VIP лентасы бөлек табтарда
+          return DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                const TabBar(
+                  labelColor: Gz.ink,
+                  unselectedLabelColor: Gz.textSecondary,
+                  indicatorColor: Gz.yellowDark,
+                  tabs: [
+                    Tab(text: 'Простой'),
+                    Tab(text: 'VIP'),
+                  ],
                 ),
-              );
-            },
+                Expanded(
+                  child: StreamBuilder<List<Order>>(
+                    key: ValueKey('feed$_streamGen'),
+                    stream: Repo.executorFeedStream(),
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting &&
+                          !snap.hasData) {
+                        return const Center(
+                            child: CircularProgressIndicator());
+                      }
+                      final all = snap.data ?? [];
+                      final simple = all
+                          .where((o) => o.tariff == 'simple')
+                          .toList()
+                          .reversed
+                          .toList();
+                      final vip = all
+                          .where((o) => o.tariff == 'vip')
+                          .toList()
+                          .reversed
+                          .toList();
+                      return TabBarView(
+                        children: [
+                          _feedList(simple, stats.simpleActive, 'Простой'),
+                          _feedList(vip, stats.vipActive, 'VIP'),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           );
         },
       );
+  }
+
+  Widget _feedList(List<Order> orders, bool kindActive, String kindLabel) {
+    if (!kindActive) {
+      return RefreshIndicator(
+        color: Gz.ink,
+        onRefresh: _manualRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 120),
+            EmptyState(
+              icon: Icons.lock_outline,
+              title: '$kindLabel тарифі жоқ',
+              subtitle:
+                  '$kindLabel заказдарды көру үшін жоғарыдан $kindLabel тарифін '
+                  'сатып алыңыз.',
+            ),
+          ],
+        ),
+      );
+    }
+    if (orders.isEmpty) {
+      return RefreshIndicator(
+        color: Gz.ink,
+        onRefresh: _manualRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            EmptyState(
+              icon: Icons.hourglass_empty,
+              title: 'Әзірге заказ жоқ',
+              subtitle: 'Жаңа заказдар осы жерде автоматты пайда болады.',
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: Gz.ink,
+      onRefresh: _manualRefresh,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(12),
+        itemCount: orders.length,
+        separatorBuilder: (_, i) => const SizedBox(height: 8),
+        itemBuilder: (_, i) {
+          final o = orders[i];
+          return OrderCard(
+            order: o,
+            showMap: true,
+            trailing: Text(
+              fmtTime(o.createdAt),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+            ),
+            footer: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Divider(height: 4),
+                const SizedBox(height: 8),
+                _ClientBrief(clientId: o.clientId),
+                if (o.photos.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OrderPhotosStrip(paths: o.photos),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: BusyButton(
+                        label: 'Келісу · ${fmtT(o.clientPrice)}',
+                        onPressed: () => _offer(context, o, o.clientPrice!, ''),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48)),
+                        onPressed: () => _counterOffer(context, o),
+                        child: const Text('Өз бағам'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _offer(

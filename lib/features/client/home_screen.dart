@@ -201,8 +201,6 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   ),
                 ),
                 const Spacer(),
-                // белсенді заказ баннері
-                const _ActiveOrdersBanner(),
                 // менің локациям батырмасы
                 Padding(
                   padding: const EdgeInsets.only(right: 12, bottom: 10),
@@ -226,6 +224,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                     ],
                   ),
                 ),
+                // белсенді («Іздеуде») заказ баннері — локация батырмасының астында
+                const _ActiveOrdersBanner(),
                 // негізгі панель
                 Container(
                   margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),

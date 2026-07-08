@@ -166,8 +166,10 @@ class _VipDialogState extends State<_VipDialog> {
                   RouteLine(from: o.fromDisplay, to: o.toDisplay),
                   const SizedBox(height: 8),
                   Text(
-                    '${o.cargoDesc} · ${o.size.label}'
-                    '${o.distanceKm > 0 ? ' · ${o.distanceKm.toStringAsFixed(1)} км' : ''}',
+                    o.cargoDesc +
+                        (o.distanceKm > 0
+                            ? ' · ${o.distanceKm.toStringAsFixed(1)} км'
+                            : ''),
                     style: const TextStyle(
                         color: Gz.textSecondary, fontSize: 13),
                   ),

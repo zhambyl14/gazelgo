@@ -157,7 +157,8 @@ class _ExecutorTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${ep.vehicleTitle} · ${ep.vehiclePlate} · ${ep.vehicleSize.label}',
+                      '${ep.vehicleTitle} · ${ep.vehiclePlate}'
+                      '${ep.city != null ? ' · ${ep.city}' : ''}',
                       style: const TextStyle(
                           color: Gz.textSecondary, fontSize: 12),
                     ),
@@ -522,7 +523,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 8),
                     InfoRow('Маркасы', ep.vehicleTitle),
-                    InfoRow('Өлшемі', ep.vehicleSize.label),
+                    if (ep.city != null) InfoRow('Қала', ep.city!),
                     InfoRow('Мемнөмір', ep.vehiclePlate),
                     InfoRow('Баланс', fmtT(ep.balance)),
                     InfoRow('Жалпы табыс', fmtT(ep.totalEarned)),
