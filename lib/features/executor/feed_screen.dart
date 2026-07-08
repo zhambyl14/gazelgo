@@ -7,16 +7,16 @@ import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'executor_order_screen.dart';
 
-/// Қарапайым тарифтегі заказдар лентасы.
-class ExecutorFeedScreen extends ConsumerStatefulWidget {
-  const ExecutorFeedScreen({super.key});
+/// Қарапайым тарифтегі заказдар лентасы (басты бетке ендірілетін дене —
+/// өз Scaffold/AppBar-ы жоқ).
+class ExecutorFeedBody extends ConsumerStatefulWidget {
+  const ExecutorFeedBody({super.key});
 
   @override
-  ConsumerState<ExecutorFeedScreen> createState() =>
-      _ExecutorFeedScreenState();
+  ConsumerState<ExecutorFeedBody> createState() => _ExecutorFeedBodyState();
 }
 
-class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
+class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   int _streamGen = 0; // pull-to-refresh кезінде стримді қайта құру
 
   Future<void> _manualRefresh() async {
@@ -31,9 +31,7 @@ class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
     final statsAsync = ref.watch(executorStatsStreamProvider);
     final epAsync = ref.watch(myExecutorProfileProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Заказдар лентасы')),
-      body: statsAsync.when(
+    return statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) =>
             EmptyState(icon: Icons.wifi_off, title: errText(e)),
@@ -50,7 +48,7 @@ class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
                     icon: Icons.power_settings_new,
                     title: 'Сіз линияда емессіз',
                     subtitle:
-                        'Заказдарды көру үшін Басты беттен «Қарапайым тариф»-ке кіріңіз.',
+                        'Заказдарды көру үшін жоғарыдан «Қарапайым тариф»-ке кіріңіз.',
                   ),
                 ],
               ),
@@ -142,8 +140,7 @@ class _ExecutorFeedScreenState extends ConsumerState<ExecutorFeedScreen> {
             },
           );
         },
-      ),
-    );
+      );
   }
 
   Future<void> _offer(

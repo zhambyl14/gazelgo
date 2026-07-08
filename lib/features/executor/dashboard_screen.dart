@@ -7,7 +7,7 @@ import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
 import 'balance_screen.dart';
 
-/// Орындаушының басты экраны: баланс, табыс, тарифтер.
+/// Орындаушының тариф пен баланс экраны (басты беттен ашылады).
 class ExecutorDashboardScreen extends ConsumerWidget {
   const ExecutorDashboardScreen({super.key});
 
@@ -17,7 +17,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     final ep = ref.watch(myExecutorProfileProvider).value;
 
     return Scaffold(
-      appBar: AppBar(title: const GazelGoLogo(size: 22)),
+      appBar: AppBar(title: const Text('Тариф және баланс')),
       body: RefreshIndicator(
         color: Gz.ink,
         onRefresh: () async {
@@ -187,17 +187,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   onChanged: (v) => _toggleOnLine(context, ref, v),
                 ),
               ),
-              const SizedBox(height: 12),
-              // Табыс жолағы
-              Row(
-                children: [
-                  Expanded(
-                      child: _statTile('Бүгінгі табыс', fmtT(s.today))),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: _statTile('Айлық табыс', fmtT(s.month))),
-                ],
-              ),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -310,23 +299,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     }
   }
 
-  Widget _statTile(String label, String value) {
-    return SectionCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style:
-                  const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
-          const SizedBox(height: 4),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-        ],
-      ),
-    );
-  }
 
   Future<void> _buy(
       BuildContext context, WidgetRef ref, String kind, int price) async {

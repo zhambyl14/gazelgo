@@ -8,9 +8,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../profile/profile_screen.dart';
 import 'active_order_screen.dart';
-import 'dashboard_screen.dart';
-import 'earnings_screen.dart';
-import 'feed_screen.dart';
+import 'executor_home_screen.dart';
 import 'vip_dispatch_dialog.dart';
 
 class ExecutorShell extends StatefulWidget {
@@ -125,9 +123,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
                 child: IndexedStack(
                   index: _index,
                   children: const [
-                    ExecutorDashboardScreen(),
-                    ExecutorFeedScreen(),
-                    EarningsScreen(),
+                    ExecutorHomeScreen(),
                     ProfileScreen(),
                   ],
                 ),
@@ -140,17 +136,9 @@ class _ExecutorShellState extends State<ExecutorShell> {
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: const [
               NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard),
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
                   label: 'Басты'),
-              NavigationDestination(
-                  icon: Icon(Icons.list_alt_outlined),
-                  selectedIcon: Icon(Icons.list_alt),
-                  label: 'Заказдар'),
-              NavigationDestination(
-                  icon: Icon(Icons.payments_outlined),
-                  selectedIcon: Icon(Icons.payments),
-                  label: 'Табыс'),
               NavigationDestination(
                   icon: Icon(Icons.person_outline),
                   selectedIcon: Icon(Icons.person),

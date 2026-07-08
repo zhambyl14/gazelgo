@@ -7,6 +7,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../client/my_orders_screen.dart';
+import '../executor/earnings_screen.dart';
 import '../support/support_screen.dart';
 import 'reviews_screen.dart';
 
@@ -163,6 +164,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              if (p.role == 'executor') ...[
+                const _ExecEarningsCard(),
+                const SizedBox(height: 10),
+              ],
               if (p.role == 'executor' && ep != null) ...[
                 SectionCard(
                   child: Column(
@@ -253,6 +258,74 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Профильдегі табыс картасы (орындаушыға): бүгін / осы ай / барлығы + тарих.
+class _ExecEarningsCard extends ConsumerWidget {
+  const _ExecEarningsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(executorStatsStreamProvider).value;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.payments_outlined, size: 18, color: Gz.green),
+              const SizedBox(width: 8),
+              const Text('Табыс',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const EarningsScreen())),
+                style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                child: const Text('Толық тарих'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _mini('Бүгін', fmtT(s?.today), Gz.green)),
+              const SizedBox(width: 8),
+              Expanded(child: _mini('Осы ай', fmtT(s?.month), Gz.blue)),
+              const SizedBox(width: 8),
+              Expanded(child: _mini('Барлығы', fmtT(s?.totalEarned), Gz.ink)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mini(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: Gz.bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5)),
+          const SizedBox(height: 3),
+          Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 15.5, fontWeight: FontWeight.w900, color: color)),
+        ],
       ),
     );
   }
