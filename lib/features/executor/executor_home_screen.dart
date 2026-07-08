@@ -140,20 +140,32 @@ class _LineControlBar extends ConsumerWidget {
                 child: const Icon(Icons.bolt, color: Gz.yellowDark, size: 22),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: const [
                     Text('Сіз линияда емессіз',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 14.5)),
                     Text('Заказ қабылдау үшін тарифке кіріңіз',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             color: Gz.textSecondary, fontSize: 12.5)),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 onPressed: () => _openTariffs(context),
                 child: const Text('Кіру'),
               ),
@@ -185,9 +197,12 @@ class _LineControlBar extends ConsumerWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(online ? 'Линиядасыз' : 'Демалыстасыз',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14.5,
