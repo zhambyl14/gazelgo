@@ -100,6 +100,7 @@ class ExecutorProfile {
   final int balance;
   final int totalEarned;
   final String? busyOrderId;
+  final String? city;
   final bool docsUpdateRequested;
   final String? docsUpdateComment;
   final List<String> docsUpdateFields;
@@ -109,6 +110,7 @@ class ExecutorProfile {
   ExecutorProfile.fromMap(Map<String, dynamic> m)
       : userId = m['user_id'] as String,
         status = m['status'] as String? ?? 'pending',
+        city = m['city'] as String?,
         vehicleSize = sizeFrom(m['vehicle_size'] as String?),
         vehicleBrand = m['vehicle_brand'] as String? ?? '',
         vehicleModel = m['vehicle_model'] as String? ?? '',
@@ -343,19 +345,24 @@ class SupportMessage {
 }
 
 // ---------- Executor stats (RPC executor_stats) ----------
+/// §4: тариф = 10 заказ пакеті. [ordersLeft] — сатып алынған тарифтердегі
+/// қалған заказ саны. [trialUntil] — тегін 24 сағаттық триал (§7) аяқталуы.
 class ExecutorStats {
   final int balance;
   final int totalEarned;
   final int today;
   final int month;
   final String? busyOrderId;
-  final DateTime? simpleUntil;
-  final DateTime? vipUntil;
+  final int ordersLeft;
+  final DateTime? trialUntil;
+  final bool hasTariff;
+  final bool simpleActive;
+  final bool vipActive;
   final bool isNight;
   final int priceSimple;
   final int priceVip;
   final bool onLine;
-  final bool autoAcceptVip;
+  final String? city;
 
   ExecutorStats.fromMap(Map<String, dynamic> m)
       : balance = _i(m['balance']),
@@ -363,16 +370,27 @@ class ExecutorStats {
         today = _i(m['today']),
         month = _i(m['month']),
         busyOrderId = m['busy_order_id'] as String?,
-        simpleUntil = _dt(m['simple_until']),
-        vipUntil = _dt(m['vip_until']),
+        ordersLeft = _i(m['orders_left']),
+        trialUntil = _dt(m['trial_until']),
+        // жаңа RPC bool қайтарады; ескі RPC- те simple_until болса — соған сүйенеміз
+        hasTariff = m['has_tariff'] as bool? ??
+            (_dt(m['simple_until'])?.isAfter(DateTime.now()) ?? false) ||
+                (_dt(m['vip_until'])?.isAfter(DateTime.now()) ?? false),
+        simpleActive = m['simple_active'] as bool? ??
+            (_dt(m['simple_until'])?.isAfter(DateTime.now()) ?? false),
+        vipActive = m['vip_active'] as bool? ??
+            (_dt(m['vip_until'])?.isAfter(DateTime.now()) ?? false),
         isNight = m['is_night'] as bool? ?? false,
         priceSimple = _i(m['price_simple']),
         priceVip = _i(m['price_vip']),
         onLine = m['on_line'] as bool? ?? true,
-        autoAcceptVip = m['auto_accept_vip'] as bool? ?? false;
+        city = m['city'] as String?;
 
-  bool get simpleActive => simpleUntil != null && simpleUntil!.isAfter(DateTime.now());
-  bool get vipActive => vipUntil != null && vipUntil!.isAfter(DateTime.now());
+  bool get trialActive =>
+      trialUntil != null && trialUntil!.isAfter(DateTime.now());
+
+  /// Заказ көру/алу мүмкіндігі бар ма (тариф не триал).
+  bool get canWork => hasTariff;
 }
 
 // ---------- App settings ----------

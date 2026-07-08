@@ -29,14 +29,13 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
-    final epAsync = ref.watch(myExecutorProfileProvider);
 
     return statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) =>
             EmptyState(icon: Icons.wifi_off, title: errText(e)),
         data: (stats) {
-          if (!stats.simpleActive) {
+          if (!stats.hasTariff) {
             return RefreshIndicator(
               color: Gz.ink,
               onRefresh: _manualRefresh,
@@ -46,18 +45,18 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                   SizedBox(height: 120),
                   EmptyState(
                     icon: Icons.power_settings_new,
-                    title: 'Сіз линияда емессіз',
+                    title: 'Тарифіңіз жоқ',
                     subtitle:
-                        'Заказдарды көру үшін жоғарыдан «Қарапайым тариф»-ке кіріңіз.',
+                        'Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
+                        '(Простой немесе VIP — 10 заказ).',
                   ),
                 ],
               ),
             );
           }
-          final size = epAsync.value?.vehicleSize ?? VehicleSize.small;
           return StreamBuilder<List<Order>>(
             key: ValueKey('feed$_streamGen'),
-            stream: Repo.feedStream(size),
+            stream: Repo.executorFeedStream(),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting &&
                   !snap.hasData) {

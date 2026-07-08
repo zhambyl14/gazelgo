@@ -113,7 +113,7 @@ class _LineControlBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = stats;
-    final hasTariff = s != null && (s.simpleActive || s.vipActive);
+    final hasTariff = s != null && s.hasTariff;
     final online = hasTariff && s.onLine;
 
     // Тариф жоқ — линияға шақыру картасы
@@ -231,9 +231,11 @@ class _LineControlBar extends ConsumerWidget {
   }
 
   String _tariffLabel(ExecutorStats s) {
+    if (s.trialActive) return 'Тегін кезең · шексіз заказ';
     final parts = <String>[];
     if (s.simpleActive) parts.add('Қарапайым');
     if (s.vipActive) parts.add('VIP');
-    return parts.isEmpty ? 'Тариф жоқ' : 'Белсенді: ${parts.join(' · ')}';
+    if (parts.isEmpty) return 'Тариф жоқ';
+    return '${parts.join(' · ')} · ${s.ordersLeft} заказ қалды';
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/kz_cities.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -36,6 +37,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late final _plate =
       TextEditingController(text: widget.existing?.vehiclePlate ?? '');
   late VehicleSize _size = widget.existing?.vehicleSize ?? VehicleSize.small;
+  late String? _city = widget.existing?.city;
 
   final _idDoc = _PickedDoc();
   final _license = _PickedDoc();
@@ -108,8 +110,26 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     }
   }
 
+  Future<void> _pickCity() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _ApplyCityPicker(),
+    );
+    if (picked != null && mounted) setState(() => _city = picked);
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (_city == null || _city!.trim().isEmpty) {
+      showSnack(context, 'Қай қалада жұмыс істейтініңізді таңдаңыз',
+          error: true);
+      return;
+    }
     if (!_idDoc.isSet || !_license.isSet || !_techPassport.isSet) {
       showSnack(context, 'Барлық құжат фотосын жүктеңіз', error: true);
       return;
@@ -173,8 +193,15 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           idDocPath: idPath,
           licensePath: licPath,
           techPassportPath: techPath,
+          city: _city,
           isResubmit: widget.existing != null,
         );
+      }
+      // §6: расталған орындаушы қаласын өзгертсе де серверде жаңартылады
+      if (_city != null && _city!.trim().isNotEmpty) {
+        try {
+          await Repo.setExecutorCity(_city!.trim());
+        } catch (_) {}
       }
       ref.invalidate(myExecutorProfileProvider);
       if (mounted) {
@@ -299,6 +326,50 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
+                const Text('Қай қалада жұмыс істейсіз?',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 6),
+                const Text(
+                  'Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
+                  'шығатын межгород) көресіз.',
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: _pickCity,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Gz.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: _city == null ? Gz.border : Gz.green,
+                          width: _city == null ? 1.2 : 1.6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_city_outlined,
+                            color: _city == null ? Gz.textSecondary : Gz.green),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _city ?? 'Қаланы таңдаңыз',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: _city == null ? Gz.textSecondary : Gz.ink),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: Gz.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const Text('Көлік туралы',
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -431,6 +502,85 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Қала таңдау парағы (Қазақстан қалалары тізімінен, іздеумен).
+class _ApplyCityPicker extends StatefulWidget {
+  const _ApplyCityPicker();
+
+  @override
+  State<_ApplyCityPicker> createState() => _ApplyCityPickerState();
+}
+
+class _ApplyCityPickerState extends State<_ApplyCityPicker> {
+  final _search = TextEditingController();
+  List<String> _filtered = kzCities;
+
+  void _onChanged(String q) {
+    final n = q.trim().toLowerCase();
+    setState(() {
+      _filtered = n.isEmpty
+          ? kzCities
+          : kzCities.where((c) => c.toLowerCase().contains(n)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.92,
+      builder: (context, scroll) => Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Gz.border, borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _search,
+              autofocus: true,
+              onChanged: _onChanged,
+              decoration: const InputDecoration(
+                hintText: 'Қала немесе елді мекен іздеу…',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _filtered.isEmpty
+                ? const Center(
+                    child: Text('Табылмады',
+                        style: TextStyle(color: Gz.textSecondary)))
+                : ListView.separated(
+                    controller: scroll,
+                    itemCount: _filtered.length,
+                    separatorBuilder: (_, i) => const Divider(height: 1),
+                    itemBuilder: (_, i) => ListTile(
+                      leading: const Icon(Icons.location_city_outlined,
+                          color: Gz.textSecondary),
+                      title: Text(_filtered[i]),
+                      onTap: () => Navigator.of(context).pop(_filtered[i]),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

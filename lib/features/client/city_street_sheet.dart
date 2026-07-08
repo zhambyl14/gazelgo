@@ -375,28 +375,39 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
     }
   }
 
-  /// Карта ұсынған нұсқаларда жазған адресі болмаса — клиент жазғанын дәл сол
-  /// күйінде қолдана алады. Координата: ең жақын көше нәтижесі болса — соны,
-  /// әйтпесе қала орталығын алады (бағаны/маршрутты болжау үшін жеткілікті).
+  /// Клиент жазған адресті қолдану. Егер геокодер дәл тапса — соның нүктесін
+  /// алады. Таппаса (Қазақстанда бұл жиі — тегін карта деректерінде шағын
+  /// аудандар жоқ) — үнсіз қала орталығына қоймай, картаны ашып, клиенттің
+  /// дәл жерді өзі белгілеуін сұраймыз (жазған адрес мәтіні сақталады).
   Future<void> _useTyped() async {
     final text = _search.text.trim();
     if (text.length < 2) return;
     LatLng? point = _results.isNotEmpty ? _results.first.point : null;
     if (point == null) {
       setState(() => _loading = true);
-      var res = await Geo.searchStreet(city: widget.city, street: text);
-      if (res.isEmpty) res = await Geo.search(widget.city);
+      final res = await Geo.searchStreet(city: widget.city, street: text);
       point = res.isNotEmpty ? res.first.point : null;
       if (mounted) setState(() => _loading = false);
     }
     if (!mounted) return;
-    if (point == null) {
-      showSnack(context,
-          'Орналасуын анықтау мүмкін болмады — картадан таңдаңыз',
-          error: true);
+    if (point != null) {
+      Navigator.of(context).pop(PickedAddress(text, point, widget.city));
       return;
     }
-    Navigator.of(context).pop(PickedAddress(text, point, widget.city));
+    // Дәл табылмады → картадан белгілету (жазған мәтін адрес болып қалады)
+    final picked = await AddressPickerScreen.pick(
+      context,
+      title: 'Картадан белгілеңіз: $text',
+      initial: Geo.cityCenter(widget.city),
+    );
+    if (picked != null && mounted) {
+      if (!Geo.inKazakhstan(picked.point)) {
+        showSnack(context, 'Тек Қазақстан ішінде', error: true);
+        return;
+      }
+      // Клиент жазған мәтінді сақтаймыз, координата — картадан дәл.
+      Navigator.of(context).pop(PickedAddress(text, picked.point, widget.city));
+    }
   }
 
   @override
@@ -507,8 +518,8 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                               ? 'Көше мен үй нөмірін жазыңыз'
                               : (_loading
                                   ? ''
-                                  : 'Тізімнен табылмады — жоғарыдағы «Осы адресті '
-                                      'қолдану» арқылы жазғаныңызды қоя аласыз'),
+                                  : 'Тізімнен табылмады? Жоғарыдағы «Осы адресті '
+                                      'қолдану» → картадан дәл жерді белгілейсіз'),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                               color: Gz.textSecondary, fontSize: 13.5),

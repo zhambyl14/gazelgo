@@ -160,6 +160,7 @@ class Repo {
     String? idDocPath,
     String? licensePath,
     String? techPassportPath,
+    String? city,
     required bool isResubmit,
   }) async {
     final id = uid;
@@ -174,6 +175,7 @@ class Repo {
       'id_doc_path': idDocPath,
       'license_path': licensePath,
       'tech_passport_path': techPassportPath,
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
     };
     if (isResubmit) {
       // ескі құжат жолдарын жинап, жаңасына сай еместерін өшіреміз
@@ -615,19 +617,19 @@ class Repo {
         return m == null ? null : Order.fromMap(m);
       }, every: const Duration(seconds: 3));
 
-  /// Лента: іздеудегі bidding заказдар (өлшемі сай).
-  static Stream<List<Order>> feedStream(VehicleSize mySize) => _poll(() async {
-        final rows = await c
-            .from('orders')
-            .select()
-            .eq('status', 'searching')
-            .eq('type', 'bidding')
-            .eq('size', mySize.db)
-            .order('created_at');
+  /// §6/§5 Лента: орындаушының қаласы мен маршрутына сай заказдар (RPC).
+  /// Қала фильтрі, өлшем сәйкестігі, межгород маршруты — бәрі серверде
+  /// `executor_feed` ішінде (бір ғана логика көзі).
+  static Stream<List<Order>> executorFeedStream() => _poll(() async {
+        final rows = await c.rpc('executor_feed');
         return (rows as List)
             .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
             .toList();
       }, every: const Duration(seconds: 4));
+
+  /// §6 Орындаушының тіркелген қаласын орнату/жаңарту.
+  static Future<void> setExecutorCity(String city) =>
+      c.rpc('set_executor_city', params: {'p_city': city});
 
   static Stream<List<Offer>> offersStream(String orderId) => _poll(() async {
         final rows = await c

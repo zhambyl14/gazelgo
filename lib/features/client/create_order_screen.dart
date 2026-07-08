@@ -30,10 +30,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _price = TextEditingController();
 
   VehicleSize _size = VehicleSize.small;
-  String _mode = 'bidding'; // bidding | instant
   GeoRoute? _route;
-  int? _quote;
-  bool _quoteLoading = false;
   final List<Uint8List> _photos = [];
   final _picker = ImagePicker();
 
@@ -47,6 +44,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _from.city != null &&
       _to.city != null &&
       !Geo.sameCity(_from.city, _to.city);
+
+  /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸.
+  int get _minPrice => _intercity ? 1000 : 100;
 
   @override
   void initState() {
@@ -88,24 +88,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _loadRoute() async {
     final r = await Geo.route(_from.point, _to.point);
-    if (mounted) {
-      setState(() => _route = r);
-      _loadQuote();
-    }
-  }
-
-  Future<void> _loadQuote() async {
-    final r = _route;
-    if (r == null) return;
-    setState(() => _quoteLoading = true);
-    try {
-      final q = await Repo.instantQuote(_size, r.distanceKm);
-      if (mounted) setState(() => _quote = q);
-    } catch (_) {
-      if (mounted) setState(() => _quote = null);
-    } finally {
-      if (mounted) setState(() => _quoteLoading = false);
-    }
+    if (mounted) setState(() => _route = r);
   }
 
   Future<void> _addPhoto() async {
@@ -155,13 +138,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       showSnack(context, 'Заказ тек Қазақстан ішінде болуы керек', error: true);
       return;
     }
-    int? clientPrice;
-    if (_mode == 'bidding') {
-      clientPrice = int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
-      if (clientPrice == null || clientPrice < 100) {
-        showSnack(context, 'Бағаңызды жазыңыз (кемінде 100 ₸)', error: true);
-        return;
-      }
+    // §2/§3: барлық заказ — клиент бағасын өзі қояды (bidding).
+    final clientPrice =
+        int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
+    if (clientPrice == null || clientPrice < _minPrice) {
+      showSnack(
+          context,
+          _intercity
+              ? 'Межгород бағасы кемінде ${fmtT(_minPrice)} болуы керек'
+              : 'Бағаңызды жазыңыз (кемінде ${fmtT(_minPrice)})',
+          error: true);
+      return;
     }
     try {
       // фотоларды алдын ала жүктейміз
@@ -170,7 +157,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         photoPaths.add(await Repo.uploadOrderPhoto(_photos[i], i));
       }
       final id = await Repo.createOrder(
-        type: _mode,
+        type: 'bidding',
         fromAddress: _from.address,
         fromLat: _from.point.latitude,
         fromLng: _from.point.longitude,
@@ -195,71 +182,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
   }
 
-  Widget _modeCard({
-    required String mode,
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required Widget content,
-  }) {
-    final selected = _mode == mode;
-    return GestureDetector(
-      onTap: () => setState(() => _mode = mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Gz.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? color : Gz.border,
-            width: selected ? 1.8 : 1.2,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Radio<String>(
-                  value: mode,
-                  // ignore: deprecated_member_use
-                  groupValue: _mode,
-                  // ignore: deprecated_member_use
-                  onChanged: (v) => setState(() => _mode = v!),
-                  activeColor: color,
-                ),
-              ],
-            ),
-            if (selected) ...[const SizedBox(height: 10), content],
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,10 +319,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const SizedBox(height: 8),
               VehicleSizeSelector(
                 value: _size,
-                onChanged: (s) {
-                  setState(() => _size = s);
-                  _loadQuote();
-                },
+                onChanged: (s) => setState(() => _size = s),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -467,65 +386,52 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
-              const Text('Тәсілді таңдаңыз',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-              const SizedBox(height: 8),
-              _modeCard(
-                mode: 'bidding',
-                icon: Icons.gavel,
-                color: Gz.blue,
-                title: 'Өз бағамды ұсынамын',
-                subtitle: 'Орындаушылар келіседі немесе өз бағасын ұсынады',
-                content: TextField(
-                  controller: _price,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: 'Бағаңыз, ₸',
-                    prefixIcon: Icon(Icons.payments_outlined),
+              Row(
+                children: [
+                  const Text('Бағаңызды ұсыныңыз',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (_intercity ? Gz.violet : Gz.green)
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'мин. ${fmtT(_minPrice)}',
+                      style: TextStyle(
+                          color: _intercity ? Gz.violet : Gz.green,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 10),
-              _modeCard(
-                mode: 'instant',
-                icon: Icons.flash_on,
-                color: Gz.violet,
-                title: 'Жедел заказ',
-                subtitle: 'Баға дайын — VIP орындаушы бірден тағайындалады',
-                content: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Gz.violet.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text('Платформа бағасы:',
-                          style: TextStyle(
-                              color: Gz.textSecondary, fontSize: 13.5)),
-                      const Spacer(),
-                      _quoteLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))
-                          : Text(
-                              fmtT(_quote),
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: Gz.violet),
-                            ),
-                    ],
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                _intercity
+                    ? 'Қалааралық заказ — бағаны өзіңіз қоясыз (кемінде '
+                        '${fmtT(_minPrice)}). Газелисттер келіседі не өз бағасын ұсынады.'
+                    : 'Қала ішіндегі заказ — бағаны өзіңіз қоясыз (кемінде '
+                        '${fmtT(_minPrice)}). Газелисттер келіседі не өз бағасын ұсынады.',
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _price,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Бағаңыз, ₸ (мин. $_minPrice)',
+                  prefixIcon: const Icon(Icons.payments_outlined),
                 ),
               ),
               const SizedBox(height: 20),
               BusyButton(
-                label: _mode == 'bidding'
-                    ? 'Заказ жариялау'
-                    : 'Жедел заказ беру${_quote != null ? ' · ${fmtT(_quote)}' : ''}',
+                label: 'Заказ жариялау',
                 onPressed: _submit,
               ),
               const SizedBox(height: 8),
