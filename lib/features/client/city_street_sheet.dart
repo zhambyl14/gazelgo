@@ -98,19 +98,24 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       return;
     }
     if (!mounted) return;
-    final picked = await showModalBottomSheet<GeoPlace>(
+    final picked = await showModalBottomSheet<PickedAddress>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Gz.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _StreetPickerSheet(city: city, initialQuery: _street),
+      builder: (_) => _StreetPickerSheet(
+          city: city, initialQuery: _street, initialPoint: _point),
     );
     if (picked != null && mounted) {
       setState(() {
-        _street = picked.name;
+        _street = picked.address;
         _point = picked.point;
+        // карта арқылы басқа қалаға ауысып кетсе — қаланы да сәйкестендіреміз
+        if (picked.city != null && picked.city!.isNotEmpty) {
+          _city = picked.city;
+        }
       });
     }
   }
@@ -313,7 +318,9 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
 class _StreetPickerSheet extends StatefulWidget {
   final String city;
   final String? initialQuery;
-  const _StreetPickerSheet({required this.city, this.initialQuery});
+  final LatLng? initialPoint;
+  const _StreetPickerSheet(
+      {required this.city, this.initialQuery, this.initialPoint});
 
   @override
   State<_StreetPickerSheet> createState() => _StreetPickerSheetState();
@@ -354,6 +361,18 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
         });
       }
     });
+  }
+
+  Future<void> _findOnMap() async {
+    final res = await AddressPickerScreen.pick(context,
+        title: widget.city, initial: widget.initialPoint);
+    if (res != null && mounted) {
+      if (!Geo.inKazakhstan(res.point)) {
+        showSnack(context, 'Тек Қазақстан ішінде', error: true);
+        return;
+      }
+      Navigator.of(context).pop(res);
+    }
   }
 
   @override
@@ -402,6 +421,21 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                 ),
               ),
             ),
+            InkWell(
+              onTap: _findOnMap,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map_outlined, size: 20, color: Gz.ink),
+                    SizedBox(width: 8),
+                    Text('Картадан табу',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
             const Divider(height: 1),
             Expanded(
               child: _results.isEmpty
@@ -427,7 +461,9 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                             const Icon(Icons.place_outlined, color: Gz.red),
                         title: Text(_results[i].name,
                             maxLines: 2, overflow: TextOverflow.ellipsis),
-                        onTap: () => Navigator.of(context).pop(_results[i]),
+                        onTap: () => Navigator.of(context).pop(
+                            PickedAddress(_results[i].name, _results[i].point,
+                                _results[i].city ?? widget.city)),
                       ),
                     ),
             ),

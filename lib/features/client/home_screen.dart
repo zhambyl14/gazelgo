@@ -14,7 +14,6 @@ import '../../shared/transitions.dart';
 import '../../shared/widgets.dart';
 import '../profile/profile_screen.dart';
 import 'address_picker.dart';
-import 'address_search_sheet.dart';
 import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
 import 'order_detail_screen.dart';
@@ -85,10 +84,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
   /// Автоматты анықталған «Қайдан» адресін сәл өзгертуге мүмкіндік береді.
   Future<void> _editFrom() async {
-    final res = await AddressSearchSheet.show(context,
-        title: 'Қайдан аламыз?',
-        initial: _from?.point,
-        initialQuery: _from?.address);
+    final res = await CityStreetSheet.show(context,
+        title: 'Қайдан аламыз?', initial: _from);
     if (res != null && mounted) setState(() => _from = res);
   }
 
