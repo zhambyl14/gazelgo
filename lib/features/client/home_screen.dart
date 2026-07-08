@@ -15,6 +15,7 @@ import '../../shared/widgets.dart';
 import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'address_search_sheet.dart';
+import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
 import 'order_detail_screen.dart';
 
@@ -92,8 +93,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   }
 
   Future<void> _pickTo() async {
-    final res = await AddressSearchSheet.show(context,
-        title: 'Қайда жеткіземіз?', initial: _to?.point);
+    final res = await CityStreetSheet.show(context,
+        title: 'Қайда жеткіземіз?', initial: _to);
     if (res != null) setState(() => _to = res);
   }
 

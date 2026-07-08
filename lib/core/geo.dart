@@ -56,17 +56,62 @@ class Geo {
           .timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return [];
       final list = jsonDecode(res.body) as List;
-      return list
-          .map((e) => GeoPlace(
-                name: (e['display_name'] as String).split(',').take(3).join(','),
-                point: LatLng(double.parse(e['lat'] as String),
-                    double.parse(e['lon'] as String)),
-                city: _cityOf(e['address'] as Map<String, dynamic>?),
-              ))
-          .toList();
+      return list.map((e) => _placeFrom(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return [];
     }
+  }
+
+  /// Көше/үй іздеу — таңдалған қала ішінде ғана (структуралық сұраныс),
+  /// сол себепті ұсыныстар жазып тұрған адреске сәйкес келеді.
+  static Future<List<GeoPlace>> searchStreet(
+      {required String city, required String street}) async {
+    final s = street.trim();
+    if (s.length < 2) return [];
+    try {
+      final uri = Uri.parse('https://nominatim.openstreetmap.org/search')
+          .replace(queryParameters: {
+        'street': s,
+        'city': city,
+        'country': 'Kazakhstan',
+        'format': 'jsonv2',
+        'countrycodes': 'kz',
+        'limit': '8',
+        'addressdetails': '1',
+        'accept-language': 'kk,ru',
+      });
+      final res = await http.get(uri, headers: _ua)
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return [];
+      final list = jsonDecode(res.body) as List;
+      return list.map((e) => _placeFrom(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Nominatim жауабынан «көше, үй нөмірі» түріндегі таза атау құрайды
+  /// (қала атауын, аудан/облысты жолға қоспайды).
+  static GeoPlace _placeFrom(Map<String, dynamic> e) {
+    final a = e['address'] as Map<String, dynamic>?;
+    String name;
+    if (a != null) {
+      final parts = [
+        a['road'] ?? a['pedestrian'] ?? a['neighbourhood'] ?? a['suburb'],
+        a['house_number'],
+      ].whereType<String>().toList();
+      name = parts.isNotEmpty
+          ? parts.join(', ')
+          : (e['display_name'] as String).split(',').take(2).join(',');
+    } else {
+      name = (e['display_name'] as String).split(',').take(2).join(',');
+    }
+    return GeoPlace(
+      name: name,
+      point: LatLng(double.parse(e['lat'] as String),
+          double.parse(e['lon'] as String)),
+      city: _cityOf(a),
+    );
   }
 
   static String? _cityOf(Map<String, dynamic>? a) {
@@ -139,12 +184,11 @@ class Geo {
         final parts = [
           a['road'] ?? a['pedestrian'] ?? a['neighbourhood'] ?? a['suburb'],
           a['house_number'],
-          a['city'] ?? a['town'] ?? a['village'] ?? a['county'],
         ].whereType<String>().toList();
         if (parts.isNotEmpty) return (parts.join(', '), city);
       }
       final dn = j['display_name'] as String?;
-      return (dn == null ? _coordLabel(p) : dn.split(',').take(3).join(','), city);
+      return (dn == null ? _coordLabel(p) : dn.split(',').take(2).join(','), city);
     } catch (_) {
       return (_coordLabel(p), null);
     }

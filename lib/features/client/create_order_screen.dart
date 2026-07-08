@@ -11,6 +11,7 @@ import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'address_picker.dart';
 import 'address_search_sheet.dart';
+import 'city_street_sheet.dart';
 import 'order_detail_screen.dart';
 
 /// Заказ құру: жүк детальдары, өлшем, режим (өз бағам / жедел).
@@ -69,10 +70,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Future<void> _editTo() async {
-    final res = await AddressSearchSheet.show(context,
-        title: 'Қайда жеткіземіз?',
-        initial: _to.point,
-        initialQuery: _to.address);
+    final res = await CityStreetSheet.show(context,
+        title: 'Қайда жеткіземіз?', initial: _to);
     if (res != null && mounted) {
       setState(() {
         _to = res;
