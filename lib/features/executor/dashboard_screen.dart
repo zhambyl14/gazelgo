@@ -202,11 +202,13 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              _OrdersLeftBanner(ordersLeft: s.ordersLeft, trialUntil: s.trialUntil),
+              if (s.trialActive)
+                _TrialBanner(trialUntil: s.trialUntil),
               const SizedBox(height: 4),
               Text(
-                'Бір тариф = 10 заказ. Әр қабылдаған заказыңыз лимиттен −1. '
-                'Лимит бітсе, тарифті қайта сатып аласыз.'
+                'Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
+                'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
+                'тариф жабылады, қайтадан сатып аласыз.'
                 '${s.isNight ? '\nҚазір түнгі баға (20:00–08:00).' : ''}',
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
@@ -216,10 +218,12 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 color: Gz.blue,
                 icon: Icons.local_shipping_outlined,
                 description:
-                    '10 заказ. Клиент бағасын өзі қояды — сіз келісесіз немесе '
-                    'өз бағаңызды ұсынасыз.',
+                    '1 ауысым · 10 заказға дейін. Клиент бағасын өзі қояды — сіз '
+                    'келісесіз немесе өз бағаңызды ұсынасыз.',
                 price: s.priceSimple,
                 active: s.simpleActive,
+                ordersLeft: s.simpleLeft,
+                until: s.simpleUntil,
                 onBuy: () => _buy(context, ref, 'simple', s.priceSimple),
               ),
               const SizedBox(height: 10),
@@ -228,15 +232,18 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 color: Gz.violet,
                 icon: Icons.workspace_premium_outlined,
                 description:
-                    '10 заказ. Жұмыс тәртібі Простоймен бірдей — клиент бағасын '
-                    'өзі қояды. Премиум деңгей.',
+                    '1 ауысым · 10 заказға дейін. Жұмыс тәртібі Простоймен '
+                    'бірдей — клиент бағасын өзі қояды. Премиум деңгей.',
                 price: s.priceVip,
                 active: s.vipActive,
+                ordersLeft: s.vipLeft,
+                until: s.vipUntil,
                 onBuy: () => _buy(context, ref, 'vip', s.priceVip),
               ),
               const SizedBox(height: 10),
               const Text(
-                'Екі тарифті қатар сатып алуға болады — заказ лимиттері қосылады.',
+                'Простой мен VIP — бөлек тарифтер. Әрқайсысының ауысымы да, '
+                '10 заказ лимиті де өз тұсында саналады.',
                 style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 24),
@@ -254,8 +261,8 @@ class ExecutorDashboardScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text(kind == 'simple' ? 'Қарапайым тариф' : 'VIP тариф'),
         content: Text(
-            '10 заказ пакеті: ${fmtT(price)}.\nБаланстан шешіледі. '
-            'Жалғастырамыз ба?'),
+            '1 ауысым (12 сағат), 10 заказға дейін: ${fmtT(price)}.\n'
+            'Баланстан шешіледі. Жалғастырамыз ба?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -270,8 +277,9 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     try {
       await Repo.buyTariff(kind);
       ref.invalidate(executorStatsStreamProvider);
+      ref.invalidate(executorFeedStreamProvider);
       if (context.mounted) {
-        showSnack(context, 'Тариф қосылды — 10 заказ дайын! 🚚');
+        showSnack(context, 'Тариф қосылды — ауысым басталды, 10 заказға дейін! 🚚');
       }
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -279,39 +287,35 @@ class ExecutorDashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Қалған заказ лимиті мен тегін триал баннері (§4/§7).
-class _OrdersLeftBanner extends StatelessWidget {
-  final int ordersLeft;
+/// Тегін триал баннері (§7): расталған соң 24 сағат шексіз Простой заказ.
+class _TrialBanner extends StatelessWidget {
   final DateTime? trialUntil;
-  const _OrdersLeftBanner({required this.ordersLeft, this.trialUntil});
+  const _TrialBanner({required this.trialUntil});
 
   @override
   Widget build(BuildContext context) {
-    final trialActive =
-        trialUntil != null && trialUntil!.isAfter(DateTime.now());
-    if (!trialActive && ordersLeft <= 0) return const SizedBox.shrink();
-    final green = trialActive || ordersLeft > 0;
+    if (trialUntil == null || !trialUntil!.isAfter(DateTime.now())) {
+      return const SizedBox.shrink();
+    }
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: (green ? Gz.green : Gz.red).withValues(alpha: 0.1),
+        color: Gz.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(trialActive ? Icons.card_giftcard : Icons.confirmation_number_outlined,
-              size: 18, color: green ? Gz.green : Gz.red),
+          const Icon(Icons.card_giftcard, size: 18, color: Gz.green),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              trialActive
-                  ? 'Тегін кезең белсенді — ${fmtTime(trialUntil)} дейін шексіз заказ'
-                  : 'Қалған заказ лимиті: $ordersLeft',
-              style: TextStyle(
+              'Тегін кезең белсенді — ${fmtTime(trialUntil)} дейін шексіз '
+              'Простой заказ',
+              style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12.5,
-                  color: green ? Gz.green : Gz.red),
+                  color: Gz.green),
             ),
           ),
         ],
@@ -327,6 +331,8 @@ class _TariffCard extends StatelessWidget {
   final String description;
   final int price;
   final bool active;
+  final int ordersLeft;
+  final DateTime? until;
   final VoidCallback onBuy;
 
   const _TariffCard({
@@ -336,6 +342,8 @@ class _TariffCard extends StatelessWidget {
     required this.description,
     required this.price,
     required this.active,
+    required this.ordersLeft,
+    required this.until,
     required this.onBuy,
   });
 
@@ -402,17 +410,51 @@ class _TariffCard extends StatelessWidget {
               style:
                   const TextStyle(color: Gz.textSecondary, fontSize: 13)),
           const SizedBox(height: 12),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(46),
+          // Белсенді болса — қайта сатуға болмайды (ауысым бітсін не 10 заказ
+          // бітсін). Оның орнына қалған заказ + ауысым соңы көрсетіледі.
+          if (active)
+            Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.confirmation_number_outlined,
+                      size: 18, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Қалған заказ: $ordersLeft / 10',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13.5,
+                                color: color)),
+                        if (until != null)
+                          Text('Ауысым ${fmtTime(until)} дейін',
+                              style: const TextStyle(
+                                  color: Gz.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(46),
+              ),
+              onPressed: onBuy,
+              child: Text('Сатып алу · ${fmtT(price)}'),
             ),
-            onPressed: onBuy,
-            child: Text(active
-                ? 'Тағы сатып алу · ${fmtT(price)}'
-                : 'Сатып алу · ${fmtT(price)}'),
-          ),
         ],
       ),
     );

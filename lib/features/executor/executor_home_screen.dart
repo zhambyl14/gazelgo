@@ -142,12 +142,12 @@ class _LineControlBar extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    Text('Сіз линияда емессіз',
+                    Text('Тарифіңіз жоқ',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 14.5)),
-                    Text('Заказ қабылдау үшін тарифке кіріңіз',
+                    Text('Заказ қабылдау үшін тариф сатып алыңыз',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -216,11 +216,12 @@ class _LineControlBar extends ConsumerWidget {
   }
 
   String _tariffLabel(ExecutorStats s) {
-    if (s.trialActive) return 'Тегін кезең · шексіз заказ';
     final parts = <String>[];
-    if (s.simpleActive) parts.add('Қарапайым');
-    if (s.vipActive) parts.add('VIP');
+    if (s.trialActive) parts.add('Тегін кезең');
+    // Әр тариф өз лимитімен бөлек көрсетіледі (қосылмайды).
+    if (s.simpleActive) parts.add('Простой ${s.simpleLeft}/10');
+    if (s.vipActive) parts.add('VIP ${s.vipLeft}/10');
     if (parts.isEmpty) return 'Тариф жоқ';
-    return '${parts.join(' · ')} · ${s.ordersLeft} заказ қалды';
+    return parts.join(' · ');
   }
 }

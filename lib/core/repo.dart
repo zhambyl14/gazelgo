@@ -849,3 +849,9 @@ final executorStatsProvider =
 /// Тікелей жаңарып отыратын статистика стримі.
 final executorStatsStreamProvider =
     StreamProvider<ExecutorStats>((ref) => Repo.executorStatsStream());
+
+/// Орындаушы лентасы (§5/§6). Riverpod стримді КЭШТЕЙДІ — сондықтан статистика
+/// әр 4 сек жаңарғанда бет қайта құрылса да, лента стримі қайта жазылмайды
+/// (әйтпесе әр рефреште ресетке түсіп, автообновление «жоғалатын»).
+final executorFeedStreamProvider =
+    StreamProvider<List<Order>>((ref) => Repo.executorFeedStream());

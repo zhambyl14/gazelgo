@@ -356,8 +356,10 @@ class SupportMessage {
 }
 
 // ---------- Executor stats (RPC executor_stats) ----------
-/// §4: тариф = 10 заказ пакеті. [ordersLeft] — сатып алынған тарифтердегі
-/// қалған заказ саны. [trialUntil] — тегін 24 сағаттық триал (§7) аяқталуы.
+/// Тариф = 1 ауысым (12 сағ), сол ауысымда макс 10 заказ. Простой мен VIP
+/// бөлек: [simpleLeft]/[vipLeft] — сол тарифтің АҒЫМДАҒЫ ауысымында қалған заказ,
+/// [simpleUntil]/[vipUntil] — сол ауысымның аяқталу уақыты. [trialUntil] — тегін
+/// 24 сағаттық триал (§7) аяқталуы.
 class ExecutorStats {
   final int balance;
   final int totalEarned;
@@ -367,6 +369,8 @@ class ExecutorStats {
   final int ordersLeft;
   final int simpleLeft;
   final int vipLeft;
+  final DateTime? simpleUntil;
+  final DateTime? vipUntil;
   final int? vehicleYear;
   final DateTime? trialUntil;
   final bool hasTariff;
@@ -387,6 +391,8 @@ class ExecutorStats {
         ordersLeft = _i(m['orders_left']),
         simpleLeft = _i(m['simple_left']),
         vipLeft = _i(m['vip_left']),
+        simpleUntil = _dt(m['simple_until']),
+        vipUntil = _dt(m['vip_until']),
         vehicleYear = m['vehicle_year'] == null ? null : _i(m['vehicle_year']),
         trialUntil = _dt(m['trial_until']),
         // жаңа RPC bool қайтарады; ескі RPC- те simple_until болса — соған сүйенеміз

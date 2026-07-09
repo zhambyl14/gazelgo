@@ -5,7 +5,9 @@
 --     бағалы жүк). Клиент таңдайды. Екеуі де bidding (клиент баға қояды).
 --   • Орындаушы Простой тарифпен — тек simple заказдарды, VIP тарифпен — тек vip
 --     заказдарды көреді (лента бөлек). Өлшемге қарамайды.
---   • Әр тарифтің лимиті ӨЗ ТҰСЫНДА (simple 10, vip 10 бөлек саналады).
+--   • ТАРИФ = 1 АУЫСЫМ (12 сағат: 08:00–20:00 не 20:00–08:00), сол ауысымда МАКС
+--     10 заказ. Ауысым бітсе НЕ 10 заказ алынса — тариф жабылады, қайта сатып алу.
+--     Простой мен VIP бөлек: әрқайсысының ауысымы да, 10 лимиті де өз тұсында.
 --   • VIP тарифті тек көлік жылы жеткілікті жаңа болса сатып алуға болады.
 --   • Адрес түзетулері (crowd-fix): клиент картадағы нүктенің атын түзетсе,
 --     сол маңдағы нүктелерге кейін сол ат ұсынылады (address_corrections).
@@ -36,6 +38,9 @@ on conflict (key) do update set value = excluded.value;
 -- ============================================================
 
 -- Осы санатта (simple/vip) белсенді тариф бар ма? Триал тек simple-ге жатады.
+-- Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00) ІШІНДЕ, әрі 10 заказ
+-- ЛИМИТІ бітпеген болса белсенді. Ауысым бітсе (expires_at өтсе) НЕ лимит бітсе
+-- (orders_left=0) — тариф жабылады, қайта сатып алу керек.
 create or replace function public.exec_has_kind(p_exec uuid, p_kind public.tariff_kind)
 returns boolean
 language sql stable
@@ -44,7 +49,8 @@ as $$
   select exists (
     select 1 from public.tariff_sessions
     where executor_id = p_exec
-      and ((not is_trial and kind = p_kind and coalesce(orders_left,0) > 0)
+      and ((not is_trial and kind = p_kind
+              and coalesce(orders_left,0) > 0 and expires_at > now())
         or (is_trial and p_kind = 'simple' and expires_at > now()))
   );
 $$;
@@ -127,7 +133,7 @@ begin
   end if;
   select id into v_id from public.tariff_sessions
    where executor_id = p_exec and not is_trial and kind = p_kind
-     and coalesce(orders_left,0) > 0
+     and coalesce(orders_left,0) > 0 and expires_at > now()
    order by orders_left asc, started_at asc
    limit 1;
   if v_id is not null then
@@ -159,6 +165,14 @@ begin
   if not found then raise exception 'NOT_EXECUTOR'; end if;
   if ep.status <> 'approved' then raise exception 'NOT_APPROVED'; end if;
 
+  -- Осы санатта белсенді ауысым тұрса — қайта сатып алуға болмайды
+  -- (ауысым бітсін не 10 заказ бітсін, содан кейін ғана жаңасы).
+  if exists (select 1 from public.tariff_sessions
+             where executor_id = v_uid and not is_trial and kind = v_kind
+               and coalesce(orders_left,0) > 0 and expires_at > now()) then
+    raise exception 'ALREADY_ACTIVE';
+  end if;
+
   -- VIP: көлік жылы жеткілікті жаңа болуы керек
   if v_kind = 'vip' then
     select coalesce((value->>'vip_min_year')::int, 2010) into v_min_year
@@ -176,16 +190,19 @@ begin
 
   insert into public.balance_txns (executor_id, amount, type, note)
   values (v_uid, -v_price, 'tariff_fee',
-          case when v_kind = 'simple' then 'Қарапайым тариф (10 заказ)'
-               else 'VIP тариф (10 заказ)' end);
+          case when v_kind = 'simple' then 'Қарапайым тариф (1 ауысым)'
+               else 'VIP тариф (1 ауысым)' end);
 
+  -- Ауысым соңында бітеді (08:00 не 20:00), әрі 10 заказ лимиті бар.
   insert into public.tariff_sessions
     (executor_id, kind, fee, is_night, is_trial, orders_left, started_at, expires_at)
   values
-    (v_uid, v_kind, v_price, public.is_night_now(), false, 10, now(), now() + interval '3650 days')
+    (v_uid, v_kind, v_price, public.is_night_now(), false, 10, now(),
+     public.current_window_end())
   returning id into v_session;
 
-  return jsonb_build_object('session_id', v_session, 'fee', v_price, 'orders_left', 10);
+  return jsonb_build_object('session_id', v_session, 'fee', v_price,
+                            'orders_left', 10, 'expires_at', public.current_window_end());
 end;
 $$;
 
@@ -397,6 +414,8 @@ declare
   v_month bigint;
   v_simple_left bigint;
   v_vip_left bigint;
+  v_simple_until timestamptz;
+  v_vip_until timestamptz;
   v_trial timestamptz;
 begin
   if v_uid is null then raise exception 'AUTH'; end if;
@@ -411,10 +430,15 @@ begin
   select coalesce(sum(amount),0) into v_month from public.earnings
    where executor_id = v_uid and created_at >= v_month_start;
 
-  select coalesce(sum(orders_left),0) into v_simple_left from public.tariff_sessions
-   where executor_id = v_uid and kind = 'simple' and not is_trial and coalesce(orders_left,0) > 0;
-  select coalesce(sum(orders_left),0) into v_vip_left from public.tariff_sessions
-   where executor_id = v_uid and kind = 'vip' and not is_trial and coalesce(orders_left,0) > 0;
+  -- Тек АҒЫМДАҒЫ ауысымдағы (мерзімі бітпеген) сессиялар есептеледі.
+  select coalesce(sum(orders_left),0), max(expires_at)
+    into v_simple_left, v_simple_until from public.tariff_sessions
+   where executor_id = v_uid and kind = 'simple' and not is_trial
+     and coalesce(orders_left,0) > 0 and expires_at > now();
+  select coalesce(sum(orders_left),0), max(expires_at)
+    into v_vip_left, v_vip_until from public.tariff_sessions
+   where executor_id = v_uid and kind = 'vip' and not is_trial
+     and coalesce(orders_left,0) > 0 and expires_at > now();
   select max(expires_at) into v_trial from public.tariff_sessions
    where executor_id = v_uid and is_trial and expires_at > now();
 
@@ -427,6 +451,8 @@ begin
     'orders_left', v_simple_left + v_vip_left,
     'simple_left', v_simple_left,
     'vip_left', v_vip_left,
+    'simple_until', v_simple_until,
+    'vip_until', v_vip_until,
     'trial_until', v_trial,
     'has_tariff', public.exec_has_kind(v_uid,'simple') or public.exec_has_kind(v_uid,'vip'),
     'simple_active', public.exec_has_kind(v_uid,'simple'),

@@ -17,18 +17,19 @@ class ExecutorFeedBody extends ConsumerStatefulWidget {
 }
 
 class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
-  int _streamGen = 0; // pull-to-refresh кезінде стримді қайта құру
-
   Future<void> _manualRefresh() async {
     ref.invalidate(executorStatsStreamProvider);
+    ref.invalidate(executorFeedStreamProvider);
     ref.invalidate(myExecutorProfileProvider);
-    setState(() => _streamGen++);
     await Future.delayed(const Duration(milliseconds: 600));
   }
 
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
+    // Лента стримі бөлек кэштелген провайдерден — статистика жаңарса да
+    // қайта жазылмайды (автообновление үзілмейді).
+    final feedAsync = ref.watch(executorFeedStreamProvider);
 
     return statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -48,12 +49,23 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                     title: 'Тарифіңіз жоқ',
                     subtitle:
                         'Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
-                        '(Простой немесе VIP — 10 заказ).',
+                        '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).',
                   ),
                 ],
               ),
             );
           }
+          final all = feedAsync.value ?? const <Order>[];
+          final simple = all
+              .where((o) => o.tariff == 'simple')
+              .toList()
+              .reversed
+              .toList();
+          final vip = all
+              .where((o) => o.tariff == 'vip')
+              .toList()
+              .reversed
+              .toList();
           // §: Простой мен VIP лентасы бөлек табтарда
           return DefaultTabController(
             length: 2,
@@ -69,33 +81,11 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                   ],
                 ),
                 Expanded(
-                  child: StreamBuilder<List<Order>>(
-                    key: ValueKey('feed$_streamGen'),
-                    stream: Repo.executorFeedStream(),
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting &&
-                          !snap.hasData) {
-                        return const Center(
-                            child: CircularProgressIndicator());
-                      }
-                      final all = snap.data ?? [];
-                      final simple = all
-                          .where((o) => o.tariff == 'simple')
-                          .toList()
-                          .reversed
-                          .toList();
-                      final vip = all
-                          .where((o) => o.tariff == 'vip')
-                          .toList()
-                          .reversed
-                          .toList();
-                      return TabBarView(
-                        children: [
-                          _feedList(simple, stats.simpleActive, 'Простой'),
-                          _feedList(vip, stats.vipActive, 'VIP'),
-                        ],
-                      );
-                    },
+                  child: TabBarView(
+                    children: [
+                      _feedList(simple, stats.simpleActive, 'Простой'),
+                      _feedList(vip, stats.vipActive, 'VIP'),
+                    ],
                   ),
                 ),
               ],
