@@ -662,6 +662,30 @@ class Repo {
     });
   }
 
+  /// Орындаушының белсенді заказдары (accepted/arrived/loading/in_transit).
+  /// §5 межгород маршрут-стектеу арқылы бір мезгілде 2 заказ болуы мүмкін —
+  /// сол себепті `executor_profiles.busy_order_id` (жалғыз өріс) емес,
+  /// тікелей `orders` кестесінен тізім ретінде аламыз.
+  static Stream<List<Order>> myActiveExecutorOrdersStream() {
+    final id = uid;
+    if (id == null) return const Stream.empty();
+    return _poll(() async {
+      final rows = await c
+          .from('orders')
+          .select()
+          .eq('executor_id', id)
+          .inFilter('status', const [
+        'accepted',
+        'arrived',
+        'loading',
+        'in_transit'
+      ]).order('accepted_at');
+      return (rows as List)
+          .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    });
+  }
+
   static Stream<Order?> orderStream(String orderId) => _poll(() async {
         final m = await c
             .from('orders')

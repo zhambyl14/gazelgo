@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/notify.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/widgets.dart';
 import '../profile/profile_screen.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
@@ -151,20 +152,61 @@ class _ExecutorShellState extends State<ExecutorShell> {
   }
 }
 
-/// Белсенді заказ бар кезде көрінетін баннер.
+/// Белсенді заказ(дар) бар кезде көрінетін баннер.
+///
+/// §5 межгород маршрут-стектеу арқылы орындаушыда бір мезгілде 2 белсенді
+/// заказ болуы мүмкін (`executor_profiles.busy_order_id` тек біреуін ғана
+/// сақтайды) — сол себепті тікелей `orders` тізімін қолданамыз: біреу
+/// болса дереу ашамыз, екеу болса таңдау терезесін көрсетеміз.
 class _BusyOrderBanner extends StatelessWidget {
   const _BusyOrderBanner();
 
+  void _open(BuildContext context, List<Order> active) {
+    if (active.length == 1) {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ActiveOrderScreen(orderId: active.first.id)));
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Белсенді заказдар',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              const SizedBox(height: 12),
+              for (final o in active) ...[
+                OrderCard(
+                  order: o,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ActiveOrderScreen(orderId: o.id)));
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<ExecutorProfile?>(
-      stream: Repo.myExecutorProfileStream(),
+    return StreamBuilder<List<Order>>(
+      stream: Repo.myActiveExecutorOrdersStream(),
       builder: (context, snap) {
-        final busyId = snap.data?.busyOrderId;
-        if (busyId == null) return const SizedBox.shrink();
+        final active = snap.data ?? const <Order>[];
+        if (active.isEmpty) return const SizedBox.shrink();
         return GestureDetector(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ActiveOrderScreen(orderId: busyId))),
+          onTap: () => _open(context, active),
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -173,23 +215,39 @@ class _BusyOrderBanner extends StatelessWidget {
             ),
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: const SafeArea(
+            child: SafeArea(
               top: false,
               bottom: false,
               child: Row(
                 children: [
-                  Icon(Icons.local_shipping, color: Colors.white, size: 20),
-                  SizedBox(width: 10),
+                  const Icon(Icons.local_shipping,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Белсенді заказ бар — ашу үшін басыңыз',
-                      style: TextStyle(
+                      active.length > 1
+                          ? '${active.length} белсенді заказ бар — ашу үшін басыңыз'
+                          : 'Белсенді заказ бар — ашу үшін басыңыз',
+                      style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 14),
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: Colors.white),
+                  if (active.length > 1)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('+${active.length - 1}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
+                    ),
+                  const Icon(Icons.chevron_right, color: Colors.white),
                 ],
               ),
             ),

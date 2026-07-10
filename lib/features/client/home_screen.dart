@@ -16,6 +16,7 @@ import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
+import 'my_orders_screen.dart';
 import 'order_detail_screen.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
@@ -422,7 +423,9 @@ class _ActiveOrdersBanner extends StatelessWidget {
         final o = active.first;
         return GestureDetector(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => OrderDetailScreen(orderId: o.id))),
+              builder: (_) => active.length > 1
+                  ? const MyOrdersScreen()
+                  : OrderDetailScreen(orderId: o.id))),
           child: Container(
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             padding:
