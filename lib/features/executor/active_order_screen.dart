@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -190,39 +188,24 @@ class ActiveOrderScreen extends StatelessWidget {
     );
   }
 
-  /// Орнатылған навигация қосымшасын (Google Maps) тікелей турлы-баурай
-  /// («navigation mode») режимінде ашуға тырысады; орнатылмаса не платформа
-  /// қолдамаса — веб-бағыттар бетіне (кез келген құрылғыда жұмыс істейді)
-  /// қайтады.
+  /// 2GIS қосымшасын тікелей турлы-баурай («routeSearch») режимінде ашуға
+  /// тырысады (ҚР/ТМД-да ең көп қолданылатын навигация — сол себепті Google
+  /// Maps орнына нақ осы таңдалды); орнатылмаса не платформа қолдамаса —
+  /// 2GIS веб-бағыттар бетіне (кез келген құрылғыда жұмыс істейді) қайтады.
   Future<void> _navigate(double lat, double lng) async {
     if (!kIsWeb) {
       try {
-        if (Platform.isAndroid) {
-          final nav = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
-          if (await canLaunchUrl(nav)) {
-            await launchUrl(nav);
-            return;
-          }
-        } else if (Platform.isIOS) {
-          final gmapsIos = Uri.parse(
-              'comgooglemaps://?daddr=$lat,$lng&directionsmode=driving');
-          if (await canLaunchUrl(gmapsIos)) {
-            await launchUrl(gmapsIos);
-            return;
-          }
-          final appleMaps =
-              Uri.parse('https://maps.apple.com/?daddr=$lat,$lng&dirflg=d');
-          if (await canLaunchUrl(appleMaps)) {
-            await launchUrl(appleMaps, mode: LaunchMode.externalApplication);
-            return;
-          }
+        final dgis = Uri.parse('dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat');
+        if (await canLaunchUrl(dgis)) {
+          await launchUrl(dgis);
+          return;
         }
       } catch (_) {
         // белгісіз платформа/рұқсат қатесі — веб-нұсқаға түсеміз
       }
     }
     launchUrl(
-      Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'),
+      Uri.parse('https://2gis.kz/routeSearch/rsType/car/to/$lng,$lat'),
       mode: LaunchMode.externalApplication,
     );
   }

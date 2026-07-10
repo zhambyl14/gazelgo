@@ -9,6 +9,7 @@ import 'core/notify.dart';
 import 'core/push.dart';
 import 'core/repo.dart';
 import 'core/theme.dart';
+import 'features/auth/blocked_screen.dart';
 import 'features/auth/executor_apply_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
@@ -114,6 +115,11 @@ class _RoleRouter extends ConsumerWidget {
       data: (p) {
         if (p == null) {
           return _RetryScreen(onRetry: () => ref.invalidate(myProfileProvider));
+        }
+        // Сенім деңгейі бойынша бұғатталған аккаунт (0024) — модератордан
+        // басқа ешкім қосымшаға мүлдем кіре алмайды.
+        if (p.isBlocked && p.role != 'moderator') {
+          return BlockedScreen(profile: p);
         }
         switch (p.role) {
           case 'moderator':

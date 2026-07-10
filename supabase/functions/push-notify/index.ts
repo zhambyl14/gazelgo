@@ -1,7 +1,9 @@
 // GazelGo · push-notify edge function
-// Postgres триггерден (pg_net, 0019 миграциясы) шақырылады: жаңа/қайта
-// жіберілген газелист өтінімі туралы БАРЛЫҚ модераторға FCM push жібереді —
-// қосымша толық жабық болса да жеткізіледі.
+// Postgres триггерден (pg_net, `send_push()` RPC, 0025 миграциясы)
+// шақырылады: title/body/data + міндетті емес target_user_ids жібереді.
+// target_user_ids болмаса — БАРЛЫҚ модераторға broadcast (0019-дағы ескі
+// «жаңа өтінім» тәртібімен үйлесімді), болса — тек сол пайдаланушыларға
+// (мыс. қолдау чатындағы жеке жауап). Қосымша толық жабық болса да жеткізіледі.
 //
 // Verify JWT = OFF (pg_net JWT жібермейді) — орнына `x-push-secret` тексеріледі
 // (PUSH_TRIGGER_SECRET). Google-ге FCM HTTP v1 API арқылы шығамыз: service
@@ -20,11 +22,19 @@ Deno.serve(async (req: Request) => {
     return json({ error: "FORBIDDEN" }, 403);
   }
 
-  let body: { applicant_name?: string; is_resubmit?: boolean };
+  let body: {
+    title?: string;
+    body?: string;
+    data?: Record<string, string>;
+    target_user_ids?: string[] | null;
+  };
   try {
     body = await req.json();
   } catch {
     body = {};
+  }
+  if (!body.title || !body.body) {
+    return json({ error: "BAD_INPUT" }, 400);
   }
 
   const admin = createClient(
@@ -32,18 +42,26 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data: mods, error: modError } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("role", "moderator");
-  if (modError) return json({ error: "SERVER_ERROR" }, 500);
-  const modIds = (mods ?? []).map((m) => m.id as string);
-  if (modIds.length === 0) return json({ ok: true, sent: 0 }, 200);
+  let targetIds = Array.isArray(body.target_user_ids)
+    ? body.target_user_ids.filter((id): id is string => typeof id === "string")
+    : [];
+
+  // target_user_ids жіберілмесе — әдепкі бойынша барлық модератор (ескі
+  // «жаңа өтінім» broadcast тәртібі).
+  if (targetIds.length === 0) {
+    const { data: mods, error: modError } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("role", "moderator");
+    if (modError) return json({ error: "SERVER_ERROR" }, 500);
+    targetIds = (mods ?? []).map((m) => m.id as string);
+  }
+  if (targetIds.length === 0) return json({ ok: true, sent: 0 }, 200);
 
   const { data: tokenRows, error: tokError } = await admin
     .from("push_tokens")
     .select("token")
-    .in("user_id", modIds);
+    .in("user_id", targetIds);
   if (tokError) return json({ error: "SERVER_ERROR" }, 500);
   const tokens = [...new Set((tokenRows ?? []).map((t) => t.token as string))];
   if (tokens.length === 0) return json({ ok: true, sent: 0 }, 200);
@@ -57,12 +75,9 @@ Deno.serve(async (req: Request) => {
   }
   const projectId = Deno.env.get("FCM_PROJECT_ID")!;
 
-  const title = body.is_resubmit
-    ? "Қайта жіберілген өтінім"
-    : "Жаңа газелист өтінімі";
-  const bodyText = body.applicant_name
-    ? `${body.applicant_name} тіркелу өтінімін жіберді — модерация күтуде.`
-    : "Жаңа өтінім модерация күтуде.";
+  const title = body.title;
+  const bodyText = body.body;
+  const data = body.data ?? {};
 
   let sent = 0;
   const staleTokens: string[] = [];
@@ -80,7 +95,7 @@ Deno.serve(async (req: Request) => {
             message: {
               token,
               notification: { title, body: bodyText },
-              data: { type: "new_application" },
+              data,
               android: { priority: "high" },
               apns: { headers: { "apns-priority": "10" } },
             },

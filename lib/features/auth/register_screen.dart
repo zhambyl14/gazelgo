@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/name_guard.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -139,9 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         hintText: 'Аты-жөніңіз',
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
-                      validator: (v) => (v == null || v.trim().length < 2)
-                          ? 'Атыңызды жазыңыз'
-                          : null,
+                      validator: (v) => NameGuard.validate(v ?? ''),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

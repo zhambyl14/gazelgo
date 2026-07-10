@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/models.dart';
+import '../../core/name_guard.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -138,10 +139,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
-    if (ok == true) {
-      await Repo.updateProfile(fullName: name.text, phone: phone.text);
-      ref.invalidate(myProfileProvider);
+    if (ok != true) return;
+    final nameError = NameGuard.validate(name.text);
+    if (nameError != null) {
+      if (mounted) showSnack(context, nameError, error: true);
+      return;
     }
+    await Repo.updateProfile(fullName: name.text, phone: phone.text);
+    ref.invalidate(myProfileProvider);
   }
 
   @override
@@ -374,14 +379,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.delete_forever_outlined,
-                          color: Gz.red),
-                      title: const Text('Аккаунтты өшіру',
-                          style: TextStyle(
-                              color: Gz.red, fontWeight: FontWeight.w700)),
-                      subtitle: const Text('Барлық деректер біржола жойылады',
-                          style: TextStyle(fontSize: 12)),
-                      onTap: () => _deleteAccount(context),
+                      leading: const Icon(Icons.manage_accounts_outlined,
+                          color: Gz.textSecondary),
+                      title: const Text('Есептік жазба баптаулары',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => _AccountSettingsScreen(
+                              onDelete: _deleteAccount))),
                     ),
                   ],
                 ),
@@ -394,6 +399,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Есептік жазба баптаулары — «Аккаунтты өшіру» әдейі негізгі профиль
+/// бетінен осында жасырылған (кездейсоқ басудан қорғау үшін), бірақ
+/// табылмайтындай терең емес — «Профиль → Есептік жазба баптаулары».
+class _AccountSettingsScreen extends StatelessWidget {
+  final void Function(BuildContext) onDelete;
+  const _AccountSettingsScreen({required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Есептік жазба баптаулары')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: SectionCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.delete_forever_outlined, color: Gz.red),
+              title: const Text('Аккаунтты өшіру',
+                  style:
+                      TextStyle(color: Gz.red, fontWeight: FontWeight.w700)),
+              subtitle: const Text('Барлық деректер біржола жойылады',
+                  style: TextStyle(fontSize: 12)),
+              onTap: () => onDelete(context),
+            ),
+          ),
+        ),
       ),
     );
   }

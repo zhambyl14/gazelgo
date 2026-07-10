@@ -59,12 +59,13 @@ begin
   select * into o from public.orders where id = p_order;
   if not found then raise exception 'NOT_FOUND'; end if;
 
-  if o.client_id = v_uid then
-    v_role := 'client';
-    v_reported := o.executor_id;
-  elsif o.executor_id = v_uid then
+  -- Тек орындаушы хабарлай алады (жүкті нақты көретін тарап сол; клиент
+  -- өз жүгін өзі «күдікті» деп белгілей алмайды — UI-де де батырма алынды).
+  if o.executor_id = v_uid then
     v_role := 'executor';
     v_reported := o.client_id;
+  elsif o.client_id = v_uid then
+    raise exception 'FORBIDDEN';
   else
     raise exception 'FORBIDDEN';
   end if;
@@ -91,7 +92,7 @@ begin
   end if;
 
   v_body := '🚨 КҮДІКТІ ЖҮК ТУРАЛЫ ХАБАРЛАМА — заказ #' || left(p_order::text, 8)
-    || E'\nХабарлаған: ' || (case when v_role = 'client' then 'Клиент' else 'Газелист' end)
+    || E'\nХабарлаған: Газелист'
     || E'\nЖүк сипаттамасы: ' || coalesce(nullif(o.cargo_desc, ''), '(жазылмаған)')
     || (case when v_reason <> '' then E'\nСебебі: ' || v_reason else '' end)
     || (case when v_new_score is not null
