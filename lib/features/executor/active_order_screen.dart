@@ -93,26 +93,9 @@ class ActiveOrderScreen extends StatelessWidget {
                   height: 170,
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _navigate(o.fromLat, o.fromLng),
-                        icon: const Icon(Icons.navigation_outlined, size: 18),
-                        label: const Text('A навигация',
-                            style: TextStyle(fontSize: 13)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _navigate(o.toLat, o.toLng),
-                        icon: const Icon(Icons.navigation, size: 18),
-                        label: const Text('B навигация',
-                            style: TextStyle(fontSize: 13)),
-                      ),
-                    ),
-                  ],
+                _NavToggle(
+                  onA: () => _navigate(o.fromLat, o.fromLng),
+                  onB: () => _navigate(o.toLat, o.toLng),
                 ),
                 const SizedBox(height: 10),
                 SectionCard(
@@ -243,6 +226,104 @@ class ActiveOrderScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
+  }
+}
+
+/// A/B навигация — бір тегіс пиллге біріктірілген, басқанда «тірі» жауап
+/// беретін (кішірейіп, түсі жанатын) қос жартылы. Бұрын екі бөлек
+/// OutlinedButton қатар тұрып, жабыспаған/қосылмаған көрінетін.
+class _NavToggle extends StatelessWidget {
+  final VoidCallback onA;
+  final VoidCallback onB;
+  const _NavToggle({required this.onA, required this.onB});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Gz.bg,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Gz.border, width: 1.4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _NavHalf(
+                icon: Icons.trip_origin,
+                color: Gz.green,
+                label: 'A навигация',
+                onTap: onA),
+          ),
+          Container(width: 1.4, color: Gz.border),
+          Expanded(
+            child: _NavHalf(
+                icon: Icons.location_on,
+                color: Gz.red,
+                label: 'B навигация',
+                onTap: onB),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavHalf extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+  const _NavHalf({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavHalf> createState() => _NavHalfState();
+}
+
+class _NavHalfState extends State<_NavHalf> {
+  bool _pressed = false;
+  void _setPressed(bool v) => setState(() => _pressed = v);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _setPressed(true),
+      onTapUp: (_) => _setPressed(false),
+      onTapCancel: () => _setPressed(false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 130),
+        curve: Curves.easeOut,
+        color: _pressed ? widget.color.withValues(alpha: 0.1) : Colors.transparent,
+        child: Center(
+          child: AnimatedScale(
+            scale: _pressed ? 0.9 : 1,
+            duration: const Duration(milliseconds: 130),
+            curve: Curves.easeOut,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 17, color: widget.color),
+                const SizedBox(width: 7),
+                Text(widget.label,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: widget.color)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

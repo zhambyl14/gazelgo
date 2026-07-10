@@ -256,24 +256,19 @@ class ExecutorDashboardScreen extends ConsumerWidget {
 
   Future<void> _buy(
       BuildContext context, WidgetRef ref, String kind, int price) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(kind == 'simple' ? 'Қарапайым тариф' : 'VIP тариф'),
-        content: Text(
-            '1 ауысым (12 сағат), 10 заказға дейін: ${fmtT(price)}.\n'
-            'Баланстан шешіледі. Жалғастырамыз ба?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Жоқ')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Иә, сатып аламын')),
-        ],
-      ),
+    final isVip = kind == 'vip';
+    final ok = await confirmDialog(
+      context,
+      title: isVip ? 'VIP тариф' : 'Қарапайым тариф',
+      message: '1 ауысым (12 сағат), 10 заказға дейін: ${fmtT(price)}.\n'
+          'Баланстан шешіледі. Жалғастырамыз ба?',
+      confirmLabel: 'Иә, сатып аламын',
+      confirmColor: isVip ? Gz.violet : Gz.blue,
+      icon: isVip
+          ? Icons.workspace_premium_outlined
+          : Icons.local_shipping_outlined,
     );
-    if (ok != true) return;
+    if (!ok || !context.mounted) return;
     try {
       await Repo.buyTariff(kind);
       ref.invalidate(executorStatsStreamProvider);

@@ -125,6 +125,23 @@ class Gz {
         ),
         shadowColor: const Color(0x0D0F1720),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        shadowColor: const Color(0x330F1720),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: const TextStyle(
+            color: ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            fontFamily: fontFamily),
+        contentTextStyle: const TextStyle(
+            color: textSecondary,
+            fontSize: 13.5,
+            height: 1.5,
+            fontFamily: fontFamily),
+      ),
       dividerTheme: const DividerThemeData(color: border, thickness: 1),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

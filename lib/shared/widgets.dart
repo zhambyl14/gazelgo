@@ -761,33 +761,116 @@ class GazelGoHero extends StatelessWidget {
   }
 }
 
+/// Екі батырмалы стильделген растау диалогы (AlertDialog-тың орнына).
+///
+/// AlertDialog-тың дефолт `actions` жолағы (OverflowBar) біздің 54px-тік
+/// FilledButton-мен тар экранда сыймай, батырмаларды бір-бірінің астына
+/// созылып кетуге мәжбүрлейтін — сол себепті батырмаларды өзіміз [Row] +
+/// [Expanded] арқылы, әрдайым бір қатарда, тегіс етіп саламыз.
+///
+/// [emphasizeCancel] — қайтарылмайтын әрекеттің СОҢҒЫ растауында қауіпті
+/// түймені басым (қызыл, толтырылған) емес, қайта «бас тарту» түймесін басым
+/// қылу үшін (мыс. аккаунтты өшірудің 2-қадамы).
+Future<bool> confirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String cancelLabel = 'Жоқ',
+  required String confirmLabel,
+  Color confirmColor = Gz.ink,
+  IconData? icon,
+  bool emphasizeCancel = false,
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 26, 22, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (icon != null) ...[
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: confirmColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: confirmColor, size: 26),
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(message,
+                style: const TextStyle(
+                    color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: emphasizeCancel
+                      ? FilledButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(cancelLabel),
+                        )
+                      : OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(cancelLabel),
+                        ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: emphasizeCancel
+                      ? OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                              foregroundColor: confirmColor,
+                              side: BorderSide(
+                                  color: confirmColor.withValues(alpha: 0.4),
+                                  width: 1.4)),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(confirmLabel),
+                        )
+                      : FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: confirmColor,
+                              foregroundColor: Colors.white,
+                              shadowColor:
+                                  confirmColor.withValues(alpha: 0.35)),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(confirmLabel),
+                        ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  return ok == true;
+}
+
 /// Растаумен шығу: диалог көрсетеді, келіссе — экран стегін түбірге дейін
 /// тазалап (әйтпесе үстінде тұрған push-телген экрандар көрінуін жалғастыра
 /// береді, өйткені AuthGate тек өз route-ы ішінде қайта құрылады), содан
 /// соң нақты signOut жасайды. Барлық «Шығу» батырмалары осыны қолдануы керек.
 Future<void> confirmSignOut(BuildContext context) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Шығасыз ба?'),
-      content: const Text('Аккаунттан шығуға сенімдісіз бе?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Жоқ'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: Gz.red,
-              foregroundColor: Colors.white,
-              shadowColor: const Color(0x59DC2626)),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Шығу'),
-        ),
-      ],
-    ),
+  final ok = await confirmDialog(
+    context,
+    title: 'Шығасыз ба?',
+    message: 'Аккаунттан шығуға сенімдісіз бе?',
+    confirmLabel: 'Шығу',
+    confirmColor: Gz.red,
+    icon: Icons.logout_outlined,
   );
-  if (ok != true || !context.mounted) return;
+  if (!ok || !context.mounted) return;
   Navigator.of(context).popUntil((r) => r.isFirst);
   await Repo.signOut();
 }

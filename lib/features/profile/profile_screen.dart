@@ -42,50 +42,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   /// Аккаунтты біржола өшіру — екі сатылы растау (кездейсоқ басудан қорғау).
   Future<void> _deleteAccount(BuildContext context) async {
-    final first = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Аккаунтты өшіру'),
-        content: const Text(
-            'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
-            'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. '
-            'Бұл әрекетті кері қайтару МҮМКІН ЕМЕС.\n\n'
-            'Белсенді заказыңыз болса, алдымен оны аяқтаңыз.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Болдырмау')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Gz.red,
-                foregroundColor: Colors.white,
-                shadowColor: const Color(0x59DC2626)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Жалғастыру'),
-          ),
-        ],
-      ),
+    final first = await confirmDialog(
+      context,
+      title: 'Аккаунтты өшіру',
+      message: 'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
+          'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. Бұл '
+          'әрекетті кері қайтару МҮМКІН ЕМЕС.\n\nБелсенді заказыңыз болса, '
+          'алдымен оны аяқтаңыз.',
+      cancelLabel: 'Болдырмау',
+      confirmLabel: 'Жалғастыру',
+      confirmColor: Gz.red,
+      icon: Icons.delete_forever_outlined,
     );
-    if (first != true || !context.mounted) return;
+    if (!first || !context.mounted) return;
 
-    final second = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Соңғы растау'),
-        content: const Text('Шынымен де аккаунтты біржола өшіресіз бе?'),
-        actions: [
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Жоқ, қалдырамын')),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Gz.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Иә, өшіру'),
-          ),
-        ],
-      ),
+    // Соңғы қадам — қауіпті түйме әдейі БАСЫМ ЕМЕС (кездейсоқ басудан қорғау)
+    final second = await confirmDialog(
+      context,
+      title: 'Соңғы растау',
+      message: 'Шынымен де аккаунтты біржола өшіресіз бе?',
+      cancelLabel: 'Жоқ, қалдырамын',
+      confirmLabel: 'Иә, өшіру',
+      confirmColor: Gz.red,
+      icon: Icons.warning_amber_rounded,
+      emphasizeCancel: true,
     );
-    if (second != true || !context.mounted) return;
+    if (!second || !context.mounted) return;
 
     try {
       await Repo.deleteAccount();
