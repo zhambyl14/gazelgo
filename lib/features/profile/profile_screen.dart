@@ -254,7 +254,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: const Text('Шығу',
                       style: TextStyle(
                           color: Gz.red, fontWeight: FontWeight.w700)),
-                  onTap: Repo.signOut,
+                  onTap: () => confirmSignOut(context),
                 ),
               ),
               const SizedBox(height: 20),

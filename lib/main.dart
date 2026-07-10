@@ -192,7 +192,7 @@ class _RetryScreen extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => Repo.signOut(),
+                onPressed: () => confirmSignOut(context),
                 child: const Text('Шығу'),
               ),
             ],

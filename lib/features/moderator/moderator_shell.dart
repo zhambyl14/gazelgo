@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/repo.dart';
 import '../../shared/widgets.dart';
 import 'applications_screen.dart';
 import 'executors_screen.dart';
@@ -28,7 +27,7 @@ class ModeratorShell extends StatelessWidget {
           actions: [
             IconButton(
               tooltip: 'Шығу',
-              onPressed: Repo.signOut,
+              onPressed: () => confirmSignOut(context),
               icon: const Icon(Icons.logout),
             ),
           ],

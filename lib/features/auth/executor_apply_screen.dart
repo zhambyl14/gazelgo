@@ -288,7 +288,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           if (!resubmit)
             IconButton(
               tooltip: 'Шығу',
-              onPressed: Repo.signOut,
+              onPressed: () => confirmSignOut(context),
               icon: const Icon(Icons.logout),
             ),
         ],

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/widgets.dart';
 import 'executor_apply_screen.dart';
 
 /// Орындаушы өтінімінің күйі: қаралуда / қабылданбады / бұғатталды.
@@ -49,7 +50,7 @@ class PendingScreen extends ConsumerWidget {
           ),
           IconButton(
             tooltip: 'Шығу',
-            onPressed: Repo.signOut,
+            onPressed: () => confirmSignOut(context),
             icon: const Icon(Icons.logout),
           ),
         ],

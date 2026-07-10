@@ -761,6 +761,37 @@ class GazelGoHero extends StatelessWidget {
   }
 }
 
+/// Растаумен шығу: диалог көрсетеді, келіссе — экран стегін түбірге дейін
+/// тазалап (әйтпесе үстінде тұрған push-телген экрандар көрінуін жалғастыра
+/// береді, өйткені AuthGate тек өз route-ы ішінде қайта құрылады), содан
+/// соң нақты signOut жасайды. Барлық «Шығу» батырмалары осыны қолдануы керек.
+Future<void> confirmSignOut(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Шығасыз ба?'),
+      content: const Text('Аккаунттан шығуға сенімдісіз бе?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Жоқ'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: Gz.red,
+              foregroundColor: Colors.white,
+              shadowColor: const Color(0x59DC2626)),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Шығу'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  Navigator.of(context).popUntil((r) => r.isFirst);
+  await Repo.signOut();
+}
+
 /// GazelGo логотипі (мәтіндік).
 class GazelGoLogo extends StatelessWidget {
   final double size;
