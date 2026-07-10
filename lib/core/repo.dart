@@ -35,6 +35,31 @@ class Repo {
     return Map<String, dynamic>.from(res as Map);
   }
 
+  /// Құпиясөзді Telegram растауымен қалпына келтіру: `reset-password` edge
+  /// функциясы нөмір иесіне жаңа құпиясөз қояды, сосын автоматты кіреміз.
+  static Future<void> resetPasswordViaTelegram({
+    required String tgToken,
+    required String newPassword,
+    required String phone,
+  }) async {
+    try {
+      final res = await c.functions.invoke('reset-password', body: {
+        'tg_token': tgToken,
+        'new_password': newPassword,
+      });
+      final data = res.data;
+      if (data is Map && data['error'] != null) {
+        throw Exception(data['error'].toString());
+      }
+    } on FunctionException catch (e) {
+      final d = e.details;
+      if (d is Map && d['error'] != null) throw Exception(d['error'].toString());
+      throw Exception('SERVER_ERROR');
+    }
+    final n = Phone.normalize(phone);
+    if (n != null) await signInPhone(n, newPassword);
+  }
+
   static Future<void> signUpPhone({
     required String phone,
     required String password,
