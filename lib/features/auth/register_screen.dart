@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/puzzle_captcha.dart';
 import '../../shared/widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _password2 = TextEditingController();
   String _role = 'client';
   bool _obscure = true;
+  bool _captchaOk = false;
 
   @override
   void dispose() {
@@ -35,6 +37,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// (AuthGate өзі бағыттайды).
   Future<void> _register() async {
     if (!_form.currentState!.validate()) return;
+    if (!_captchaOk) {
+      showSnack(context, 'Алдымен пазлды жылжытыңыз', error: true);
+      return;
+    }
     try {
       await Repo.signUpPhone(
         phone: _phone.text,
@@ -164,7 +170,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) =>
                           v != _password.text ? 'Құпиясөздер сәйкес емес' : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    PuzzleCaptcha(
+                      onChanged: (ok) => setState(() => _captchaOk = ok),
+                    ),
+                    const SizedBox(height: 16),
                     BusyButton(label: 'Тіркелу', onPressed: _register),
                     if (_role == 'executor') ...[
                       const SizedBox(height: 12),
