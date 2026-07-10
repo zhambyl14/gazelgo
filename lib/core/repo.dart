@@ -84,6 +84,25 @@ class Repo {
 
   static Future<void> signOut() => c.auth.signOut();
 
+  /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
+  /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
+  static Future<void> deleteAccount() async {
+    try {
+      final res = await c.functions.invoke('delete-account');
+      final data = res.data;
+      if (data is Map && data['error'] != null) {
+        throw Exception(data['error'].toString());
+      }
+    } on FunctionException catch (e) {
+      final d = e.details;
+      if (d is Map && d['error'] != null) {
+        throw Exception(d['error'].toString());
+      }
+      throw Exception('SERVER_ERROR');
+    }
+    await c.auth.signOut();
+  }
+
   // ================= PROFILES =================
   static Future<Profile?> myProfile() async {
     final id = uid;

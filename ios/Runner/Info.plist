@@ -7,7 +7,13 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Magazel</string>
+	<string>GazelGo</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера жүк фотосын түсіру және газелист құжаттарын жүктеу үшін қажет.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Галерея жүк фотосын, аватарды және құжат суреттерін таңдау үшін қажет.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

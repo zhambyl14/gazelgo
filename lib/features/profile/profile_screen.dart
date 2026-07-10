@@ -9,6 +9,7 @@ import '../../shared/widgets.dart';
 import '../client/my_orders_screen.dart';
 import '../executor/docs_banner.dart';
 import '../executor/earnings_screen.dart';
+import '../legal/legal_screen.dart';
 import '../support/support_screen.dart';
 import 'reviews_screen.dart';
 
@@ -36,6 +37,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) showSnack(context, errText(e), error: true);
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  /// Аккаунтты біржола өшіру — екі сатылы растау (кездейсоқ басудан қорғау).
+  Future<void> _deleteAccount(BuildContext context) async {
+    final first = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Аккаунтты өшіру'),
+        content: const Text(
+            'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
+            'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. '
+            'Бұл әрекетті кері қайтару МҮМКІН ЕМЕС.\n\n'
+            'Белсенді заказыңыз болса, алдымен оны аяқтаңыз.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Болдырмау')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Gz.red,
+                foregroundColor: Colors.white,
+                shadowColor: const Color(0x59DC2626)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Жалғастыру'),
+          ),
+        ],
+      ),
+    );
+    if (first != true || !context.mounted) return;
+
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Соңғы растау'),
+        content: const Text('Шынымен де аккаунтты біржола өшіресіз бе?'),
+        actions: [
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Жоқ, қалдырамын')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Gz.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Иә, өшіру'),
+          ),
+        ],
+      ),
+    );
+    if (second != true || !context.mounted) return;
+
+    try {
+      await Repo.deleteAccount();
+      if (context.mounted) {
+        Navigator.of(context).popUntil((r) => r.isFirst);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        final msg = e.toString().contains('HAS_ACTIVE_ORDERS')
+            ? 'Белсенді заказыңыз бар — алдымен оны аяқтаңыз не тоқтатыңыз.'
+            : errText(e);
+        showSnack(context, msg, error: true);
+      }
     }
   }
 
@@ -250,11 +313,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SectionCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  leading: const Icon(Icons.logout, color: Gz.red),
-                  title: const Text('Шығу',
-                      style: TextStyle(
-                          color: Gz.red, fontWeight: FontWeight.w700)),
-                  onTap: () => confirmSignOut(context),
+                  leading: const Icon(Icons.description_outlined,
+                      color: Gz.textSecondary),
+                  title: const Text('Заңдық құжаттар',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle:
+                      const Text('Пайдаланушы келісімі · Құпиялылық саясаты'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const LegalScreen())),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Gz.red),
+                      title: const Text('Шығу',
+                          style: TextStyle(
+                              color: Gz.red, fontWeight: FontWeight.w700)),
+                      onTap: () => confirmSignOut(context),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.delete_forever_outlined,
+                          color: Gz.red),
+                      title: const Text('Аккаунтты өшіру',
+                          style: TextStyle(
+                              color: Gz.red, fontWeight: FontWeight.w700)),
+                      subtitle: const Text('Барлық деректер біржола жойылады',
+                          style: TextStyle(fontSize: 12)),
+                      onTap: () => _deleteAccount(context),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),

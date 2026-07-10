@@ -46,6 +46,24 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // IP бойынша rate-limit: сағатына 5 тіркелу (0018 миграциясындағы
+  // auth_events кестесі). Кесте әлі жоқ болса — тіркелуді бұзбаймыз
+  // (fail-open), тек лимитсіз өтеді.
+  const ip = (req.headers.get("x-forwarded-for") ?? "unknown")
+    .split(",")[0].trim();
+  try {
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count, error: cntError } = await admin
+      .from("auth_events")
+      .select("id", { count: "exact", head: true })
+      .eq("ip", ip)
+      .eq("kind", "signup")
+      .gte("created_at", since);
+    if (!cntError && (count ?? 0) >= 5) {
+      return json({ error: "RATE_LIMITED", retry_after: 3600 }, 429);
+    }
+  } catch (_) { /* лимитсіз жалғасамыз */ }
+
   const { error } = await admin.auth.admin.createUser({
     email,
     password,
@@ -57,6 +75,9 @@ Deno.serve(async (req: Request) => {
     const code = /already/i.test(error.message) ? "EMAIL_TAKEN" : error.message;
     return json({ error: code }, 400);
   }
+  try {
+    await admin.from("auth_events").insert({ ip, kind: "signup" });
+  } catch (_) { /* журнал жазылмаса да тіркелу сәтті */ }
   return json({ ok: true }, 200);
 });
 

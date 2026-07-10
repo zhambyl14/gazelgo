@@ -492,7 +492,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Өтінімді модератор 24 сағат ішінде қарайды.',
+                  'Өтінімді модератор 24 сағат ішінде қарайды.\n'
+                  'Өтінім жіберу арқылы 18 жасқа толғаныңызды және құжат '
+                  'деректерінің модерация мақсатында өңделуіне келісіміңізді '
+                  'растайсыз.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),

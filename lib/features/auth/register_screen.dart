@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,6 +7,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/puzzle_captcha.dart';
 import '../../shared/widgets.dart';
+import '../legal/legal_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,6 +25,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _role = 'client';
   bool _obscure = true;
   bool _captchaOk = false;
+  bool _agree = false;
+  late final TapGestureRecognizer _termsTap = TapGestureRecognizer()
+    ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const LegalScreen(initialTab: 0)));
+  late final TapGestureRecognizer _privacyTap = TapGestureRecognizer()
+    ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const LegalScreen(initialTab: 1)));
 
   @override
   void dispose() {
@@ -30,6 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phone.dispose();
     _password.dispose();
     _password2.dispose();
+    _termsTap.dispose();
+    _privacyTap.dispose();
     super.dispose();
   }
 
@@ -37,6 +48,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// (AuthGate өзі бағыттайды).
   Future<void> _register() async {
     if (!_form.currentState!.validate()) return;
+    if (!_agree) {
+      showSnack(context,
+          'Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет',
+          error: true);
+      return;
+    }
     if (!_captchaOk) {
       showSnack(context, 'Алдымен пазлды жылжытыңыз', error: true);
       return;
@@ -174,7 +191,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     PuzzleCaptcha(
                       onChanged: (ok) => setState(() => _captchaOk = ok),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => setState(() => _agree = !_agree),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: Checkbox(
+                                value: _agree,
+                                activeColor: Gz.ink,
+                                onChanged: (v) =>
+                                    setState(() => _agree = v ?? false),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  style: const TextStyle(
+                                      fontSize: 12.5,
+                                      height: 1.45,
+                                      color: Gz.textSecondary),
+                                  children: [
+                                    const TextSpan(text: 'Мен '),
+                                    TextSpan(
+                                      text: 'Пайдаланушы келісімімен',
+                                      recognizer: _termsTap,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: Gz.ink,
+                                          decoration:
+                                              TextDecoration.underline),
+                                    ),
+                                    const TextSpan(text: ' және '),
+                                    TextSpan(
+                                      text: 'Құпиялылық саясатымен',
+                                      recognizer: _privacyTap,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: Gz.ink,
+                                          decoration:
+                                              TextDecoration.underline),
+                                    ),
+                                    const TextSpan(
+                                        text:
+                                            ' таныстым, дербес деректерімді өңдеуге келісемін.'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     BusyButton(label: 'Тіркелу', onPressed: _register),
                     if (_role == 'executor') ...[
                       const SizedBox(height: 12),
