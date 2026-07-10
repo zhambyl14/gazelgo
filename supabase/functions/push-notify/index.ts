@@ -96,8 +96,23 @@ Deno.serve(async (req: Request) => {
               token,
               notification: { title, body: bodyText },
               data,
-              android: { priority: "high" },
-              apns: { headers: { "apns-priority": "10" } },
+              android: {
+                priority: "high",
+                notification: {
+                  // Қосымша ЖАБЫҚ кезде жүйе осы каналмен көрсетеді —
+                  // heads-up (экранға қалқып шығу) + дыбыс + брендтік
+                  // белгіше/түс.
+                  channel_id: "gazelgo_high",
+                  icon: "ic_stat_notify",
+                  color: "#FFC400",
+                  default_sound: true,
+                  notification_priority: "PRIORITY_HIGH",
+                },
+              },
+              apns: {
+                headers: { "apns-priority": "10" },
+                payload: { aps: { sound: "default" } },
+              },
             },
           }),
         },
