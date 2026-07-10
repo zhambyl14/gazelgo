@@ -86,20 +86,25 @@ exception when others then null; end $$;
 select cron.schedule('gazelgo-expire-orders', '*/5 * * * *', $$select public.expire_stale_orders()$$);
 
 -- ---------- модератор аккаунты ----------
--- Кіру: moderator@gazelgo.kz / GazelGo#2026  (бірінші кіргеннен кейін құпиясөзді ауыстырыңыз!)
+-- Кіру: телефон +7 700 000 00 01, құпиясөз GazelGo#2026
+-- (бірінші кіргеннен кейін құпиясөзді ауыстырыңыз! Аккаунт қалғандай телефон
+-- ағынымен бірдей синтетикалық email арқылы құрылады — 0015-те phone.dart-пен
+-- сәйкес keлуі шарт.)
 do $$
 declare
   v_id uuid := gen_random_uuid();
+  v_email text := '77000000001@phone.gazelgo.kz';
 begin
-  if not exists (select 1 from auth.users where email = 'moderator@gazelgo.kz') then
+  if not exists (select 1 from auth.users where email = v_email) then
     insert into auth.users
       (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
        raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
        confirmation_token, recovery_token, email_change, email_change_token_new)
     values
       (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-       'moderator@gazelgo.kz', crypt('GazelGo#2026', gen_salt('bf')), now(),
-       '{"provider":"email","providers":["email"]}', '{"full_name":"Модератор"}',
+       v_email, crypt('GazelGo#2026', gen_salt('bf')), now(),
+       '{"provider":"email","providers":["email"]}',
+       '{"full_name":"Модератор","phone":"77000000001"}',
        now(), now(), '', '', '', '');
 
     insert into auth.identities
@@ -107,11 +112,11 @@ begin
        last_sign_in_at, created_at, updated_at)
     values
       (gen_random_uuid(), v_id, v_id::text,
-       jsonb_build_object('sub', v_id::text, 'email', 'moderator@gazelgo.kz', 'email_verified', true),
+       jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true),
        'email', now(), now(), now());
 
     update public.profiles
-       set role = 'moderator', full_name = 'Модератор'
+       set role = 'moderator', full_name = 'Модератор', phone = '77000000001'
      where id = v_id;
   end if;
 end $$;
