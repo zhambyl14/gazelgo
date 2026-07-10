@@ -127,12 +127,22 @@ class _DocsReviewTile extends StatelessWidget {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    if (ep.docsUpdateFields.contains('id'))
+                    if (ep.docsUpdateFields.contains('id')) ...[
                       _doc(ep.idDocPath, 'Жеке куәлік'),
-                    if (ep.docsUpdateFields.contains('license'))
+                      _doc(ep.idSelfiePath, 'Куәлікпен селфи'),
+                    ],
+                    if (ep.docsUpdateFields.contains('passport')) ...[
+                      _doc(ep.passportPath, 'Шетел паспорты'),
+                      _doc(ep.passportSelfiePath, 'Паспортпен селфи'),
+                    ],
+                    if (ep.docsUpdateFields.contains('license')) ...[
                       _doc(ep.licensePath, 'Жүргізуші'),
-                    if (ep.docsUpdateFields.contains('tech'))
+                      _doc(ep.licenseSelfiePath, 'Правамен селфи'),
+                    ],
+                    if (ep.docsUpdateFields.contains('tech')) ...[
                       _doc(ep.techPassportPath, 'Техпаспорт'),
+                      _doc(ep.techPassportSelfiePath, 'Техпаспортпен фото'),
+                    ],
                     if (ep.docsUpdateFields.contains('photos'))
                       for (final ph in ep.vehiclePhotos) _doc(ph, 'Көлік'),
                   ],
@@ -303,16 +313,25 @@ class ApplicationDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            const Text('Құжаттар',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
+                const Text('Құжаттар',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(width: 8),
-                Expanded(
-                    child: DocImage(
-                        path: ep.licensePath, label: 'Жүргізуші куәлігі')),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Gz.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    ep.isForeignCitizen ? 'Шетел азаматы' : 'ҚР азаматы',
+                    style: const TextStyle(
+                        fontSize: 11.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -320,9 +339,50 @@ class ApplicationDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                     child: DocImage(
+                        path: ep.licensePath, label: 'Жүргізуші куәлігі')),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: DocImage(
+                        path: ep.licenseSelfiePath, label: 'Правамен селфи')),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (!ep.isForeignCitizen)
+              Row(
+                children: [
+                  Expanded(
+                      child:
+                          DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: DocImage(
+                          path: ep.idSelfiePath, label: 'Куәлікпен селфи')),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                      child: DocImage(
+                          path: ep.passportPath, label: 'Шетел паспорты')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: DocImage(
+                          path: ep.passportSelfiePath,
+                          label: 'Паспортпен селфи')),
+                ],
+              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                    child: DocImage(
                         path: ep.techPassportPath, label: 'Техпаспорт')),
                 const SizedBox(width: 8),
-                const Expanded(child: SizedBox()),
+                Expanded(
+                    child: DocImage(
+                        path: ep.techPassportSelfiePath,
+                        label: 'Техпаспортпен фото')),
               ],
             ),
             const SizedBox(height: 14),

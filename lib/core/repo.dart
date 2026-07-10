@@ -212,6 +212,9 @@ class Repo {
     String? licenseSelfiePath,
     String? passportPath,
     String? passportSelfiePath,
+    String? techPassportPath,
+    String? techPassportSelfiePath,
+    bool isForeignCitizen = false,
     String? city,
     required bool isResubmit,
   }) async {
@@ -230,6 +233,9 @@ class Repo {
       'license_selfie_path': licenseSelfiePath,
       'passport_path': passportPath,
       'passport_selfie_path': passportSelfiePath,
+      'tech_passport_path': techPassportPath,
+      'tech_passport_selfie_path': techPassportSelfiePath,
+      'is_foreign_citizen': isForeignCitizen,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
     };
     if (isResubmit) {
@@ -237,7 +243,8 @@ class Repo {
       final old = await c
           .from('executor_profiles')
           .select('status, id_doc_path, license_path, id_selfie_path, '
-              'license_selfie_path, passport_path, passport_selfie_path, vehicle_photos')
+              'license_selfie_path, passport_path, passport_selfie_path, '
+              'tech_passport_path, tech_passport_selfie_path, vehicle_photos')
           .eq('user_id', id)
           .maybeSingle();
       final newPaths = <String?>{
@@ -247,6 +254,8 @@ class Repo {
         licenseSelfiePath,
         passportPath,
         passportSelfiePath,
+        techPassportPath,
+        techPassportSelfiePath,
         ...vehiclePhotos,
       };
       final oldPaths = <String>[];
@@ -257,7 +266,9 @@ class Repo {
           'id_selfie_path',
           'license_selfie_path',
           'passport_path',
-          'passport_selfie_path'
+          'passport_selfie_path',
+          'tech_passport_path',
+          'tech_passport_selfie_path',
         ]) {
           final p = old[k] as String?;
           if (p != null && !newPaths.contains(p)) oldPaths.add(p);
@@ -519,17 +530,20 @@ class Repo {
     String? licenseSelfiePath,
     String? passportPath,
     String? passportSelfiePath,
+    String? techPassportPath,
+    String? techPassportSelfiePath,
     List<String>? photos,
   }) =>
       c.rpc('submit_docs_update', params: {
         'p_id_doc': idDocPath,
         'p_license': licensePath,
-        'p_tech': null,
+        'p_tech': techPassportPath,
         'p_photos': photos,
         'p_id_selfie': idSelfiePath,
         'p_license_selfie': licenseSelfiePath,
         'p_passport': passportPath,
         'p_passport_selfie': passportSelfiePath,
+        'p_tech_selfie': techPassportSelfiePath,
       });
 
   /// Ревью күтіп тұрған құжат жаңартулары (модератор үшін).

@@ -96,10 +96,12 @@ class ExecutorProfile {
   final String? idDocPath;
   final String? licensePath;
   final String? techPassportPath;
+  final String? techPassportSelfiePath;
   final String? idSelfiePath;
   final String? licenseSelfiePath;
   final String? passportPath;
   final String? passportSelfiePath;
+  final bool isForeignCitizen;
   final String? moderationComment;
   final int balance;
   final int totalEarned;
@@ -124,10 +126,12 @@ class ExecutorProfile {
         idDocPath = m['id_doc_path'] as String?,
         licensePath = m['license_path'] as String?,
         techPassportPath = m['tech_passport_path'] as String?,
+        techPassportSelfiePath = m['tech_passport_selfie_path'] as String?,
         idSelfiePath = m['id_selfie_path'] as String?,
         licenseSelfiePath = m['license_selfie_path'] as String?,
         passportPath = m['passport_path'] as String?,
         passportSelfiePath = m['passport_selfie_path'] as String?,
+        isForeignCitizen = m['is_foreign_citizen'] as bool? ?? false,
         moderationComment = m['moderation_comment'] as String?,
         balance = _i(m['balance']),
         totalEarned = _i(m['total_earned']),
@@ -142,6 +146,7 @@ class ExecutorProfile {
   /// Құжат өрісінің қазақша атауы.
   static String docFieldLabel(String f) => switch (f) {
         'id' => 'Жеке куәлік',
+        'passport' => 'Шетел паспорты',
         'license' => 'Жүргізуші куәлігі',
         'tech' => 'Техпаспорт',
         'photos' => 'Көлік фотолары',

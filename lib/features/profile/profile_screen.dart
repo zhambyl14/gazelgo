@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import '../auth/executor_apply_screen.dart' show CityPickerSheet;
 import '../client/my_orders_screen.dart';
 import '../executor/docs_banner.dart';
 import '../executor/earnings_screen.dart';
@@ -81,6 +82,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             : errText(e);
         showSnack(context, msg, error: true);
       }
+    }
+  }
+
+  /// Орындаушының жұмыс қаласын қолмен ауыстыру (мыс. басқа қалаға көшсе).
+  Future<void> _changeCity(BuildContext context) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const CityPickerSheet(),
+    );
+    if (picked == null || !context.mounted) return;
+    try {
+      await Repo.setExecutorCity(picked);
+      ref.invalidate(myExecutorProfileProvider);
+      if (context.mounted) showSnack(context, 'Қала $picked болып ауыстырылды');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
     }
   }
 
@@ -230,7 +252,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       const SizedBox(height: 8),
                       InfoRow('Көлік', ep.vehicleTitle),
-                      if (ep.city != null) InfoRow('Қала', ep.city!),
+                      if (ep.city != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(
+                                width: 130,
+                                child: Text('Қала',
+                                    style: TextStyle(
+                                        color: Gz.textSecondary,
+                                        fontSize: 13.5)),
+                              ),
+                              Expanded(
+                                child: Text(ep.city!,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13.5)),
+                              ),
+                              TextButton(
+                                onPressed: () => _changeCity(context),
+                                style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap),
+                                child: const Text('Ауыстыру',
+                                    style: TextStyle(fontSize: 12.5)),
+                              ),
+                            ],
+                          ),
+                        ),
                       InfoRow('Мемнөмір', ep.vehiclePlate),
                       InfoRow('Статус', switch (ep.status) {
                         'approved' => 'Расталған',

@@ -220,7 +220,7 @@ class _ExecutorTile extends StatelessWidget {
         case 'request_docs':
           final res = await showDialog<(List<String>, String)>(
             context: context,
-            builder: (ctx) => const _RequestDocsDialog(),
+            builder: (ctx) => _RequestDocsDialog(isForeign: ep.isForeignCitizen),
           );
           if (res == null) return;
           if (res.$1.isEmpty) {
@@ -312,7 +312,8 @@ class _ExecutorTile extends StatelessWidget {
 
 /// Құжат жаңартуды сұрау диалогы — қай құжатты + түсініктеме.
 class _RequestDocsDialog extends StatefulWidget {
-  const _RequestDocsDialog();
+  final bool isForeign;
+  const _RequestDocsDialog({required this.isForeign});
 
   @override
   State<_RequestDocsDialog> createState() => _RequestDocsDialogState();
@@ -322,12 +323,14 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
   final _fields = <String>{};
   final _comment = TextEditingController();
 
-  static const _options = [
-    ('id', 'Жеке куәлік'),
-    ('license', 'Жүргізуші куәлігі'),
-    ('tech', 'Техпаспорт'),
-    ('photos', 'Көлік фотолары'),
-  ];
+  List<(String, String)> get _options => [
+        widget.isForeign
+            ? ('passport', 'Шетел паспорты')
+            : ('id', 'Жеке куәлік'),
+        ('license', 'Жүргізуші куәлігі'),
+        ('tech', 'Техпаспорт'),
+        ('photos', 'Көлік фотолары'),
+      ];
 
   @override
   void dispose() {
@@ -532,20 +535,69 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('Құжаттар',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              Row(
+                children: [
+                  const Text('Құжаттар',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Gz.bg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      ep.isForeignCitizen ? 'Шетел азаматы' : 'ҚР азаматы',
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(
-                    child: DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
-                const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
                         path: ep.licensePath, label: 'Жүргізуші куәлігі')),
                 const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
+                        path: ep.licenseSelfiePath, label: 'Правамен селфи')),
+              ]),
+              const SizedBox(height: 8),
+              if (!ep.isForeignCitizen)
+                Row(children: [
+                  Expanded(
+                      child:
+                          DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: DocImage(
+                          path: ep.idSelfiePath, label: 'Куәлікпен селфи')),
+                ])
+              else
+                Row(children: [
+                  Expanded(
+                      child: DocImage(
+                          path: ep.passportPath, label: 'Шетел паспорты')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: DocImage(
+                          path: ep.passportSelfiePath,
+                          label: 'Паспортпен селфи')),
+                ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: DocImage(
                         path: ep.techPassportPath, label: 'Техпаспорт')),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: DocImage(
+                        path: ep.techPassportSelfiePath,
+                        label: 'Техпаспортпен фото')),
               ]),
               const SizedBox(height: 12),
               if (p != null)

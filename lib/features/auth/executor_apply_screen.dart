@@ -10,9 +10,10 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 
-/// Газелист өтінімі: құжаттар (права + селфі, куәлік + селфі, шетел паспорты),
-/// көлік деректері (маркасы, моделі, ЖЫЛЫ, гос нөмір) және 4 таңбаланған
-/// көлік фотосы. Газель ӨЛШЕМІ сұралмайды.
+/// Газелист өтінімі: құжаттар (права + селфі, азаматтыққа қарай жеке
+/// куәлік/шетел паспорты + селфі, техпаспорт + селфі), көлік деректері
+/// (маркасы, моделі, ЖЫЛЫ, гос нөмір) және 4 таңбаланған көлік фотосы.
+/// Газель ӨЛШЕМІ сұралмайды.
 class ExecutorApplyScreen extends ConsumerStatefulWidget {
   final ExecutorProfile? existing; // қайта жіберу кезінде
   const ExecutorApplyScreen({super.key, this.existing});
@@ -39,14 +40,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late final _plate =
       TextEditingController(text: widget.existing?.vehiclePlate ?? '');
   late String? _city = widget.existing?.city;
+  late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
 
   // Құжаттар
   final _license = _PickedDoc();          // жүргізуші куәлігі (права)
   final _licenseSelfie = _PickedDoc();     // правамен селфи
-  final _idDoc = _PickedDoc();             // жеке куәлік (удостоверение)
+  final _idDoc = _PickedDoc();             // жеке куәлік (ҚР азаматына)
   final _idSelfie = _PickedDoc();          // куәлікпен селфи
-  final _passport = _PickedDoc();          // шетел паспорты (міндетті емес)
-  final _passportSelfie = _PickedDoc();    // паспортпен селфи (міндетті емес)
+  final _passport = _PickedDoc();          // шетел паспорты (шетел азаматына)
+  final _passportSelfie = _PickedDoc();    // паспортпен селфи
+  final _techPassport = _PickedDoc();      // көліктің техпаспорты (міндетті)
+  final _techPassportSelfie = _PickedDoc(); // техпаспортпен фото (міндетті)
 
   // Көлік фотолары (4 таңбаланған)
   final _vehFront = _PickedDoc();
@@ -67,6 +71,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       _idSelfie.existingPath = e.idSelfiePath;
       _passport.existingPath = e.passportPath;
       _passportSelfie.existingPath = e.passportSelfiePath;
+      _techPassport.existingPath = e.techPassportPath;
+      _techPassportSelfie.existingPath = e.techPassportSelfiePath;
       final ph = e.vehiclePhotos;
       if (ph.isNotEmpty) _vehFront.existingPath = ph[0];
       if (ph.length > 1) _vehBack.existingPath = ph[1];
@@ -108,7 +114,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => const _ApplyCityPicker(),
+      builder: (_) => const CityPickerSheet(),
     );
     if (picked != null && mounted) setState(() => _city = picked);
   }
@@ -120,14 +126,24 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           error: true);
       return;
     }
-    if (!_license.isSet || !_licenseSelfie.isSet || !_idDoc.isSet ||
-        !_idSelfie.isSet) {
-      showSnack(context, 'Права, куәлік және селфилерді толық жүктеңіз',
+    if (!_license.isSet || !_licenseSelfie.isSet) {
+      showSnack(context, 'Жүргізуші куәлігі мен онымен селфиді жүктеңіз',
           error: true);
       return;
     }
-    if (_passport.isSet && !_passportSelfie.isSet) {
-      showSnack(context, 'Шетел паспортымен селфиді де жүктеңіз', error: true);
+    if (!_isForeign && (!_idDoc.isSet || !_idSelfie.isSet)) {
+      showSnack(context, 'Жеке куәлік пен онымен селфиді жүктеңіз',
+          error: true);
+      return;
+    }
+    if (_isForeign && (!_passport.isSet || !_passportSelfie.isSet)) {
+      showSnack(context, 'Шетел паспорты мен онымен селфиді жүктеңіз',
+          error: true);
+      return;
+    }
+    if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
+      showSnack(context, 'Көліктің техпаспорты мен онымен фотоны жүктеңіз',
+          error: true);
       return;
     }
     if (!_vehFront.isSet || !_vehBack.isSet || !_vehRight.isSet ||
@@ -144,11 +160,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
 
       final licPath = await up(_license, 'license');
       final licSelfie = await up(_licenseSelfie, 'license_selfie');
-      final idPath = await up(_idDoc, 'id');
-      final idSelfie = await up(_idSelfie, 'id_selfie');
-      final passportPath = _passport.isSet ? await up(_passport, 'passport') : null;
+      final idPath = !_isForeign ? await up(_idDoc, 'id') : null;
+      final idSelfie = !_isForeign ? await up(_idSelfie, 'id_selfie') : null;
+      final passportPath = _isForeign ? await up(_passport, 'passport') : null;
       final passportSelfie =
-          _passportSelfie.isSet ? await up(_passportSelfie, 'passport_selfie') : null;
+          _isForeign ? await up(_passportSelfie, 'passport_selfie') : null;
+      final techPath = await up(_techPassport, 'tech_passport');
+      final techSelfie = await up(_techPassportSelfie, 'tech_passport_selfie');
       final photos = <String>[];
       for (final (d, n) in [
         (_vehFront, 'veh_front'),
@@ -172,6 +190,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           licenseSelfiePath: licSelfie,
           passportPath: passportPath,
           passportSelfiePath: passportSelfie,
+          techPassportPath: techPath,
+          techPassportSelfiePath: techSelfie,
           photos: photos,
         );
       } else {
@@ -187,6 +207,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           licenseSelfiePath: licSelfie,
           passportPath: passportPath,
           passportSelfiePath: passportSelfie,
+          techPassportPath: techPath,
+          techPassportSelfiePath: techSelfie,
+          isForeignCitizen: _isForeign,
           city: _city,
           isResubmit: widget.existing != null,
         );
@@ -436,17 +459,60 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 8),
                 _docTile('Правамен селфи', _licenseSelfie,
                     hint: 'Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                const SizedBox(height: 16),
+                const Text('Азаматтық',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 8),
-                _docTile('Жеке куәлік (удостоверение)', _idDoc),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('ҚР азаматымын'),
+                        selected: !_isForeign,
+                        showCheckmark: false,
+                        selectedColor: Gz.yellow,
+                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: !_isForeign ? Gz.ink : Gz.textSecondary,
+                        ),
+                        onSelected: (_) => setState(() => _isForeign = false),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Басқа ел азаматымын'),
+                        selected: _isForeign,
+                        showCheckmark: false,
+                        selectedColor: Gz.yellow,
+                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _isForeign ? Gz.ink : Gz.textSecondary,
+                        ),
+                        onSelected: (_) => setState(() => _isForeign = true),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (!_isForeign) ...[
+                  _docTile('Жеке куәлік (удостоверение)', _idDoc),
+                  const SizedBox(height: 8),
+                  _docTile('Куәлікпен селфи', _idSelfie,
+                      hint: 'Куәлікті қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                ] else ...[
+                  _docTile('Шетел паспорты', _passport),
+                  const SizedBox(height: 8),
+                  _docTile('Паспортпен селфи', _passportSelfie,
+                      hint: 'Паспортты қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                ],
                 const SizedBox(height: 8),
-                _docTile('Куәлікпен селфи', _idSelfie,
-                    hint: 'Куәлікті ұстап тұрған селфи'),
+                _docTile('Көліктің техпаспорты', _techPassport,
+                    hint: 'Көлік құжаты (СРТС) — азаматтыққа қарамай қажет'),
                 const SizedBox(height: 8),
-                _docTile('Шетел паспорты', _passport,
-                    hint: 'ҚР азаматы болмасаңыз ғана'),
-                const SizedBox(height: 8),
-                _docTile('Паспортпен селфи', _passportSelfie,
-                    hint: 'Шетел паспортын жүктесеңіз ғана'),
+                _docTile('Техпаспортпен фото', _techPassportSelfie,
+                    hint: 'Техпаспортты қолыңызға ұстап түсіріңіз'),
                 const SizedBox(height: 20),
                 const Text('Көлік фотолары',
                     style:
@@ -492,14 +558,15 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
 }
 
 /// Қала таңдау парағы (Қазақстан қалалары тізімінен, іздеумен).
-class _ApplyCityPicker extends StatefulWidget {
-  const _ApplyCityPicker();
+/// Өтінім бергенде де, орындаушы кейін қаласын ауыстырғанда да қолданылады.
+class CityPickerSheet extends StatefulWidget {
+  const CityPickerSheet({super.key});
 
   @override
-  State<_ApplyCityPicker> createState() => _ApplyCityPickerState();
+  State<CityPickerSheet> createState() => _CityPickerSheetState();
 }
 
-class _ApplyCityPickerState extends State<_ApplyCityPicker> {
+class _CityPickerSheetState extends State<CityPickerSheet> {
   final _search = TextEditingController();
   List<String> _filtered = kzCities;
 

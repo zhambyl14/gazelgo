@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../../core/geo.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -51,6 +53,8 @@ class ExecutorHomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: ExecutorDocsBanner(ep: ep),
               ),
+            // GPS қаласы тіркелген қаладан өзгеше болса — ауыстыруды ұсынады
+            if (ep != null) _CitySwitchBanner(ep: ep),
             // заказдар лентасы (негізгі мазмұн)
             const Expanded(child: ExecutorFeedBody()),
           ],
@@ -223,5 +227,107 @@ class _LineControlBar extends ConsumerWidget {
     if (s.vipActive) parts.add('VIP ${s.vipLeft}/10');
     if (parts.isEmpty) return 'Тариф жоқ';
     return parts.join(' · ');
+  }
+}
+
+/// Орындаушының GPS арқылы анықталған қаласы тіркелген қаладан өзгеше болса
+/// (мыс. басқа қалаға сапарға шықса), қаланы ауыстыруды ұсынады.
+class _CitySwitchBanner extends ConsumerStatefulWidget {
+  final ExecutorProfile ep;
+  const _CitySwitchBanner({required this.ep});
+
+  @override
+  ConsumerState<_CitySwitchBanner> createState() => _CitySwitchBannerState();
+}
+
+class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
+  String? _detectedCity;
+  bool _dismissed = false;
+  bool _switching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _detect();
+  }
+
+  Future<void> _detect() async {
+    final pos = await Geo.currentPosition();
+    if (pos == null || !mounted) return;
+    final (_, city) =
+        await Geo.reverseWithCity(LatLng(pos.latitude, pos.longitude));
+    if (mounted) setState(() => _detectedCity = city);
+  }
+
+  Future<void> _switchCity() async {
+    final city = _detectedCity;
+    if (city == null) return;
+    setState(() => _switching = true);
+    try {
+      await Repo.setExecutorCity(city);
+      ref.invalidate(myExecutorProfileProvider);
+      ref.invalidate(executorFeedStreamProvider);
+      if (mounted) {
+        showSnack(context, 'Қала $city болып ауыстырылды');
+        setState(() => _dismissed = true);
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _switching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final city = _detectedCity;
+    if (_dismissed || city == null || Geo.sameCity(city, widget.ep.city)) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Gz.blue.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on_outlined, color: Gz.blue, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Қазір $city қаласындасыз (тіркелген: '
+              '${widget.ep.city ?? '—'}). Ауыстырайық па?',
+              style:
+                  const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _switching
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : TextButton(
+                  onPressed: _switchCity,
+                  style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  child: const Text('Ауыстыру',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+          IconButton(
+            iconSize: 18,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () => setState(() => _dismissed = true),
+            icon: const Icon(Icons.close, color: Gz.textSecondary),
+          ),
+        ],
+      ),
+    );
   }
 }
