@@ -84,6 +84,14 @@ class Repo {
 
   static Future<void> signOut() => c.auth.signOut();
 
+  /// FCM push-токенін сақтайды (0019 миграциясы) — қосымша жабық болса да
+  /// жеткізілетін хабарландырулар үшін (мыс. модераторға жаңа өтінім).
+  static Future<void> savePushToken(String token, String platform) =>
+      c.rpc('save_push_token', params: {
+        'p_token': token,
+        'p_platform': platform,
+      });
+
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
   static Future<void> deleteAccount() async {

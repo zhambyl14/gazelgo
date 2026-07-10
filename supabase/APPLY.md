@@ -77,10 +77,15 @@ Backend толығымен осы папкада дайын. Оны нақты S
      бұғатталады (TOO_MANY_CANCELS триггері); `auth_events` кестесі —
      signup-тың IP-лимиті үшін (сағатына 5 тіркелу) + күнделікті тазалау
      cron-ы.
+   - `migrations/0019_push_notifications.sql` ← **Push-хабарландырулар**:
+     `push_tokens` кестесі + `save_push_token` RPC + газелист жаңа/қайта
+     өтінім жібергенде барлық модераторға автоматты push жіберетін триггер
+     (`pg_net` арқылы `push-notify` функциясын шақырады). Толық баптау —
+     төмендегі бөлек бөлімде.
 
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
-   **0013, содан соң 0014, 0016, 0017, ең соңынан 0018-ді орындаңыз.**
+   **0013, содан соң 0014, 0016, 0017, 0018, ең соңынан 0019-ды орындаңыз.**
 2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
    - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
      тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).
@@ -93,6 +98,10 @@ Backend толығымен осы папкада дайын. Оны нақты S
      **Verify JWT = ON** — App Store/Play Market-тің «аккаунтты өшіру»
      талабы. Пайдаланушы профильден өз аккаунтын біржола өшіре алады
      (белсенді заказ болса — қабылданбайды).
+   - аты `push-notify`, коды `functions/push-notify/index.ts`,
+     **Verify JWT = OFF** (`pg_net` JWT жібермейді — орнына құпия
+     `x-push-secret` header тексеріледі). Төмендегі «Push-хабарландырулар»
+     бөлімін толық орындаңыз, әйтпесе бос жауап қайтарып, ештеңе жібермейді.
    - `functions/otp/` — ҚАЖЕТ ЕМЕС (SMS ағыны алынды), deploy жасамаңыз.
 
    **Edge Function Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` —
@@ -104,6 +113,70 @@ Backend толығымен осы папкада дайын. Оны нақты S
    («7XXXXXXXXXX@phone.gazelgo.kz» email-і арқылы) жаңа құпиясөз орната алады.
 3. Dashboard → Settings → API → `anon` / `publishable` key-ді көшіріп,
    `lib/core/env.dart` ішіндегі `supabaseAnonKey` мәніне қойыңыз.
+
+## Push-хабарландырулар (модератор — жаңа өтінім, қосымша жабық болса да)
+
+Неге керек: газелист тіркелу өтінімін жіберген сайын, модератор оны ТЕЗ көруі
+керек — телефоны құлыпты не қосымша толық жабық болса да. Мұны тек Firebase
+Cloud Messaging (FCM) арқылы шешуге болады (`flutter_local_notifications`
+тек қосымша тірі/фонда тұрғанда жұмыс істейді). Mac/Xcode КЕРЕК ЕМЕС — бәрі
+Firebase Console (веб-браузер) мен Supabase Dashboard арқылы жасалады.
+
+### 1-қадам: Firebase жоба құру
+1. https://console.firebase.google.com → **Add project** → атын жазыңыз
+   (мыс. `GazelGo`) → Google Analytics міндетті емес, өшіре беріңіз.
+2. Жоба ішінде **⚙️ Project settings → General → Your apps** → әр
+   платформаны қосыңыз:
+   - **Android**: package name дәл `kz.gazelgo.app` деп жазыңыз (SHA-сертификат
+     сұраса — осы кезеңде қажет емес, өткізіп жіберуге болады).
+   - **iOS**: Bundle ID дәл `kz.gazelgo.app` деп жазыңыз.
+3. Әр қосылған қосымшаның **SDK setup and configuration → Config** бөлімінен
+   мәндерді (apiKey, appId, messagingSenderId, projectId, storageBucket)
+   көшіріп, [lib/core/firebase_options.dart](../lib/core/firebase_options.dart)
+   ішіндегі тиісті бөлімге (`android`/`ios`) қойыңыз. iOS үшін
+   `iosBundleId` өзгертпей қалдырыңыз.
+4. **Cloud Messaging** қосулы тұрғанын тексеріңіз: ⚙️ Project settings →
+   **Cloud Messaging** табы — «Firebase Cloud Messaging API (V1)» **Enabled**
+   болуы керек (әдетте автоматты қосулы тұрады).
+
+### 2-қадам: Service account кілті (edge function FCM жіберу үшін)
+1. ⚙️ Project settings → **Service accounts** табы → **Generate new private
+   key** → JSON файл жүктеледі. **Бұл файлды ешкіммен бөліспеңіз, репоға
+   қоспаңыз.**
+2. Файлдың ІШІНДЕГІ МӘТІНДІ (толық JSON) көшіріп алыңыз — келесі қадамда
+   керек болады.
+3. Сол JSON-дағы `project_id` мәнін жазып қойыңыз (мыс. `gazelgo-xxxxx`).
+
+### 3-қадам: Supabase жағы
+1. **Edge Function Secrets** (Dashboard → Edge Functions → Manage secrets)
+   үшеуін қосыңыз:
+   - `FCM_PROJECT_ID` — 2-қадамдағы `project_id`.
+   - `FCM_SERVICE_ACCOUNT_JSON` — 2-қадамда жүктелген JSON файлдың **толық
+     мазмұны** (бір жол ретінде, тұтас JSON мәтінін қойса болады).
+   - `PUSH_TRIGGER_SECRET` — өзіңіз ойлап тапқан кез келген ұзын құпия жол
+     (мыс. терминалда `openssl rand -hex 32` командасымен жасаңыз).
+2. SQL Editor-да (0019 миграциясынан бөлек, БІР РЕТ) осы команданы
+   орындаңыз — 3.1-дегімен **дәл сол бір** `PUSH_TRIGGER_SECRET` мәнін
+   қойыңыз:
+   ```sql
+   alter database postgres set app.settings.push_trigger_secret = 'СІЗДІҢ_ҚҰПИЯ_ЖОЛЫҢЫЗ';
+   ```
+   (Мәнді дәл 3.1-дегімен бірдей жазыңыз — екеуі сәйкес келмесе, edge function
+   `FORBIDDEN` қайтарып, push жіберілмейді.)
+3. `push-notify` функциясын **Verify JWT = OFF** етіп deploy жасаңыз
+   (жоғарыдағы 2-қадамды қараңыз).
+
+### 4-қадам: Android/iOS — қосымша өзгерту қажет емес
+`google-services.json`/`GoogleService-Info.plist` файлдарын Xcode-қа/Gradle-ге
+қосудың орнына, барлық баптау `firebase_options.dart`-тағы Dart
+константалары арқылы жүреді — Gradle/Xcode файлдарына қол тигізілмеген.
+
+### Тексеру
+Жоғарыдағы бәрін орындаған соң: модератор аккаунтпен кемінде бір рет
+қосымшаны ашуы керек (токенін тіркеу үшін), содан соң газелист жаңа өтінім
+жіберсе — модератордың телефонына push келуі керек (қосымша жабық болса да).
+Push келмесе — Supabase Dashboard → Edge Functions → `push-notify` → Logs
+бөлімінен қатені қараңыз.
 
 ## Сторға шығар алдындағы тізім (App Store / Play Market)
 

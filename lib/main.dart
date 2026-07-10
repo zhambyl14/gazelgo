@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/env.dart';
 import 'core/notify.dart';
+import 'core/push.dart';
 import 'core/repo.dart';
 import 'core/theme.dart';
 import 'features/auth/executor_apply_screen.dart';
@@ -87,6 +90,9 @@ class AuthGate extends ConsumerWidget {
       data: (state) {
         final session = Supabase.instance.client.auth.currentSession;
         if (session == null) return const LoginScreen();
+        // Push-токенді тіркеу — қосымша толық жабық тұрғанда да
+        // хабарландыру жеткізілуі үшін. Firebase бапталмаса — үнсіз өтеді.
+        unawaited(Push.init());
         return const _RoleRouter();
       },
     );
