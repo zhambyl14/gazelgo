@@ -71,6 +71,9 @@ class Profile {
   final double rating;
   final int ratingCount;
   final int trips;
+  final int trustScore;
+  final DateTime? blockedAt;
+  final String? blockReason;
 
   Profile.fromMap(Map<String, dynamic> m)
       : id = m['id'] as String,
@@ -80,7 +83,32 @@ class Profile {
         avatarUrl = m['avatar_url'] as String?,
         rating = _d(m['rating']),
         ratingCount = _i(m['rating_count']),
-        trips = _i(m['trips']);
+        trips = _i(m['trips']),
+        trustScore = m['trust_score'] == null ? 100 : _i(m['trust_score']),
+        blockedAt = _dt(m['blocked_at']),
+        blockReason = m['block_reason'] as String?;
+
+  bool get isBlocked => blockedAt != null;
+}
+
+// ---------- Order report ----------
+class OrderReport {
+  final String id;
+  final String orderId;
+  final String reporterId;
+  final String reporterRole; // client | executor
+  final String reason;
+  final String status; // open | reviewed | dismissed
+  final DateTime? createdAt;
+
+  OrderReport.fromMap(Map<String, dynamic> m)
+      : id = m['id'] as String,
+        orderId = m['order_id'] as String,
+        reporterId = m['reporter_id'] as String,
+        reporterRole = m['reporter_role'] as String? ?? 'client',
+        reason = m['reason'] as String? ?? '',
+        status = m['status'] as String? ?? 'open',
+        createdAt = _dt(m['created_at']);
 }
 
 // ---------- Executor profile ----------

@@ -4,6 +4,7 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import 'trust_actions.dart';
 
 /// Модератордың заказ басқару терезесі: детальдар + статусты өзгерту /
 /// тоқтату / қайта ұсыну. Оқыс оқиғаларға арналған.
@@ -193,23 +194,23 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Тараптар
+                // Тараптар (басу арқылы сенім деңгейі/блок әрекеттері ашылады)
                 FutureBuilder<Profile?>(
                   future: Repo.profileOf(o.clientId),
-                  builder: (context, snap) => SectionCard(
-                    padding: const EdgeInsets.all(12),
-                    child:
-                        ProfileBrief(profile: snap.data, subtitle: 'Клиент'),
+                  builder: (context, snap) => _PartyCard(
+                    profile: snap.data,
+                    subtitle: 'Клиент',
+                    onChanged: () => setState(() {}),
                   ),
                 ),
                 if (o.executorId != null) ...[
                   const SizedBox(height: 8),
                   FutureBuilder<Profile?>(
                     future: Repo.profileOf(o.executorId!),
-                    builder: (context, snap) => SectionCard(
-                      padding: const EdgeInsets.all(12),
-                      child: ProfileBrief(
-                          profile: snap.data, subtitle: 'Орындаушы'),
+                    builder: (context, snap) => _PartyCard(
+                      profile: snap.data,
+                      subtitle: 'Орындаушы',
+                      onChanged: () => setState(() {}),
                     ),
                   ),
                 ],
@@ -248,6 +249,40 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                 const SizedBox(height: 24),
               ],
             ),
+    );
+  }
+}
+
+/// Клиент/орындаушы карточкасы — басу арқылы сенім деңгейі/блок парақшасы ашылады.
+class _PartyCard extends StatelessWidget {
+  final Profile? profile;
+  final String subtitle;
+  final VoidCallback onChanged;
+  const _PartyCard(
+      {required this.profile, required this.subtitle, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile;
+    return InkWell(
+      borderRadius: BorderRadius.circular(Gz.radius),
+      onTap: p == null
+          ? null
+          : () => showTrustActionsSheet(context, p, onChanged: onChanged),
+      child: SectionCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(child: ProfileBrief(profile: p, subtitle: subtitle)),
+            if (p != null) ...[
+              const SizedBox(width: 8),
+              TrustBadge(score: p.trustScore, blocked: p.isBlocked),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: Gz.textSecondary),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

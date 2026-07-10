@@ -106,6 +106,44 @@ class Repo {
     return Map<String, dynamic>.from(res as Map);
   }
 
+  /// Модератордың «Хабарламалар» тізімі (0024) — соңғылары бірінші.
+  static Stream<List<OrderReport>> openReportsStream() => _poll(() async {
+        final rows = await c
+            .from('order_reports')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(100);
+        return (rows as List)
+            .map((m) => OrderReport.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }, every: const Duration(seconds: 6));
+
+  /// Хабарламаны «қаралды/елеусіз қалдырылды» деп белгілеу (0024).
+  static Future<void> modSetReportStatus(String reportId, String status) =>
+      c.rpc('mod_set_report_status',
+          params: {'p_report': reportId, 'p_status': status});
+
+  /// Пайдаланушының сенім деңгейін қолмен түзету (0024, тек модератор).
+  static Future<int> modAdjustTrustScore(
+      String userId, int delta, String reason) async {
+    final res = await c.rpc('mod_adjust_trust_score', params: {
+      'p_user': userId,
+      'p_delta': delta,
+      'p_reason': reason,
+    });
+    return (Map<String, dynamic>.from(res as Map)['trust_score'] as num)
+        .toInt();
+  }
+
+  /// Аккаунтты қолмен блоктау/блоктан шығару (0024, тек модератор).
+  static Future<void> modSetAccountBlocked(
+          String userId, bool blocked, String reason) =>
+      c.rpc('mod_set_account_blocked', params: {
+        'p_user': userId,
+        'p_blocked': blocked,
+        'p_reason': reason,
+      });
+
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
   static Future<void> deleteAccount() async {

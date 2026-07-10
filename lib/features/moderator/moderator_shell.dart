@@ -4,6 +4,7 @@ import '../../shared/widgets.dart';
 import 'applications_screen.dart';
 import 'executors_screen.dart';
 import 'line_screen.dart';
+import 'reports_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
 
@@ -14,7 +15,7 @@ class ModeratorShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: const Row(
@@ -37,6 +38,7 @@ class ModeratorShell extends StatelessWidget {
             Tab(text: 'Толтырулар'),
             Tab(text: 'Орындаушылар'),
             Tab(text: 'Қолдау'),
+            Tab(text: 'Хабарламалар'),
           ]),
         ),
         body: const TabBarView(
@@ -46,6 +48,7 @@ class ModeratorShell extends StatelessWidget {
             TopupsScreen(),
             ExecutorsScreen(),
             SupportAdminScreen(),
+            ReportsScreen(),
           ],
         ),
       ),
