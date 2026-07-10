@@ -147,12 +147,13 @@ class _Splash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      backgroundColor: Gz.surface,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GazelGoLogo(size: 34),
-            SizedBox(height: 28),
+            GazelGoHero(),
+            SizedBox(height: 32),
             SizedBox(
               width: 26,
               height: 26,

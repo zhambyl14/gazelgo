@@ -232,12 +232,12 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Gz.surface,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(26),
                     boxShadow: const [
                       BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 20,
-                          offset: Offset(0, 6))
+                          color: Color(0x260F1720),
+                          blurRadius: 30,
+                          offset: Offset(0, 10))
                     ],
                   ),
                   child: Column(

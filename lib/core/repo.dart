@@ -4,51 +4,60 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
+import 'phone.dart';
 
 /// Барлық дерек-қатынас осы жерде: Supabase RPC, стримдер, storage.
 class Repo {
   static SupabaseClient get c => Supabase.instance.client;
   static String? get uid => c.auth.currentUser?.id;
 
-  // ================= AUTH =================
-  static Future<void> signIn(String email, String password) =>
-      c.auth.signInWithPassword(email: email.trim(), password: password);
+  // ================= AUTH (телефон + құпиясөз, SMS-сыз) =================
+  /// Телефон + құпиясөзбен кіру. Ішкі жағынан синтетикалық email қолданылады.
+  static Future<void> signInPhone(String phone, String password) async {
+    final email = Phone.emailOf(phone);
+    if (email == null) throw Exception('BAD_PHONE');
+    await c.auth.signInWithPassword(email: email, password: password);
+  }
 
-  /// Тіркелу: алдымен edge function (email растауын айналып өтеді),
+  /// Тіркелу — SMS растаусыз, бірден аккаунт құрылып, автоматты кіреді.
+  /// Алдымен `signup` edge function (email растауын айналып өтеді),
   /// ол қолжетімсіз болса — тікелей auth.signUp арқылы.
-  static Future<void> signUp({
-    required String email,
+  static Future<void> signUpPhone({
+    required String phone,
     required String password,
     required String fullName,
-    required String phone,
     required String role, // client | executor
   }) async {
+    final n = Phone.normalize(phone);
+    final email = Phone.emailOf(phone);
+    if (n == null || email == null) throw Exception('BAD_PHONE');
     try {
       await c.functions.invoke('signup', body: {
-        'email': email.trim(),
+        'email': email,
         'password': password,
         'full_name': fullName.trim(),
-        'phone': phone.trim(),
+        'phone': n,
         'role': role,
       });
     } on FunctionException catch (e) {
       final d = e.details;
       if (d is Map && d['error'] != null) {
         // функция жетті, бірақ валидация қатесін қайтарды
-        throw Exception(d['error'].toString());
+        final code = d['error'].toString();
+        throw Exception(code == 'EMAIL_TAKEN' ? 'PHONE_TAKEN' : code);
       }
       // функция табылмады/рұқсат жоқ (404, 401...) — тікелей тіркелеміз
       await _directSignUp(
           email: email, password: password, fullName: fullName,
-          phone: phone, role: role);
+          phone: n, role: role);
     } catch (e) {
       if (e.toString().contains('EMAIL_CONFIRM_REQUIRED')) rethrow;
       // желі қатесі т.б. — тікелей тіркелуді көреміз
       await _directSignUp(
           email: email, password: password, fullName: fullName,
-          phone: phone, role: role);
+          phone: n, role: role);
     }
-    await signIn(email, password);
+    await signInPhone(n, password);
   }
 
   static Future<void> _directSignUp({
@@ -59,11 +68,11 @@ class Repo {
     required String role,
   }) async {
     final res = await c.auth.signUp(
-      email: email.trim(),
+      email: email,
       password: password,
       data: {
         'full_name': fullName.trim(),
-        'phone': phone.trim(),
+        'phone': phone,
         'role': role,
       },
     );

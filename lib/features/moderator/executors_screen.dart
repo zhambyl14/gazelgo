@@ -247,7 +247,8 @@ class _ExecutorTile extends StatelessWidget {
                 FilledButton(
                   style: FilledButton.styleFrom(
                       backgroundColor: Gz.red,
-                      foregroundColor: Colors.white),
+                      foregroundColor: Colors.white,
+                      shadowColor: const Color(0x59DC2626)),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Бұғаттау'),
                 ),

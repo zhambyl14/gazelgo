@@ -112,10 +112,8 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       setState(() {
         _street = picked.address;
         _point = picked.point;
-        // карта арқылы басқа қалаға ауысып кетсе — қаланы да сәйкестендіреміз
-        if (picked.city != null && picked.city!.isNotEmpty) {
-          _city = picked.city;
-        }
+        // Қаланы ЕШҚАШАН ауыстырмаймыз: пайдаланушы таңдаған қала — түпкі дереккөз.
+        // (Адрес сол қала ішінде ғана ізделеді әрі картада расталады.)
       });
     }
   }
@@ -356,22 +354,51 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
       final res = await Geo.searchStreet(city: widget.city, street: q);
       if (mounted) {
         setState(() {
-          _results = res;
+          // ЕРЕЖЕ №1: таңдалған қаладан тыс нәтижелерді МҮЛДЕ көрсетпейміз.
+          // Nominatim кейде «Алматы» сұрағанда Шымкенттегі нәтиже қайтарады —
+          // ол клиентке ешқашан көрінбеуі керек.
+          _results = _onlySelectedCity(res);
           _loading = false;
         });
       }
     });
   }
 
+  /// Тек таңдалған қала ішіндегі нәтижелерді қалдырады.
+  /// Қаласы белгісіз (null) нәтижелерді де алып тастаймыз — басқа қалаға
+  /// «жасырын» өтіп кетпеу үшін (табылмаса — картадан белгілейді).
+  List<GeoPlace> _onlySelectedCity(List<GeoPlace> res) =>
+      res.where((e) => Geo.sameCity(e.city, widget.city)).toList();
+
+  /// Картадан белгіленген нүкте таңдалған қалаға сай ма (ЕРЕЖЕ №6).
+  /// Қаласы анықталмаса (ауылдық жер, тегін деректе жоқ) — рұқсат етеміз.
+  bool _pointInSelectedCity(PickedAddress p) {
+    if (!Geo.inKazakhstan(p.point)) {
+      showSnack(context, 'Тек Қазақстан ішінде', error: true);
+      return false;
+    }
+    if (p.city != null &&
+        p.city!.isNotEmpty &&
+        !Geo.sameCity(p.city, widget.city)) {
+      showSnack(
+          context,
+          'Бұл нүкте ${widget.city} ішінде емес. ${widget.city} шегінде белгілеңіз.',
+          error: true);
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _findOnMap() async {
+    // Карта таңдалған қаланың ортасынан ашылады.
     final res = await AddressPickerScreen.pick(context,
-        title: widget.city, initial: widget.initialPoint);
+        title: widget.city,
+        initial: widget.initialPoint ?? Geo.cityCenter(widget.city));
     if (res != null && mounted) {
-      if (!Geo.inKazakhstan(res.point)) {
-        showSnack(context, 'Тек Қазақстан ішінде', error: true);
-        return;
-      }
-      Navigator.of(context).pop(res);
+      if (!_pointInSelectedCity(res)) return;
+      // Қаланы таңдалған қалаға бекітеміз (координата сол қалада расталды).
+      Navigator.of(context)
+          .pop(PickedAddress(res.address, res.point, widget.city));
     }
   }
 
@@ -382,10 +409,13 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
   Future<void> _useTyped() async {
     final text = _search.text.trim();
     if (text.length < 2) return;
+    // Тек таңдалған қаладағы нәтиженің нүктесін аламыз (ЕРЕЖЕ №4):
+    // тізімдегі бірінші элемент басқа қала болуы мүмкін, сондықтан фильтрлеп аламыз.
     LatLng? point = _results.isNotEmpty ? _results.first.point : null;
     if (point == null) {
       setState(() => _loading = true);
-      final res = await Geo.searchStreet(city: widget.city, street: text);
+      final res =
+          _onlySelectedCity(await Geo.searchStreet(city: widget.city, street: text));
       point = res.isNotEmpty ? res.first.point : null;
       if (mounted) setState(() => _loading = false);
     }
@@ -394,17 +424,15 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
       Navigator.of(context).pop(PickedAddress(text, point, widget.city));
       return;
     }
-    // Дәл табылмады → картадан белгілету (жазған мәтін адрес болып қалады)
+    // Қала ішінде дәл табылмады → басқа қаланы ЕШҚАШАН ұсынбаймыз,
+    // тек картадан дәл жерді белгілетеміз (жазған мәтін адрес болып қалады).
     final picked = await AddressPickerScreen.pick(
       context,
       title: 'Картадан белгілеңіз: $text',
       initial: Geo.cityCenter(widget.city),
     );
     if (picked != null && mounted) {
-      if (!Geo.inKazakhstan(picked.point)) {
-        showSnack(context, 'Тек Қазақстан ішінде', error: true);
-        return;
-      }
+      if (!_pointInSelectedCity(picked)) return;
       // Клиент жазған мәтінді сақтаймыз, координата — картадан дәл.
       Navigator.of(context).pop(PickedAddress(text, picked.point, widget.city));
     }
@@ -465,6 +493,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Gz.green,
                     foregroundColor: Colors.white,
+                    shadowColor: const Color(0x5916A34A),
                     minimumSize: const Size.fromHeight(50),
                     textStyle: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 14.5),
@@ -520,9 +549,10 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                             const Icon(Icons.place_outlined, color: Gz.red),
                         title: Text(_results[i].name,
                             maxLines: 2, overflow: TextOverflow.ellipsis),
-                        onTap: () => Navigator.of(context).pop(
-                            PickedAddress(_results[i].name, _results[i].point,
-                                _results[i].city ?? widget.city)),
+                        // Қала әрдайым таңдалған қала болып қалады (нәтиже
+                        // онсыз да сол қала ішінен фильтрленген).
+                        onTap: () => Navigator.of(context).pop(PickedAddress(
+                            _results[i].name, _results[i].point, widget.city)),
                       ),
                     ),
             ),

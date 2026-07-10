@@ -226,7 +226,9 @@ class ActiveOrderScreen extends StatelessWidget {
                 child: const Text('Жоқ')),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red, foregroundColor: Colors.white),
+                  backgroundColor: Gz.red,
+                  foregroundColor: Colors.white,
+                  shadowColor: const Color(0x59DC2626)),
               onPressed: () => Navigator.pop(ctx, c.text),
               child: const Text('Бас тарту'),
             ),

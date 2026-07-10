@@ -194,7 +194,8 @@ class _VipDialogState extends State<_VipDialog> {
                   child: FilledButton(
                     style: FilledButton.styleFrom(
                         backgroundColor: Gz.violet,
-                        foregroundColor: Colors.white),
+                        foregroundColor: Colors.white,
+                        shadowColor: const Color(0x597C3AED)),
                     onPressed: _accept,
                     child: const Text('Қабылдау'),
                   ),

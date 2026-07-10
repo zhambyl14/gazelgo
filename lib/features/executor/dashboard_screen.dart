@@ -451,6 +451,7 @@ class _TariffCard extends StatelessWidget {
                 backgroundColor: color,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(46),
+                shadowColor: color.withValues(alpha: 0.4),
               ),
               onPressed: onBuy,
               child: Text('Сатып алу · ${fmtT(price)}'),

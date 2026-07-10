@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -15,8 +17,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController(text: '+7');
-  final _email = TextEditingController();
   final _password = TextEditingController();
+  final _password2 = TextEditingController();
   String _role = 'client';
   bool _obscure = true;
 
@@ -24,23 +26,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
-    _email.dispose();
     _password.dispose();
+    _password2.dispose();
     super.dispose();
   }
 
+  /// Тіркелу — SMS-сыз: аккаунт бірден құрылып, автоматты кіреді
+  /// (AuthGate өзі бағыттайды).
   Future<void> _register() async {
     if (!_form.currentState!.validate()) return;
     try {
-      await Repo.signUp(
-        email: _email.text,
+      await Repo.signUpPhone(
+        phone: _phone.text,
         password: _password.text,
         fullName: _name.text,
-        phone: _phone.text,
         role: _role,
       );
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
-      // AuthGate рөлге қарай бағыттайды (орындаушы → өтінім экраны)
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }
@@ -122,25 +124,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _phone,
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
+                      ],
                       decoration: const InputDecoration(
                         hintText: 'Телефон (+7 ...)',
                         prefixIcon: Icon(Icons.phone_outlined),
                       ),
-                      validator: (v) {
-                        final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                        return digits.length < 10 ? 'Нөмір толық емес' : null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline),
-                      ),
                       validator: (v) =>
-                          (v == null || !v.contains('@')) ? 'Email жазыңыз' : null,
+                          Phone.isValid(v ?? '') ? null : 'Нөмір дұрыс емес',
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -161,17 +153,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ? 'Кемінде 6 таңба'
                           : null,
                     ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _password2,
+                      obscureText: _obscure,
+                      decoration: const InputDecoration(
+                        hintText: 'Құпиясөзді қайталаңыз',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                      validator: (v) =>
+                          v != _password.text ? 'Құпиясөздер сәйкес емес' : null,
+                    ),
                     const SizedBox(height: 20),
                     BusyButton(label: 'Тіркелу', onPressed: _register),
-                    const SizedBox(height: 10),
-                    if (_role == 'executor')
-                      const Text(
-                        'Тіркелген соң көлік деректері мен құжаттарды толтырасыз. '
-                        'Өтінімді модератор тексереді.',
-                        textAlign: TextAlign.center,
-                        style:
-                            TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                    if (_role == 'executor') ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 13, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8DE),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(color: const Color(0xFFF2DE8A)),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 17, color: Color(0xFFB58900)),
+                            SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                'Газелист тіркелген соң көлік деректері мен '
+                                'құжаттарды толтырады — өтінімді модератор '
+                                'тексереді.',
+                                style: TextStyle(
+                                    color: Color(0xFF8A6D00),
+                                    fontSize: 12,
+                                    height: 1.45),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ],
                   ],
                 ),
               ),

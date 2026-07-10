@@ -70,6 +70,7 @@ class _BusyButtonState extends State<BusyButton> {
           : FilledButton.styleFrom(
               backgroundColor: widget.color,
               foregroundColor: Colors.white,
+              shadowColor: widget.color!.withValues(alpha: 0.4),
             ),
       child: child,
     );
@@ -432,7 +433,9 @@ class OrderCard extends StatelessWidget {
                     child: Text(
                       fmtT(order.displayPrice),
                       style: const TextStyle(
-                          fontSize: 16.5, fontWeight: FontWeight.w900),
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3),
                     ),
                   ),
                   trailing ?? StatusChip(order.status),
@@ -695,6 +698,65 @@ class _ReviewPromptState extends State<ReviewPrompt> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Үлкен hero-логотип (кіру/сплэш экрандарына): сары дөңгелектелген
+/// тақтайша + көлік белгісі + «GazelGo» атауы.
+class GazelGoHero extends StatelessWidget {
+  final String? subtitle;
+  const GazelGoHero({super.key, this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 78,
+          height: 78,
+          decoration: BoxDecoration(
+            color: Gz.yellow,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x73FFC400),
+                blurRadius: 30,
+                offset: Offset(0, 14),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.local_shipping, size: 40, color: Gz.ink),
+        ),
+        const SizedBox(height: 18),
+        const Text.rich(
+          TextSpan(children: [
+            TextSpan(
+                text: 'Gazel',
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                    color: Gz.ink)),
+            TextSpan(
+                text: 'Go',
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                    color: Gz.yellowDark)),
+          ]),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+          ),
+        ],
+      ],
     );
   }
 }

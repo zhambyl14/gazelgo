@@ -68,7 +68,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 child: const Text('Жоқ')),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red, foregroundColor: Colors.white),
+                  backgroundColor: Gz.red,
+                  foregroundColor: Colors.white,
+                  shadowColor: const Color(0x59DC2626)),
               onPressed: () => Navigator.pop(ctx, c.text),
               child: const Text('Тоқтату'),
             ),
@@ -112,7 +114,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Expanded(
                       child: Text(fmtT(o.displayPrice),
                           style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w900)),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5)),
                     ),
                     StatusChip(o.status),
                   ],

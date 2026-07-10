@@ -58,11 +58,27 @@ Backend толығымен осы папкада дайын. Оны нақты S
      түзетулері (`address_corrections` + `nearby_address`/`save_address_correction`);
      жаңа құжат өрістері (права+селфи, куәлік+селфи, шетел паспорты+селфи).
 
+   - `migrations/0015_sms_otp_auth.sql` ← ҚАЖЕТ ЕМЕС (SMS-код ағынынан бас
+     тарттық — Mobizon ақылы). Орындасаңыз да зиян жоқ, бірақ қолданылмайды.
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
-   **0013, содан соң 0014-ті ең соңынан, 0001–0012 қолданылған соң орындаңыз.**
-2. Edge function: Dashboard → Edge Functions → **Deploy new function** →
-   аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF**.
+   **0013, содан соң 0014-ті орындаңыз.**
+2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
+   - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
+     тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).
+     Аккаунттар синтетикалық email арқылы құрылады
+     (`7XXXXXXXXXX@phone.gazelgo.kz`) — Supabase-тің телефон провайдерін де,
+     SMS қызметін де баптау қажет ЕМЕС.
+   - `functions/otp/` — ҚАЖЕТ ЕМЕС (SMS ағыны алынды), deploy жасамаңыз.
+
+   **Edge Function Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` —
+   платформа автоматты береді, қолмен ештеңе қою қажет емес.
+
+   Құпиясөзді ұмытқан пайдаланушылар қолдау қызметіне (WhatsApp) жазады —
+   нөмірін `lib/core/env.dart` → `supportWhatsApp` ішіне қойыңыз. Модератор
+   Dashboard → Authentication → Users бетінен пайдаланушыны тауып
+   («7XXXXXXXXXX@phone.gazelgo.kz» email-і арқылы) жаңа құпиясөз орната алады.
 3. Dashboard → Settings → API → `anon` / `publishable` key-ді көшіріп,
    `lib/core/env.dart` ішіндегі `supabaseAnonKey` мәніне қойыңыз.
 

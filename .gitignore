@@ -47,3 +47,5 @@ app.*.map.json
 
 # Gradle/Kotlin build cache (session-specific, churns on every build)
 /android/.kotlin/
+
+lib.zip

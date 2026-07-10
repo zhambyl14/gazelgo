@@ -17,7 +17,10 @@ class Gz {
   static const violet = Color(0xFF7C3AED); // VIP
   static const night = Color(0xFF3730A3);
 
-  static const radius = 16.0;
+  static const radius = 20.0;
+
+  /// Негізгі қаріп (assets/fonts — Rubik, қазақ әліпбиін толық қолдайды).
+  static const fontFamily = 'Rubik';
 
   /// Қара-көк hero-карталарға арналған градиент.
   static const heroGradient = LinearGradient(
@@ -46,6 +49,7 @@ class Gz {
         error: red,
       ),
       scaffoldBackgroundColor: bg,
+      fontFamily: fontFamily,
       fontFamilyFallback: const ['Roboto', 'Arial'],
     );
     return base.copyWith(
@@ -57,49 +61,56 @@ class Gz {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: ink,
-          fontSize: 19,
+          fontSize: 20,
           fontWeight: FontWeight.w800,
+          fontFamily: fontFamily,
+          letterSpacing: -0.2,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: yellow,
           foregroundColor: ink,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          minimumSize: const Size.fromHeight(54),
+          elevation: 4,
+          shadowColor: const Color(0x66FFC400),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          textStyle: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w700, fontFamily: fontFamily),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: ink,
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(54),
           side: const BorderSide(color: border, width: 1.4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          textStyle: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w700, fontFamily: fontFamily),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ink,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle:
+              const TextStyle(fontWeight: FontWeight.w700, fontFamily: fontFamily),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: border, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(15),
           borderSide: const BorderSide(color: ink, width: 1.6),
         ),
         hintStyle: const TextStyle(color: textSecondary),
@@ -112,6 +123,7 @@ class Gz {
           borderRadius: BorderRadius.circular(radius),
           side: const BorderSide(color: border),
         ),
+        shadowColor: const Color(0x0D0F1720),
       ),
       dividerTheme: const DividerThemeData(color: border, thickness: 1),
       snackBarTheme: SnackBarThemeData(
@@ -246,14 +258,19 @@ String errText(Object e) {
     'BAD_AMOUNT': 'Сома тым аз.',
     'BAD_INPUT': 'Деректер толық емес.',
     'FORBIDDEN': 'Рұқсат жоқ.',
-    'EMAIL_TAKEN': 'Бұл email тіркелген. Кіріп көріңіз.',
+    'EMAIL_TAKEN': 'Бұл нөмір тіркелген. Кіріп көріңіз.',
+    'PHONE_TAKEN': 'Бұл нөмір тіркелген. Кіріп көріңіз.',
+    'PHONE_NOT_FOUND': 'Бұл нөмір тіркелмеген. Алдымен тіркеліңіз.',
     'WEAK_PASSWORD': 'Құпиясөз тым қысқа (кемінде 6 таңба).',
     'BAD_EMAIL': 'Email дұрыс емес.',
     'BAD_PHONE': 'Телефон нөмірі дұрыс емес.',
     'BAD_NAME': 'Атыңызды толық жазыңыз.',
+    'BAD_ROLE': 'Рөл дұрыс емес.',
+    'RATE_LIMITED': 'Тым жиі сұраныс. Сәл күтіп, қайталаңыз.',
+    'SERVER_ERROR': 'Сервер қатесі. Қайталап көріңіз.',
     'AUTH': 'Қайта кіріңіз.',
     'NOT_FOUND': 'Жазба табылмады.',
-    'Invalid login credentials': 'Email немесе құпиясөз қате.',
+    'Invalid login credentials': 'Телефон немесе құпиясөз қате.',
     'User already registered': 'Бұл email тіркелген. Кіріп көріңіз.',
     'already been registered': 'Бұл email тіркелген. Кіріп көріңіз.',
     'Password should be': 'Құпиясөз тым әлсіз (кемінде 6 таңба).',

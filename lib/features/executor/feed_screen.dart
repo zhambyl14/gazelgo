@@ -163,6 +163,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                 Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: BusyButton(
                         label: 'Келісу · ${fmtT(o.clientPrice)}',
                         onPressed: () => _offer(context, o, o.clientPrice!, ''),
@@ -170,9 +171,12 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
+                      flex: 2,
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48)),
+                            minimumSize: const Size.fromHeight(48),
+                            side:
+                                const BorderSide(color: Gz.ink, width: 1.6)),
                         onPressed: () => _counterOffer(context, o),
                         child: const Text('Өз бағам'),
                       ),

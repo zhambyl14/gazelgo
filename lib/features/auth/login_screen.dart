@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,14 +16,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController();
+  final _phone = TextEditingController(text: '+7');
   final _password = TextEditingController();
   final _form = GlobalKey<FormState>();
   bool _obscure = true;
 
   @override
   void dispose() {
-    _email.dispose();
+    _phone.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -28,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_form.currentState!.validate()) return;
     try {
-      await Repo.signIn(_email.text, _password.text);
+      await Repo.signInPhone(_phone.text, _password.text);
       // AuthGate өзі бағыттайды
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -50,29 +53,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: GazelGoLogo(size: 34)),
-                    const SizedBox(height: 8),
                     const Center(
-                      child: Text(
-                        'Газель жүк тасымалы платформасы',
-                        style: TextStyle(color: Gz.textSecondary, fontSize: 14),
-                      ),
+                      child: GazelGoHero(
+                          subtitle: 'Газель жүк тасымалы платформасы'),
                     ),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 38),
                     const Text('Кіру',
                         style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 20),
+                            fontSize: 23, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 18),
                     TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      autofillHints: const [AutofillHints.telephoneNumber],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
+                      ],
                       decoration: const InputDecoration(
-                        hintText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline),
+                        hintText: 'Телефон (+7 ...)',
+                        prefixIcon: Icon(Icons.phone_outlined),
                       ),
                       validator: (v) =>
-                          (v == null || !v.contains('@')) ? 'Email жазыңыз' : null,
+                          Phone.isValid(v ?? '') ? null : 'Нөмір дұрыс емес',
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -93,7 +95,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? 'Кемінде 6 таңба'
                           : null,
                     ),
-                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordScreen()),
+                        ),
+                        style: TextButton.styleFrom(
+                            foregroundColor: Gz.yellowDark),
+                        child: const Text('Құпиясөзді ұмыттыңыз ба?'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     BusyButton(label: 'Кіру', onPressed: _login),
                     const SizedBox(height: 12),
                     TextButton(

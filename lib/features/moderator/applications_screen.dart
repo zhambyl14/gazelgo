@@ -401,7 +401,9 @@ class ApplicationDetailScreen extends StatelessWidget {
               child: const Text('Болдырмау')),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Gz.red, foregroundColor: Colors.white),
+                backgroundColor: Gz.red,
+                foregroundColor: Colors.white,
+                shadowColor: const Color(0x59DC2626)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Қабылдамау'),
           ),

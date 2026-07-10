@@ -438,9 +438,26 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 controller: _price,
                 keyboardType: TextInputType.number,
                 onChanged: (_) => setState(() {}),
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5),
                 decoration: InputDecoration(
-                  hintText: 'Бағаңыз, ₸ (мин. $_minPrice)',
+                  hintText: 'Бағаңыз (мин. $_minPrice)',
+                  hintStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Gz.textSecondary),
                   prefixIcon: const Icon(Icons.payments_outlined),
+                  suffixText: '₸ ',
+                  suffixStyle: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Gz.textSecondary),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Gz.ink, width: 1.6),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
