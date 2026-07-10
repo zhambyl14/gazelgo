@@ -20,5 +20,5 @@ class Env {
 
   /// Қолдау қызметінің WhatsApp нөмірі (құпиясөзді қалпына келтіру т.б.).
   /// Тек цифрлар, елдік кодпен: 7XXXXXXXXXX. Өз нөміріңізге ауыстырыңыз!
-  static const supportWhatsApp = '77770000000';
+  static const supportWhatsApp = '77474005347';
 }
