@@ -92,6 +92,20 @@ class Repo {
         'p_platform': platform,
       });
 
+  /// Күдікті жүк туралы модераторға дереу хабарлайды (0021 миграциясы) —
+  /// заказдың нақты қатысушысы (клиент не орындаушы) ғана жібере алады.
+  static Future<void> reportOrder(String orderId, String reason) =>
+      c.rpc('report_order', params: {
+        'p_order': orderId,
+        'p_reason': reason,
+      });
+
+  /// Жеңіл эвристикалық «тексеру қажет» флагы (0022) — модераторға ғана.
+  static Future<Map<String, dynamic>> orderFraudFlags(String orderId) async {
+    final res = await c.rpc('order_fraud_flags', params: {'p_order': orderId});
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
   static Future<void> deleteAccount() async {

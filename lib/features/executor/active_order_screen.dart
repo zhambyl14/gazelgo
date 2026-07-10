@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -123,6 +126,8 @@ class ActiveOrderScreen extends StatelessWidget {
                 if (o.isActive) ...[
                   const SizedBox(height: 10),
                   SupportOrderButton(orderId: o.id),
+                  const SizedBox(height: 10),
+                  ReportSuspiciousButton(orderId: o.id),
                 ],
                 const SizedBox(height: 16),
                 if (next != null)
@@ -185,7 +190,37 @@ class ActiveOrderScreen extends StatelessWidget {
     );
   }
 
-  void _navigate(double lat, double lng) {
+  /// Орнатылған навигация қосымшасын (Google Maps) тікелей турлы-баурай
+  /// («navigation mode») режимінде ашуға тырысады; орнатылмаса не платформа
+  /// қолдамаса — веб-бағыттар бетіне (кез келген құрылғыда жұмыс істейді)
+  /// қайтады.
+  Future<void> _navigate(double lat, double lng) async {
+    if (!kIsWeb) {
+      try {
+        if (Platform.isAndroid) {
+          final nav = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+          if (await canLaunchUrl(nav)) {
+            await launchUrl(nav);
+            return;
+          }
+        } else if (Platform.isIOS) {
+          final gmapsIos = Uri.parse(
+              'comgooglemaps://?daddr=$lat,$lng&directionsmode=driving');
+          if (await canLaunchUrl(gmapsIos)) {
+            await launchUrl(gmapsIos);
+            return;
+          }
+          final appleMaps =
+              Uri.parse('https://maps.apple.com/?daddr=$lat,$lng&dirflg=d');
+          if (await canLaunchUrl(appleMaps)) {
+            await launchUrl(appleMaps, mode: LaunchMode.externalApplication);
+            return;
+          }
+        }
+      } catch (_) {
+        // белгісіз платформа/рұқсат қатесі — веб-нұсқаға түсеміз
+      }
+    }
     launchUrl(
       Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'),
       mode: LaunchMode.externalApplication,

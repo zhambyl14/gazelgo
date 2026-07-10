@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -8,6 +9,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
+import '../legal/legal_screen.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'order_detail_screen.dart';
@@ -29,6 +31,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _price = TextEditingController();
 
   String _tariff = 'simple'; // simple | vip — заказ санаты
+  bool _legalOk = false;
+  late final TapGestureRecognizer _legalListTap = TapGestureRecognizer()
+    ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const LegalScreen(initialTab: 0)));
   GeoRoute? _route;
   final List<Uint8List> _photos = [];
   final _picker = ImagePicker();
@@ -82,6 +88,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _cargo.dispose();
     _comment.dispose();
     _price.dispose();
+    _legalListTap.dispose();
     super.dispose();
   }
 
@@ -135,6 +142,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
     if (!Geo.inKazakhstan(_from.point) || !Geo.inKazakhstan(_to.point)) {
       showSnack(context, 'Заказ тек Қазақстан ішінде болуы керек', error: true);
+      return;
+    }
+    if (!_legalOk) {
+      showSnack(context,
+          'Жүктің заңды екеніне растау белгісін қойыңыз (тыйым салынған заттар тізімі — Келісімде)',
+          error: true);
       return;
     }
     // §2/§3: барлық заказ — клиент бағасын өзі қояды (bidding).
@@ -460,7 +473,56 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => setState(() => _legalOk = !_legalOk),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Checkbox(
+                          value: _legalOk,
+                          activeColor: Gz.ink,
+                          onChanged: (v) =>
+                              setState(() => _legalOk = v ?? false),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: Gz.textSecondary),
+                            children: [
+                              const TextSpan(
+                                  text:
+                                      'Жүгімнің заңды екеніне және тыйым '
+                                      'салынған заттар '),
+                              TextSpan(
+                                text: 'тізіміне',
+                                recognizer: _legalListTap,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Gz.ink,
+                                    decoration: TextDecoration.underline),
+                              ),
+                              const TextSpan(text: ' кірмейтініне кепілдік беремін.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               BusyButton(
                 label: 'Заказ жариялау',
                 onPressed: _submit,

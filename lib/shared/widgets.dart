@@ -875,6 +875,79 @@ Future<void> confirmSignOut(BuildContext context) async {
   await Repo.signOut();
 }
 
+/// «Күдікті жүк туралы хабарлау» — заказ экрандарында (клиент те,
+/// орындаушы да). Хабарлама модератордың қолдау чатына дереу түседі
+/// (report_order RPC). Заказды бас тартумен шатастырмау керек — бұл тек
+/// ескерту, заказдың күйіне әсер етпейді.
+class ReportSuspiciousButton extends StatelessWidget {
+  final String orderId;
+  const ReportSuspiciousButton({super.key, required this.orderId});
+
+  Future<void> _report(BuildContext context) async {
+    final reasonCtrl = TextEditingController();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Күдікті жүк туралы хабарлау'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
+              'тартумен шатастырмаңыз — заказдың күйі өзгермейді.',
+              style: TextStyle(fontSize: 12.5, color: Gz.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                  hintText: 'Не күдікті көрдіңіз? (міндетті емес)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Болдырмау')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Gz.red,
+                foregroundColor: Colors.white,
+                shadowColor: const Color(0x59DC2626)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Хабарлау'),
+          ),
+        ],
+      ),
+    );
+    if (send != true || !context.mounted) return;
+    try {
+      await Repo.reportOrder(orderId, reasonCtrl.text);
+      if (context.mounted) {
+        showSnack(context, 'Хабарлама модераторға жіберілді');
+      }
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: const Icon(Icons.report_outlined, color: Gz.red),
+        title: const Text('Күдікті жүк туралы хабарлау',
+            style: TextStyle(fontWeight: FontWeight.w700, color: Gz.red)),
+        subtitle: const Text('Заңсыз/қауіпті жүкке күдіктенсеңіз'),
+        onTap: () => _report(context),
+      ),
+    );
+  }
+}
+
 /// GazelGo логотипі (мәтіндік).
 class GazelGoLogo extends StatelessWidget {
   final double size;

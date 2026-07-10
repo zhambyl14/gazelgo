@@ -192,6 +192,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _Timeline(status: o.status),
           const SizedBox(height: 10),
           SupportOrderButton(orderId: o.id),
+          const SizedBox(height: 10),
+          ReportSuspiciousButton(orderId: o.id),
         ];
       case 'completed':
         return [

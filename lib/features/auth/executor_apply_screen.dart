@@ -84,30 +84,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     super.dispose();
   }
 
+  /// Құжат/көлік фотосы ТЕК камерамен түсіріледі (галереядан таңдау жоқ) —
+  /// дайын/бөгде суретті жүктеуді қиындататын анти-алаяқтық шарасы. Толық
+  /// кепілдік бермейді (кадрды алдын ала басқа жерде түсіріп алуға болады),
+  /// бірақ галереядан кез келген файлды таңдауды болдырмайды.
   Future<Uint8List?> _pick() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Камерамен түсіру'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Галереядан таңдау'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return null;
     final file = await _picker.pickImage(
-        source: source, imageQuality: 70, maxWidth: 1600);
+        source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
     if (file == null) return null;
     return file.readAsBytes();
   }

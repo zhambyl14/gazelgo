@@ -31,16 +31,46 @@ class _OrderAdminSheet extends StatefulWidget {
 
 class _OrderAdminSheetState extends State<_OrderAdminSheet> {
   Order? _order;
+  Map<String, dynamic>? _fraud;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadFraud();
   }
 
   Future<void> _load() async {
     final o = await Repo.orderById(widget.orderId);
     if (mounted) setState(() => _order = o);
+  }
+
+  Future<void> _loadFraud() async {
+    try {
+      final f = await Repo.orderFraudFlags(widget.orderId);
+      if (mounted) setState(() => _fraud = f);
+    } catch (_) {
+      // эвристика сәтсіз болса — үнсіз өтеді, негізгі экранды бұзбайды
+    }
+  }
+
+  /// Эвристика бойынша ескерту мәтіні (тек статистика — ML/дерек-анализ
+  /// емес; себебі мен нәтиже жоқ жерде де флаг көрсетпейді).
+  String? get _fraudWarning {
+    final f = _fraud;
+    if (f == null) return null;
+    final pairCount = (f['repeated_pair_count'] as num?)?.toInt() ?? 0;
+    final isNewHighValue = f['is_new_account_high_value'] == true;
+    final parts = <String>[];
+    if (pairCount >= 3) {
+      parts.add('Бұл клиент пен газелист соңғы 30 күнде $pairCount рет '
+          'бірге аяқтаған заказ жасаған — қайталанатын жұп.');
+    }
+    if (isNewHighValue) {
+      parts.add('Клиент аккаунты жаңа (<24 сағ) әрі заказ бағасы жоғары.');
+    }
+    if (parts.isEmpty) return null;
+    return 'Тексеру қажет болуы мүмкін: ${parts.join(' ')}';
   }
 
   static const _statuses = [
@@ -118,6 +148,34 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     StatusChip(o.status),
                   ],
                 ),
+                if (_fraudWarning != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFB74D)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: Color(0xFFB86E00), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_fraudWarning!,
+                              style: const TextStyle(
+                                  color: Color(0xFF8A5300),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.4)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 SectionCard(
                   padding: const EdgeInsets.all(14),
