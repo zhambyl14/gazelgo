@@ -32,31 +32,31 @@ class FirebaseOpts {
   // Firebase Console → Project settings → General → Your apps → Android
   // → SDK setup and configuration → «Config»-тен көшіріңіз.
   static const android = FirebaseOptions(
-    apiKey: '',
-    appId: '',
-    messagingSenderId: '',
-    projectId: '',
-    storageBucket: '',
+    apiKey: 'AIzaSyBqtCbYQzeJq3s3qsAsIWTBgQ4ce0bG0ss',
+    appId: '1:602555256548:android:f2c0ec323efe1c074626f1',
+    messagingSenderId: '602555256548',
+    projectId: 'gazelgo',
+    storageBucket: 'gazelgo.firebasestorage.app',
   );
 
   // Firebase Console → Project settings → General → Your apps → iOS (Apple)
   // → SDK setup and configuration → «Config»-тен көшіріңіз.
   static const ios = FirebaseOptions(
-    apiKey: '',
-    appId: '',
-    messagingSenderId: '',
-    projectId: '',
-    storageBucket: '',
+    apiKey: 'AIzaSyBIA0Pep5HT6D3fKamUsIIrD_h-sNtR7V0',
+    appId: '1:602555256548:ios:8de93fcd8452b4084626f1',
+    messagingSenderId: '602555256548',
+    projectId: 'gazelgo',
+    storageBucket: 'gazelgo.firebasestorage.app',
     iosBundleId: 'kz.gazelgo.app',
   );
 
   // Веб push (міндетті емес) — Firebase Console → Your apps → Web.
   static const web = FirebaseOptions(
-    apiKey: '',
-    appId: '',
-    messagingSenderId: '',
-    projectId: '',
-    authDomain: '',
-    storageBucket: '',
+    apiKey: 'AIzaSyC2EKnEwJLG7-FjGPbPsxFNe5YBcmkmjNs',
+    appId: '1:602555256548:web:38f380e638a33d0f4626f1',
+    messagingSenderId: '602555256548',
+    projectId: 'gazelgo',
+    authDomain: 'gazelgo.firebaseapp.com',
+    storageBucket: 'gazelgo.firebasestorage.app',
   );
 }

@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/env.dart';
 import '../../core/name_guard.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
-import '../../shared/puzzle_captcha.dart';
 import '../../shared/widgets.dart';
 import '../legal/legal_screen.dart';
 
@@ -20,13 +22,18 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _phone = TextEditingController(text: '+7');
   final _password = TextEditingController();
   final _password2 = TextEditingController();
   String _role = 'client';
   bool _obscure = true;
-  bool _captchaOk = false;
   bool _agree = false;
+
+  // Telegram верификация күйі
+  String? _tgToken; // ағымдағы сессия токені
+  String? _verifiedPhone; // расталған нөмір (7XXXXXXXXXX)
+  bool _tgWaiting = false; // ботты ашып, растауды күтудеміз
+  Timer? _pollTimer;
+
   late final TapGestureRecognizer _termsTap = TapGestureRecognizer()
     ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => const LegalScreen(initialTab: 0)));
@@ -36,8 +43,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _name.dispose();
-    _phone.dispose();
     _password.dispose();
     _password2.dispose();
     _termsTap.dispose();
@@ -45,26 +52,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  /// Тіркелу — SMS-сыз: аккаунт бірден құрылып, автоматты кіреді
-  /// (AuthGate өзі бағыттайды).
+  /// «Telegram арқылы растау»: токен алып, ботты ашады да, статусты
+  /// (расталды ма) 2,5 секунд сайын сұрап отырады.
+  Future<void> _startTelegram() async {
+    try {
+      final token = await Repo.tgStartVerification();
+      if (!mounted) return;
+      setState(() {
+        _tgToken = token;
+        _tgWaiting = true;
+        _verifiedPhone = null;
+      });
+      final uri = Uri.parse('https://t.me/${Env.telegramBot}?start=$token');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(
+          const Duration(milliseconds: 2500), (_) => _pollTelegram());
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _pollTelegram() async {
+    final token = _tgToken;
+    if (token == null) return;
+    try {
+      final res = await Repo.tgCheckVerification(token);
+      if (res['verified'] == true && res['phone'] != null) {
+        _pollTimer?.cancel();
+        if (!mounted) return;
+        setState(() {
+          _verifiedPhone = res['phone'] as String;
+          _tgWaiting = false;
+        });
+      }
+    } catch (_) {
+      // желі қатесі — келесі тикте қайталаймыз
+    }
+  }
+
+  /// Тіркелу — нөмір Telegram-мен расталған соң ғана.
   Future<void> _register() async {
     if (!_form.currentState!.validate()) return;
+    if (_verifiedPhone == null || _tgToken == null) {
+      showSnack(context, 'Алдымен нөміріңізді Telegram арқылы растаңыз',
+          error: true);
+      return;
+    }
     if (!_agree) {
       showSnack(context,
           'Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет',
           error: true);
       return;
     }
-    if (!_captchaOk) {
-      showSnack(context, 'Алдымен пазлды жылжытыңыз', error: true);
-      return;
-    }
     try {
       await Repo.signUpPhone(
-        phone: _phone.text,
+        phone: _verifiedPhone!,
         password: _password.text,
         fullName: _name.text,
         role: _role,
+        tgToken: _tgToken!,
       );
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
@@ -143,18 +190,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) => NameGuard.validate(v ?? ''),
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
-                      ],
-                      decoration: const InputDecoration(
-                        hintText: 'Телефон (+7 ...)',
-                        prefixIcon: Icon(Icons.phone_outlined),
-                      ),
-                      validator: (v) =>
-                          Phone.isValid(v ?? '') ? null : 'Нөмір дұрыс емес',
+                    _TelegramVerifyCard(
+                      verifiedPhone: _verifiedPhone,
+                      waiting: _tgWaiting,
+                      onStart: _startTelegram,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -187,10 +226,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           v != _password.text ? 'Құпиясөздер сәйкес емес' : null,
                     ),
                     const SizedBox(height: 16),
-                    PuzzleCaptcha(
-                      onChanged: (ok) => setState(() => _captchaOk = ok),
-                    ),
-                    const SizedBox(height: 12),
                     // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
                     InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -289,6 +324,105 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Telegram арқылы нөмір растау картасы. Үш күй: (1) басталмаған — «Telegram
+/// арқылы растау» түймесі; (2) күтуде — ботта нөмірді бөлісуді сұрап тұрмыз;
+/// (3) расталды — жасыл нөмір көрсетіледі.
+class _TelegramVerifyCard extends StatelessWidget {
+  final String? verifiedPhone;
+  final bool waiting;
+  final VoidCallback onStart;
+  const _TelegramVerifyCard({
+    required this.verifiedPhone,
+    required this.waiting,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (verifiedPhone != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: Gz.green.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Gz.green, width: 1.4),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.verified, color: Gz.green),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Нөмір расталды',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          color: Gz.green)),
+                  Text(Phone.pretty(verifiedPhone!),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF4FF),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: const Color(0xFF9DCBF5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.send, size: 18, color: Color(0xFF2B7DC4)),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  waiting
+                      ? 'Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз. '
+                          'Растауды күтудеміз…'
+                      : 'Нөміріңіз Telegram арқылы расталады (SMS жоқ). '
+                          'Түймені басып, ботта нөміріңізді бөлісіңіз.',
+                  style: const TextStyle(
+                      color: Color(0xFF1C5A91), fontSize: 12.5, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2B7DC4),
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(46),
+            ),
+            onPressed: onStart,
+            icon: waiting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.telegram),
+            label: Text(waiting
+                ? 'Telegram-ды қайта ашу'
+                : 'Telegram арқылы растау'),
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,20 @@
 -- edge function-ды шақырады, target_user_ids болмаса — барлық модераторға
 -- broadcast, ЕСКІ тәртіппен үйлесімді). Соған сай push-notify функциясы
 -- ЖАЛПЫ форматқа көшірілуі керек (деплой қажет, supabase/APPLY.md-де).
+--
+-- ЕСКЕРТУ: `alter database postgres set app.settings.push_trigger_secret=...`
+-- Supabase хостингте ЕНДІ РҰҚСАТ ЕТІЛМЕЙДІ («permission denied to set
+-- parameter»). Сол себепті құпия сөз енді database GUC емес, RLS-пен
+-- құлыпталған кестеде сақталады — `auth_events`-пен (0018) бірдей тәртіп:
+-- саясат жоқ, тек SECURITY DEFINER функция (postgres иесі ретінде RLS-ті
+-- айналып өтеді) оқи алады, `authenticated`/`anon` мүлдем оқи алмайды.
+
+create table if not exists public.app_secrets (
+  key   text primary key,
+  value text not null
+);
+alter table public.app_secrets enable row level security;
+-- Саясат ӘДЕЙІ жоқ — тек postgres/service_role (кесте иесі) оқи/жаза алады.
 
 create or replace function public.send_push(
   p_title text,
@@ -22,7 +36,7 @@ as $$
 declare
   v_secret text;
 begin
-  v_secret := current_setting('app.settings.push_trigger_secret', true);
+  select value into v_secret from public.app_secrets where key = 'push_trigger_secret';
   -- Push әлі бапталмаса (құпия сөз орнатылмаса) — үнсіз өтеді.
   if v_secret is null or v_secret = '' then
     return;

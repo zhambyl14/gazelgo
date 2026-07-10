@@ -131,18 +131,30 @@ Backend толығымен осы папкада дайын. Оны нақты S
      ету керек** (жалпы title/body/target_user_ids форматына көшті —
      төмендегі 2-қадамды қараңыз).
 
+   - `migrations/0026_telegram_verification.sql` ← **Telegram телефон
+     растау** (SMS-сіз, тегін): `telegram_verifications` кестесі +
+     `tg_start_verification`/`tg_check_verification` RPC. Тіркелу енді нөмірді
+     Telegram бот арқылы растайды (пайдаланушы ботта «Нөмірімді бөлісу»
+     түймесін басады, Telegram нөмірді өзі растайды). Толық баптау төменде
+     «Telegram верификация» бөлімінде. **МАҢЫЗДЫ: `signup` функциясы енді
+     `tg_token` талап етеді — ҚАЙТА deploy керек.**
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
    **0013, содан соң 0014, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023,
-   0024, ең соңынан 0025-ті орындаңыз.**
+   0024, 0025, ең соңынан 0026-ны орындаңыз.**
 2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
    - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
      тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).
      Аккаунттар синтетикалық email арқылы құрылады
      (`7XXXXXXXXXX@phone.gazelgo.kz`) — Supabase-тің телефон провайдерін де,
-     SMS қызметін де баптау қажет ЕМЕС. Жаңартылған нұсқада IP бойынша
-     rate-limit бар (0018-дегі auth_events кестесімен) — **қайта deploy
-     жасаңыз**.
+     SMS қызметін де баптау қажет ЕМЕС. **МАҢЫЗДЫ (0026 соң): енді `tg_token`
+     талап етеді (Telegram-мен расталған нөмір), нөмір клиенттен емес, сол
+     расталған жазбадан алынады — ҚАЙТА deploy жасаңыз.** IP бойынша
+     rate-limit бар (0018-дегі auth_events кестесімен).
+   - аты `telegram-webhook`, коды `functions/telegram-webhook/index.ts`,
+     **Verify JWT = OFF** — Telegram боттың вебхукы (телефон растау). Толық
+     баптау төмендегі «Telegram верификация» бөлімінде.
    - аты `delete-account`, коды `functions/delete-account/index.ts`,
      **Verify JWT = ON** — App Store/Play Market-тің «аккаунтты өшіру»
      талабы. **МАҢЫЗДЫ: бұрын deploy жасаған болсаңыз, ҚАЙТА deploy
@@ -168,6 +180,47 @@ Backend толығымен осы папкада дайын. Оны нақты S
    («7XXXXXXXXXX@phone.gazelgo.kz» email-і арқылы) жаңа құпиясөз орната алады.
 3. Dashboard → Settings → API → `anon` / `publishable` key-ді көшіріп,
    `lib/core/env.dart` ішіндегі `supabaseAnonKey` мәніне қойыңыз.
+
+## Telegram верификация (тіркелуде телефон растау — SMS-сіз, тегін)
+
+Неге: SMS ақылы (Mobizon т.б.), ал Telegram боты арқылы нөмірді растау —
+тегін әрі сенімді. Пайдаланушы ботта «📱 Нөмірімді бөлісу» түймесін
+басқанда Telegram нөмірді ӨЗІ растап береді (жалған нөмір беру мүмкін емес).
+Код (сан) қажет емес — контакт бөлісудің өзі растау болып табылады.
+
+**ЕСКЕРТУ**: бұл әр пайдаланушыда Telegram болуын талап етеді, әрі аккаунт
+телефоны = Telegram нөмірі болады.
+
+### 1-қадам: Бот
+1. [@BotFather](https://t.me/BotFather) → `/newbot` (немесе бар боты
+   қолданыңыз). Username-ін жазып қойыңыз (мыс. `gazelgobot`) — оны
+   `lib/core/env.dart` → `Env.telegramBot` ішіне қойыңыз (@-сыз).
+2. **Токенді ешкімге жарияламаңыз.** Егер токен бір жерде ашылып қалса —
+   BotFather → `/revoke` арқылы жаңасын алыңыз.
+
+### 2-қадам: Edge Function Secrets (Dashboard → Edge Functions → Manage secrets)
+- `TELEGRAM_BOT_TOKEN` — BotFather берген токен.
+- `TELEGRAM_WEBHOOK_SECRET` — өзіңіз ойлап тапқан кез келген ұзын құпия жол
+  (мыс. `openssl rand -hex 32`). Telegram әр сұраныста осыны header-мен
+  жібереді, функция соны тексереді (бөгде сұраныстарды сүзу үшін).
+
+### 3-қадам: `telegram-webhook` функциясын deploy жасаңыз
+Dashboard → Edge Functions → Deploy new function, аты `telegram-webhook`,
+коды `functions/telegram-webhook/index.ts`, **Verify JWT = OFF**.
+
+### 4-қадам: Вебхукты Telegram-ға тіркеу
+Браузерде (не терминалда) осы URL-ды бір рет ашыңыз — `<TOKEN>`,
+`<SECRET>`-ті нақты мәндермен ауыстырыңыз:
+```
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://xibxaqcrdpgyzohfplda.supabase.co/functions/v1/telegram-webhook&secret_token=<SECRET>
+```
+`{"ok":true,"result":true,...}` қайтса — сәтті. (`<SECRET>` дәл 2-қадамдағы
+`TELEGRAM_WEBHOOK_SECRET`-пен бірдей болуы шарт.)
+
+### Тексеру
+Қосымшада тіркелуде «Telegram арқылы растау» → бот ашылады → «Нөмірімді
+бөлісу» → қосымшаға оралғанда нөмір жасыл «расталды» болып көрінуі керек.
+Жұмыс істемесе: Dashboard → Edge Functions → `telegram-webhook` → Logs.
 
 ## Push-хабарландырулар (модератор — жаңа өтінім, қосымша жабық болса да)
 
@@ -210,16 +263,22 @@ Firebase Console (веб-браузер) мен Supabase Dashboard арқылы 
      мазмұны** (бір жол ретінде, тұтас JSON мәтінін қойса болады).
    - `PUSH_TRIGGER_SECRET` — өзіңіз ойлап тапқан кез келген ұзын құпия жол
      (мыс. терминалда `openssl rand -hex 32` командасымен жасаңыз).
-2. SQL Editor-да (0019 миграциясынан бөлек, БІР РЕТ) осы команданы
+2. SQL Editor-да (0025 миграциясы қолданылған СОҢ, БІР РЕТ) осы команданы
    орындаңыз — 3.1-дегімен **дәл сол бір** `PUSH_TRIGGER_SECRET` мәнін
-   қойыңыз:
+   қойыңыз. (Ескі `alter database ... set app.settings...` Supabase
+   хостингте ЕНДІ РҰҚСАТ ЕТІЛМЕЙДІ — сол себепті құпия сөз енді
+   `app_secrets` кестесінде, RLS-пен құлыпталған.)
    ```sql
-   alter database postgres set app.settings.push_trigger_secret = 'СІЗДІҢ_ҚҰПИЯ_ЖОЛЫҢЫЗ';
+   insert into public.app_secrets (key, value)
+   values ('push_trigger_secret', 'СІЗДІҢ_ҚҰПИЯ_ЖОЛЫҢЫЗ')
+   on conflict (key) do update set value = excluded.value;
    ```
    (Мәнді дәл 3.1-дегімен бірдей жазыңыз — екеуі сәйкес келмесе, edge function
    `FORBIDDEN` қайтарып, push жіберілмейді.)
 3. `push-notify` функциясын **Verify JWT = OFF** етіп deploy жасаңыз
-   (жоғарыдағы 2-қадамды қараңыз).
+   (жоғарыдағы 2-қадамды қараңыз). **Кода өрісіне JSON емес, тек
+   `supabase/functions/push-notify/index.ts` файлының өзіндегі TypeScript
+   мәтінін қойыңыз** — JSON кілт бөлек «Manage secrets» өрісіне ғана барады.
 
 ### 4-қадам: Android/iOS — қосымша өзгерту қажет емес
 `google-services.json`/`GoogleService-Info.plist` файлдарын Xcode-қа/Gradle-ге

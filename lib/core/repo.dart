@@ -22,22 +22,35 @@ class Repo {
   /// Тіркелу — SMS растаусыз, бірден аккаунт құрылып, автоматты кіреді.
   /// Алдымен `signup` edge function (email растауын айналып өтеді),
   /// ол қолжетімсіз болса — тікелей auth.signUp арқылы.
+  /// Telegram верификация сессиясын бастайды (0026) — токен қайтарады.
+  static Future<String> tgStartVerification() async {
+    final res = await c.rpc('tg_start_verification');
+    return res as String;
+  }
+
+  /// Telegram верификация статусын сұрайды (0026) — {verified, phone}.
+  static Future<Map<String, dynamic>> tgCheckVerification(String token) async {
+    final res =
+        await c.rpc('tg_check_verification', params: {'p_token': token});
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   static Future<void> signUpPhone({
     required String phone,
     required String password,
     required String fullName,
     required String role, // client | executor
+    required String tgToken, // Telegram-мен расталған сессия токені
   }) async {
     final n = Phone.normalize(phone);
     final email = Phone.emailOf(phone);
     if (n == null || email == null) throw Exception('BAD_PHONE');
     try {
       await c.functions.invoke('signup', body: {
-        'email': email,
         'password': password,
         'full_name': fullName.trim(),
-        'phone': n,
         'role': role,
+        'tg_token': tgToken,
       });
     } on FunctionException catch (e) {
       final d = e.details;

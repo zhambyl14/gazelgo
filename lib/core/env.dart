@@ -21,4 +21,10 @@ class Env {
   /// Қолдау қызметінің WhatsApp нөмірі (құпиясөзді қалпына келтіру т.б.).
   /// Тек цифрлар, елдік кодпен: 7XXXXXXXXXX. Өз нөміріңізге ауыстырыңыз!
   static const supportWhatsApp = '77474005347';
+
+  /// Тіркелуде телефонды растайтын Telegram боттың username-і (@-сыз).
+  /// Пайдаланушы `t.me/<осы>?start=<токен>` арқылы ботқа өтіп, нөмірін
+  /// бөліседі. Ботты BotFather-де құрып, вебхукын `telegram-webhook` edge
+  /// функциясына қосу керек (supabase/APPLY.md → «Telegram верификация»).
+  static const telegramBot = 'gazelgobot';
 }
