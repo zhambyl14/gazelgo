@@ -172,28 +172,44 @@ class _BusyOrderBanner extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Карточкалар (маршрут+тегтер) экранға сыймай қалса — тізім өзі
+      // скроллданады, тек Column-ды толтырмайды (2+ белсенді заказ §5
+      // межгород маршрут-стектеу арқылы болады).
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(t('Белсенді заказдар'),
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-              const SizedBox(height: 12),
-              for (final o in active) ...[
-                OrderCard(
-                  order: o,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ActiveOrderScreen(orderId: o.id)));
-                  },
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(t('Белсенді заказдар'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 18)),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: active.length,
+                    separatorBuilder: (_, i) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final o = active[i];
+                      return OrderCard(
+                        order: o,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) =>
+                                  ActiveOrderScreen(orderId: o.id)));
+                        },
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
               ],
-            ],
+            ),
           ),
         ),
       ),

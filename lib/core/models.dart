@@ -79,10 +79,27 @@ extension VehicleTypeX on VehicleType {
         VehicleType.minivan => t('Шағын жүк'),
         VehicleType.tractor => t('Қазу·тиеу·тазалау'),
       };
-  /// Көлік түрінің иконкасы — әр түрдің НАҚТЫ силуэті бар SVG (эмодзи де,
-  /// жуықтаған Material белгісі де ЕМЕС). Файлдар `assets/vehicles/<name>.svg`,
-  /// бір түсті (currentColor) — UI жағында [vehicleIcon] арқылы боялады.
-  String get asset => 'assets/vehicles/$name.svg';
+  /// Түрлі-түсті PNG иконкасы бар түрлер (`assets/vehicles/<name>.png`) —
+  /// қалғандары ([emoji] арқылы) эмодзимен көрсетіледі. UI жағында
+  /// [vehicleIcon] екеуін бір өлшемге сәйкестендіріп рендерлейді.
+  String? get pngAsset => switch (this) {
+        VehicleType.kamaz => 'assets/vehicles/kamaz.png',
+        VehicleType.crane => 'assets/vehicles/crane.png',
+        VehicleType.manipulator => 'assets/vehicles/manipulator.png',
+        VehicleType.assenizator => 'assets/vehicles/assenizator.png',
+        VehicleType.excavator => 'assets/vehicles/excavator.png',
+        VehicleType.loader => 'assets/vehicles/loader.png',
+        VehicleType.minivan => 'assets/vehicles/minivan.png',
+        _ => null,
+      };
+
+  /// PNG иконкасы жоқ түрлерге арналған эмодзи (gazelle/furgon/tractor).
+  String get emoji => switch (this) {
+        VehicleType.gazelle => '🚚',
+        VehicleType.furgon => '🚐',
+        VehicleType.tractor => '🚜',
+        _ => '🚚',
+      };
 }
 
 // ---------- Vehicle size ----------

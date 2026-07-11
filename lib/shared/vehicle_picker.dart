@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../core/lang.dart';
 import '../core/models.dart';
@@ -11,19 +10,29 @@ String vehicleCallLabel(VehicleType v) => Lang.current.value == AppLang.ru
     ? 'Вызвать ${v.label}'
     : '${v.label} шақыру';
 
-/// Көлік түрінің силуэт-иконкасы (SVG). [color] берілсе — сол түске боялады.
-Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) =>
-    SvgPicture.asset(
-      v.asset,
-      width: size,
-      height: size,
-      colorFilter:
-          color == null ? null : ColorFilter.mode(color, BlendMode.srcIn),
-    );
+/// Көлік түрінің иконкасы: PNG бар түрлерге (kamaz/crane/manipulator/
+/// assenizator/excavator/loader/minivan) — түрлі-түсті сурет, қалғанына
+/// (gazelle/furgon/tractor) — эмодзи. Екеуі де ДӘЛ БІРДЕЙ [size]×[size]
+/// қораптың ортасында — көрінетін өлшемі бірдей болады. PNG түрлі-түсті
+/// болғандықтан [color] тек эмодзиге әсер етпейді (глиф өз түсін сақтайды) —
+/// параметр басқа шақыру орындарымен үйлесімділік үшін қалдырылған.
+Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) {
+  final png = v.pngAsset;
+  return SizedBox(
+    width: size,
+    height: size,
+    child: Center(
+      child: png != null
+          ? Image.asset(png, width: size, height: size, fit: BoxFit.contain)
+          : Text(v.emoji, style: TextStyle(fontSize: size * 0.8, height: 1)),
+    ),
+  );
+}
 
 /// Көлік түрін таңдау каруселі (indriver стилі): көлденең айналатын
-/// шаршы карточкалар — силуэт-иконка + атауы. Таңдалғаны қара фонда сары
-/// жиекпен ерекшеленеді. Атауы FittedBox арқылы карточкаға ӘРҚАШАН сыяды —
+/// шаршы карточкалар — иконка (PNG не эмодзи, бәрі бірдей өлшемде) + атауы.
+/// Таңдалғаны қара фонда сары жиекпен ерекшеленеді. Атауы FittedBox арқылы
+/// карточкаға ӘРҚАШАН сыяды —
 /// «…» болып қиылмайды, екінші жолға түспейді, жүйе шрифті үлкейтілсе де
 /// (accessibility text scale) рамкадан аспайды. Клиент заказ бергенде де,
 /// орындаушы тіркелгенде де қолданылады.

@@ -387,7 +387,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         onPressed: (_from == null || _resolvingFrom)
                             ? null
                             : (_to == null ? _pickTo : _maybeContinue),
-                        child: Text(vehicleCallLabel(_vehicle)),
+                        // FittedBox: ұзын атаулар («Ассенизатор шақыру» т.б.)
+                        // не жүйе шрифті үлкейтілген кезде де 1 жолда қалады.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(vehicleCallLabel(_vehicle),
+                              maxLines: 1, softWrap: false),
+                        ),
                       ),
                     ],
                   ),

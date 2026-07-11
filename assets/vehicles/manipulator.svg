@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-  <path d="M2 13.5h9.5v3H2z"/>
-  <path d="M2.5 10.5h3.5v3h-3.5z"/>
-  <path d="M9.5 5h1.7v9H9.5z"/>
-  <path d="M10 5h9.6v1.7H10z"/>
-  <path d="M18.4 6.7h1.4v3.3h-1.4z"/>
-  <circle cx="5" cy="18.5" r="1.9"/>
-  <circle cx="9.5" cy="18.5" r="1.9"/>
-</svg>
