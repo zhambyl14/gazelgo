@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -20,12 +21,12 @@ class BlockedScreen extends ConsumerWidget {
         title: const Text('GazelGo'),
         actions: [
           IconButton(
-            tooltip: 'Жаңарту',
+            tooltip: t('Жаңарту'),
             onPressed: () => ref.invalidate(myProfileProvider),
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
-            tooltip: 'Шығу',
+            tooltip: t('Шығу'),
             onPressed: () => confirmSignOut(context),
             icon: const Icon(Icons.logout),
           ),
@@ -46,22 +47,22 @@ class BlockedScreen extends ConsumerWidget {
                 child: const Icon(Icons.block, size: 52, color: Gz.red),
               ),
               const SizedBox(height: 20),
-              const Text('Аккаунт бұғатталған',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              Text(t('Аккаунт бұғатталған'),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
               const SizedBox(height: 10),
               Text(
                 profile.blockReason?.isNotEmpty == true
-                    ? 'Себебі: ${profile.blockReason}'
-                    : 'Қауіпсіздік себебімен аккаунтыңызға уақытша шектеу '
-                        'қойылды.',
+                    ? '${t('Себебі:')} ${profile.blockReason}'
+                    : t('Қауіпсіздік себебімен аккаунтыңызға уақытша шектеу '
+                        'қойылды.'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Мәселені шешу үшін қолдау қызметіне хабарласыңыз.',
+              Text(
+                t('Мәселені шешу үшін қолдау қызметіне хабарласыңыз.'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -69,7 +70,7 @@ class BlockedScreen extends ConsumerWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => ref.invalidate(myProfileProvider),
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Күйін тексеру'),
+                  label: Text(t('Күйін тексеру')),
                 ),
               ),
             ],

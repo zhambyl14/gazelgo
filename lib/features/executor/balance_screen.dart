@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -40,7 +41,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
   Future<void> _submit(AppConfig cfg) async {
     final amount = int.tryParse(_amount.text.replaceAll(RegExp(r'\D'), ''));
     if (amount == null || amount < cfg.minTopup) {
-      showSnack(context, 'Ең аз сома: ${fmtT(cfg.minTopup)}', error: true);
+      showSnack(context, '${t('Ең аз сома:')} ${fmtT(cfg.minTopup)}', error: true);
       return;
     }
     try {
@@ -56,7 +57,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
       });
       if (mounted) {
         showSnack(context,
-            'Сұраным жіберілді! Модератор растаған соң баланс толады.');
+            t('Сұраным жіберілді! Модератор растаған соң баланс толады.'));
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -70,7 +71,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
     final cfg = cfgAsync.value ?? AppConfig();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Баланс')),
+      appBar: AppBar(title: Text(t('Баланс'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -84,8 +85,8 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ағымдағы баланс',
-                    style: TextStyle(color: Colors.white60, fontSize: 13)),
+                Text(t('Ағымдағы баланс'),
+                    style: const TextStyle(color: Colors.white60, fontSize: 13)),
                 const SizedBox(height: 4),
                 Text(
                   fmtT(statsAsync.value?.balance),
@@ -104,25 +105,26 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.account_balance_wallet, color: Gz.red),
-                    SizedBox(width: 8),
-                    Text('Kaspi арқылы толтыру',
-                        style: TextStyle(
+                    const Icon(Icons.account_balance_wallet, color: Gz.red),
+                    const SizedBox(width: 8),
+                    Text(t('Kaspi арқылы толтыру'),
+                        style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                   ],
                 ),
                 const SizedBox(height: 10),
-                InfoRow('1-қадам', 'Kaspi-ден аударыңыз: ${cfg.kaspiNumber} (${cfg.kaspiName})'),
-                InfoRow('2-қадам', 'Чек скриншотын осында тіркеңіз'),
-                InfoRow('3-қадам', 'Модератор растаған соң баланс толады'),
+                InfoRow(t('1-қадам'),
+                    '${t('Kaspi-ден аударыңыз:')} ${cfg.kaspiNumber} (${cfg.kaspiName})'),
+                InfoRow(t('2-қадам'), t('Чек скриншотын осында тіркеңіз')),
+                InfoRow(t('3-қадам'), t('Модератор растаған соң баланс толады')),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _amount,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    hintText: 'Сома, ₸ (мин. ${cfg.minTopup})',
+                    hintText: '${t('Сома, ₸ (мин.')} ${cfg.minTopup})',
                     prefixIcon: const Icon(Icons.payments_outlined),
                   ),
                 ),
@@ -139,20 +141,20 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                           color: _receipt == null ? null : Gz.green,
                         ),
                         label: Text(
-                            _receipt == null ? 'Чек тіркеу' : 'Чек тіркелді'),
+                            t(_receipt == null ? 'Чек тіркеу' : 'Чек тіркелді')),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 BusyButton(
-                    label: 'Сұраным жіберу', onPressed: () => _submit(cfg)),
+                    label: t('Сұраным жіберу'), onPressed: () => _submit(cfg)),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Толтыру сұранымдары',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(t('Толтыру сұранымдары'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 8),
           FutureBuilder<List<TopupRequest>>(
             key: ValueKey('topups$_refresh'),
@@ -181,8 +183,8 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
             },
           ),
           const SizedBox(height: 16),
-          const Text('Транзакциялар',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(t('Транзакциялар'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 8),
           FutureBuilder<List<BalanceTxn>>(
             key: ValueKey('txns$_refresh'),
@@ -190,9 +192,9 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
             builder: (context, snap) {
               final rows = snap.data ?? [];
               if (rows.isEmpty) {
-                return const SectionCard(
-                  child: Text('Транзакциялар әзірге жоқ.',
-                      style: TextStyle(color: Gz.textSecondary)),
+                return SectionCard(
+                  child: Text(t('Транзакциялар әзірге жоқ.'),
+                      style: const TextStyle(color: Gz.textSecondary)),
                 );
               }
               return SectionCard(
@@ -237,9 +239,9 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
 
   Widget _topupChip(String status) {
     final (color, label) = switch (status) {
-      'approved' => (Gz.green, 'Расталды'),
-      'rejected' => (Gz.red, 'Қабылданбады'),
-      _ => (Gz.blue, 'Күтуде'),
+      'approved' => (Gz.green, t('Расталды')),
+      'rejected' => (Gz.red, t('Қабылданбады')),
+      _ => (Gz.blue, t('Күтуде')),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

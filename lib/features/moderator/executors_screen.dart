@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -37,11 +38,11 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
           child: Row(
             children: [
               for (final (s, label) in <(String?, String)>[
-                (null, 'Барлығы'),
-                ('approved', 'Расталған'),
-                ('pending', 'Күтуде'),
-                ('rejected', 'Қабылданбаған'),
-                ('blocked', 'Бұғатталған'),
+                (null, t('Барлығы')),
+                ('approved', t('Расталған')),
+                ('pending', t('Күтуде')),
+                ('rejected', t('Қабылданбаған')),
+                ('blocked', t('Бұғатталған')),
               ]) ...[
                 ChoiceChip(
                   label: Text(label),
@@ -73,10 +74,10 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
                 }
                 final rows = snap.data ?? [];
                 if (rows.isEmpty) {
-                  return ListView(children: const [
-                    SizedBox(height: 100),
+                  return ListView(children: [
+                    const SizedBox(height: 100),
                     EmptyState(
-                        icon: Icons.people_outline, title: 'Тізім бос'),
+                        icon: Icons.people_outline, title: t('Тізім бос')),
                   ]);
                 }
                 return ListView.separated(
@@ -107,10 +108,10 @@ class _ExecutorTile extends StatelessWidget {
       };
 
   String get _statusLabel => switch (ep.status) {
-        'approved' => 'Расталған',
-        'pending' => 'Күтуде',
-        'rejected' => 'Қабылданбаған',
-        _ => 'Бұғатталған',
+        'approved' => t('Расталған'),
+        'pending' => t('Күтуде'),
+        'rejected' => t('Қабылданбаған'),
+        _ => t('Бұғатталған'),
       };
 
   @override
@@ -163,7 +164,7 @@ class _ExecutorTile extends StatelessWidget {
                           color: Gz.textSecondary, fontSize: 12),
                     ),
                     Text(
-                      'Баланс: ${fmtT(ep.balance)} · Табыс: ${fmtT(ep.totalEarned)}',
+                      '${t('Баланс')}: ${fmtT(ep.balance)} · ${t('Табыс')}: ${fmtT(ep.totalEarned)}',
                       style: const TextStyle(
                           fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),
@@ -176,8 +177,8 @@ class _ExecutorTile extends StatelessWidget {
                           color: Gz.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('🚚 Заказ орындауда',
-                            style: TextStyle(
+                        child: Text(t('🚚 Заказ орындауда'),
+                            style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: Gz.green)),
@@ -194,19 +195,19 @@ class _ExecutorTile extends StatelessWidget {
             onSelected: (v) => _action(context, v),
             itemBuilder: (_) => [
               if (ep.status == 'approved')
-                const PopupMenuItem(
+                PopupMenuItem(
                     value: 'request_docs',
-                    child: Text('Құжат жаңартуды сұрау')),
+                    child: Text(t('Құжат жаңартуды сұрау'))),
               if (ep.status == 'approved')
-                const PopupMenuItem(
+                PopupMenuItem(
                     value: 'block',
-                    child: Text('Бұғаттау',
-                        style: TextStyle(color: Gz.red))),
+                    child: Text(t('Бұғаттау'),
+                        style: const TextStyle(color: Gz.red))),
               if (ep.status == 'blocked')
-                const PopupMenuItem(
-                    value: 'unblock', child: Text('Бұғаттан шығару')),
-              const PopupMenuItem(
-                  value: 'balance', child: Text('Баланс түзету')),
+                PopupMenuItem(
+                    value: 'unblock', child: Text(t('Бұғаттан шығару'))),
+              PopupMenuItem(
+                  value: 'balance', child: Text(t('Баланс түзету'))),
             ],
           ),
         ],
@@ -225,32 +226,32 @@ class _ExecutorTile extends StatelessWidget {
           if (res == null) return;
           if (res.$1.isEmpty) {
             if (context.mounted) {
-              showSnack(context, 'Кемінде бір құжат таңдаңыз', error: true);
+              showSnack(context, t('Кемінде бір құжат таңдаңыз'), error: true);
             }
             return;
           }
           await Repo.modRequestDocs(ep.userId, res.$1, res.$2);
           if (context.mounted) {
-            showSnack(context, 'Сұраным жіберілді');
+            showSnack(context, t('Сұраным жіберілді'));
           }
         case 'block':
           final c = TextEditingController();
           final ok = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Бұғаттау себебі'),
+              title: Text(t('Бұғаттау себебі')),
               content: TextField(controller: c, autofocus: true),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Болдырмау')),
+                    child: Text(t('Болдырмау'))),
                 FilledButton(
                   style: FilledButton.styleFrom(
                       backgroundColor: Gz.red,
                       foregroundColor: Colors.white,
                       shadowColor: const Color(0x59DC2626)),
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Бұғаттау'),
+                  child: Text(t('Бұғаттау')),
                 ),
               ],
             ),
@@ -265,7 +266,7 @@ class _ExecutorTile extends StatelessWidget {
           final ok = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Баланс түзету'),
+              title: Text(t('Баланс түзету')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -273,24 +274,23 @@ class _ExecutorTile extends StatelessWidget {
                     controller: c,
                     autofocus: true,
                     keyboardType: TextInputType.text,
-                    decoration: const InputDecoration(
-                        hintText: 'Сома (теріс болса шегеріледі)'),
+                    decoration: InputDecoration(
+                        hintText: t('Сома (теріс болса шегеріледі)')),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: note,
-                    decoration:
-                        const InputDecoration(hintText: 'Себебі'),
+                    decoration: InputDecoration(hintText: t('Себебі')),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Болдырмау')),
+                    child: Text(t('Болдырмау'))),
                 FilledButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Сақтау')),
+                    child: Text(t('Сақтау'))),
               ],
             ),
           );
@@ -325,11 +325,11 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
 
   List<(String, String)> get _options => [
         widget.isForeign
-            ? ('passport', 'Шетел паспорты')
-            : ('id', 'Жеке куәлік'),
-        ('license', 'Жүргізуші куәлігі'),
-        ('tech', 'Техпаспорт'),
-        ('photos', 'Көлік фотолары'),
+            ? ('passport', t('Шетел паспорты'))
+            : ('id', t('Жеке куәлік')),
+        ('license', t('Жүргізуші куәлігі')),
+        ('tech', t('Техпаспорт')),
+        ('photos', t('Көлік фотолары')),
       ];
 
   @override
@@ -341,7 +341,7 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Қай құжатты жаңарту керек?'),
+      title: Text(t('Қай құжатты жаңарту керек?')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -363,19 +363,19 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
           const SizedBox(height: 8),
           TextField(
             controller: _comment,
-            decoration: const InputDecoration(
-                hintText: 'Түсініктеме (мыс: анық емес, ескірген)'),
+            decoration: InputDecoration(
+                hintText: t('Түсініктеме (мыс: анық емес, ескірген)')),
           ),
         ],
       ),
       actions: [
         TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Болдырмау')),
+            child: Text(t('Болдырмау'))),
         FilledButton(
           onPressed: () =>
               Navigator.pop(context, (_fields.toList(), _comment.text)),
-          child: const Text('Жіберу'),
+          child: Text(t('Жіберу')),
         ),
       ],
     );
@@ -419,7 +419,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Орындаушы')),
+      appBar: AppBar(title: Text(t('Орындаушы'))),
       body: FutureBuilder<Profile?>(
         future: Repo.profileOf(ep.userId),
         builder: (context, psnap) {
@@ -468,29 +468,29 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     children: [
                       Row(children: [
                         Expanded(
-                            child: _statTile('Бүгін', '${s['today']} заказ',
-                                Gz.green)),
+                            child: _statTile(t('Бүгін'),
+                                '${s['today']} ${t('заказ')}', Gz.green)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _statTile(
-                                '7 күн', '${s['week']} заказ', Gz.blue)),
+                            child: _statTile(t('7 күн'),
+                                '${s['week']} ${t('заказ')}', Gz.blue)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _statTile(
-                                'Барлығы', '${s['total']} заказ', Gz.ink)),
+                            child: _statTile(t('Барлығы'),
+                                '${s['total']} ${t('заказ')}', Gz.ink)),
                       ]),
                       const SizedBox(height: 8),
                       Row(children: [
                         Expanded(
-                            child: _statTile('Белсенді',
+                            child: _statTile(t('Белсенді'),
                                 '${s['active']}', Gz.violet)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _statTile('Бас тартқан',
+                            child: _statTile(t('Бас тартқан'),
                                 '${s['cancelled']}', Gz.red)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _statTile('Бүгінгі табыс',
+                            child: _statTile(t('Бүгінгі табыс'),
                                 fmtT(s['earned_today'] as num?), Gz.green)),
                       ]),
                     ],
@@ -499,9 +499,9 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
               ),
               if (ep.busyOrderId != null) ...[
                 const SizedBox(height: 12),
-                const Text('Қазіргі заказы',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(t('Қазіргі заказы'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 8),
                 FutureBuilder<Order?>(
                   future: Repo.orderById(ep.busyOrderId!),
@@ -522,24 +522,24 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Көлік',
-                        style: TextStyle(
+                    Text(t('Көлік'),
+                        style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 8),
-                    InfoRow('Маркасы', ep.vehicleTitle),
-                    if (ep.city != null) InfoRow('Қала', ep.city!),
-                    InfoRow('Мемнөмір', ep.vehiclePlate),
-                    InfoRow('Баланс', fmtT(ep.balance)),
-                    InfoRow('Жалпы табыс', fmtT(ep.totalEarned)),
+                    InfoRow(t('Маркасы'), ep.vehicleTitle),
+                    if (ep.city != null) InfoRow(t('Қала'), ep.city!),
+                    InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                    InfoRow(t('Баланс'), fmtT(ep.balance)),
+                    InfoRow(t('Жалпы табыс'), fmtT(ep.totalEarned)),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Text('Құжаттар',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(t('Құжаттар'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(width: 8),
                   Container(
                     padding:
@@ -549,7 +549,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      ep.isForeignCitizen ? 'Шетел азаматы' : 'ҚР азаматы',
+                      ep.isForeignCitizen ? t('Шетел азаматы') : t('ҚР азаматы'),
                       style: const TextStyle(
                           fontSize: 11, fontWeight: FontWeight.w700),
                     ),
@@ -560,44 +560,44 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
               Row(children: [
                 Expanded(
                     child: DocImage(
-                        path: ep.licensePath, label: 'Жүргізуші куәлігі')),
+                        path: ep.licensePath, label: t('Жүргізуші куәлігі'))),
                 const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
-                        path: ep.licenseSelfiePath, label: 'Правамен селфи')),
+                        path: ep.licenseSelfiePath, label: t('Правамен селфи'))),
               ]),
               const SizedBox(height: 8),
               if (!ep.isForeignCitizen)
                 Row(children: [
                   Expanded(
-                      child:
-                          DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
+                      child: DocImage(
+                          path: ep.idDocPath, label: t('Жеке куәлік'))),
                   const SizedBox(width: 8),
                   Expanded(
                       child: DocImage(
-                          path: ep.idSelfiePath, label: 'Куәлікпен селфи')),
+                          path: ep.idSelfiePath, label: t('Куәлікпен селфи'))),
                 ])
               else
                 Row(children: [
                   Expanded(
                       child: DocImage(
-                          path: ep.passportPath, label: 'Шетел паспорты')),
+                          path: ep.passportPath, label: t('Шетел паспорты'))),
                   const SizedBox(width: 8),
                   Expanded(
                       child: DocImage(
                           path: ep.passportSelfiePath,
-                          label: 'Паспортпен селфи')),
+                          label: t('Паспортпен селфи'))),
                 ]),
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(
                     child: DocImage(
-                        path: ep.techPassportPath, label: 'Техпаспорт')),
+                        path: ep.techPassportPath, label: t('Техпаспорт'))),
                 const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
                         path: ep.techPassportSelfiePath,
-                        label: 'Техпаспортпен фото')),
+                        label: t('Техпаспортпен фото'))),
               ]),
               const SizedBox(height: 12),
               if (p != null)
@@ -611,7 +611,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     ),
                   )),
                   icon: const Icon(Icons.star_outline),
-                  label: const Text('Пікірлерді қарау'),
+                  label: Text(t('Пікірлерді қарау')),
                 ),
               const SizedBox(height: 24),
             ],

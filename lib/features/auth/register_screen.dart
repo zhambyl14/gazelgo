@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/name_guard.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -49,13 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_form.currentState!.validate()) return;
     if (_verifiedPhone == null || _tgToken == null) {
-      showSnack(context, 'Алдымен нөміріңізді Telegram арқылы растаңыз',
+      showSnack(context, t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
           error: true);
       return;
     }
     if (!_agree) {
       showSnack(context,
-          'Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет',
+          t('Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет'),
           error: true);
       return;
     }
@@ -91,11 +92,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               Icon(icon, size: 30, color: Gz.ink),
               const SizedBox(height: 8),
-              Text(title,
+              Text(t(title),
                   style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 14.5)),
               const SizedBox(height: 3),
-              Text(subtitle,
+              Text(t(subtitle),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 11.5, color: Gz.textSecondary)),
@@ -110,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Gz.surface,
-      appBar: AppBar(title: const Text('Тіркелу'), backgroundColor: Gz.surface),
+      appBar: AppBar(title: Text(t('Тіркелу')), backgroundColor: Gz.surface),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -122,8 +123,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Кім ретінде тіркелесіз?',
-                        style: TextStyle(
+                    Text(t('Кім ретінде тіркелесіз?'),
+                        style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 10),
                     Row(children: [
@@ -137,9 +138,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _name,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        hintText: 'Аты-жөніңіз',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                      decoration: InputDecoration(
+                        hintText: t('Аты-жөніңіз'),
+                        prefixIcon: const Icon(Icons.badge_outlined),
                       ),
                       validator: (v) => NameGuard.validate(v ?? ''),
                     ),
@@ -155,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _password,
                       obscureText: _obscure,
                       decoration: InputDecoration(
-                        hintText: 'Құпиясөз (кемінде 6 таңба)',
+                        hintText: t('Құпиясөз (кемінде 6 таңба)'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(_obscure
@@ -166,19 +167,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       validator: (v) => (v == null || v.length < 6)
-                          ? 'Кемінде 6 таңба'
+                          ? t('Кемінде 6 таңба')
                           : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _password2,
                       obscureText: _obscure,
-                      decoration: const InputDecoration(
-                        hintText: 'Құпиясөзді қайталаңыз',
-                        prefixIcon: Icon(Icons.lock_outline),
+                      decoration: InputDecoration(
+                        hintText: t('Құпиясөзді қайталаңыз'),
+                        prefixIcon: const Icon(Icons.lock_outline),
                       ),
                       validator: (v) =>
-                          v != _password.text ? 'Құпиясөздер сәйкес емес' : null,
+                          v != _password.text ? t('Құпиясөздер сәйкес емес') : null,
                     ),
                     const SizedBox(height: 16),
                     // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
@@ -209,9 +210,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       height: 1.45,
                                       color: Gz.textSecondary),
                                   children: [
-                                    const TextSpan(text: 'Мен '),
+                                    TextSpan(text: t('Мен ')),
                                     TextSpan(
-                                      text: 'Пайдаланушы келісімімен',
+                                      text: t('Пайдаланушы келісімімен'),
                                       recognizer: _termsTap,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w800,
@@ -219,9 +220,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           decoration:
                                               TextDecoration.underline),
                                     ),
-                                    const TextSpan(text: ' және '),
+                                    TextSpan(text: t(' және ')),
                                     TextSpan(
-                                      text: 'Құпиялылық саясатымен',
+                                      text: t('Құпиялылық саясатымен'),
                                       recognizer: _privacyTap,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w800,
@@ -229,9 +230,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           decoration:
                                               TextDecoration.underline),
                                     ),
-                                    const TextSpan(
-                                        text:
-                                            ' таныстым, дербес деректерімді өңдеуге келісемін.'),
+                                    TextSpan(
+                                        text: t(
+                                            ' таныстым, дербес деректерімді өңдеуге келісемін.')),
                                   ],
                                 ),
                               ),
@@ -241,7 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    BusyButton(label: 'Тіркелу', onPressed: _register),
+                    BusyButton(label: t('Тіркелу'), onPressed: _register),
                     if (_role == 'executor') ...[
                       const SizedBox(height: 12),
                       Container(
@@ -252,18 +253,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(13),
                           border: Border.all(color: const Color(0xFFF2DE8A)),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.info_outline,
+                            const Icon(Icons.info_outline,
                                 size: 17, color: Color(0xFFB58900)),
-                            SizedBox(width: 9),
+                            const SizedBox(width: 9),
                             Expanded(
                               child: Text(
-                                'Газелист тіркелген соң көлік деректері мен '
+                                t('Газелист тіркелген соң көлік деректері мен '
                                 'құжаттарды толтырады — өтінімді модератор '
-                                'тексереді.',
-                                style: TextStyle(
+                                'тексереді.'),
+                                style: const TextStyle(
                                     color: Color(0xFF8A6D00),
                                     fontSize: 12,
                                     height: 1.45),

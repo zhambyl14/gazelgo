@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -71,39 +72,39 @@ class _LineScreenState extends State<LineScreen> {
         children: [
           Row(children: [
             Expanded(
-                child: _tile('Іздеуде', '${s['searching_bidding']}',
-                    'баға ұсыну', Gz.blue, Icons.gavel)),
+                child: _tile(t('Іздеуде'), '${s['searching_bidding']}',
+                    t('баға ұсыну'), Gz.blue, Icons.gavel)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile('Іздеуде', '${s['searching_instant']}', 'жедел',
-                    Gz.violet, Icons.flash_on)),
+                child: _tile(t('Іздеуде'), '${s['searching_instant']}',
+                    t('жедел'), Gz.violet, Icons.flash_on)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile('Орындалуда', '${s['active_orders']}', 'заказ',
-                    Gz.green, Icons.local_shipping)),
+                child: _tile(t('Орындалуда'), '${s['active_orders']}',
+                    t('заказ'), Gz.green, Icons.local_shipping)),
           ]),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(
-                child: _tile('Линияда', '${online.length}', 'орындаушы',
-                    Gz.ink, Icons.wifi)),
+                child: _tile(t('Линияда'), '${online.length}',
+                    t('орындаушы'), Gz.ink, Icons.wifi)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile('Бос емес', '$busy', 'заказда', Gz.red,
+                child: _tile(t('Бос емес'), '$busy', t('заказда'), Gz.red,
                     Icons.hourglass_bottom)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile('Бос', '$free', 'күтуде',
+                child: _tile(t('Бос'), '$free', t('күтуде'),
                     Gz.green, Icons.check_circle_outline)),
           ]),
           const SizedBox(height: 16),
-          const Text('Онлайн орындаушылар',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(t('Онлайн орындаушылар'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 8),
           if (online.isEmpty)
-            const SectionCard(
-                child: Text('Қазір ешкім линияда емес',
-                    style: TextStyle(color: Gz.textSecondary))),
+            SectionCard(
+                child: Text(t('Қазір ешкім линияда емес'),
+                    style: const TextStyle(color: Gz.textSecondary))),
           for (final e in online)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -131,27 +132,27 @@ class _LineScreenState extends State<LineScreen> {
                     ),
                     Wrap(spacing: 4, children: [
                       if (e['simple_on'] == true)
-                        _chip('Қарапайым', Gz.blue),
+                        _chip(t('Қарапайым'), Gz.blue),
                       if (e['vip_on'] == true) _chip('VIP', Gz.violet),
                       if (e['on_line'] == false)
-                        _chip('Демалыста', Gz.textSecondary)
+                        _chip(t('Демалыста'), Gz.textSecondary)
                       else if (e['busy_order_id'] != null)
-                        _chip('Заказда', Gz.red)
+                        _chip(t('Заказда'), Gz.red)
                       else
-                        _chip('Бос', Gz.green),
+                        _chip(t('Бос'), Gz.green),
                     ]),
                   ],
                 ),
               ),
             ),
           const SizedBox(height: 16),
-          const Text('Іздеудегі заказдар',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(t('Іздеудегі заказдар'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 8),
           if (_searching.isEmpty)
-            const SectionCard(
-                child: Text('Іздеудегі заказ жоқ',
-                    style: TextStyle(color: Gz.textSecondary))),
+            SectionCard(
+                child: Text(t('Іздеудегі заказ жоқ'),
+                    style: const TextStyle(color: Gz.textSecondary))),
           for (final o in _searching)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -183,7 +184,7 @@ class _LineScreenState extends State<LineScreen> {
           Text(value,
               style: TextStyle(
                   fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-          Text('$label · $hint',
+          Text('$label · $hint', // label/hint аргументтер шақыру жерінде t() арқылы аударылады
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style:

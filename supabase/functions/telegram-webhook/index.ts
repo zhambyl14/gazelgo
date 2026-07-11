@@ -145,11 +145,13 @@ async function handle(update: TgUpdate) {
 }
 
 /// +7/8/10-таңбалы қазақстандық нөмірден 7XXXXXXXXXX шығарады, әйтпесе null.
+/// Тек ҚАЗАҚСТАН нөмірлері: екінші таңба да «7» болуы керек (+77...) —
+/// ресейлік нөмірлер +79... болып басталады (екеуі +7 ел кодын бөліседі).
 function normalizeKz(raw: string): string | null {
   let d = (raw ?? "").replace(/\D/g, "");
   if (d.length === 11 && d.startsWith("8")) d = "7" + d.slice(1);
   if (d.length === 10) d = "7" + d;
-  if (d.length === 11 && d.startsWith("7")) return d;
+  if (d.length === 11 && d.startsWith("77")) return d;
   return null;
 }
 

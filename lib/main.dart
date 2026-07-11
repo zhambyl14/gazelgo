@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/env.dart';
+import 'core/lang.dart';
 import 'core/notify.dart';
 import 'core/push.dart';
 import 'core/repo.dart';
@@ -29,6 +30,7 @@ Future<void> main() async {
     );
   }
   await Notify.init();
+  await Lang.init();
   runApp(const ProviderScope(child: GazelGoApp()));
 }
 
@@ -37,11 +39,17 @@ class GazelGoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GazelGo',
-      debugShowCheckedModeBanner: false,
-      theme: Gz.theme(),
-      home: Env.isConfigured ? const AuthGate() : const _NotConfigured(),
+    // Тіл ауысқанда бүкіл ағаш қайта салынуы үшін — `t()` жаппай
+    // қолданылатын const емес қарапайым функция, ешбір widget оны
+    // "тыңдамайды", сол себепті осы деңгейде толық rebuild мәжбүрлейміз.
+    return ValueListenableBuilder<AppLang>(
+      valueListenable: Lang.current,
+      builder: (context, _, _) => MaterialApp(
+        title: 'GazelGo',
+        debugShowCheckedModeBanner: false,
+        theme: Gz.theme(),
+        home: Env.isConfigured ? const AuthGate() : const _NotConfigured(),
+      ),
     );
   }
 }

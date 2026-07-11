@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -18,24 +19,24 @@ class PendingScreen extends ConsumerWidget {
       'rejected' => (
           Icons.cancel_outlined,
           Gz.red,
-          'Өтінім қабылданбады',
+          t('Өтінім қабылданбады'),
           profile.moderationComment?.isNotEmpty == true
-              ? 'Себебі: ${profile.moderationComment}'
-              : 'Деректерді түзетіп, қайта жіберіңіз.'
+              ? '${t('Себебі:')} ${profile.moderationComment}'
+              : t('Деректерді түзетіп, қайта жіберіңіз.')
         ),
       'blocked' => (
           Icons.block,
           Gz.red,
-          'Аккаунт бұғатталған',
+          t('Аккаунт бұғатталған'),
           profile.moderationComment?.isNotEmpty == true
-              ? 'Себебі: ${profile.moderationComment}'
-              : 'Қолдау қызметіне хабарласыңыз.'
+              ? '${t('Себебі:')} ${profile.moderationComment}'
+              : t('Қолдау қызметіне хабарласыңыз.')
         ),
       _ => (
           Icons.hourglass_top,
           Gz.blue,
-          'Өтінім қаралуда',
-          'Модератор құжаттарыңызды тексеруде. Әдетте бұл 24 сағатқа дейін уақыт алады.'
+          t('Өтінім қаралуда'),
+          t('Модератор құжаттарыңызды тексеруде. Әдетте бұл 24 сағатқа дейін уақыт алады.')
         ),
     };
 
@@ -44,12 +45,12 @@ class PendingScreen extends ConsumerWidget {
         title: const Text('GazelGo'),
         actions: [
           IconButton(
-            tooltip: 'Жаңарту',
+            tooltip: t('Жаңарту'),
             onPressed: () => ref.invalidate(myExecutorProfileProvider),
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
-            tooltip: 'Шығу',
+            tooltip: t('Шығу'),
             onPressed: () => confirmSignOut(context),
             icon: const Icon(Icons.logout),
           ),
@@ -91,7 +92,7 @@ class PendingScreen extends ConsumerWidget {
                       ),
                     ),
                     icon: const Icon(Icons.edit),
-                    label: const Text('Қайта толтыру'),
+                    label: Text(t('Қайта толтыру')),
                   ),
                 ),
               if (profile.status == 'pending')
@@ -101,7 +102,7 @@ class PendingScreen extends ConsumerWidget {
                     onPressed: () =>
                         ref.invalidate(myExecutorProfileProvider),
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Күйін тексеру'),
+                    label: Text(t('Күйін тексеру')),
                   ),
                 ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -36,19 +37,19 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
           final pending = snap.data?[0] ?? [];
           final docsReview = snap.data?[1] ?? [];
           if (pending.isEmpty && docsReview.isEmpty) {
-            return ListView(children: const [
-              SizedBox(height: 120),
+            return ListView(children: [
+              const SizedBox(height: 120),
               EmptyState(
                   icon: Icons.inbox_outlined,
-                  title: 'Жаңа өтінім жоқ',
-                  subtitle: 'Барлық өтінімдер қаралған.'),
+                  title: t('Жаңа өтінім жоқ'),
+                  subtitle: t('Барлық өтінімдер қаралған.')),
             ]);
           }
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
               if (docsReview.isNotEmpty) ...[
-                const _SectionLabel('Құжат жаңартулары (ревью)'),
+                _SectionLabel(t('Құжат жаңартулары (ревью)')),
                 for (final ep in docsReview) ...[
                   _DocsReviewTile(ep: ep, onChanged: _reload),
                   const SizedBox(height: 8),
@@ -56,7 +57,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 const SizedBox(height: 8),
               ],
               if (pending.isNotEmpty) ...[
-                const _SectionLabel('Жаңа өтінімдер'),
+                _SectionLabel(t('Жаңа өтінімдер')),
                 for (final ep in pending) ...[
                   _ApplicationTile(ep: ep, onChanged: _reload),
                   const SizedBox(height: 8),
@@ -116,7 +117,7 @@ class _DocsReviewTile extends StatelessWidget {
               ),
               if (fields.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Text('Жаңартылды: $fields',
+                Text('${t('Жаңартылды')}: $fields',
                     style: const TextStyle(
                         fontSize: 12.5, color: Gz.textSecondary)),
               ],
@@ -128,23 +129,23 @@ class _DocsReviewTile extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   children: [
                     if (ep.docsUpdateFields.contains('id')) ...[
-                      _doc(ep.idDocPath, 'Жеке куәлік'),
-                      _doc(ep.idSelfiePath, 'Куәлікпен селфи'),
+                      _doc(ep.idDocPath, t('Жеке куәлік')),
+                      _doc(ep.idSelfiePath, t('Куәлікпен селфи')),
                     ],
                     if (ep.docsUpdateFields.contains('passport')) ...[
-                      _doc(ep.passportPath, 'Шетел паспорты'),
-                      _doc(ep.passportSelfiePath, 'Паспортпен селфи'),
+                      _doc(ep.passportPath, t('Шетел паспорты')),
+                      _doc(ep.passportSelfiePath, t('Паспортпен селфи')),
                     ],
                     if (ep.docsUpdateFields.contains('license')) ...[
-                      _doc(ep.licensePath, 'Жүргізуші'),
-                      _doc(ep.licenseSelfiePath, 'Правамен селфи'),
+                      _doc(ep.licensePath, t('Жүргізуші')),
+                      _doc(ep.licenseSelfiePath, t('Правамен селфи')),
                     ],
                     if (ep.docsUpdateFields.contains('tech')) ...[
-                      _doc(ep.techPassportPath, 'Техпаспорт'),
-                      _doc(ep.techPassportSelfiePath, 'Техпаспортпен фото'),
+                      _doc(ep.techPassportPath, t('Техпаспорт')),
+                      _doc(ep.techPassportSelfiePath, t('Техпаспортпен фото')),
                     ],
                     if (ep.docsUpdateFields.contains('photos'))
-                      for (final ph in ep.vehiclePhotos) _doc(ph, 'Көлік'),
+                      for (final ph in ep.vehiclePhotos) _doc(ph, t('Көлік')),
                   ],
                 ),
               ),
@@ -153,7 +154,7 @@ class _DocsReviewTile extends StatelessWidget {
                 children: [
                   Expanded(
                     child: BusyButton(
-                      label: 'Қайтару',
+                      label: t('Қайтару'),
                       outlined: true,
                       onPressed: () => _reject(context),
                     ),
@@ -162,7 +163,7 @@ class _DocsReviewTile extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: BusyButton(
-                      label: 'Қабылдау ✓',
+                      label: t('Қабылдау ✓'),
                       onPressed: () => _approve(context),
                     ),
                   ),
@@ -183,7 +184,7 @@ class _DocsReviewTile extends StatelessWidget {
   Future<void> _approve(BuildContext context) async {
     try {
       await Repo.modApproveDocs(ep.userId);
-      if (context.mounted) showSnack(context, 'Құжаттар қабылданды');
+      if (context.mounted) showSnack(context, t('Құжаттар қабылданды'));
       onChanged();
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -195,22 +196,22 @@ class _DocsReviewTile extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Қайтару себебі'),
+        title: Text(t('Қайтару себебі')),
         content: TextField(controller: c, autofocus: true),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Болдырмау')),
+              child: Text(t('Болдырмау'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Қайтару')),
+              child: Text(t('Қайтару'))),
         ],
       ),
     );
     if (ok != true) return;
     try {
       await Repo.modRejectDocs(ep.userId, c.text);
-      if (context.mounted) showSnack(context, 'Қайтарылды');
+      if (context.mounted) showSnack(context, t('Қайтарылды'));
       onChanged();
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -268,7 +269,7 @@ class ApplicationDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Өтінім')),
+      appBar: AppBar(title: Text(t('Өтінім'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -301,23 +302,23 @@ class ApplicationDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Көлік',
-                      style: TextStyle(
+                  Text(t('Көлік'),
+                      style: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 8),
-                  InfoRow('Маркасы', ep.vehicleTitle),
-                  if (ep.city != null) InfoRow('Қала', ep.city!),
-                  InfoRow('Мемнөмір', ep.vehiclePlate),
-                  InfoRow('Өтінім күні', fmtDate(ep.createdAt)),
+                  InfoRow(t('Маркасы'), ep.vehicleTitle),
+                  if (ep.city != null) InfoRow(t('Қала'), ep.city!),
+                  InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                  InfoRow(t('Өтінім күні'), fmtDate(ep.createdAt)),
                 ],
               ),
             ),
             const SizedBox(height: 14),
             Row(
               children: [
-                const Text('Құжаттар',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(t('Құжаттар'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(width: 8),
                 Container(
                   padding:
@@ -327,7 +328,7 @@ class ApplicationDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    ep.isForeignCitizen ? 'Шетел азаматы' : 'ҚР азаматы',
+                    ep.isForeignCitizen ? t('Шетел азаматы') : t('ҚР азаматы'),
                     style: const TextStyle(
                         fontSize: 11.5, fontWeight: FontWeight.w700),
                   ),
@@ -339,11 +340,11 @@ class ApplicationDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                     child: DocImage(
-                        path: ep.licensePath, label: 'Жүргізуші куәлігі')),
+                        path: ep.licensePath, label: t('Жүргізуші куәлігі'))),
                 const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
-                        path: ep.licenseSelfiePath, label: 'Правамен селфи')),
+                        path: ep.licenseSelfiePath, label: t('Правамен селфи'))),
               ],
             ),
             const SizedBox(height: 8),
@@ -351,12 +352,12 @@ class ApplicationDetailScreen extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                      child:
-                          DocImage(path: ep.idDocPath, label: 'Жеке куәлік')),
+                      child: DocImage(
+                          path: ep.idDocPath, label: t('Жеке куәлік'))),
                   const SizedBox(width: 8),
                   Expanded(
                       child: DocImage(
-                          path: ep.idSelfiePath, label: 'Куәлікпен селфи')),
+                          path: ep.idSelfiePath, label: t('Куәлікпен селфи'))),
                 ],
               )
             else
@@ -364,12 +365,12 @@ class ApplicationDetailScreen extends StatelessWidget {
                 children: [
                   Expanded(
                       child: DocImage(
-                          path: ep.passportPath, label: 'Шетел паспорты')),
+                          path: ep.passportPath, label: t('Шетел паспорты'))),
                   const SizedBox(width: 8),
                   Expanded(
                       child: DocImage(
                           path: ep.passportSelfiePath,
-                          label: 'Паспортпен селфи')),
+                          label: t('Паспортпен селфи'))),
                 ],
               ),
             const SizedBox(height: 8),
@@ -377,21 +378,21 @@ class ApplicationDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                     child: DocImage(
-                        path: ep.techPassportPath, label: 'Техпаспорт')),
+                        path: ep.techPassportPath, label: t('Техпаспорт'))),
                 const SizedBox(width: 8),
                 Expanded(
                     child: DocImage(
                         path: ep.techPassportSelfiePath,
-                        label: 'Техпаспортпен фото')),
+                        label: t('Техпаспортпен фото'))),
               ],
             ),
             const SizedBox(height: 14),
-            const Text('Көлік фотолары',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(t('Көлік фотолары'),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 8),
             if (ep.vehiclePhotos.isEmpty)
-              const Text('Фото жоқ',
-                  style: TextStyle(color: Gz.textSecondary)),
+              Text(t('Фото жоқ'),
+                  style: const TextStyle(color: Gz.textSecondary)),
             SizedBox(
               height: 130,
               child: ListView.separated(
@@ -400,7 +401,9 @@ class ApplicationDetailScreen extends StatelessWidget {
                 separatorBuilder: (_, i) => const SizedBox(width: 8),
                 itemBuilder: (_, i) => SizedBox(
                   width: 170,
-                  child: DocImage(path: ep.vehiclePhotos[i], label: 'Фото ${i + 1}'),
+                  child: DocImage(
+                      path: ep.vehiclePhotos[i],
+                      label: '${t('Фото')} ${i + 1}'),
                 ),
               ),
             ),
@@ -409,7 +412,7 @@ class ApplicationDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: BusyButton(
-                    label: 'Қабылдамау',
+                    label: t('Қабылдамау'),
                     outlined: true,
                     onPressed: () => _reject(context),
                   ),
@@ -418,7 +421,7 @@ class ApplicationDetailScreen extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: BusyButton(
-                    label: 'Растау ✓',
+                    label: t('Растау ✓'),
                     onPressed: () => _approve(context),
                   ),
                 ),
@@ -435,7 +438,7 @@ class ApplicationDetailScreen extends StatelessWidget {
     try {
       await Repo.modSetExecutorStatus(ep.userId, 'approved', '');
       if (context.mounted) {
-        showSnack(context, 'Орындаушы расталды');
+        showSnack(context, t('Орындаушы расталды'));
         Navigator.of(context).pop(true);
       }
     } catch (e) {
@@ -448,24 +451,24 @@ class ApplicationDetailScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Қабылдамау себебі'),
+        title: Text(t('Қабылдамау себебі')),
         content: TextField(
           controller: c,
           autofocus: true,
-          decoration: const InputDecoration(
-              hintText: 'Мыс: техпаспорт фотосы анық емес'),
+          decoration: InputDecoration(
+              hintText: t('Мыс: техпаспорт фотосы анық емес')),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Болдырмау')),
+              child: Text(t('Болдырмау'))),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Gz.red,
                 foregroundColor: Colors.white,
                 shadowColor: const Color(0x59DC2626)),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Қабылдамау'),
+            child: Text(t('Қабылдамау')),
           ),
         ],
       ),
@@ -496,7 +499,7 @@ class DocImage extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
-          child: Text('$label\nжоқ',
+          child: Text('$label\n${t('жоқ')}',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Gz.textSecondary, fontSize: 12)),
         ),

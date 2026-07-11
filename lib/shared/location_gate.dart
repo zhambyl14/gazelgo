@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../core/lang.dart';
 import '../core/theme.dart';
 
 /// Клиент/орындаушы экрандарын GPS қосулы әрі рұқсат берілгенше бұғаттайды.
@@ -83,30 +84,30 @@ class _LocationGateState extends State<LocationGate>
         switch (_state) {
       _LocState.serviceOff => (
           Icons.location_off_outlined,
-          'GPS өшірулі',
-          'GazelGo дұрыс жұмыс істеуі үшін (жақын заказдар, қаланы анықтау, '
-              'навигация) құрылғының орналасу қызметі қосулы болуы керек.',
-          'Параметрлерді ашу',
+          t('GPS өшірулі'),
+          t('GazelGo дұрыс жұмыс істеуі үшін (жақын заказдар, қаланы анықтау, '
+              'навигация) құрылғының орналасу қызметі қосулы болуы керек.'),
+          t('Параметрлерді ашу'),
           () async {
             await Geolocator.openLocationSettings();
           },
         ),
       _LocState.deniedForever => (
           Icons.location_disabled_outlined,
-          'Локацияға рұқсат керек',
-          'Рұқсат қолданба параметрлерінде мүлдем өшірілген. Параметрлерден '
-              'локацияға рұқсат беріңіз.',
-          'Параметрлерді ашу',
+          t('Локацияға рұқсат керек'),
+          t('Рұқсат қолданба параметрлерінде мүлдем өшірілген. Параметрлерден '
+              'локацияға рұқсат беріңіз.'),
+          t('Параметрлерді ашу'),
           () async {
             await Geolocator.openAppSettings();
           },
         ),
       _ => (
           Icons.my_location_outlined,
-          'Локацияға рұқсат беріңіз',
-          'Жақын заказдарды көрсету және қалаңызды анықтау үшін '
-              'орналасуыңызға рұқсат қажет.',
-          'Рұқсат беру',
+          t('Локацияға рұқсат беріңіз'),
+          t('Жақын заказдарды көрсету және қалаңызды анықтау үшін '
+              'орналасуыңызға рұқсат қажет.'),
+          t('Рұқсат беру'),
           () async {
             await Geolocator.requestPermission();
           },
@@ -154,7 +155,7 @@ class _LocationGateState extends State<LocationGate>
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: _check,
-                  child: const Text('Тексеру'),
+                  child: Text(t('Тексеру')),
                 ),
               ],
             ),

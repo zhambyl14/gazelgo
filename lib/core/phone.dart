@@ -9,14 +9,16 @@ class Phone {
   static const emailDomain = 'phone.gazelgo.kz';
 
   /// Кез келген енгізуден 11 таңбалы `7XXXXXXXXXX` пішінін шығарады.
-  /// Дұрыс емес болса — null.
+  /// Дұрыс емес болса — null. Тек ҚАЗАҚСТАНДЫҚ нөмір қабылданады: екінші
+  /// таңба да «7» болуы шарт (`+77...`) — ресейлік нөмірлер `+79...` болып
+  /// басталады, сол екеуін осылай ажыратамыз (екеуі де +7 ел кодын бөліседі).
   static String? normalize(String raw) {
     var d = raw.replaceAll(RegExp(r'\D'), '');
     // 8XXXXXXXXXX → 7XXXXXXXXXX
     if (d.length == 11 && d.startsWith('8')) d = '7${d.substring(1)}';
     // XXXXXXXXXX (10) → 7XXXXXXXXXX
     if (d.length == 10) d = '7$d';
-    if (d.length == 11 && d.startsWith('7')) return d;
+    if (d.length == 11 && d.startsWith('77')) return d;
     return null;
   }
 

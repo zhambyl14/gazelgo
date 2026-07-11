@@ -15,4 +15,17 @@ class Prefs {
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kOrderNotify, v);
   }
+
+  static const _kLanguage = 'app_language';
+
+  /// Қосымша тілі: 'kk' (әдепкі) не 'ru'.
+  static Future<String> language() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kLanguage) ?? 'kk';
+  }
+
+  static Future<void> setLanguage(String v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kLanguage, v);
+  }
 }

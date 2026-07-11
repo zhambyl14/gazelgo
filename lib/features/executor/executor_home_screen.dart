@@ -240,32 +240,43 @@ class _LineControlBar extends ConsumerWidget {
   }
 }
 
-/// Жаңа заказ уведомлениелерін қосу/өшіру тумблері (құрылғыда сақталады).
-class _OrderNotifyToggle extends StatefulWidget {
+/// Жаңа заказ уведомлениелерін қосу/өшіру тумблері. Сервердегі мәнге
+/// (`executor_profiles.order_push_enabled`) сай инициализацияланады — сол
+/// мән арқылы push ҚОСЫМША ЖАБЫҚ болса да келеді (0028); жергілікті Prefs
+/// қосымша тірі/фонда тұрғанда жылдам foreground хабарлау үшін сақталады.
+class _OrderNotifyToggle extends ConsumerStatefulWidget {
   const _OrderNotifyToggle();
 
   @override
-  State<_OrderNotifyToggle> createState() => _OrderNotifyToggleState();
+  ConsumerState<_OrderNotifyToggle> createState() =>
+      _OrderNotifyToggleState();
 }
 
-class _OrderNotifyToggleState extends State<_OrderNotifyToggle> {
+class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
   bool _on = true;
+  bool _initialized = false;
 
-  @override
-  void initState() {
-    super.initState();
-    Prefs.orderNotify().then((v) {
-      if (mounted) setState(() => _on = v);
-    });
+  void _initFrom(bool serverValue) {
+    if (_initialized) return;
+    _initialized = true;
+    _on = serverValue;
+    Prefs.setOrderNotify(serverValue);
   }
 
   Future<void> _toggle(bool v) async {
     setState(() => _on = v);
     await Prefs.setOrderNotify(v);
+    try {
+      await Repo.setOrderPushEnabled(v);
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final ep = ref.watch(myExecutorProfileProvider).value;
+    if (ep != null) _initFrom(ep.orderPushEnabled);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
       decoration: BoxDecoration(

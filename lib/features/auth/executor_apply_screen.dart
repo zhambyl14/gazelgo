@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/kz_cities.dart';
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -122,33 +123,33 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_city == null || _city!.trim().isEmpty) {
-      showSnack(context, 'Қай қалада жұмыс істейтініңізді таңдаңыз',
+      showSnack(context, t('Қай қалада жұмыс істейтініңізді таңдаңыз'),
           error: true);
       return;
     }
     if (!_license.isSet || !_licenseSelfie.isSet) {
-      showSnack(context, 'Жүргізуші куәлігі мен онымен селфиді жүктеңіз',
+      showSnack(context, t('Жүргізуші куәлігі мен онымен селфиді жүктеңіз'),
           error: true);
       return;
     }
     if (!_isForeign && (!_idDoc.isSet || !_idSelfie.isSet)) {
-      showSnack(context, 'Жеке куәлік пен онымен селфиді жүктеңіз',
+      showSnack(context, t('Жеке куәлік пен онымен селфиді жүктеңіз'),
           error: true);
       return;
     }
     if (_isForeign && (!_passport.isSet || !_passportSelfie.isSet)) {
-      showSnack(context, 'Шетел паспорты мен онымен селфиді жүктеңіз',
+      showSnack(context, t('Шетел паспорты мен онымен селфиді жүктеңіз'),
           error: true);
       return;
     }
     if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
-      showSnack(context, 'Көліктің техпаспорты мен онымен фотоны жүктеңіз',
+      showSnack(context, t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
           error: true);
       return;
     }
     if (!_vehFront.isSet || !_vehBack.isSet || !_vehRight.isSet ||
         !_vehLeft.isSet) {
-      showSnack(context, 'Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)',
+      showSnack(context, t('Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)'),
           error: true);
       return;
     }
@@ -222,7 +223,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       ref.invalidate(myExecutorProfileProvider);
       if (mounted) {
         showSnack(context,
-            isDocsResponse ? 'Жіберілді — модератор тексереді' : 'Жіберілді');
+            isDocsResponse ? t('Жіберілді — модератор тексереді') : t('Жіберілді'));
         if (Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
     } catch (e) {
@@ -259,15 +260,15 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
+                Text(t(title),
                     style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 14)),
                 if (hint != null)
-                  Text(hint,
+                  Text(t(hint),
                       style: const TextStyle(
                           fontSize: 11.5, color: Gz.textSecondary)),
                 Text(
-                  doc.isSet ? 'Жүктелді ✓' : 'Фото қажет',
+                  doc.isSet ? t('Жүктелді ✓') : t('Фото қажет'),
                   style: TextStyle(
                       fontSize: 12,
                       color: doc.isSet ? Gz.green : Gz.textSecondary),
@@ -277,7 +278,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           ),
           TextButton(
             onPressed: () => _pickDoc(doc),
-            child: Text(doc.isSet ? 'Ауыстыру' : 'Жүктеу'),
+            child: Text(doc.isSet ? t('Ауыстыру') : t('Жүктеу')),
           ),
         ],
       ),
@@ -289,11 +290,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     final resubmit = widget.existing != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(resubmit ? 'Өтінімді қайта жіберу' : 'Газелист өтінімі'),
+        title: Text(resubmit ? t('Өтінімді қайта жіберу') : t('Газелист өтінімі')),
         actions: [
           if (!resubmit)
             IconButton(
-              tooltip: 'Шығу',
+              tooltip: t('Шығу'),
               onPressed: () => confirmSignOut(context),
               icon: const Icon(Icons.logout),
             ),
@@ -318,12 +319,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(children: [
-                          Icon(Icons.assignment_late, color: Gz.red, size: 20),
-                          SizedBox(width: 8),
+                        Row(children: [
+                          const Icon(Icons.assignment_late, color: Gz.red, size: 20),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: Text('Модератор мынаны жаңартуды сұрады:',
-                                style: TextStyle(fontWeight: FontWeight.w800)),
+                            child: Text(t('Модератор мынаны жаңартуды сұрады:'),
+                                style: const TextStyle(fontWeight: FontWeight.w800)),
                           ),
                         ]),
                         const SizedBox(height: 6),
@@ -348,14 +349,14 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                const Text('Қай қалада жұмыс істейсіз?',
-                    style:
+                Text(t('Қай қалада жұмыс істейсіз?'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 6),
-                const Text(
-                  'Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
-                  'шығатын межгород) көресіз.',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                Text(
+                  t('Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
+                  'шығатын межгород) көресіз.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
@@ -379,7 +380,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _city ?? 'Қаланы таңдаңыз',
+                            _city ?? t('Қаланы таңдаңыз'),
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
@@ -394,24 +395,24 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('Көлік туралы',
-                    style:
+                Text(t('Көлік туралы'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 10),
                 Row(children: [
                   Expanded(
                     child: TextFormField(
                       controller: _brand,
-                      decoration: const InputDecoration(hintText: 'Маркасы'),
+                      decoration: InputDecoration(hintText: t('Маркасы')),
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Қажет' : null,
+                          (v == null || v.trim().isEmpty) ? t('Қажет') : null,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextFormField(
                       controller: _model,
-                      decoration: const InputDecoration(hintText: 'Моделі'),
+                      decoration: InputDecoration(hintText: t('Моделі')),
                     ),
                   ),
                 ]),
@@ -421,11 +422,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: TextFormField(
                       controller: _year,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: 'Шығарылған жылы'),
+                      decoration: InputDecoration(hintText: t('Шығарылған жылы')),
                       validator: (v) {
                         final y = int.tryParse(v?.trim() ?? '');
                         if (y == null || y < 1980 || y > DateTime.now().year + 1) {
-                          return 'Жылын дұрыс жазыңыз';
+                          return t('Жылын дұрыс жазыңыз');
                         }
                         return null;
                       },
@@ -437,22 +438,22 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: TextFormField(
                       controller: _plate,
                       textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                          hintText: 'Мемнөмір (123 ABC 02)'),
+                      decoration: InputDecoration(
+                          hintText: t('Мемнөмір (123 ABC 02)')),
                       validator: (v) => (v == null || v.trim().length < 4)
-                          ? 'Мемнөмір қажет'
+                          ? t('Мемнөмір қажет')
                           : null,
                     ),
                   ),
                 ]),
                 const SizedBox(height: 6),
-                const Text(
-                  'Көлік жылы маңызды: VIP тарифті тек жаңарақ көлікке қосуға болады.',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                Text(
+                  t('Көлік жылы маңызды: VIP тарифті тек жаңарақ көлікке қосуға болады.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 20),
-                const Text('Құжаттар',
-                    style:
+                Text(t('Құжаттар'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 10),
                 _docTile('Жүргізуші куәлігі (права)', _license),

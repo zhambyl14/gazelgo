@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/env.dart';
+import '../core/lang.dart';
 import '../core/phone.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
@@ -99,8 +100,8 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Нөмір расталды',
-                      style: TextStyle(
+                  Text(t('Нөмір расталды'),
+                      style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13.5,
                           color: Gz.green)),
@@ -134,11 +135,11 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               Expanded(
                 child: Text(
                   waiting
-                      ? 'Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз. '
+                      ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз. '
                           'Ашылмаса — төмендегі түймені қайта басыңыз. '
-                          'Растауды күтудеміз…'
-                      : 'Нөміріңіз Telegram арқылы расталады (SMS жоқ, тегін). '
-                          'Түймені басып, ботта нөміріңізді бөлісіңіз.',
+                          'Растауды күтудеміз…')
+                      : t('Нөміріңіз Telegram арқылы расталады (SMS жоқ, тегін). '
+                          'Түймені басып, ботта нөміріңізді бөлісіңіз.'),
                   style: const TextStyle(
                       color: Color(0xFF1C5A91), fontSize: 12.5, height: 1.4),
                 ),
@@ -163,21 +164,21 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                         strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.telegram),
             label: Text(waiting
-                ? '📲 Telegram-ды ашу'
-                : 'Telegram арқылы растау'),
+                ? t('📲 Telegram-ды ашу')
+                : t('Telegram арқылы растау')),
           ),
           if (waiting) ...[
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                SizedBox(
+              children: [
+                const SizedBox(
                     width: 13,
                     height: 13,
                     child: CircularProgressIndicator(strokeWidth: 2)),
-                SizedBox(width: 8),
-                Text('Растауды күтудеміз…',
-                    style: TextStyle(color: Color(0xFF1C5A91), fontSize: 12)),
+                const SizedBox(width: 8),
+                Text(t('Растауды күтудеміз…'),
+                    style: const TextStyle(color: Color(0xFF1C5A91), fontSize: 12)),
               ],
             ),
           ],

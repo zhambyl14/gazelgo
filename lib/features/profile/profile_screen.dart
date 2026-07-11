@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -44,13 +45,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _deleteAccount(BuildContext context) async {
     final first = await confirmDialog(
       context,
-      title: 'Аккаунтты өшіру',
-      message: 'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
+      title: t('Аккаунтты өшіру'),
+      message: t('Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
           'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. Бұл '
           'әрекетті кері қайтару МҮМКІН ЕМЕС.\n\nБелсенді заказыңыз болса, '
-          'алдымен оны аяқтаңыз.',
-      cancelLabel: 'Болдырмау',
-      confirmLabel: 'Жалғастыру',
+          'алдымен оны аяқтаңыз.'),
+      cancelLabel: t('Болдырмау'),
+      confirmLabel: t('Жалғастыру'),
       confirmColor: Gz.red,
       icon: Icons.delete_forever_outlined,
     );
@@ -59,10 +60,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // Соңғы қадам — қауіпті түйме әдейі БАСЫМ ЕМЕС (кездейсоқ басудан қорғау)
     final second = await confirmDialog(
       context,
-      title: 'Соңғы растау',
-      message: 'Шынымен де аккаунтты біржола өшіресіз бе?',
-      cancelLabel: 'Жоқ, қалдырамын',
-      confirmLabel: 'Иә, өшіру',
+      title: t('Соңғы растау'),
+      message: t('Шынымен де аккаунтты біржола өшіресіз бе?'),
+      cancelLabel: t('Жоқ, қалдырамын'),
+      confirmLabel: t('Иә, өшіру'),
       confirmColor: Gz.red,
       icon: Icons.warning_amber_rounded,
       emphasizeCancel: true,
@@ -77,7 +78,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       if (context.mounted) {
         final msg = e.toString().contains('HAS_ACTIVE_ORDERS')
-            ? 'Белсенді заказыңыз бар — алдымен оны аяқтаңыз не тоқтатыңыз.'
+            ? t('Белсенді заказыңыз бар — алдымен оны аяқтаңыз не тоқтатыңыз.')
             : errText(e);
         showSnack(context, msg, error: true);
       }
@@ -99,7 +100,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       await Repo.setExecutorCity(picked);
       ref.invalidate(myExecutorProfileProvider);
-      if (context.mounted) showSnack(context, 'Қала $picked болып ауыстырылды');
+      if (context.mounted) {
+        showSnack(context, '${t('Қала')} $picked ${t('болып ауыстырылды')}');
+      }
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
@@ -111,7 +114,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final execAsync = ref.watch(myExecutorProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Профиль')),
+      appBar: AppBar(title: Text(t('Профиль'))),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) =>
@@ -177,7 +180,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               const Icon(Icons.local_shipping,
                                   size: 13, color: Gz.textSecondary),
                               const SizedBox(width: 3),
-                              Text('${p.trips} рейс',
+                              Text('${p.trips} ${t('рейс')}',
                                   style: const TextStyle(
                                       fontSize: 12, color: Gz.textSecondary)),
                             ],
@@ -204,21 +207,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Көлігім',
-                          style: TextStyle(
+                      Text(t('Көлігім'),
+                          style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       const SizedBox(height: 8),
-                      InfoRow('Көлік', ep.vehicleTitle),
+                      InfoRow(t('Көлік'), ep.vehicleTitle),
                       if (ep.city != null)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(
+                              SizedBox(
                                 width: 130,
-                                child: Text('Қала',
-                                    style: TextStyle(
+                                child: Text(t('Қала'),
+                                    style: const TextStyle(
                                         color: Gz.textSecondary,
                                         fontSize: 13.5)),
                               ),
@@ -236,18 +239,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     minimumSize: Size.zero,
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap),
-                                child: const Text('Ауыстыру',
-                                    style: TextStyle(fontSize: 12.5)),
+                                child: Text(t('Ауыстыру'),
+                                    style: const TextStyle(fontSize: 12.5)),
                               ),
                             ],
                           ),
                         ),
-                      InfoRow('Мемнөмір', ep.vehiclePlate),
-                      InfoRow('Статус', switch (ep.status) {
-                        'approved' => 'Расталған',
-                        'pending' => 'Тексерілуде',
-                        'rejected' => 'Қабылданбаған',
-                        _ => 'Бұғатталған',
+                      InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                      InfoRow(t('Статус'), switch (ep.status) {
+                        'approved' => t('Расталған'),
+                        'pending' => t('Тексерілуде'),
+                        'rejected' => t('Қабылданбаған'),
+                        _ => t('Бұғатталған'),
                       }),
                     ],
                   ),
@@ -259,9 +262,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   padding: EdgeInsets.zero,
                   child: ListTile(
                     leading: const Icon(Icons.receipt_long, color: Gz.blue),
-                    title: const Text('Тапсырыстар',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Белсенді және өткен заказдар'),
+                    title: Text(t('Тапсырыстар'),
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(t('Белсенді және өткен заказдар')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => const MyOrdersScreen())),
@@ -273,11 +276,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: EdgeInsets.zero,
                 child: ListTile(
                   leading: const Icon(Icons.star_rounded, color: Color(0xFFF59E0B)),
-                  title: const Text('Пікірлер',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(t('Пікірлер'),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(p.ratingCount == 0
-                      ? 'Әзірге пікір жоқ'
-                      : '${p.rating.toStringAsFixed(1)} · ${p.ratingCount} пікір'),
+                      ? t('Әзірге пікір жоқ')
+                      : '${p.rating.toStringAsFixed(1)} · ${p.ratingCount} ${t('пікір')}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ReviewsScreen(
@@ -294,9 +297,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: EdgeInsets.zero,
                 child: ListTile(
                   leading: const Icon(Icons.support_agent, color: Gz.ink),
-                  title: const Text('Қолдау қызметі',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Сұрақ, шағым, көмек'),
+                  title: Text(t('Қолдау қызметі'),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text(t('Сұрақ, шағым, көмек')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const SupportScreen())),
@@ -306,12 +309,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SectionCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
+                  leading: const Icon(Icons.language, color: Gz.blue),
+                  title: Text(t('Тіл'),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: const LanguageSwitcher(),
+                  onTap: null,
+                ),
+              ),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
                   leading: const Icon(Icons.description_outlined,
                       color: Gz.textSecondary),
-                  title: const Text('Заңдық құжаттар',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(t('Заңдық құжаттар'),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle:
-                      const Text('Пайдаланушы келісімі · Құпиялылық саясаты'),
+                      Text(t('Пайдаланушы келісімі · Құпиялылық саясаты')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const LegalScreen())),
@@ -324,8 +338,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.logout, color: Gz.red),
-                      title: const Text('Шығу',
-                          style: TextStyle(
+                      title: Text(t('Шығу'),
+                          style: const TextStyle(
                               color: Gz.red, fontWeight: FontWeight.w700)),
                       onTap: () => confirmSignOut(context),
                     ),
@@ -333,8 +347,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ListTile(
                       leading: const Icon(Icons.manage_accounts_outlined,
                           color: Gz.textSecondary),
-                      title: const Text('Есептік жазба баптаулары',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: Text(t('Есептік жазба баптаулары'),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => _AccountSettingsScreen(
@@ -366,7 +380,7 @@ class _AccountSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Есептік жазба баптаулары')),
+      appBar: AppBar(title: Text(t('Есептік жазба баптаулары'))),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -374,11 +388,11 @@ class _AccountSettingsScreen extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: ListTile(
               leading: const Icon(Icons.delete_forever_outlined, color: Gz.red),
-              title: const Text('Аккаунтты өшіру',
-                  style:
-                      TextStyle(color: Gz.red, fontWeight: FontWeight.w700)),
-              subtitle: const Text('Барлық деректер біржола жойылады',
-                  style: TextStyle(fontSize: 12)),
+              title: Text(t('Аккаунтты өшіру'),
+                  style: const TextStyle(
+                      color: Gz.red, fontWeight: FontWeight.w700)),
+              subtitle: Text(t('Барлық деректер біржола жойылады'),
+                  style: const TextStyle(fontSize: 12)),
               onTap: () => onDelete(context),
             ),
           ),
@@ -403,8 +417,8 @@ class _ExecEarningsCard extends ConsumerWidget {
             children: [
               const Icon(Icons.payments_outlined, size: 18, color: Gz.green),
               const SizedBox(width: 8),
-              const Text('Табыс',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              Text(t('Табыс'),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
               const Spacer(),
               TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -413,18 +427,18 @@ class _ExecEarningsCard extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: const Text('Толық тарих'),
+                child: Text(t('Толық тарих')),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _mini('Бүгін', fmtT(s?.today), Gz.green)),
+              Expanded(child: _mini(t('Бүгін'), fmtT(s?.today), Gz.green)),
               const SizedBox(width: 8),
-              Expanded(child: _mini('Осы ай', fmtT(s?.month), Gz.blue)),
+              Expanded(child: _mini(t('Осы ай'), fmtT(s?.month), Gz.blue)),
               const SizedBox(width: 8),
-              Expanded(child: _mini('Барлығы', fmtT(s?.totalEarned), Gz.ink)),
+              Expanded(child: _mini(t('Барлығы'), fmtT(s?.totalEarned), Gz.ink)),
             ],
           ),
         ],
@@ -455,4 +469,3 @@ class _ExecEarningsCard extends ConsumerWidget {
     );
   }
 }
-

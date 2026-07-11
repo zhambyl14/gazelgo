@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -166,7 +167,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     controller: _search,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Адрес іздеу…',
+                      hintText: t('Адрес іздеу…'),
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _search.text.isEmpty
                           ? null
@@ -241,17 +242,17 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                         isDense: true,
                         prefixIcon: const Icon(Icons.location_on,
                             color: Gz.red, size: 20),
-                        hintText: _resolving ? 'Анықталуда…' : 'Мекенжай аты',
-                        labelText: 'Осы жердің аты (түзетуге болады)',
+                        hintText: _resolving ? t('Анықталуда…') : t('Мекенжай аты'),
+                        labelText: t('Осы жердің аты (түзетуге болады)'),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       _corrected
-                          ? 'Бұл маңайдағы атау бұрын клиенттер арқылы түзетілген.'
-                          : 'Картадағы белгі дұрыс емес пе? Атын түзетіңіз — осы '
+                          ? t('Бұл маңайдағы атау бұрын клиенттер арқылы түзетілген.')
+                          : t('Картадағы белгі дұрыс емес пе? Атын түзетіңіз — осы '
                               'нүктеге сол атпен сақталады, қаладағы басқа жерге '
-                              'ауыспайды.',
+                              'ауыспайды.'),
                       style: TextStyle(
                           fontSize: 11.5,
                           color: _corrected ? Gz.green : Gz.textSecondary),
@@ -259,7 +260,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: _resolving ? null : _confirmSave,
-                      child: const Text('Осы жерді таңдау'),
+                      child: Text(t('Осы жерді таңдау')),
                     ),
                   ],
                 ),

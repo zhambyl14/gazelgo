@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'lang.dart';
+
 /// GazelGo дизайн-жүйесі.
 class Gz {
   // Бренд түстері
@@ -316,15 +318,15 @@ String errText(Object e) {
     'Invalid API key': 'API кілті қате (env.dart тексеріңіз).',
   };
   for (final k in map.keys) {
-    if (raw.contains(k)) return map[k]!;
+    if (raw.contains(k)) return t(map[k]!);
   }
   if (raw.contains('SocketException') ||
       raw.contains('Failed host lookup') ||
       raw.contains('XMLHttpRequest')) {
-    return 'Интернет байланысы жоқ. Қайталап көріңіз.';
+    return t('Интернет байланысы жоқ. Қайталап көріңіз.');
   }
   // Белгісіз қате — себебін көрсетеміз (диагностикаға көмек)
   var s = raw.replaceFirst('Exception: ', '').trim();
   if (s.length > 140) s = '${s.substring(0, 140)}…';
-  return 'Қате: $s';
+  return '${t('Қате')}: $s';
 }

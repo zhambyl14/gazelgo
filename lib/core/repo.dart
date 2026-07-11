@@ -840,6 +840,11 @@ class Repo {
   static Future<void> setExecutorCity(String city) =>
       c.rpc('set_executor_city', params: {'p_city': city});
 
+  /// Жаңа заказ push-хабарландыруын серверде қосу/өшіру (қосымша толық
+  /// жабық болса да — трафикке осы мән әсер етеді).
+  static Future<void> setOrderPushEnabled(bool enabled) =>
+      c.rpc('set_order_push_enabled', params: {'p_enabled': enabled});
+
   static Stream<List<Offer>> offersStream(String orderId) => _poll(() async {
         final rows = await c
             .from('offers')

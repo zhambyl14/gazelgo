@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/geo.dart';
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -29,11 +30,12 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   // «arrived → loading» әдейі ЖОҚ: тиеуді енді КЛИЕНТ растайды (0027).
   // Орындаушы «Келдім» дегеннен кейін клиенттің растауын күтеді, содан соң
   // ғана «Жолға шықтық» батырмасы (loading → in_transit) көрінеді.
-  static const _next = {
-    'accepted': ('arrived', 'Келдім', Icons.location_on),
-    'loading': ('in_transit', 'Жолға шықтық', Icons.local_shipping),
-    'in_transit': ('completed', 'Заказды аяқтау', Icons.check_circle),
-  };
+  static (String, String, IconData)? _nextFor(String status) => switch (status) {
+        'accepted' => ('arrived', t('Келдім'), Icons.location_on),
+        'loading' => ('in_transit', t('Жолға шықтық'), Icons.local_shipping),
+        'in_transit' => ('completed', t('Заказды аяқтау'), Icons.check_circle),
+        _ => null,
+      };
 
   /// Заказ аяқталғанда клиентті бағалау терезесін бір рет қалқымалы ашамыз.
   void _maybeShowReview(Order o) {
@@ -42,7 +44,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           maybeShowReviewDialog(context,
-              orderId: o.id, title: 'Клиентті бағалаңыз');
+              orderId: o.id, title: 'Клиентті бағалаңыз'); // t() ReviewPrompt ішінде
         }
       });
     }
@@ -74,7 +76,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       if (context.mounted) {
         showSnack(
             context,
-            '${errText(farErr)} (${dist.toStringAsFixed(1)} км қашықтық)',
+            '${errText(farErr)} (${dist.toStringAsFixed(1)} ${t('км қашықтық')})',
             error: true);
       }
       return false;
@@ -85,7 +87,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Белсенді заказ')),
+      appBar: AppBar(title: Text(t('Белсенді заказ'))),
       body: StreamBuilder<Order?>(
         stream: Repo.orderStream(widget.orderId),
         builder: (context, snap) {
@@ -94,7 +96,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           _maybeShowReview(o);
-          final next = _next[o.status];
+          final next = _nextFor(o.status);
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -129,11 +131,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                     children: [
                       RouteLine(from: o.fromDisplay, to: o.toDisplay),
                       const Divider(height: 20),
-                      InfoRow('Жүк', o.cargoDesc),
+                      InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)
-                        InfoRow('Түсініктеме', o.comment),
+                        InfoRow(t('Түсініктеме'), o.comment),
                       if (o.distanceKm > 0)
-                        InfoRow('Қашықтық',
+                        InfoRow(t('Қашықтық'),
                             '${o.distanceKm.toStringAsFixed(1)} км'),
                     ],
                   ),
@@ -143,7 +145,26 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   SectionCard(child: OrderPhotosStrip(paths: o.photos)),
                 ],
                 const SizedBox(height: 10),
-                _ClientCard(clientId: o.clientId),
+                // Заказ тоқтатылса — клиенттің нөмірі/хабарласу батырмасы
+                // көрсетілмейді (байланыс тоқтатылған заказда сақталмайды).
+                _ClientCard(
+                    clientId: o.clientId, showCall: o.status != 'cancelled'),
+                if (o.status == 'cancelled') ...[
+                  const SizedBox(height: 10),
+                  SectionCard(
+                    child: Row(children: [
+                      const Icon(Icons.info_outline, color: Gz.red),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          (o.cancelReason?.isNotEmpty ?? false)
+                              ? '${t('Заказ тоқтатылды. Себебі:')} ${o.cancelReason}'
+                              : t('Заказ тоқтатылды'),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
                 if (o.isActive) ...[
                   const SizedBox(height: 10),
                   SupportOrderButton(orderId: o.id),
@@ -160,15 +181,15 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                       borderRadius: BorderRadius.circular(Gz.radius),
                       border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.hourglass_top, color: Gz.blue),
-                        SizedBox(width: 10),
+                        const Icon(Icons.hourglass_top, color: Gz.blue),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Клиенттің «Тиеу басталды» деп растауын күтіңіз. '
-                            'Растаған соң «Жолға шықтық» батырмасы шығады.',
-                            style: TextStyle(
+                            t('Клиенттің «Тиеу басталды» деп растауын күтіңіз. '
+                                'Растаған соң «Жолға шықтық» батырмасы шығады.'),
+                            style: const TextStyle(
                                 fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                         ),
@@ -194,7 +215,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                           }
                           if (context.mounted) {
                             showSnack(context,
-                                'Заказ аяқталды! Табысыңызға ${fmtT(o.finalPrice)} қосылды 🎉');
+                                '${t('Заказ аяқталды! Табысыңызға')} ${fmtT(o.finalPrice)} ${t('қосылды')} 🎉');
                           }
                         }
                       } catch (e) {
@@ -205,15 +226,17 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                     },
                   ),
                 if (o.status == 'completed') ...[
-                  const SectionCard(
+                  SectionCard(
                     child: Row(children: [
-                      Icon(Icons.check_circle, color: Gz.green),
-                      SizedBox(width: 10),
-                      Expanded(child: Text('Заказ сәтті аяқталды')),
+                      const Icon(Icons.check_circle, color: Gz.green),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(t('Заказ сәтті аяқталды'))),
                     ]),
                   ),
                   const SizedBox(height: 10),
-                  ReviewPrompt(orderId: o.id, title: 'Клиентті бағалаңыз'),
+                  ReviewPrompt(
+                      orderId: o.id,
+                      title: 'Клиентті бағалаңыз'), // t() ReviewPrompt ішінде
                 ],
                 // Орындаушы тек «қабылданды» кезеңінде (келмей тұрып) бас тарта алады
                 if (o.status == 'accepted') ...[
@@ -224,7 +247,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                         side: const BorderSide(color: Gz.red)),
                     onPressed: () => _cancel(context, o.id),
                     icon: const Icon(Icons.close),
-                    label: const Text('Бас тарту'),
+                    label: Text(t('Бас тарту')),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -258,33 +281,18 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
     );
   }
 
+  static const _execCancelReasons = [
+    'Көлігім бос емес',
+    'Қашықтық тым алыс',
+    'Клиентпен байланыса алмадым',
+    'Баға тым төмен',
+    'Жүк сипаттамаға сай емес',
+  ];
+
   Future<void> _cancel(BuildContext context, String orderId) async {
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        final c = TextEditingController();
-        return AlertDialog(
-          title: const Text('Заказдан бас тарту'),
-          content: TextField(
-            controller: c,
-            decoration: const InputDecoration(hintText: 'Себебі'),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Жоқ')),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red,
-                  foregroundColor: Colors.white,
-                  shadowColor: const Color(0x59DC2626)),
-              onPressed: () => Navigator.pop(ctx, c.text),
-              child: const Text('Бас тарту'),
-            ),
-          ],
-        );
-      },
-    );
+    final reason = await pickCancelReason(context,
+        title: t('Заказдан бас тарту'),
+        presets: [for (final r in _execCancelReasons) t(r)]);
     if (reason == null || !context.mounted) return;
     try {
       await Repo.cancelOrder(orderId, reason);
@@ -395,7 +403,8 @@ class _NavHalfState extends State<_NavHalf> {
 
 class _ClientCard extends StatelessWidget {
   final String clientId;
-  const _ClientCard({required this.clientId});
+  final bool showCall;
+  const _ClientCard({required this.clientId, this.showCall = true});
 
   @override
   Widget build(BuildContext context) {
@@ -414,8 +423,8 @@ class _ClientCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Клиент',
-                        style: TextStyle(
+                    Text(t('Клиент'),
+                        style: const TextStyle(
                             color: Gz.textSecondary, fontSize: 12)),
                     Text(p?.fullName ?? '…',
                         style: const TextStyle(
@@ -424,14 +433,14 @@ class _ClientCard extends StatelessWidget {
                       Row(children: [
                         RatingStars(p.rating, count: p.ratingCount, size: 12),
                         if (p.trips > 0)
-                          Text('  · ${p.trips} рейс',
+                          Text('  · ${p.trips} ${t('рейс')}',
                               style: const TextStyle(
                                   fontSize: 11.5, color: Gz.textSecondary)),
                       ]),
                   ],
                 ),
               ),
-              if (p != null && p.phone.isNotEmpty)
+              if (showCall && p != null && p.phone.isNotEmpty)
                 IconButton.filled(
                   style: IconButton.styleFrom(
                       backgroundColor: Gz.green,

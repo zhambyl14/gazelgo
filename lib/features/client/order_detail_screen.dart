@@ -65,33 +65,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  static const _clientCancelReasons = [
+    'Ойымды өзгерттім',
+    'Бағаны қымбат көрдім',
+    'Орындаушы тым баяу жауап берді',
+    'Қате адрес/жүк енгіздім',
+    'Басқа орындаушы таптым',
+  ];
+
   Future<void> _cancel() async {
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        final c = TextEditingController();
-        return AlertDialog(
-          title: const Text('Заказды тоқтату'),
-          content: TextField(
-            controller: c,
-            decoration: const InputDecoration(hintText: 'Себебі (міндетті емес)'),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Жоқ')),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red,
-                  foregroundColor: Colors.white,
-                  shadowColor: const Color(0x59DC2626)),
-              onPressed: () => Navigator.pop(ctx, c.text),
-              child: const Text('Тоқтату'),
-            ),
-          ],
-        );
-      },
-    );
+    final reason = await pickCancelReason(context,
+        title: 'Заказды тоқтату', presets: _clientCancelReasons);
     if (reason == null || !mounted) return;
     try {
       await Repo.cancelOrder(widget.orderId, reason);

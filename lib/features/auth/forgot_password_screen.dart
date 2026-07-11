@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/telegram_verify.dart';
@@ -33,7 +34,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _submit() async {
     if (_verifiedPhone == null || _tgToken == null) {
-      showSnack(context, 'Алдымен нөміріңізді Telegram арқылы растаңыз',
+      showSnack(context, t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
           error: true);
       return;
     }
@@ -45,7 +46,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         phone: _verifiedPhone!,
       );
       if (mounted) {
-        showSnack(context, 'Құпиясөз жаңартылды — кіріп жатырсыз');
+        showSnack(context, t('Құпиясөз жаңартылды — кіріп жатырсыз'));
         Navigator.of(context).popUntil((r) => r.isFirst);
       }
     } catch (e) {
@@ -59,7 +60,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: Gz.surface,
       appBar: AppBar(
-          title: const Text('Құпиясөзді қалпына келтіру'),
+          title: Text(t('Құпиясөзді қалпына келтіру')),
           backgroundColor: Gz.surface),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -83,14 +84,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           size: 32, color: Gz.ink),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Құпиясөзді ұмыттыңыз ба?',
-                        style: TextStyle(
+                    Text(t('Құпиясөзді ұмыттыңыз ба?'),
+                        style: const TextStyle(
                             fontSize: 23, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Нөміріңізді Telegram арқылы растап, жаңа құпиясөз '
-                      'орнатыңыз. SMS қажет емес.',
-                      style: TextStyle(
+                    Text(
+                      t('Нөміріңізді Telegram арқылы растап, жаңа құпиясөз '
+                      'орнатыңыз. SMS қажет емес.'),
+                      style: const TextStyle(
                           color: Gz.textSecondary, fontSize: 14.5, height: 1.5),
                     ),
                     const SizedBox(height: 20),
@@ -106,7 +107,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         controller: _password,
                         obscureText: _obscure,
                         decoration: InputDecoration(
-                          hintText: 'Жаңа құпиясөз (кемінде 6 таңба)',
+                          hintText: t('Жаңа құпиясөз (кемінде 6 таңба)'),
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(_obscure
@@ -117,29 +118,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         validator: (v) => (v == null || v.length < 6)
-                            ? 'Кемінде 6 таңба'
+                            ? t('Кемінде 6 таңба')
                             : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _password2,
                         obscureText: _obscure,
-                        decoration: const InputDecoration(
-                          hintText: 'Жаңа құпиясөзді қайталаңыз',
-                          prefixIcon: Icon(Icons.lock_outline),
+                        decoration: InputDecoration(
+                          hintText: t('Жаңа құпиясөзді қайталаңыз'),
+                          prefixIcon: const Icon(Icons.lock_outline),
                         ),
                         validator: (v) => v != _password.text
-                            ? 'Құпиясөздер сәйкес емес'
+                            ? t('Құпиясөздер сәйкес емес')
                             : null,
                       ),
                       const SizedBox(height: 16),
                       BusyButton(
-                          label: 'Құпиясөзді жаңарту', onPressed: _submit),
+                          label: t('Құпиясөзді жаңарту'), onPressed: _submit),
                     ],
                     const SizedBox(height: 12),
                     OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Артқа'),
+                      child: Text(t('Артқа')),
                     ),
                   ],
                 ),

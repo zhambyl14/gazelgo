@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -17,7 +18,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     final ep = ref.watch(myExecutorProfileProvider).value;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Тариф және баланс')),
+      appBar: AppBar(title: Text(t('Тариф және баланс'))),
       body: RefreshIndicator(
         color: Gz.ink,
         onRefresh: () async {
@@ -44,13 +45,13 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(Gz.radius),
                       border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
                     ),
-                    child: const Row(children: [
-                      Icon(Icons.hourglass_top, color: Gz.blue),
-                      SizedBox(width: 10),
+                    child: Row(children: [
+                      const Icon(Icons.hourglass_top, color: Gz.blue),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Жаңартылған құжаттар модератор тексеруінде…',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          t('Жаңартылған құжаттар модератор тексеруінде…'),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ]),
@@ -78,14 +79,14 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Құжаттарды жаңарту қажет',
-                                    style: TextStyle(
+                                Text(t('Құжаттарды жаңарту қажет'),
+                                    style: const TextStyle(
                                         fontWeight: FontWeight.w800,
                                         fontSize: 14.5)),
                                 Text(
                                   ep.docsUpdateComment?.isNotEmpty == true
                                       ? ep.docsUpdateComment!
-                                      : 'Модератор құжаттарыңызды жаңартуды сұрады.',
+                                      : t('Модератор құжаттарыңызды жаңартуды сұрады.'),
                                   style: const TextStyle(
                                       color: Gz.textSecondary, fontSize: 12.5),
                                 ),

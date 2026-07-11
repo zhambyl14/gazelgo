@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/lang.dart';
 import '../core/models.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
@@ -133,7 +134,7 @@ class RatingStars extends StatelessWidget {
         Icon(Icons.star_rounded, color: const Color(0xFFF59E0B), size: size + 2),
         const SizedBox(width: 3),
         Text(
-          rating <= 0 ? 'жаңа' : rating.toStringAsFixed(1),
+          rating <= 0 ? t('жаңа') : rating.toStringAsFixed(1),
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: size * 0.85),
         ),
         if (count >= 0) ...[
@@ -326,12 +327,12 @@ class RouteLine extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        row(originRing(), 'Қайдан', from),
+        row(originRing(), t('Қайдан'), from),
         Padding(
           padding: const EdgeInsets.only(left: 8.5),
           child: Container(width: 2, height: 14, color: Gz.border),
         ),
-        row(const Icon(Icons.location_on, size: 18, color: Gz.red), 'Қайда', to),
+        row(const Icon(Icons.location_on, size: 18, color: Gz.red), t('Қайда'), to),
       ],
     );
   }
@@ -458,7 +459,7 @@ class OrderCard extends StatelessWidget {
                 children: [
                   _tag(
                     order.isVip ? Icons.workspace_premium : Icons.local_shipping_outlined,
-                    order.isVip ? 'VIP' : 'Простой',
+                    order.isVip ? 'VIP' : t('Простой'),
                     color: order.isVip ? Gz.violet : null,
                   ),
                   if (order.fromCity != null && order.toCity != null)
@@ -466,7 +467,7 @@ class OrderCard extends StatelessWidget {
                       order.intercity
                           ? Icons.alt_route
                           : Icons.location_city_outlined,
-                      order.intercity ? 'Межгород' : 'Қала ішінде',
+                      order.intercity ? t('Межгород') : t('Қала ішінде'),
                     ),
                   if (order.distanceKm > 0)
                     _tag(Icons.route, '${order.distanceKm.toStringAsFixed(1)} км'),
@@ -554,8 +555,8 @@ class OrderPhotosStrip extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Жүк фотолары',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+        Text(t('Жүк фотолары'),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
         const SizedBox(height: 6),
         SizedBox(
           height: 84,
@@ -631,7 +632,10 @@ class ReviewPrompt extends StatefulWidget {
   final String title;
   final VoidCallback? onDone;
   const ReviewPrompt(
-      {super.key, required this.orderId, this.title = 'Бағалаңыз', this.onDone});
+      {super.key,
+      required this.orderId,
+      this.title = 'Бағалаңыз',
+      this.onDone});
 
   @override
   State<ReviewPrompt> createState() => _ReviewPromptState();
@@ -677,11 +681,11 @@ class _ReviewPromptState extends State<ReviewPrompt> {
   Widget build(BuildContext context) {
     if (!_checked) return const SizedBox.shrink();
     if (_done) {
-      return const SectionCard(
+      return SectionCard(
         child: Row(children: [
-          Icon(Icons.check_circle, color: Gz.green),
-          SizedBox(width: 10),
-          Expanded(child: Text('Пікіріңіз үшін рахмет!')),
+          const Icon(Icons.check_circle, color: Gz.green),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t('Пікіріңіз үшін рахмет!'))),
         ]),
       );
     }
@@ -689,7 +693,7 @@ class _ReviewPromptState extends State<ReviewPrompt> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.title,
+          Text(t(widget.title),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 8),
           Row(
@@ -711,18 +715,18 @@ class _ReviewPromptState extends State<ReviewPrompt> {
           TextField(
             controller: _comment,
             maxLines: 2,
-            decoration: const InputDecoration(
-                hintText: 'Пікір жазыңыз (міндетті емес)'),
+            decoration: InputDecoration(
+                hintText: t('Пікір жазыңыз (міндетті емес)')),
           ),
           const SizedBox(height: 12),
           BusyButton(
-            label: 'Жіберу',
+            label: t('Жіберу'),
             onPressed: () async {
               try {
                 await Repo.submitReview(widget.orderId, _rating, _comment.text);
                 if (mounted) setState(() => _done = true);
                 if (context.mounted) {
-                  showSnack(context, 'Пікіріңіз үшін рахмет!');
+                  showSnack(context, t('Пікіріңіз үшін рахмет!'));
                 }
                 widget.onDone?.call();
               } catch (e) {
@@ -811,12 +815,13 @@ Future<bool> confirmDialog(
   BuildContext context, {
   required String title,
   required String message,
-  String cancelLabel = 'Жоқ',
+  String? cancelLabel,
   required String confirmLabel,
   Color confirmColor = Gz.ink,
   IconData? icon,
   bool emphasizeCancel = false,
 }) async {
+  final cancelText = cancelLabel ?? t('Жоқ');
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => Dialog(
@@ -854,11 +859,11 @@ Future<bool> confirmDialog(
                   child: emphasizeCancel
                       ? FilledButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(cancelLabel),
+                          child: Text(cancelText),
                         )
                       : OutlinedButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(cancelLabel),
+                          child: Text(cancelText),
                         ),
                 ),
                 const SizedBox(width: 10),
@@ -900,9 +905,9 @@ Future<bool> confirmDialog(
 Future<void> confirmSignOut(BuildContext context) async {
   final ok = await confirmDialog(
     context,
-    title: 'Шығасыз ба?',
-    message: 'Аккаунттан шығуға сенімдісіз бе?',
-    confirmLabel: 'Шығу',
+    title: t('Шығасыз ба?'),
+    message: t('Аккаунттан шығуға сенімдісіз бе?'),
+    confirmLabel: t('Шығу'),
     confirmColor: Gz.red,
     icon: Icons.logout_outlined,
   );
@@ -924,36 +929,36 @@ class ReportSuspiciousButton extends StatelessWidget {
     final send = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Күдікті жүк туралы хабарлау'),
+        title: Text(t('Күдікті жүк туралы хабарлау')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
-              'тартумен шатастырмаңыз — заказдың күйі өзгермейді.',
-              style: TextStyle(fontSize: 12.5, color: Gz.textSecondary),
+            Text(
+              t('Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
+                  'тартумен шатастырмаңыз — заказдың күйі өзгермейді.'),
+              style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: reasonCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                  hintText: 'Не күдікті көрдіңіз? (міндетті емес)'),
+              decoration: InputDecoration(
+                  hintText: t('Не күдікті көрдіңіз? (міндетті емес)')),
             ),
           ],
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Болдырмау')),
+              child: Text(t('Болдырмау'))),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Gz.red,
                 foregroundColor: Colors.white,
                 shadowColor: const Color(0x59DC2626)),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Хабарлау'),
+            child: Text(t('Хабарлау')),
           ),
         ],
       ),
@@ -962,7 +967,7 @@ class ReportSuspiciousButton extends StatelessWidget {
     try {
       await Repo.reportOrder(orderId, reasonCtrl.text);
       if (context.mounted) {
-        showSnack(context, 'Хабарлама модераторға жіберілді');
+        showSnack(context, t('Хабарлама модераторға жіберілді'));
       }
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -975,10 +980,190 @@ class ReportSuspiciousButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ListTile(
         leading: const Icon(Icons.report_outlined, color: Gz.red),
-        title: const Text('Күдікті жүк туралы хабарлау',
-            style: TextStyle(fontWeight: FontWeight.w700, color: Gz.red)),
-        subtitle: const Text('Заңсыз/қауіпті жүкке күдіктенсеңіз'),
+        title: Text(t('Күдікті жүк туралы хабарлау'),
+            style: const TextStyle(fontWeight: FontWeight.w700, color: Gz.red)),
+        subtitle: Text(t('Заңсыз/қауіпті жүкке күдіктенсеңіз')),
         onTap: () => _report(context),
+      ),
+    );
+  }
+}
+
+/// Тіл ауыстырғыш (ҚАЗ/РУС) — кіру бетінде және профильде қолданылады.
+/// `Lang.current`-ты өзі тыңдайды, сол себепті ешбір parent state қажет
+/// емес (тіл ауысқанда main.dart-тағы жоғарғы деңгей rebuild жасайды).
+class LanguageSwitcher extends StatelessWidget {
+  const LanguageSwitcher({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<AppLang>(
+      valueListenable: Lang.current,
+      builder: (context, lang, _) => Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Gz.bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Gz.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _langPill('ҚАЗ', lang == AppLang.kk, () => Lang.set(AppLang.kk)),
+            _langPill('РУС', lang == AppLang.ru, () => Lang.set(AppLang.ru)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _langPill(String label, bool active, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? Gz.yellow : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: active ? Gz.ink : Gz.textSecondary)),
+      ),
+    );
+  }
+}
+
+/// Заказды тоқтату/бас тарту себебін таңдату: дайын нұсқалар тізімі +
+/// «Басқа себеп» (өз мәтінін жазады). null қайтарса — пайдаланушы бас тартты.
+Future<String?> pickCancelReason(
+  BuildContext context, {
+  required String title,
+  required List<String> presets,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Gz.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _CancelReasonSheet(title: title, presets: presets),
+  );
+}
+
+class _CancelReasonSheet extends StatefulWidget {
+  final String title;
+  final List<String> presets;
+  const _CancelReasonSheet({required this.title, required this.presets});
+
+  @override
+  State<_CancelReasonSheet> createState() => _CancelReasonSheetState();
+}
+
+class _CancelReasonSheetState extends State<_CancelReasonSheet> {
+  static const _other = 'Басқа себеп';
+  String? _selected;
+  final _customCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _customCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _canConfirm {
+    if (_selected == null) return false;
+    if (_selected == _other) return _customCtrl.text.trim().isNotEmpty;
+    return true;
+  }
+
+  void _confirm() {
+    final reason =
+        _selected == _other ? _customCtrl.text.trim() : _selected!;
+    Navigator.of(context).pop(reason);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                      color: Gz.border,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Text(widget.title,
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text(t('Себебін таңдаңыз'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+              const SizedBox(height: 10),
+              for (final p in [...widget.presets, _other])
+                InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => setState(() => _selected = p),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _selected == p
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          size: 20,
+                          color: _selected == p ? Gz.ink : Gz.textSecondary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: Text(t(p),
+                                style: const TextStyle(fontSize: 14))),
+                      ],
+                    ),
+                  ),
+                ),
+              if (_selected == _other) ...[
+                const SizedBox(height: 4),
+                TextField(
+                  controller: _customCtrl,
+                  autofocus: true,
+                  maxLines: 2,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                      hintText: t('Себебіңізді жазыңыз')),
+                ),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: Gz.red,
+                    foregroundColor: Colors.white,
+                    shadowColor: const Color(0x59DC2626)),
+                onPressed: _canConfirm ? _confirm : null,
+                child: Text(t('Растау')),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

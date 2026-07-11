@@ -1,0 +1,46 @@
+import 'package:flutter/foundation.dart';
+
+import 'i18n/ru_auth.dart';
+import 'i18n/ru_client.dart';
+import 'i18n/ru_executor.dart';
+import 'i18n/ru_moderator.dart';
+import 'i18n/ru_shared.dart';
+import 'prefs.dart';
+
+enum AppLang { kk, ru }
+
+/// Қосымша тілі — глобалды реактивті мән (Riverpod-сыз, себебі
+/// `t()` кез келген жерде — dialog/const контексте де — шақырылады).
+/// main.dart `ValueListenableBuilder`-мен MaterialApp-ты осыны тыңдатып
+/// орайды: тіл ауысқанда бүкіл ағаш қайта салынады.
+class Lang {
+  static final ValueNotifier<AppLang> current = ValueNotifier(AppLang.kk);
+
+  static Future<void> init() async {
+    final v = await Prefs.language();
+    current.value = v == 'ru' ? AppLang.ru : AppLang.kk;
+  }
+
+  static Future<void> set(AppLang l) async {
+    if (current.value == l) return;
+    current.value = l;
+    await Prefs.setLanguage(l == AppLang.ru ? 'ru' : 'kk');
+  }
+}
+
+/// Барлық модуль сөздіктері осында бірігеді (lib/core/i18n/ru_*.dart).
+final Map<String, String> _kkToRu = {
+  ...ruShared,
+  ...ruAuth,
+  ...ruClient,
+  ...ruExecutor,
+  ...ruModerator,
+};
+
+/// Қазақша мәтінді ағымдағы тілге аудару. Тек RU тілінде сөздіктен
+/// іздейді; аудармасы жоқ болса — қазақша мәтіннің өзі қайтады
+/// (аударма толмаса да қосымша ешқашан бұзылмайды).
+String t(String kk) {
+  if (Lang.current.value != AppLang.ru) return kk;
+  return _kkToRu[kk] ?? kk;
+}

@@ -2,6 +2,7 @@
 library;
 
 import 'geo.dart';
+import 'lang.dart';
 
 DateTime? _dt(dynamic v) =>
     v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
@@ -35,14 +36,14 @@ VehicleSize sizeFrom(String? s) => switch (s) {
 extension VehicleSizeX on VehicleSize {
   String get db => name;
   String get label => switch (this) {
-        VehicleSize.small => 'Кіші газель',
-        VehicleSize.medium => 'Орта газель',
-        VehicleSize.large => 'Үлкен газель',
+        VehicleSize.small => t('Кіші газель'),
+        VehicleSize.medium => t('Орта газель'),
+        VehicleSize.large => t('Үлкен газель'),
       };
   String get hint => switch (this) {
-        VehicleSize.small => '1.5 т дейін · 3 м',
-        VehicleSize.medium => '3 т дейін · 4 м',
-        VehicleSize.large => '5 т және одан көп',
+        VehicleSize.small => t('1.5 т дейін · 3 м'),
+        VehicleSize.medium => t('3 т дейін · 4 м'),
+        VehicleSize.large => t('5 т және одан көп'),
       };
 }
 
@@ -50,14 +51,14 @@ extension VehicleSizeX on VehicleSize {
 const kActiveOrderStatuses = ['searching', 'accepted', 'arrived', 'loading', 'in_transit'];
 
 String statusLabel(String s) => switch (s) {
-      'searching' => 'Іздеуде',
-      'accepted' => 'Қабылданды · жолда',
-      'arrived' => 'Орындаушы келді',
-      'loading' => 'Тиеу жүріп жатыр',
-      'in_transit' => 'Тасымалдауда',
-      'completed' => 'Аяқталды',
-      'cancelled' => 'Бас тартылды',
-      'expired' => 'Мерзімі өтті',
+      'searching' => t('Іздеуде'),
+      'accepted' => t('Қабылданды · жолда'),
+      'arrived' => t('Орындаушы келді'),
+      'loading' => t('Тиеу жүріп жатыр'),
+      'in_transit' => t('Тасымалдауда'),
+      'completed' => t('Аяқталды'),
+      'cancelled' => t('Бас тартылды'),
+      'expired' => t('Мерзімі өтті'),
       _ => s,
     };
 
@@ -139,6 +140,7 @@ class ExecutorProfile {
   final String? docsUpdateComment;
   final List<String> docsUpdateFields;
   final bool docsReviewPending;
+  final bool orderPushEnabled;
   final DateTime? createdAt;
 
   ExecutorProfile.fromMap(Map<String, dynamic> m)
@@ -169,6 +171,7 @@ class ExecutorProfile {
         docsUpdateFields =
             (m['docs_update_fields'] as List?)?.cast<String>() ?? const [],
         docsReviewPending = m['docs_review_pending'] as bool? ?? false,
+        orderPushEnabled = m['order_push_enabled'] as bool? ?? true,
         createdAt = _dt(m['created_at']);
 
   /// Құжат өрісінің қазақша атауы.

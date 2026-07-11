@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/lang.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -53,13 +54,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: LanguageSwitcher(),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
                       child: GazelGoHero(
-                          subtitle: 'Газель жүк тасымалы платформасы'),
+                          subtitle: t('Газель жүк тасымалы платформасы')),
                     ),
                     const SizedBox(height: 38),
-                    const Text('Кіру',
-                        style: TextStyle(
+                    Text(t('Кіру'),
+                        style: const TextStyle(
                             fontSize: 23, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 18),
                     TextFormField(
@@ -69,19 +75,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
                       ],
-                      decoration: const InputDecoration(
-                        hintText: 'Телефон (+7 ...)',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                      decoration: InputDecoration(
+                        hintText: t('Телефон (+7 ...)'),
+                        prefixIcon: const Icon(Icons.phone_outlined),
                       ),
-                      validator: (v) =>
-                          Phone.isValid(v ?? '') ? null : 'Нөмір дұрыс емес',
+                      validator: (v) => Phone.isValid(v ?? '')
+                          ? null
+                          : t('Нөмір дұрыс емес'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _password,
                       obscureText: _obscure,
                       decoration: InputDecoration(
-                        hintText: 'Құпиясөз',
+                        hintText: t('Құпиясөз'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(_obscure
@@ -92,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       validator: (v) => (v == null || v.length < 6)
-                          ? 'Кемінде 6 таңба'
+                          ? t('Кемінде 6 таңба')
                           : null,
                     ),
                     Align(
@@ -104,24 +111,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: TextButton.styleFrom(
                             foregroundColor: Gz.yellowDark),
-                        child: const Text('Құпиясөзді ұмыттыңыз ба?'),
+                        child: Text(t('Құпиясөзді ұмыттыңыз ба?')),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    BusyButton(label: 'Кіру', onPressed: _login),
+                    BusyButton(label: t('Кіру'), onPressed: _login),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) => const RegisterScreen()),
                       ),
-                      child: const Text.rich(TextSpan(children: [
+                      child: Text.rich(TextSpan(children: [
                         TextSpan(
-                            text: 'Аккаунт жоқ па?  ',
-                            style: TextStyle(
+                            text: '${t('Аккаунт жоқ па?')}  ',
+                            style: const TextStyle(
                                 color: Gz.textSecondary,
                                 fontWeight: FontWeight.w500)),
-                        TextSpan(text: 'Тіркелу'),
+                        TextSpan(text: t('Тіркелу')),
                       ])),
                     ),
                   ],
