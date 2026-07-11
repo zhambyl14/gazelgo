@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
 import '../../core/repo.dart';
@@ -25,13 +26,13 @@ class _ClientShellState extends State<ClientShell> {
       _lastStatus[o.id] = o.status;
       if (!_primed || prev == null || prev == o.status) continue;
       final msg = switch (o.status) {
-        'accepted' => 'Орындаушы табылды! Жолға шықты 🚚',
-        'arrived' => 'Орындаушы келді — қарсы алыңыз',
-        'in_transit' => 'Жүгіңіз жолда',
-        'completed' => 'Заказ аяқталды. Орындаушыны бағалаңыз ⭐',
-        'cancelled' => 'Заказ тоқтатылды',
+        'accepted' => t('Орындаушы табылды! Жолға шықты 🚚'),
+        'arrived' => t('Орындаушы келді — қарсы алыңыз'),
+        'in_transit' => t('Жүгіңіз жолда'),
+        'completed' => t('Заказ аяқталды. Орындаушыны бағалаңыз ⭐'),
+        'cancelled' => t('Заказ тоқтатылды'),
         'searching' when prev != 'searching' =>
-          'Орындаушы бас тартты — заказыңыз қайта іздеуде 🔄',
+          t('Орындаушы бас тартты — заказыңыз қайта іздеуде 🔄'),
         _ => null,
       };
       if (msg != null) {

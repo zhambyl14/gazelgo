@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -18,7 +19,7 @@ class ExecutorOrderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final myId = Repo.uid;
     return Scaffold(
-      appBar: AppBar(title: const Text('Заказ')),
+      appBar: AppBar(title: Text(t('Заказ'))),
       body: StreamBuilder<Order?>(
         stream: Repo.orderStream(orderId),
         builder: (context, snap) {
@@ -53,12 +54,12 @@ class ExecutorOrderScreen extends StatelessWidget {
                     children: [
                       RouteLine(from: o.fromDisplay, to: o.toDisplay),
                       const Divider(height: 20),
-                      InfoRow('Жүк', o.cargoDesc),
+                      InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)
-                        InfoRow('Түсініктеме', o.comment),
-                      InfoRow('Клиент бағасы', fmtT(o.clientPrice)),
+                        InfoRow(t('Түсініктеме'), o.comment),
+                      InfoRow(t('Клиент бағасы'), fmtT(o.clientPrice)),
                       if (o.distanceKm > 0)
-                        InfoRow('Қашықтық',
+                        InfoRow(t('Қашықтық'),
                             '${o.distanceKm.toStringAsFixed(1)} км'),
                     ],
                   ),
@@ -89,15 +90,15 @@ class ExecutorOrderScreen extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               taken
-                  ? 'Заказды басқа орындаушы алды'
-                  : 'Заказ енді қолжетімсіз',
+                  ? t('Заказды басқа орындаушы алды')
+                  : t('Заказ енді қолжетімсіз'),
               style: const TextStyle(
                   fontWeight: FontWeight.w800, fontSize: 15.5),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Лентаға оралу'),
+              child: Text(t('Лентаға оралу')),
             ),
           ],
         ),
@@ -121,13 +122,13 @@ class ExecutorOrderScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.close, size: 40, color: Gz.red),
                 const SizedBox(height: 8),
-                const Text('Ұсынысыңыз қабылданбады',
-                    style: TextStyle(
+                Text(t('Ұсынысыңыз қабылданбады'),
+                    style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 15.5)),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Лентаға оралу'),
+                  child: Text(t('Лентаға оралу')),
                 ),
               ],
             ),
@@ -143,12 +144,12 @@ class ExecutorOrderScreen extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 3),
               ),
               const SizedBox(height: 14),
-              Text('Ұсынысыңыз жіберілді · ${fmtT(mine.price)}',
+              Text('${t('Ұсынысыңыз жіберілді')} · ${fmtT(mine.price)}',
                   style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 4),
-              const Text('Клиенттің жауабын күтіңіз…',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 13)),
+              Text(t('Клиенттің жауабын күтіңіз…'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13)),
               const SizedBox(height: 14),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
@@ -165,7 +166,7 @@ class ExecutorOrderScreen extends StatelessWidget {
                   }
                 },
                 icon: const Icon(Icons.undo, size: 18),
-                label: const Text('Ұсынысты қайтарып алу'),
+                label: Text(t('Ұсынысты қайтарып алу')),
               ),
             ],
           ),

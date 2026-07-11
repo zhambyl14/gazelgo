@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -17,9 +18,9 @@ class SupportOrderButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ListTile(
         leading: const Icon(Icons.support_agent, color: Gz.ink),
-        title: const Text('Қолдау қызметі',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: const Text('Жиі қойылатын сұрақтар / модераторға жазу'),
+        title: Text(t('Қолдау қызметі'),
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(t('Жиі қойылатын сұрақтар / модераторға жазу')),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => SupportScreen(orderId: orderId))),
@@ -56,18 +57,18 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Қолдау қызметі')),
+      appBar: AppBar(title: Text(t('Қолдау қызметі'))),
       body: ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          const Text('Жиі қойылатын сұрақтар',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(t('Жиі қойылатын сұрақтар'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 4),
-          const Text('Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
-              'модераторға жазыңыз.',
-              style: TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+          Text(t('Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
+              'модераторға жазыңыз.'),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
           const SizedBox(height: 12),
-          for (final (q, a) in _faq) _FaqItem(question: q, answer: a),
+          for (final (q, a) in _faq) _FaqItem(question: t(q), answer: t(a)),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(14),
@@ -79,12 +80,12 @@ class _SupportScreenState extends State<SupportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Жауабын таппадыңыз ба?',
-                    style:
+                Text(t('Жауабын таппадыңыз ба?'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 4),
-                const Text('Модератор жеке жауап береді.',
-                    style:
+                Text(t('Модератор жеке жауап береді.'),
+                    style: const
                         TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
                 const SizedBox(height: 12),
                 FilledButton.icon(
@@ -93,7 +94,7 @@ class _SupportScreenState extends State<SupportScreen> {
                         SupportChatScreen(orderId: widget.orderId),
                   )),
                   icon: const Icon(Icons.support_agent),
-                  label: const Text('Қолдау алу (модераторға жазу)'),
+                  label: Text(t('Қолдау алу (модераторға жазу)')),
                 ),
               ],
             ),
@@ -227,7 +228,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Модераторға жазу')),
+      appBar: AppBar(title: Text(t('Модераторға жазу'))),
       body: StreamBuilder<List<SupportThread>>(
         stream: Repo.myThreadsStream(),
         builder: (context, snap) {
@@ -253,9 +254,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                       children: [
                         const Icon(Icons.circle, size: 10, color: Gz.green),
                         const SizedBox(width: 6),
-                        const Expanded(
-                            child: Text('Чат ашық',
-                                style: TextStyle(fontSize: 13))),
+                        Expanded(
+                            child: Text(t('Чат ашық'),
+                                style: const TextStyle(fontSize: 13))),
                         TextButton.icon(
                           onPressed: () async {
                             try {
@@ -267,7 +268,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                             }
                           },
                           icon: const Icon(Icons.check, size: 16),
-                          label: const Text('Аяқтау'),
+                          label: Text(t('Аяқтау')),
                         ),
                       ],
                     ),

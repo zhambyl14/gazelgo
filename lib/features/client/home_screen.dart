@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -58,7 +59,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   Future<void> _goToMyLocation() async {
     final pos = await Geo.currentPosition();
     if (pos == null) {
-      if (mounted) showSnack(context, 'Локация қолжетімсіз', error: true);
+      if (mounted) showSnack(context, t('Локация қолжетімсіз'), error: true);
       return;
     }
     final p = LatLng(pos.latitude, pos.longitude);
@@ -86,13 +87,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   /// Автоматты анықталған «Қайдан» адресін сәл өзгертуге мүмкіндік береді.
   Future<void> _editFrom() async {
     final res = await CityStreetSheet.show(context,
-        title: 'Қайдан аламыз?', initial: _from);
+        title: t('Қайдан аламыз?'), initial: _from);
     if (res != null && mounted) setState(() => _from = res);
   }
 
   Future<void> _pickTo() async {
     final res = await CityStreetSheet.show(context,
-        title: 'Қайда жеткіземіз?', initial: _to);
+        title: t('Қайда жеткіземіз?'), initial: _to);
     if (res != null) setState(() => _to = res);
   }
 
@@ -110,17 +111,17 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Белсенді заказ бар'),
+          title: Text(t('Белсенді заказ бар')),
           content: Text(
-              'Сізде $count белсенді заказ бар. Оны «Тапсырыстар» бетінен қадағалай аласыз.\n\n'
-              'Жаңа заказ бересіз бе?'),
+              '${t('Сізде')} $count ${t('белсенді заказ бар. Оны «Тапсырыстар» бетінен қадағалай аласыз.')}\n\n'
+              '${t('Жаңа заказ бересіз бе?')}'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Жоқ')),
+                child: Text(t('Жоқ'))),
             FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Иә, жаңа заказ')),
+                child: Text(t('Иә, жаңа заказ'))),
           ],
         ),
       );
@@ -256,17 +257,17 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                 size: 22, color: Gz.ink),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Газель керек пе?',
-                                    style: TextStyle(
+                                Text(t('Газель керек пе?'),
+                                    style: const TextStyle(
                                         fontSize: 19,
                                         fontWeight: FontWeight.w900)),
                                 Text(
-                                  'Картаны жылжытып, орныңызды белгілеңіз',
-                                  style: TextStyle(
+                                  t('Картаны жылжытып, орныңызды белгілеңіз'),
+                                  style: const TextStyle(
                                       color: Gz.textSecondary,
                                       fontSize: 12.5),
                                 ),
@@ -295,8 +296,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                               Expanded(
                                 child: Text(
                                   _resolvingFrom
-                                      ? 'Анықталуда…'
-                                      : (_from?.address ?? 'Картаны жылжытыңыз'),
+                                      ? t('Анықталуда…')
+                                      : (_from?.address ?? t('Картаны жылжытыңыз')),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -336,7 +337,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  _to?.address ?? 'Қайда жеткіземіз?',
+                                  _to?.address ?? t('Қайда жеткіземіз?'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -361,7 +362,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         onPressed: (_from == null || _resolvingFrom)
                             ? null
                             : (_to == null ? _pickTo : _maybeContinue),
-                        child: const Text('Газель шақыру'),
+                        child: Text(t('Газель шақыру')),
                       ),
                     ],
                   ),

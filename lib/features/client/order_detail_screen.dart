@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -38,7 +39,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           maybeShowReviewDialog(context,
-              orderId: o.id, title: 'Орындаушыны бағалаңыз');
+              orderId: o.id, title: t('Орындаушыны бағалаңыз'));
         }
       });
     }
@@ -75,14 +76,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _cancel() async {
     final reason = await pickCancelReason(context,
-        title: 'Заказды тоқтату', presets: _clientCancelReasons);
+        title: t('Заказды тоқтату'),
+        presets: [for (final r in _clientCancelReasons) t(r)]);
     if (reason == null || !mounted) return;
     try {
       await Repo.cancelOrder(widget.orderId, reason);
       // Экранда қалдырмаймыз — басты бетке қайтамыз (адрестер сол жерде сақталған)
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
-        showSnack(context, 'Заказ тоқтатылды');
+        showSnack(context, t('Заказ тоқтатылды'));
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -92,7 +94,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Заказ')),
+      appBar: AppBar(title: Text(t('Заказ'))),
       body: StreamBuilder<Order?>(
         stream: Repo.orderStream(widget.orderId),
         builder: (context, snap) {
@@ -134,17 +136,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     children: [
                       RouteLine(from: o.fromDisplay, to: o.toDisplay),
                       const Divider(height: 20),
-                      InfoRow('Жүк', o.cargoDesc),
+                      InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)
-                          InfoRow('Түсініктеме', o.comment),
-                      InfoRow('Түрі', o.isVip ? 'VIP' : 'Простой'),
+                          InfoRow(t('Түсініктеме'), o.comment),
+                      InfoRow(t('Түрі'), o.isVip ? 'VIP' : t('Простой')),
                       if (o.distanceKm > 0)
-                        InfoRow('Қашықтық',
+                        InfoRow(t('Қашықтық'),
                             '${o.distanceKm.toStringAsFixed(1)} км'),
-                      InfoRow('Бағыты',
-                          o.intercity ? 'Қалааралық (межгород)' : 'Қала ішінде'),
+                      InfoRow(t('Бағыты'),
+                          o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде')),
                       if (o.createdAt != null)
-                        InfoRow('Құрылды', fmtDate(o.createdAt)),
+                        InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
                     ],
                   ),
                 ),
@@ -164,7 +166,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         foregroundColor: Gz.red,
                         side: const BorderSide(color: Gz.red)),
                     icon: const Icon(Icons.close),
-                    label: const Text('Заказды тоқтату'),
+                    label: Text(t('Заказды тоқтату')),
                   ),
                 const SizedBox(height: 24),
               ],
@@ -204,7 +206,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // (хабарласу батырмасы жоқ) — тарихта байланыс сақталмайды.
           _ExecutorCard(executorId: o.executorId!, showCall: false),
           const SizedBox(height: 10),
-          ReviewPrompt(orderId: o.id, title: 'Орындаушыны бағалаңыз'),
+          ReviewPrompt(orderId: o.id, title: t('Орындаушыны бағалаңыз')),
         ];
       case 'cancelled':
         return [
@@ -215,8 +217,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               Expanded(
                 child: Text(
                   (o.cancelReason?.isNotEmpty ?? false)
-                      ? 'Себебі: ${o.cancelReason}'
-                      : 'Заказ тоқтатылды',
+                      ? '${t('Себебі:')} ${o.cancelReason}'
+                      : t('Заказ тоқтатылды'),
                 ),
               ),
             ]),
@@ -224,12 +226,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ];
       default:
         return [
-          const SectionCard(
+          SectionCard(
             child: Row(children: [
-              Icon(Icons.schedule, color: Gz.textSecondary),
-              SizedBox(width: 10),
+              const Icon(Icons.schedule, color: Gz.textSecondary),
+              const SizedBox(width: 10),
               Expanded(
-                  child: Text('Заказдың мерзімі өтті — ешкім қабылдамады.')),
+                  child: Text(t('Заказдың мерзімі өтті — ешкім қабылдамады.'))),
             ]),
           ),
         ];
@@ -255,26 +257,26 @@ class _ConfirmLoadingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.local_shipping, color: Gz.green),
-              SizedBox(width: 10),
+              const Icon(Icons.local_shipping, color: Gz.green),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text('Орындаушы жеткен жоқ па?',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                child: Text(t('Орындаушы жеткен жоқ па?'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15)),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
-            'орындаушы жолға шыға алмайды.',
-            style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          Text(
+            t('Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
+                'орындаушы жолға шыға алмайды.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 12),
           BusyButton(
-            label: 'Тиеу басталды',
+            label: t('Тиеу басталды'),
             icon: Icons.check_circle,
             color: Gz.green,
             onPressed: () async {
@@ -317,9 +319,9 @@ class _OffersSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text('Ұсыныстар',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(t('Ұсыныстар'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(width: 8),
                 if (offers.isNotEmpty)
                   CircleAvatar(
@@ -334,18 +336,18 @@ class _OffersSection extends StatelessWidget {
                 const Spacer(),
                 const _PulsingDot(),
                 const SizedBox(width: 6),
-                const Text('Іздеуде…',
-                    style: TextStyle(color: Gz.blue, fontSize: 13)),
+                Text(t('Іздеуде…'),
+                    style: const TextStyle(color: Gz.blue, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 8),
             if (suggestRaise) _RaisePriceHint(order: order),
             if (offers.isEmpty && !suggestRaise)
-              const SectionCard(
+              SectionCard(
                 child: Text(
-                  'Орындаушылардың ұсыныстары осында шығады. '
-                  'Әдетте бірнеше минут ішінде жауап келеді.',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+                  t('Орындаушылардың ұсыныстары осында шығады. '
+                      'Әдетте бірнеше минут ішінде жауап келеді.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
                 ),
               ),
             for (final offer in offers) ...[
@@ -378,22 +380,22 @@ class _RaisePriceHint extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.lightbulb, color: Gz.yellowDark, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.lightbulb, color: Gz.yellowDark, size: 20),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text('Бағаны сәл көтеріп көріңіз',
-                    style: TextStyle(
+                child: Text(t('Бағаны сәл көтеріп көріңіз'),
+                    style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 14.5)),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
-            'Бағаны көтерсеңіз, тезірек табыласыз.',
-            style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          Text(
+            t('Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
+                'Бағаны көтерсеңіз, тезірек табыласыз.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
           Row(
@@ -411,7 +413,7 @@ class _RaisePriceHint extends StatelessWidget {
                         await Repo.updateOrderPrice(order.id, cur + add);
                         if (context.mounted) {
                           showSnack(context,
-                              'Жаңа баға: ${fmtT(cur + add)}');
+                              '${t('Жаңа баға:')} ${fmtT(cur + add)}');
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -453,7 +455,7 @@ class _OfferCard extends StatelessWidget {
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
                           color: samePrice ? Gz.green : Gz.ink)),
-                  Text(samePrice ? 'Бағаңызға келісті' : 'Қарсы ұсыныс',
+                  Text(samePrice ? t('Бағаңызға келісті') : t('Қарсы ұсыныс'),
                       style: TextStyle(
                           fontSize: 11.5,
                           color: samePrice ? Gz.green : Gz.textSecondary)),
@@ -490,14 +492,14 @@ class _OfferCard extends StatelessWidget {
                       }
                     }
                   },
-                  child: const Text('Қабылдамау'),
+                  child: Text(t('Қабылдамау')),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 flex: 2,
                 child: BusyButton(
-                  label: 'Қабылдау · ${fmtT(offer.price)}',
+                  label: '${t('Қабылдау')} · ${fmtT(offer.price)}',
                   onPressed: () async {
                     try {
                       await Repo.acceptOffer(offer.id);
@@ -550,7 +552,7 @@ class _ExecutorBrief extends StatelessWidget {
                       RatingStars(p?.rating ?? 0,
                           count: p?.ratingCount ?? 0, size: 13),
                       if ((p?.trips ?? 0) > 0)
-                        Text('  · ${p!.trips} рейс',
+                        Text('  · ${p!.trips} ${t('рейс')}',
                             style: const TextStyle(
                                 fontSize: 11.5, color: Gz.textSecondary)),
                     ],
@@ -591,11 +593,11 @@ class _VipSearchSection extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 3, color: Gz.violet),
           ),
           const SizedBox(height: 14),
-          const Text('VIP орындаушы ізделуде…',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(t('VIP орындаушы ізделуде…'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
           Text(
-            'Баға: ${fmtT(order.systemPrice)}',
+            '${t('Баға:')} ${fmtT(order.systemPrice)}',
             style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
           ),
           const SizedBox(height: 10),
@@ -605,9 +607,9 @@ class _VipSearchSection extends StatelessWidget {
               final live =
                   (snap.data ?? []).where((d) => d.isLive).toList();
               if (live.isEmpty) {
-                return const Text(
-                  'Бос орындаушы қарастырылуда…',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                return Text(
+                  t('Бос орындаушы қарастырылуда…'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 );
               }
               return _DispatchCountdown(expiresAt: live.first.expiresAt);
@@ -655,8 +657,8 @@ class _DispatchCountdownState extends State<_DispatchCountdown> {
       ),
       child: Text(
         left > 0
-            ? 'Орындаушыға жіберілді · жауап: $left с'
-            : 'Келесі орындаушыға өтуде…',
+            ? '${t('Орындаушыға жіберілді · жауап:')} $left ${t('с')}'
+            : t('Келесі орындаушыға өтуде…'),
         style: const TextStyle(
             color: Gz.violet, fontWeight: FontWeight.w700, fontSize: 13),
       ),
@@ -693,14 +695,14 @@ class _ExecutorCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(p?.fullName ?? 'Орындаушы',
+                        Text(p?.fullName ?? t('Орындаушы'),
                             style: const TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 16)),
                         Row(children: [
                           RatingStars(p?.rating ?? 0,
                               count: p?.ratingCount ?? 0, size: 14),
                           if ((p?.trips ?? 0) > 0)
-                            Text('  · ${p!.trips} рейс',
+                            Text('  · ${p!.trips} ${t('рейс')}',
                                 style: const TextStyle(
                                     fontSize: 12, color: Gz.textSecondary)),
                         ]),
@@ -747,11 +749,12 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final idx = _steps.indexWhere((s) => s.$1 == status);
+    final steps = [for (final s in _steps) (s.$1, t(s.$2))];
+    final idx = steps.indexWhere((s) => s.$1 == status);
     return SectionCard(
       child: Column(
         children: [
-          for (var i = 0; i < _steps.length; i++)
+          for (var i = 0; i < steps.length; i++)
             Row(
               children: [
                 Column(
@@ -773,7 +776,7 @@ class _Timeline extends StatelessWidget {
                                   size: 14, color: Colors.white)
                               : null,
                     ),
-                    if (i < _steps.length - 1)
+                    if (i < steps.length - 1)
                       Container(
                         width: 2,
                         height: 18,
@@ -785,7 +788,7 @@ class _Timeline extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
                   child: Text(
-                    _steps[i].$2,
+                    steps[i].$2,
                     style: TextStyle(
                       fontWeight:
                           i == idx ? FontWeight.w800 : FontWeight.w500,

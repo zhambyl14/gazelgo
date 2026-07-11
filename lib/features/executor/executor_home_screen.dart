@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
@@ -146,16 +147,16 @@ class _LineControlBar extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('Тарифіңіз жоқ',
+                  children: [
+                    Text(t('Тарифіңіз жоқ'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 14.5)),
-                    Text('Заказ қабылдау үшін тариф сатып алыңыз',
+                    Text(t('Заказ қабылдау үшін тариф сатып алыңыз'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: Gz.textSecondary, fontSize: 12.5)),
                   ],
                 ),
@@ -169,7 +170,7 @@ class _LineControlBar extends ConsumerWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () => _openTariffs(context),
-                child: const Text('Кіру'),
+                child: Text(t('Кіру')),
               ),
             ],
           ),
@@ -204,12 +205,12 @@ class _LineControlBar extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Тариф пен баланс',
+                        Text(t('Тариф пен баланс'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 15)),
-                        Text('Белсенді · ${_tariffLabel(s)}',
+                        Text('${t('Белсенді')} · ${_tariffLabel(s)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -231,11 +232,11 @@ class _LineControlBar extends ConsumerWidget {
 
   String _tariffLabel(ExecutorStats s) {
     final parts = <String>[];
-    if (s.trialActive) parts.add('Тегін кезең');
+    if (s.trialActive) parts.add(t('Тегін кезең'));
     // Әр тариф өз лимитімен бөлек көрсетіледі (қосылмайды).
-    if (s.simpleActive) parts.add('Простой ${s.simpleLeft}/10');
+    if (s.simpleActive) parts.add('${t('Простой')} ${s.simpleLeft}/10');
     if (s.vipActive) parts.add('VIP ${s.vipLeft}/10');
-    if (parts.isEmpty) return 'Тариф жоқ';
+    if (parts.isEmpty) return t('Тариф жоқ');
     return parts.join(' · ');
   }
 }
@@ -289,9 +290,9 @@ class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
           Icon(_on ? Icons.notifications_active : Icons.notifications_off,
               size: 20, color: _on ? Gz.yellowDark : Gz.textSecondary),
           const SizedBox(width: 10),
-          const Expanded(
-            child: Text('Заказдарға уведомление',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          Expanded(
+            child: Text(t('Заказдарға уведомление'),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
           ),
           Switch(
             value: _on,
@@ -342,7 +343,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
       ref.invalidate(myExecutorProfileProvider);
       ref.invalidate(executorFeedStreamProvider);
       if (mounted) {
-        showSnack(context, 'Қала $city болып ауыстырылды');
+        showSnack(context, '${t('Қала')} $city ${t('болып ауыстырылды')}');
         setState(() => _dismissed = true);
       }
     } catch (e) {
@@ -372,8 +373,8 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Қазір $city қаласындасыз (тіркелген: '
-              '${widget.ep.city ?? '—'}). Ауыстырайық па?',
+              '${t('Қазір')} $city ${t('қаласындасыз (тіркелген:')} '
+              '${widget.ep.city ?? '—'}). ${t('Ауыстырайық па?')}',
               style:
                   const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
             ),
@@ -390,8 +391,8 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                  child: const Text('Ауыстыру',
-                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: Text(t('Ауыстыру'),
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
                 ),
           IconButton(
             iconSize: 18,

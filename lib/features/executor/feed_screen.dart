@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -38,13 +39,13 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
       data: (stats) {
         if (!stats.hasTariff) {
-          return _refreshable(const [
-            SizedBox(height: 120),
+          return _refreshable([
+            const SizedBox(height: 120),
             EmptyState(
               icon: Icons.power_settings_new,
-              title: 'Тарифіңіз жоқ',
-              subtitle: 'Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
-                  '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).',
+              title: t('Тарифіңіз жоқ'),
+              subtitle: t('Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
+                  '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).'),
             ),
           ]);
         }
@@ -64,12 +65,12 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
         });
 
         if (eligible.isEmpty) {
-          return _refreshable(const [
-            SizedBox(height: 120),
+          return _refreshable([
+            const SizedBox(height: 120),
             EmptyState(
               icon: Icons.hourglass_empty,
-              title: 'Әзірге заказ жоқ',
-              subtitle: 'Жаңа заказдар осы жерде автоматты пайда болады.',
+              title: t('Әзірге заказ жоқ'),
+              subtitle: t('Жаңа заказдар осы жерде автоматты пайда болады.'),
             ),
           ]);
         }
@@ -193,7 +194,7 @@ class _FeedCard extends StatelessWidget {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800)),
                         ],
-                      ),
+                      ), // VIP - халықаралық белгі, аудармасыз
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -220,7 +221,7 @@ class _FeedCard extends StatelessWidget {
                       order.intercity
                           ? Icons.alt_route
                           : Icons.location_city_outlined,
-                      order.intercity ? 'Межгород' : 'Қала ішінде',
+                      order.intercity ? t('Межгород') : t('Қала ішінде'),
                     ),
                   if (order.distanceKm > 0)
                     _tag(Icons.route,
@@ -381,7 +382,7 @@ class _OrderSheet extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                         color: o.isVip ? Gz.violet : Gz.ink)),
               ),
-              Text(o.isVip ? 'VIP' : 'Простой',
+              Text(o.isVip ? 'VIP' : t('Простой'),
                   style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: o.isVip ? Gz.violet : Gz.textSecondary)),
@@ -401,12 +402,12 @@ class _OrderSheet extends StatelessWidget {
               children: [
                 RouteLine(from: o.fromDisplay, to: o.toDisplay),
                 const Divider(height: 20),
-                InfoRow('Жүк', o.cargoDesc),
-                if (o.comment.isNotEmpty) InfoRow('Түсініктеме', o.comment),
-                InfoRow('Бағыты',
-                    o.intercity ? 'Қалааралық (межгород)' : 'Қала ішінде'),
+                InfoRow(t('Жүк'), o.cargoDesc),
+                if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
+                InfoRow(t('Бағыты'),
+                    o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде')),
                 if (o.distanceKm > 0)
-                  InfoRow('Қашықтық', '≈ ${o.distanceKm.toStringAsFixed(1)} км'),
+                  InfoRow(t('Қашықтық'), '≈ ${o.distanceKm.toStringAsFixed(1)} км'),
               ],
             ),
           ),
@@ -422,7 +423,7 @@ class _OrderSheet extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: BusyButton(
-                  label: 'Келісу · ${fmtT(o.clientPrice)}',
+                  label: '${t('Келісу')} · ${fmtT(o.clientPrice)}',
                   onPressed: () async {
                     Navigator.of(context).pop();
                     onAgree();
@@ -440,7 +441,7 @@ class _OrderSheet extends StatelessWidget {
                     Navigator.of(context).pop();
                     onCounter();
                   },
-                  child: const Text('Өз бағам'),
+                  child: Text(t('Өз бағам')),
                 ),
               ),
             ],
@@ -462,7 +463,7 @@ class _SheetClient extends StatelessWidget {
       future: Repo.profileOf(clientId),
       builder: (context, snap) => SectionCard(
         padding: const EdgeInsets.all(12),
-        child: ProfileBrief(profile: snap.data, subtitle: 'Клиент'),
+        child: ProfileBrief(profile: snap.data, subtitle: t('Клиент')),
       ),
     );
   }
@@ -499,11 +500,11 @@ class _PriceStepperSheetState extends State<_PriceStepperSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Өз бағаңызды ұсыныңыз',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          Text(t('Өз бағаңызды ұсыныңыз'),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
           const SizedBox(height: 4),
           if (base != null)
-            Text('Клиенттің бағасы: ${fmtT(base)}',
+            Text('${t('Клиенттің бағасы:')} ${fmtT(base)}',
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 13)),
           const SizedBox(height: 20),
           Row(
@@ -518,9 +519,9 @@ class _PriceStepperSheetState extends State<_PriceStepperSheet> {
                   Text(fmtT(_price),
                       style: const TextStyle(
                           fontSize: 30, fontWeight: FontWeight.w900)),
-                  const Text('±100 ₸ қадам',
-                      style:
-                          TextStyle(fontSize: 11.5, color: Gz.textSecondary)),
+                  Text(t('±100 ₸ қадам'),
+                      style: const TextStyle(
+                          fontSize: 11.5, color: Gz.textSecondary)),
                 ],
               ),
               _StepBtn(
@@ -532,7 +533,7 @@ class _PriceStepperSheetState extends State<_PriceStepperSheet> {
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => Navigator.pop(context, _price),
-            child: Text('Ұсыну · ${fmtT(_price)}'),
+            child: Text('${t('Ұсыну')} · ${fmtT(_price)}'),
           ),
         ],
       ),

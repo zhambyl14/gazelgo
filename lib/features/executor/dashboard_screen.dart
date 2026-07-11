@@ -112,8 +112,8 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const Text('Баланс',
-                            style: TextStyle(
+                        Text(t('Баланс'),
+                            style: const TextStyle(
                                 color: Colors.white60, fontSize: 13)),
                         const Spacer(),
                         Container(
@@ -137,7 +137,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                s.hasTariff ? 'Тариф белсенді' : 'Тариф жоқ',
+                                s.hasTariff ? t('Тариф белсенді') : t('Тариф жоқ'),
                                 style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
@@ -166,7 +166,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                             builder: (_) => const BalanceScreen()),
                       ),
                       icon: const Icon(Icons.add),
-                      label: const Text('Баланс толтыру'),
+                      label: Text(t('Баланс толтыру')),
                     ),
                   ],
                 ),
@@ -174,8 +174,8 @@ class ExecutorDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  const Text('Тарифтер',
-                      style: TextStyle(
+                  Text(t('Тарифтер'),
+                      style: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 17)),
                   const Spacer(),
                   if (s.isNight)
@@ -186,14 +186,14 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                         color: Gz.night.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.nightlight_round,
+                          const Icon(Icons.nightlight_round,
                               size: 14, color: Gz.night),
-                          SizedBox(width: 4),
-                          Text('Түнгі баға',
-                              style: TextStyle(
+                          const SizedBox(width: 4),
+                          Text(t('Түнгі баға'),
+                              style: const TextStyle(
                                   color: Gz.night,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12)),
@@ -207,20 +207,20 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 _TrialBanner(trialUntil: s.trialUntil),
               const SizedBox(height: 4),
               Text(
-                'Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
-                'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
-                'тариф жабылады, қайтадан сатып аласыз.'
-                '${s.isNight ? '\nҚазір түнгі баға (20:00–08:00).' : ''}',
+                t('Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
+                        'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
+                        'тариф жабылады, қайтадан сатып аласыз.') +
+                    (s.isNight ? '\n${t('Қазір түнгі баға (20:00–08:00).')}' : ''),
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 12),
               _TariffCard(
-                title: 'Қарапайым тариф',
+                title: t('Қарапайым тариф'),
                 color: Gz.blue,
                 icon: Icons.local_shipping_outlined,
                 description:
-                    '1 ауысым · 10 заказға дейін. Клиент бағасын өзі қояды — сіз '
-                    'келісесіз немесе өз бағаңызды ұсынасыз.',
+                    t('1 ауысым · 10 заказға дейін. Клиент бағасын өзі қояды — сіз '
+                        'келісесіз немесе өз бағаңызды ұсынасыз.'),
                 price: s.priceSimple,
                 active: s.simpleActive,
                 ordersLeft: s.simpleLeft,
@@ -229,12 +229,12 @@ class ExecutorDashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               _TariffCard(
-                title: 'VIP тариф',
+                title: 'VIP ${t('тариф')}',
                 color: Gz.violet,
                 icon: Icons.workspace_premium_outlined,
                 description:
-                    '1 ауысым · 10 заказға дейін. Жұмыс тәртібі Простоймен '
-                    'бірдей — клиент бағасын өзі қояды. Премиум деңгей.',
+                    t('1 ауысым · 10 заказға дейін. Жұмыс тәртібі Простоймен '
+                        'бірдей — клиент бағасын өзі қояды. Премиум деңгей.'),
                 price: s.priceVip,
                 active: s.vipActive,
                 ordersLeft: s.vipLeft,
@@ -242,10 +242,10 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 onBuy: () => _buy(context, ref, 'vip', s.priceVip),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Простой мен VIP — бөлек тарифтер. Әрқайсысының ауысымы да, '
-                '10 заказ лимиті де өз тұсында саналады.',
-                style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              Text(
+                t('Простой мен VIP — бөлек тарифтер. Әрқайсысының ауысымы да, '
+                    '10 заказ лимиті де өз тұсында саналады.'),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 24),
             ],
@@ -260,10 +260,10 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     final isVip = kind == 'vip';
     final ok = await confirmDialog(
       context,
-      title: isVip ? 'VIP тариф' : 'Қарапайым тариф',
-      message: '1 ауысым (12 сағат), 10 заказға дейін: ${fmtT(price)}.\n'
-          'Баланстан шешіледі. Жалғастырамыз ба?',
-      confirmLabel: 'Иә, сатып аламын',
+      title: isVip ? 'VIP ${t('тариф')}' : t('Қарапайым тариф'),
+      message: '${t('1 ауысым (12 сағат), 10 заказға дейін:')} ${fmtT(price)}.\n'
+          '${t('Баланстан шешіледі. Жалғастырамыз ба?')}',
+      confirmLabel: t('Иә, сатып аламын'),
       confirmColor: isVip ? Gz.violet : Gz.blue,
       icon: isVip
           ? Icons.workspace_premium_outlined
@@ -275,7 +275,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
       ref.invalidate(executorStatsStreamProvider);
       ref.invalidate(executorFeedStreamProvider);
       if (context.mounted) {
-        showSnack(context, 'Тариф қосылды — ауысым басталды, 10 заказға дейін! 🚚');
+        showSnack(context, t('Тариф қосылды — ауысым басталды, 10 заказға дейін! 🚚'));
       }
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -306,8 +306,8 @@ class _TrialBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Тегін кезең белсенді — ${fmtTime(trialUntil)} дейін шексіз '
-              'Простой заказ',
+              '${t('Тегін кезең белсенді —')} ${fmtTime(trialUntil)} '
+              '${t('дейін шексіз Простой заказ')}',
               style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12.5,
@@ -391,9 +391,9 @@ class _TariffCard extends StatelessWidget {
                     color: Gz.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'Белсенді',
-                    style: TextStyle(
+                  child: Text(
+                    t('Белсенді'),
+                    style: const TextStyle(
                         color: Gz.green,
                         fontWeight: FontWeight.w700,
                         fontSize: 12),
@@ -426,13 +426,13 @@ class _TariffCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Қалған заказ: $ordersLeft / 10',
+                        Text('${t('Қалған заказ:')} $ordersLeft / 10',
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13.5,
                                 color: color)),
                         if (until != null)
-                          Text('Ауысым ${fmtTime(until)} дейін',
+                          Text('${t('Ауысым')} ${fmtTime(until)} ${t('дейін')}',
                               style: const TextStyle(
                                   color: Gz.textSecondary, fontSize: 12)),
                       ],
@@ -450,7 +450,7 @@ class _TariffCard extends StatelessWidget {
                 shadowColor: color.withValues(alpha: 0.4),
               ),
               onPressed: onBuy,
-              child: Text('Сатып алу · ${fmtT(price)}'),
+              child: Text('${t('Сатып алу')} · ${fmtT(price)}'),
             ),
         ],
       ),

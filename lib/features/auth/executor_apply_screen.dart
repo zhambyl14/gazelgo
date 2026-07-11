@@ -456,20 +456,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 10),
-                _docTile('Жүргізуші куәлігі (права)', _license),
+                _docTile(t('Жүргізуші куәлігі (права)'), _license),
                 const SizedBox(height: 8),
-                _docTile('Правамен селфи', _licenseSelfie,
-                    hint: 'Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                _docTile(t('Правамен селфи'), _licenseSelfie,
+                    hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи')),
                 const SizedBox(height: 16),
-                const Text('Азаматтық',
-                    style:
+                Text(t('Азаматтық'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('ҚР азаматымын'),
+                        label: Text(t('ҚР азаматымын')),
                         selected: !_isForeign,
                         showCheckmark: false,
                         selectedColor: Gz.yellow,
@@ -483,7 +483,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('Басқа ел азаматымын'),
+                        label: Text(t('Басқа ел азаматымын')),
                         selected: _isForeign,
                         showCheckmark: false,
                         selectedColor: Gz.yellow,
@@ -498,56 +498,56 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (!_isForeign) ...[
-                  _docTile('Жеке куәлік (удостоверение)', _idDoc),
+                  _docTile(t('Жеке куәлік (удостоверение)'), _idDoc),
                   const SizedBox(height: 8),
-                  _docTile('Куәлікпен селфи', _idSelfie,
-                      hint: 'Куәлікті қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                  _docTile(t('Куәлікпен селфи'), _idSelfie,
+                      hint: t('Куәлікті қолыңызға ұстап, бетіңіз көрінетін селфи')),
                 ] else ...[
-                  _docTile('Шетел паспорты', _passport),
+                  _docTile(t('Шетел паспорты'), _passport),
                   const SizedBox(height: 8),
-                  _docTile('Паспортпен селфи', _passportSelfie,
-                      hint: 'Паспортты қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                  _docTile(t('Паспортпен селфи'), _passportSelfie,
+                      hint: t('Паспортты қолыңызға ұстап, бетіңіз көрінетін селфи')),
                 ],
                 const SizedBox(height: 8),
-                _docTile('Көліктің техпаспорты', _techPassport,
-                    hint: 'Көлік құжаты (СРТС) — азаматтыққа қарамай қажет'),
+                _docTile(t('Көліктің техпаспорты'), _techPassport,
+                    hint: t('Көлік құжаты (СРТС) — азаматтыққа қарамай қажет')),
                 const SizedBox(height: 8),
-                _docTile('Техпаспортпен фото', _techPassportSelfie,
-                    hint: 'Техпаспортты қолыңызға ұстап түсіріңіз'),
+                _docTile(t('Техпаспортпен фото'), _techPassportSelfie,
+                    hint: t('Техпаспортты қолыңызға ұстап түсіріңіз')),
                 const SizedBox(height: 20),
-                const Text('Көлік фотолары',
-                    style:
+                Text(t('Көлік фотолары'),
+                    style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                Text(
+                  t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),
                 const SizedBox(height: 10),
-                _docTile('Алдынан (гос нөмір көрінсін)', _vehFront,
-                    hint: 'Көліктің алды, нөмірі анық көрінуі керек'),
+                _docTile(t('Алдынан (гос нөмір көрінсін)'), _vehFront,
+                    hint: t('Көліктің алды, нөмірі анық көрінуі керек')),
                 const SizedBox(height: 8),
-                _docTile('Артынан (гос нөмір көрінсін)', _vehBack,
-                    hint: 'Көліктің арты, нөмірі анық көрінуі керек'),
+                _docTile(t('Артынан (гос нөмір көрінсін)'), _vehBack,
+                    hint: t('Көліктің арты, нөмірі анық көрінуі керек')),
                 const SizedBox(height: 8),
-                _docTile('Оң жағынан', _vehRight,
-                    hint: 'Көлікке қарап тұрсаңыз — оң бүйірі'),
+                _docTile(t('Оң жағынан'), _vehRight,
+                    hint: t('Көлікке қарап тұрсаңыз — оң бүйірі')),
                 const SizedBox(height: 8),
-                _docTile('Сол жағынан', _vehLeft,
-                    hint: 'Көлікке қарап тұрсаңыз — сол бүйірі'),
+                _docTile(t('Сол жағынан'), _vehLeft,
+                    hint: t('Көлікке қарап тұрсаңыз — сол бүйірі')),
                 const SizedBox(height: 24),
                 BusyButton(
-                  label: resubmit ? 'Қайта жіберу' : 'Өтінім жіберу',
+                  label: resubmit ? t('Қайта жіберу') : t('Өтінім жіберу'),
                   onPressed: _submit,
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Өтінімді модератор 24 сағат ішінде қарайды.\n'
-                  'Өтінім жіберу арқылы 18 жасқа толғаныңызды және құжат '
-                  'деректерінің модерация мақсатында өңделуіне келісіміңізді '
-                  'растайсыз.',
+                Text(
+                  t('Өтінімді модератор 24 сағат ішінде қарайды.\n'
+                      'Өтінім жіберу арқылы 18 жасқа толғаныңызды және құжат '
+                      'деректерінің модерация мақсатында өңделуіне келісіміңізді '
+                      'растайсыз.'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),
               ],
             ),
@@ -608,18 +608,18 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
               controller: _search,
               autofocus: true,
               onChanged: _onChanged,
-              decoration: const InputDecoration(
-                hintText: 'Қала немесе елді мекен іздеу…',
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: t('Қала немесе елді мекен іздеу…'),
+                prefixIcon: const Icon(Icons.search),
               ),
             ),
           ),
           const Divider(height: 1),
           Expanded(
             child: _filtered.isEmpty
-                ? const Center(
-                    child: Text('Табылмады',
-                        style: TextStyle(color: Gz.textSecondary)))
+                ? Center(
+                    child: Text(t('Табылмады'),
+                        style: const TextStyle(color: Gz.textSecondary)))
                 : ListView.separated(
                     controller: scroll,
                     itemCount: _filtered.length,

@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
 import '../../core/kz_cities.dart';
+import '../../core/lang.dart';
 import '../../core/theme.dart';
 import 'address_picker.dart';
 
@@ -164,13 +165,13 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
               child: Column(
                 children: [
                   _fieldTile(
-                    label: 'Қай қала/елді мекенге?',
-                    value: _detectingCity ? 'Анықталуда…' : _city,
+                    label: t('Қай қала/елді мекенге?'),
+                    value: _detectingCity ? t('Анықталуда…') : _city,
                     onTap: _pickCity,
                   ),
                   const SizedBox(height: 10),
                   _fieldTile(
-                    label: 'Үй нөмірі мен көше',
+                    label: t('Үй нөмірі мен көше'),
                     value: _street,
                     onTap: _pickStreet,
                   ),
@@ -179,7 +180,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: canSubmit ? _done : null,
-                      child: const Text('Дайын'),
+                      child: Text(t('Дайын')),
                     ),
                   ),
                 ],
@@ -283,18 +284,18 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
               controller: _search,
               autofocus: true,
               onChanged: _onChanged,
-              decoration: const InputDecoration(
-                hintText: 'Қала немесе елді мекен іздеу…',
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: t('Қала немесе елді мекен іздеу…'),
+                prefixIcon: const Icon(Icons.search),
               ),
             ),
           ),
           const Divider(height: 1),
           Expanded(
             child: _filtered.isEmpty
-                ? const Center(
-                    child: Text('Табылмады',
-                        style: TextStyle(color: Gz.textSecondary)))
+                ? Center(
+                    child: Text(t('Табылмады'),
+                        style: const TextStyle(color: Gz.textSecondary)))
                 : ListView.separated(
                     controller: scroll,
                     itemCount: _filtered.length,
@@ -374,7 +375,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
   /// Қаласы анықталмаса (ауылдық жер, тегін деректе жоқ) — рұқсат етеміз.
   bool _pointInSelectedCity(PickedAddress p) {
     if (!Geo.inKazakhstan(p.point)) {
-      showSnack(context, 'Тек Қазақстан ішінде', error: true);
+      showSnack(context, t('Тек Қазақстан ішінде'), error: true);
       return false;
     }
     if (p.city != null &&
@@ -382,7 +383,11 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
         !Geo.sameCity(p.city, widget.city)) {
       showSnack(
           context,
-          'Бұл нүкте ${widget.city} ішінде емес. ${widget.city} шегінде белгілеңіз.',
+          Lang.current.value == AppLang.ru
+              ? 'Эта точка не в городе ${widget.city}. '
+                  'Отметьте в пределах ${widget.city}.'
+              : 'Бұл нүкте ${widget.city} ішінде емес. '
+                  '${widget.city} шегінде белгілеңіз.',
           error: true);
       return false;
     }
@@ -428,7 +433,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
     // тек картадан дәл жерді белгілетеміз (жазған мәтін адрес болып қалады).
     final picked = await AddressPickerScreen.pick(
       context,
-      title: 'Картадан белгілеңіз: $text',
+      title: '${t('Картадан белгілеңіз:')} $text',
       initial: Geo.cityCenter(widget.city),
     );
     if (picked != null && mounted) {
@@ -458,7 +463,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text('${widget.city}: көше мен үй нөмірі',
+              child: Text('${widget.city}: ${t('көше мен үй нөмірі')}',
                   style:
                       const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             ),
@@ -469,7 +474,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                 autofocus: true,
                 onChanged: _onChanged,
                 decoration: InputDecoration(
-                  hintText: 'мыс: Бауыржан Момышулы, 79',
+                  hintText: t('мыс: Бауыржан Момышулы, 79'),
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _loading
                       ? const Padding(
@@ -500,7 +505,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                   ),
                   icon: const Icon(Icons.add_location_alt, size: 20),
                   label: Text(
-                    'Осы адресті қолдану: «${_search.text.trim()}»',
+                    '${t('Осы адресті қолдану:')} «${_search.text.trim()}»',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -508,15 +513,15 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
               ),
             InkWell(
               onTap: _findOnMap,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.map_outlined, size: 20, color: Gz.ink),
-                    SizedBox(width: 8),
-                    Text('Картадан табу',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Icon(Icons.map_outlined, size: 20, color: Gz.ink),
+                    const SizedBox(width: 8),
+                    Text(t('Картадан табу'),
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -529,11 +534,11 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           _search.text.trim().length < 2
-                              ? 'Көше мен үй нөмірін жазыңыз'
+                              ? t('Көше мен үй нөмірін жазыңыз')
                               : (_loading
                                   ? ''
-                                  : 'Тізімнен табылмады? Жоғарыдағы «Осы адресті '
-                                      'қолдану» → картадан дәл жерді белгілейсіз'),
+                                  : t('Тізімнен табылмады? Жоғарыдағы «Осы адресті '
+                                      'қолдану» → картадан дәл жерді белгілейсіз')),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                               color: Gz.textSecondary, fontSize: 13.5),

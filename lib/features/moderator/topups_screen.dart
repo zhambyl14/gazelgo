@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -39,7 +40,7 @@ class _TopupsScreenState extends State<TopupsScreen> {
                 ('rejected', 'Қабылданбаған'),
               ]) ...[
                 ChoiceChip(
-                  label: Text(label),
+                  label: Text(t(label)),
                   selected: _status == s,
                   selectedColor: Gz.yellow,
                   labelStyle: TextStyle(
@@ -68,11 +69,11 @@ class _TopupsScreenState extends State<TopupsScreen> {
                 }
                 final rows = snap.data ?? [];
                 if (rows.isEmpty) {
-                  return ListView(children: const [
-                    SizedBox(height: 100),
+                  return ListView(children: [
+                    const SizedBox(height: 100),
                     EmptyState(
                         icon: Icons.account_balance_wallet_outlined,
-                        title: 'Сұраным жоқ'),
+                        title: t('Сұраным жоқ')),
                   ]);
                 }
                 return ListView.separated(
@@ -80,7 +81,7 @@ class _TopupsScreenState extends State<TopupsScreen> {
                   itemCount: rows.length,
                   separatorBuilder: (_, i) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
-                      _TopupCard(t: rows[i], onChanged: _reload),
+                      _TopupCard(req: rows[i], onChanged: _reload),
                 );
               },
             ),
@@ -92,9 +93,9 @@ class _TopupsScreenState extends State<TopupsScreen> {
 }
 
 class _TopupCard extends StatelessWidget {
-  final TopupRequest t;
+  final TopupRequest req;
   final VoidCallback onChanged;
-  const _TopupCard({required this.t, required this.onChanged});
+  const _TopupCard({required this.req, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +108,7 @@ class _TopupCard extends StatelessWidget {
             children: [
               Expanded(
                 child: FutureBuilder<Profile?>(
-                  future: Repo.profileOf(t.executorId),
+                  future: Repo.profileOf(req.executorId),
                   builder: (context, snap) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -115,7 +116,7 @@ class _TopupCard extends StatelessWidget {
                           style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       Text(
-                        '${snap.data?.phone ?? ''} · ${fmtDate(t.createdAt)}',
+                        '${snap.data?.phone ?? ''} · ${fmtDate(req.createdAt)}',
                         style: const TextStyle(
                             color: Gz.textSecondary, fontSize: 12.5),
                       ),
@@ -123,7 +124,7 @@ class _TopupCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(fmtT(t.amount),
+              Text(fmtT(req.amount),
                   style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -131,20 +132,20 @@ class _TopupCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (t.receiptPath != null)
+          if (req.receiptPath != null)
             SizedBox(
                 width: 150,
-                child: DocImage(path: t.receiptPath, label: 'Kaspi чек'))
+                child: DocImage(path: req.receiptPath, label: t('Kaspi чек')))
           else
-            const Text('Чек тіркелмеген',
-                style: TextStyle(color: Gz.red, fontSize: 13)),
-          if (t.status == 'pending') ...[
+            Text(t('Чек тіркелмеген'),
+                style: const TextStyle(color: Gz.red, fontSize: 13)),
+          if (req.status == 'pending') ...[
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: BusyButton(
-                    label: 'Қабылдамау',
+                    label: t('Қабылдамау'),
                     outlined: true,
                     onPressed: () => _review(context, false),
                   ),
@@ -153,15 +154,15 @@ class _TopupCard extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: BusyButton(
-                    label: 'Растау · ${fmtT(t.amount)}',
+                    label: '${t('Растау')} · ${fmtT(req.amount)}',
                     onPressed: () => _review(context, true),
                   ),
                 ),
               ],
             ),
-          ] else if (t.note?.isNotEmpty == true) ...[
+          ] else if (req.note?.isNotEmpty == true) ...[
             const SizedBox(height: 8),
-            Text('Ескерту: ${t.note}',
+            Text('${t('Ескерту:')} ${req.note}',
                 style:
                     const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
           ],
@@ -177,20 +178,20 @@ class _TopupCard extends StatelessWidget {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Қабылдамау себебі'),
+          title: Text(t('Қабылдамау себебі')),
           content: TextField(
             controller: c,
             autofocus: true,
             decoration:
-                const InputDecoration(hintText: 'Мыс: чек табылмады'),
+                InputDecoration(hintText: t('Мыс: чек табылмады')),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Болдырмау')),
+                child: Text(t('Болдырмау'))),
             FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Жіберу')),
+                child: Text(t('Жіберу'))),
           ],
         ),
       );
@@ -199,11 +200,11 @@ class _TopupCard extends StatelessWidget {
     }
     if (!context.mounted) return;
     try {
-      await Repo.modReviewTopup(t.id, approve, note,
-          receiptPath: t.receiptPath);
+      await Repo.modReviewTopup(req.id, approve, note,
+          receiptPath: req.receiptPath);
       if (context.mounted) {
         showSnack(context,
-            approve ? 'Баланс толтырылды' : 'Сұраным қабылданбады');
+            approve ? t('Баланс толтырылды') : t('Сұраным қабылданбады'));
       }
       onChanged();
     } catch (e) {

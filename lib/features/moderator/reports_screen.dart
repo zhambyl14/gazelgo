@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -24,10 +25,10 @@ class ReportsScreen extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (all.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             icon: Icons.shield_outlined,
-            title: 'Хабарлама жоқ',
-            subtitle: 'Күдікті жүк туралы хабарламалар осында көрінеді.',
+            title: t('Хабарлама жоқ'),
+            subtitle: t('Күдікті жүк туралы хабарламалар осында көрінеді.'),
           );
         }
         final open = all.where((r) => r.status == 'open').toList();
@@ -36,7 +37,7 @@ class ReportsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           children: [
             if (open.isNotEmpty) ...[
-              _SectionLabel('Ашық (${open.length})'),
+              _SectionLabel('${t('Ашық')} (${open.length})'),
               for (final r in open) ...[
                 _ReportTile(report: r),
                 const SizedBox(height: 8),
@@ -44,7 +45,7 @@ class ReportsScreen extends StatelessWidget {
             ],
             if (rest.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const _SectionLabel('Қаралған'),
+              _SectionLabel(t('Қаралған')),
               for (final r in rest.take(30)) ...[
                 _ReportTile(report: r),
                 const SizedBox(height: 8),
@@ -119,7 +120,7 @@ class _ReportTileState extends State<_ReportTile> {
       await Repo.modSetReportStatus(widget.report.id, status);
       if (mounted) {
         showSnack(context,
-            status == 'dismissed' ? 'Елеусіз қалдырылды' : 'Қаралды деп белгіленді');
+            status == 'dismissed' ? t('Елеусіз қалдырылды') : t('Қаралды деп белгіленді'));
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -151,8 +152,8 @@ class _ReportTileState extends State<_ReportTile> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Хабарлаған: ${_reporter?.fullName ?? '…'} '
-                  '(${r.reporterRole == 'client' ? 'клиент' : 'газелист'})',
+                  '${t('Хабарлаған:')} ${_reporter?.fullName ?? '…'} '
+                  '(${r.reporterRole == 'client' ? t('клиент') : t('газелист')})',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
               ),
@@ -192,7 +193,7 @@ class _ReportTileState extends State<_ReportTile> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('Хабарланған: ${_reported!.fullName}',
+                      child: Text('${t('Хабарланған:')} ${_reported!.fullName}',
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 12.5)),
                     ),
@@ -214,8 +215,8 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => showOrderAdminSheet(context, o.id),
-                    child: const Text('Заказды ашу',
-                        style: TextStyle(fontSize: 12.5)),
+                    child: Text(t('Заказды ашу'),
+                        style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
               if (o != null && r.status == 'open') const SizedBox(width: 8),
@@ -223,8 +224,8 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _setStatus('dismissed'),
-                    child: const Text('Елеусіз қалдыру',
-                        style: TextStyle(fontSize: 12.5)),
+                    child: Text(t('Елеусіз қалдыру'),
+                        style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
               if (r.status == 'open') const SizedBox(width: 8),
@@ -232,8 +233,8 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _setStatus('reviewed'),
-                    child: const Text('Қаралды',
-                        style: TextStyle(fontSize: 12.5)),
+                    child: Text(t('Қаралды'),
+                        style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
             ],

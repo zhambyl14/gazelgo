@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -14,7 +15,7 @@ class EarningsScreen extends ConsumerWidget {
     final statsAsync = ref.watch(executorStatsStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Табыс')),
+      appBar: AppBar(title: Text(t('Табыс'))),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
@@ -29,22 +30,22 @@ class EarningsScreen extends ConsumerWidget {
             children: [
             Row(
               children: [
-                Expanded(child: _tile('Бүгін', fmtT(s.today), Gz.green)),
+                Expanded(child: _tile(t('Бүгін'), fmtT(s.today), Gz.green)),
                 const SizedBox(width: 10),
-                Expanded(child: _tile('Осы ай', fmtT(s.month), Gz.blue)),
+                Expanded(child: _tile(t('Осы ай'), fmtT(s.month), Gz.blue)),
               ],
             ),
             const SizedBox(height: 10),
-            _tile('Барлық уақытта', fmtT(s.totalEarned), Gz.ink),
+            _tile(t('Барлық уақытта'), fmtT(s.totalEarned), Gz.ink),
             const SizedBox(height: 8),
-            const Text(
-              'Табыс — аяқталған заказдардың келісілген бағасы. '
-              'Төлемді клиенттен тікелей аласыз; бұл сома балансқа қосылмайды.',
-              style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            Text(
+              t('Табыс — аяқталған заказдардың келісілген бағасы. '
+                  'Төлемді клиенттен тікелей аласыз; бұл сома балансқа қосылмайды.'),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
             ),
             const SizedBox(height: 18),
-            const Text('Тарих',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(t('Тарих'),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 8),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: Repo.myEarnings(),
@@ -57,9 +58,9 @@ class EarningsScreen extends ConsumerWidget {
                   );
                 }
                 if (rows.isEmpty) {
-                  return const SectionCard(
-                    child: Text('Аяқталған заказ әзірге жоқ.',
-                        style: TextStyle(color: Gz.textSecondary)),
+                  return SectionCard(
+                    child: Text(t('Аяқталған заказ әзірге жоқ.'),
+                        style: const TextStyle(color: Gz.textSecondary)),
                   );
                 }
                 return SectionCard(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/geo.dart';
+import '../../core/lang.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -61,7 +62,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _editFrom() async {
     final res = await CityStreetSheet.show(context,
-        title: 'Қайдан аламыз?', initial: _from);
+        title: t('Қайдан аламыз?'), initial: _from);
     if (res != null && mounted) {
       setState(() {
         _from = res;
@@ -73,7 +74,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _editTo() async {
     final res = await CityStreetSheet.show(context,
-        title: 'Қайда жеткіземіз?', initial: _to);
+        title: t('Қайда жеткіземіз?'), initial: _to);
     if (res != null && mounted) {
       setState(() {
         _to = res;
@@ -99,7 +100,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _addPhoto() async {
     if (_photos.length >= 5) {
-      showSnack(context, 'Ең көбі 5 фото', error: true);
+      showSnack(context, t('Ең көбі 5 фото'), error: true);
       return;
     }
     final source = await showModalBottomSheet<ImageSource>(
@@ -110,12 +111,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera),
-              title: const Text('Камерамен түсіру'),
+              title: Text(t('Камерамен түсіру')),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Галереядан таңдау'),
+              title: Text(t('Галереядан таңдау')),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
           ],
@@ -133,20 +134,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Future<void> _submit() async {
     final route = _route;
     if (route == null) {
-      showSnack(context, 'Маршрут әлі есептелуде…', error: true);
+      showSnack(context, t('Маршрут әлі есептелуде…'), error: true);
       return;
     }
     if (_cargo.text.trim().isEmpty) {
-      showSnack(context, 'Не таситыныңызды жазыңыз', error: true);
+      showSnack(context, t('Не таситыныңызды жазыңыз'), error: true);
       return;
     }
     if (!Geo.inKazakhstan(_from.point) || !Geo.inKazakhstan(_to.point)) {
-      showSnack(context, 'Заказ тек Қазақстан ішінде болуы керек', error: true);
+      showSnack(context, t('Заказ тек Қазақстан ішінде болуы керек'), error: true);
       return;
     }
     if (!_legalOk) {
       showSnack(context,
-          'Жүктің заңды екеніне растау белгісін қойыңыз (тыйым салынған заттар тізімі — Келісімде)',
+          t('Жүктің заңды екеніне растау белгісін қойыңыз (тыйым салынған заттар тізімі — Келісімде)'),
           error: true);
       return;
     }
@@ -157,8 +158,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       showSnack(
           context,
           _intercity
-              ? 'Межгород бағасы кемінде ${fmtT(_minPrice)} болуы керек'
-              : 'Бағаңызды жазыңыз (кемінде ${fmtT(_minPrice)})',
+              ? '${t('Межгород бағасы кемінде')} ${fmtT(_minPrice)} ${t('болуы керек')}'
+              : '${t('Бағаңызды жазыңыз (кемінде')} ${fmtT(_minPrice)})',
           error: true);
       return;
     }
@@ -220,9 +221,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   padding: const EdgeInsets.fromLTRB(18, 10, 8, 2),
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text('Заказ құру',
-                            style: TextStyle(
+                      Expanded(
+                        child: Text(t('Заказ құру'),
+                            style: const TextStyle(
                                 fontSize: 19, fontWeight: FontWeight.w900)),
                       ),
                       IconButton(
@@ -260,9 +261,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       Expanded(
                         child: Text(
                           _intercity
-                              ? 'Сіз қалалар аралық (межгород) заказ бересіз: '
+                              ? '${t('Сіз қалалар аралық (межгород) заказ бересіз:')} '
                                   '${_from.city} → ${_to.city}'
-                              : 'Қала ішіндегі тасымал',
+                              : t('Қала ішіндегі тасымал'),
                           style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 12.5,
@@ -287,14 +288,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     _EditableAddr(
                         icon: Icons.trip_origin,
                         color: Gz.green,
-                        label: 'Қайдан',
+                        label: t('Қайдан'),
                         value: _from.address,
                         onTap: _editFrom),
                     const SizedBox(height: 6),
                     _EditableAddr(
                         icon: Icons.location_on,
                         color: Gz.red,
-                        label: 'Қайда',
+                        label: t('Қайда'),
                         value: _to.address,
                         onTap: _editTo),
                     if (route != null) ...[
@@ -314,7 +315,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                               size: 17, color: Gz.textSecondary),
                           const SizedBox(width: 6),
                           Text(
-                            '~${route.durationMin.round()} мин',
+                            '~${route.durationMin.round()} ${t('мин')}',
                             style:
                                 const TextStyle(fontWeight: FontWeight.w700),
                           ),
@@ -325,16 +326,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Заказ түрі',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              Text(t('Заказ түрі'),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
               const SizedBox(height: 8),
               _CategoryCard(
                 selected: _tariff == 'simple',
                 icon: Icons.local_shipping_outlined,
                 color: Gz.blue,
-                title: 'Простой',
+                title: t('Простой'),
                 subtitle:
-                    'Кәдімгі тасымал. Асығыс емес — газелист бос кезінде алады.',
+                    t('Кәдімгі тасымал. Асығыс емес — газелист бос кезінде алады.'),
                 onTap: () => setState(() => _tariff = 'simple'),
               ),
               const SizedBox(height: 8),
@@ -344,40 +345,40 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 color: Gz.violet,
                 title: 'VIP',
                 subtitle:
-                    'Жедел не бағалы жүк (мыс. таңертең 1 т ет). VIP газелисттер '
-                    'көреді әрі тез алады.',
+                    t('Жедел не бағалы жүк (мыс. таңертең 1 т ет). VIP газелисттер '
+                        'көреді әрі тез алады.'),
                 onTap: () => setState(() => _tariff = 'vip'),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _cargo,
-                decoration: const InputDecoration(
-                  hintText: 'Не тасимыз? (мыс: диван, тоңазытқыш, көшу)',
-                  prefixIcon: Icon(Icons.inventory_2_outlined),
+                decoration: InputDecoration(
+                  hintText: t('Не тасимыз? (мыс: диван, тоңазытқыш, көшу)'),
+                  prefixIcon: const Icon(Icons.inventory_2_outlined),
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _comment,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'Қосымша түсініктеме (қабат, лифт, көмек керек пе…)',
-                  prefixIcon: Icon(Icons.notes),
+                decoration: InputDecoration(
+                  hintText: t('Қосымша түсініктеме (қабат, лифт, көмек керек пе…)'),
+                  prefixIcon: const Icon(Icons.notes),
                 ),
               ),
               const SizedBox(height: 14),
               // Жүк фотолары
               Row(
                 children: [
-                  const Expanded(
-                    child: Text('Жүк фотосы (міндетті емес, макс 5)',
-                        style: TextStyle(
+                  Expanded(
+                    child: Text(t('Жүк фотосы (міндетті емес, макс 5)'),
+                        style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 14)),
                   ),
                   TextButton.icon(
                     onPressed: _addPhoto,
                     icon: const Icon(Icons.add_a_photo, size: 18),
-                    label: const Text('Қосу'),
+                    label: Text(t('Қосу')),
                   ),
                 ],
               ),
@@ -415,9 +416,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Text('Бағаңызды ұсыныңыз',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(t('Бағаңызды ұсыныңыз'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
                   const Spacer(),
                   Container(
                     padding:
@@ -428,7 +429,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'мин. ${fmtT(_minPrice)}',
+                      '${t('мин.')} ${fmtT(_minPrice)}',
                       style: TextStyle(
                           color: _intercity ? Gz.violet : Gz.green,
                           fontWeight: FontWeight.w800,
@@ -440,10 +441,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const SizedBox(height: 4),
               Text(
                 _intercity
-                    ? 'Қалааралық заказ — бағаны өзіңіз қоясыз (кемінде '
-                        '${fmtT(_minPrice)}). Газелисттер келіседі не өз бағасын ұсынады.'
-                    : 'Қала ішіндегі заказ — бағаны өзіңіз қоясыз (кемінде '
-                        '${fmtT(_minPrice)}). Газелисттер келіседі не өз бағасын ұсынады.',
+                    ? '${t('Қалааралық заказ — бағаны өзіңіз қоясыз (кемінде')} '
+                        '${fmtT(_minPrice)}). ${t('Газелисттер келіседі не өз бағасын ұсынады.')}'
+                    : '${t('Қала ішіндегі заказ — бағаны өзіңіз қоясыз (кемінде')} '
+                        '${fmtT(_minPrice)}). ${t('Газелисттер келіседі не өз бағасын ұсынады.')}',
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 8),
@@ -456,7 +457,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5),
                 decoration: InputDecoration(
-                  hintText: 'Бағаңыз (мин. $_minPrice)',
+                  hintText: '${t('Бағаңыз (мин.')} $_minPrice)',
                   hintStyle: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -501,19 +502,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 height: 1.4,
                                 color: Gz.textSecondary),
                             children: [
-                              const TextSpan(
-                                  text:
-                                      'Жүгімнің заңды екеніне және тыйым '
-                                      'салынған заттар '),
                               TextSpan(
-                                text: 'тізіміне',
+                                  text:
+                                      '${t('Жүгімнің заңды екеніне және тыйым '
+                                      'салынған заттар')} '),
+                              TextSpan(
+                                text: t('тізіміне'),
                                 recognizer: _legalListTap,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                     color: Gz.ink,
                                     decoration: TextDecoration.underline),
                               ),
-                              const TextSpan(text: ' кірмейтініне кепілдік беремін.'),
+                              TextSpan(text: ' ${t('кірмейтініне кепілдік беремін.')}'),
                             ],
                           ),
                         ),
@@ -524,14 +525,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
               const SizedBox(height: 8),
               BusyButton(
-                label: 'Заказ жариялау',
+                label: t('Заказ жариялау'),
                 onPressed: _submit,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Төлем клиент пен орындаушы арасында қолма-қол/аударыммен шешіледі.',
+              Text(
+                t('Төлем клиент пен орындаушы арасында қолма-қол/аударыммен шешіледі.'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
               ),
             ],
           ),

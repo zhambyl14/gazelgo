@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
 import '../../core/prefs.dart';
@@ -70,8 +71,8 @@ class _ExecutorShellState extends State<ExecutorShell> {
         return;
       }
       if (fresh.isNotEmpty && await Prefs.orderNotify()) {
-        Notify.show('Жаңа заказ бар! 🚚',
-            'Лентада ${fresh.length} жаңа заказ күтіп тұр — қараңыз.',
+        Notify.show(t('Жаңа заказ бар! 🚚'),
+            '${t('Лентада')} ${fresh.length} ${t('жаңа заказ күтіп тұр — қараңыз.')}',
             id: 2);
       }
     } catch (_) {}
@@ -87,7 +88,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
         for (final d in live) {
           if (!_shownDispatches.contains(d.id)) {
             _shownDispatches.add(d.id);
-            Notify.show('VIP заказ! ⚡', 'Жауапқа 25 секунд — ашыңыз!', id: 1);
+            Notify.show(t('VIP заказ! ⚡'), t('Жауапқа 25 секунд — ашыңыз!'), id: 1);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) showVipDispatchDialog(context, d);
             });
@@ -106,8 +107,8 @@ class _ExecutorShellState extends State<ExecutorShell> {
           for (final d in all.where((d) => d.status == 'accepted')) {
             if (!_notifiedAutoAccepts.contains(d.id)) {
               _notifiedAutoAccepts.add(d.id);
-              Notify.show('VIP заказ автоматты тағайындалды! ⚡',
-                  'Жолға шығуға дайындалыңыз — заказ ашылды.',
+              Notify.show(t('VIP заказ автоматты тағайындалды! ⚡'),
+                  t('Жолға шығуға дайындалыңыз — заказ ашылды.'),
                   id: 1);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
@@ -136,15 +137,15 @@ class _ExecutorShellState extends State<ExecutorShell> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Басты'),
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: t('Басты')),
               NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Профиль'),
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person),
+                  label: t('Профиль')),
             ],
           ),
         );
@@ -178,8 +179,8 @@ class _BusyOrderBanner extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Белсенді заказдар',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              Text(t('Белсенді заказдар'),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
               const SizedBox(height: 12),
               for (final o in active) ...[
                 OrderCard(
@@ -227,8 +228,8 @@ class _BusyOrderBanner extends StatelessWidget {
                   Expanded(
                     child: Text(
                       active.length > 1
-                          ? '${active.length} белсенді заказ бар — ашу үшін басыңыз'
-                          : 'Белсенді заказ бар — ашу үшін басыңыз',
+                          ? '${active.length} ${t('белсенді заказ бар — ашу үшін басыңыз')}'
+                          : t('Белсенді заказ бар — ашу үшін басыңыз'),
                       style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

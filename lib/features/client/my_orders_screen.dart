@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../shared/widgets.dart';
@@ -14,10 +15,10 @@ class MyOrdersScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Тапсырыстарым'),
-          bottom: const TabBar(tabs: [
-            Tab(text: 'Белсенді'),
-            Tab(text: 'Тарих'),
+          title: Text(t('Тапсырыстарым')),
+          bottom: TabBar(tabs: [
+            Tab(text: t('Белсенді')),
+            Tab(text: t('Тарих')),
           ]),
         ),
         body: StreamBuilder<List<Order>>(
@@ -36,9 +37,9 @@ class MyOrdersScreen extends StatelessWidget {
             return TabBarView(
               children: [
                 _list(context, active,
-                    empty: 'Белсенді заказ жоқ.\nБасты беттен газель шақырыңыз.'),
+                    empty: t('Белсенді заказ жоқ.\nБасты беттен газель шақырыңыз.')),
                 _list(context, history,
-                    empty: 'Аяқталған заказ әзірге жоқ.'),
+                    empty: t('Аяқталған заказ әзірге жоқ.')),
               ],
             );
           },

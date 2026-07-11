@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -112,10 +113,10 @@ class _ChatViewState extends State<ChatView> {
             width: double.infinity,
             color: Gz.bg,
             padding: const EdgeInsets.all(12),
-            child: const Text(
-              'Чат аяқталды. Жаңа хабарлама жазсаңыз, қайта ашылады.',
+            child: Text(
+              t('Чат аяқталды. Жаңа хабарлама жазсаңыз, қайта ашылады.'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
             ),
           ),
         SafeArea(
@@ -134,8 +135,8 @@ class _ChatViewState extends State<ChatView> {
                     controller: _input,
                     minLines: 1,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: 'Хабарлама…',
+                    decoration: InputDecoration(
+                      hintText: t('Хабарлама…'),
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
@@ -241,11 +242,11 @@ class _IntroPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const EmptyState(
+    return EmptyState(
       icon: Icons.support_agent,
-      title: 'Қолдау қызметі',
+      title: t('Қолдау қызметі'),
       subtitle:
-          'Сұрағыңызды жазыңыз — модератор жауап береді. Фото да тіркей аласыз.',
+          t('Сұрағыңызды жазыңыз — модератор жауап береді. Фото да тіркей аласыз.'),
     );
   }
 }

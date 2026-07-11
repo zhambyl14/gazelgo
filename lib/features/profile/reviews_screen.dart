@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -22,7 +23,7 @@ class ReviewsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Пікірлер')),
+      appBar: AppBar(title: Text(t('Пікірлер'))),
       body: FutureBuilder<List<Review>>(
         future: Repo.reviewsOf(userId),
         builder: (context, snap) {
@@ -43,7 +44,7 @@ class ReviewsScreen extends StatelessWidget {
                             fontSize: 40, fontWeight: FontWeight.w900)),
                     RatingStars(rating, count: ratingCount, size: 18),
                     const SizedBox(height: 2),
-                    Text('$ratingCount пікір',
+                    Text('$ratingCount ${t('пікір')}',
                         style: const TextStyle(
                             color: Gz.textSecondary, fontSize: 13)),
                   ],
@@ -52,9 +53,9 @@ class ReviewsScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Expanded(
                 child: reviews.isEmpty
-                    ? const EmptyState(
+                    ? EmptyState(
                         icon: Icons.rate_review_outlined,
-                        title: 'Әзірге пікір жоқ')
+                        title: t('Әзірге пікір жоқ'))
                     : ListView.separated(
                         padding: const EdgeInsets.all(12),
                         itemCount: reviews.length,
@@ -71,8 +72,8 @@ class ReviewsScreen extends StatelessWidget {
                                     const Spacer(),
                                     Text(
                                       r.authorRole == 'executor'
-                                          ? 'Орындаушыдан'
-                                          : 'Клиенттен',
+                                          ? t('Орындаушыдан')
+                                          : t('Клиенттен'),
                                       style: const TextStyle(
                                           fontSize: 11.5,
                                           color: Gz.textSecondary),

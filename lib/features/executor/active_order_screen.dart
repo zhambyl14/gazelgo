@@ -328,7 +328,7 @@ class _NavToggle extends StatelessWidget {
             child: _NavHalf(
                 icon: Icons.trip_origin,
                 color: Gz.green,
-                label: 'A навигация',
+                label: t('A навигация'),
                 onTap: onA),
           ),
           Container(width: 1.4, color: Gz.border),
@@ -336,7 +336,7 @@ class _NavToggle extends StatelessWidget {
             child: _NavHalf(
                 icon: Icons.location_on,
                 color: Gz.red,
-                label: 'B навигация',
+                label: t('B навигация'),
                 onTap: onB),
           ),
         ],

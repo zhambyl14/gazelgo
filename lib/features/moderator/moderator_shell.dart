@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../shared/widgets.dart';
 import 'applications_screen.dart';
 import 'executors_screen.dart';
@@ -18,27 +19,27 @@ class ModeratorShell extends StatelessWidget {
       length: 6,
       child: Scaffold(
         appBar: AppBar(
-          title: const Row(
+          title: Row(
             children: [
-              GazelGoLogo(size: 20),
-              SizedBox(width: 8),
-              Text('· Модератор', style: TextStyle(fontSize: 15)),
+              const GazelGoLogo(size: 20),
+              const SizedBox(width: 8),
+              Text('· ${t('Модератор')}', style: const TextStyle(fontSize: 15)),
             ],
           ),
           actions: [
             IconButton(
-              tooltip: 'Шығу',
+              tooltip: t('Шығу'),
               onPressed: () => confirmSignOut(context),
               icon: const Icon(Icons.logout),
             ),
           ],
-          bottom: const TabBar(isScrollable: true, tabs: [
-            Tab(text: 'Линия'),
-            Tab(text: 'Өтінімдер'),
-            Tab(text: 'Толтырулар'),
-            Tab(text: 'Орындаушылар'),
-            Tab(text: 'Қолдау'),
-            Tab(text: 'Хабарламалар'),
+          bottom: TabBar(isScrollable: true, tabs: [
+            Tab(text: t('Линия')),
+            Tab(text: t('Өтінімдер')),
+            Tab(text: t('Толтырулар')),
+            Tab(text: t('Орындаушылар')),
+            Tab(text: t('Қолдау')),
+            Tab(text: t('Хабарламалар')),
           ]),
         ),
         body: const TabBarView(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -113,9 +114,9 @@ class _VipDialogState extends State<_VipDialog> {
                       const Icon(Icons.flash_on, color: Gz.violet, size: 22),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: Text('Жаңа VIP заказ!',
-                      style: TextStyle(
+                Expanded(
+                  child: Text(t('Жаңа VIP заказ!'),
+                      style: const TextStyle(
                           fontWeight: FontWeight.w900, fontSize: 17)),
                 ),
                 // кері санақ
@@ -149,13 +150,13 @@ class _VipDialogState extends State<_VipDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.lock_outline, size: 18, color: Gz.violet),
-                      SizedBox(width: 6),
+                      const Icon(Icons.lock_outline, size: 18, color: Gz.violet),
+                      const SizedBox(width: 6),
                       Expanded(
-                        child: Text('Баға қабылдағаннан кейін көрінеді',
-                            style: TextStyle(
+                        child: Text(t('Баға қабылдағаннан кейін көрінеді'),
+                            style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 color: Gz.violet)),
@@ -185,7 +186,7 @@ class _VipDialogState extends State<_VipDialog> {
                     style: OutlinedButton.styleFrom(
                         foregroundColor: Gz.red,
                         side: const BorderSide(color: Gz.red)),
-                    child: const Text('Бас тарту'),
+                    child: Text(t('Бас тарту')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -197,7 +198,7 @@ class _VipDialogState extends State<_VipDialog> {
                         foregroundColor: Colors.white,
                         shadowColor: const Color(0x597C3AED)),
                     onPressed: _accept,
-                    child: const Text('Қабылдау'),
+                    child: Text(t('Қабылдау')),
                   ),
                 ),
               ],

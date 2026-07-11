@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -64,14 +65,15 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     final isNewHighValue = f['is_new_account_high_value'] == true;
     final parts = <String>[];
     if (pairCount >= 3) {
-      parts.add('Бұл клиент пен газелист соңғы 30 күнде $pairCount рет '
-          'бірге аяқтаған заказ жасаған — қайталанатын жұп.');
+      parts.add(
+          '${t('Бұл клиент пен газелист соңғы 30 күнде')} $pairCount ${t('рет '
+              'бірге аяқтаған заказ жасаған — қайталанатын жұп.')}');
     }
     if (isNewHighValue) {
-      parts.add('Клиент аккаунты жаңа (<24 сағ) әрі заказ бағасы жоғары.');
+      parts.add(t('Клиент аккаунты жаңа (<24 сағ) әрі заказ бағасы жоғары.'));
     }
     if (parts.isEmpty) return null;
-    return 'Тексеру қажет болуы мүмкін: ${parts.join(' ')}';
+    return '${t('Тексеру қажет болуы мүмкін:')} ${parts.join(' ')}';
   }
 
   static const _statuses = [
@@ -85,19 +87,19 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
   ];
 
   Future<void> _setStatus(String status) async {
-    final label = _statuses.firstWhere((s) => s.$1 == status).$2;
+    final label = t(_statuses.firstWhere((s) => s.$1 == status).$2);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Статусты өзгерту'),
-        content: Text('Заказ статусы «$label» болады. Растайсыз ба?'),
+        title: Text(t('Статусты өзгерту')),
+        content: Text('${t('Заказ статусы')} «$label» ${t('болады. Растайсыз ба?')}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Жоқ')),
+              child: Text(t('Жоқ'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Иә, өзгерту')),
+              child: Text(t('Иә, өзгерту'))),
         ],
       ),
     );
@@ -110,7 +112,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
       }
       widget.onChanged?.call();
       await _load();
-      if (mounted) showSnack(context, 'Статус өзгертілді: $label');
+      if (mounted) showSnack(context, '${t('Статус өзгертілді:')} $label');
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }
@@ -185,11 +187,11 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     children: [
                       RouteLine(from: o.fromDisplay, to: o.toDisplay),
                       const Divider(height: 20),
-                      InfoRow('Жүк', o.cargoDesc),
-                      InfoRow('Түрі', o.isVip ? 'VIP' : 'Простой'),
-                      InfoRow('Бағыты',
-                          o.intercity ? 'Қалааралық' : 'Қала ішінде'),
-                      InfoRow('Құрылды', fmtDate(o.createdAt)),
+                      InfoRow(t('Жүк'), o.cargoDesc),
+                      InfoRow(t('Түрі'), o.isVip ? 'VIP' : t('Простой')),
+                      InfoRow(t('Бағыты'),
+                          o.intercity ? t('Қалааралық') : t('Қала ішінде')),
+                      InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
                     ],
                   ),
                 ),
@@ -199,7 +201,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   future: Repo.profileOf(o.clientId),
                   builder: (context, snap) => _PartyCard(
                     profile: snap.data,
-                    subtitle: 'Клиент',
+                    subtitle: t('Клиент'),
                     onChanged: () => setState(() {}),
                   ),
                 ),
@@ -209,19 +211,19 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     future: Repo.profileOf(o.executorId!),
                     builder: (context, snap) => _PartyCard(
                       profile: snap.data,
-                      subtitle: 'Орындаушы',
+                      subtitle: t('Орындаушы'),
                       onChanged: () => setState(() {}),
                     ),
                   ),
                 ],
                 const SizedBox(height: 16),
-                const Text('Статусты өзгерту',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(t('Статусты өзгерту'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Тек оқыс оқиғада қолданыңыз (мыс: орындаушы аяқтай алмай тұр).',
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                Text(
+                  t('Тек оқыс оқиғада қолданыңыз (мыс: орындаушы аяқтай алмай тұр).'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -231,7 +233,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     for (final (key, label) in _statuses)
                       if (key != o.status)
                         ActionChip(
-                          label: Text(label,
+                          label: Text(t(label),
                               style: const TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700)),

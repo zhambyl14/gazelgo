@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/theme.dart';
 
 /// Заңдық құжаттар: Пайдаланушы келісімі (оферта) + Құпиялылық саясаты.
@@ -20,16 +21,16 @@ class LegalScreen extends StatelessWidget {
       initialIndex: initialTab,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Заңдық құжаттар'),
-          bottom: const TabBar(tabs: [
-            Tab(text: 'Пайдаланушы келісімі'),
-            Tab(text: 'Құпиялылық саясаты'),
+          title: Text(t('Заңдық құжаттар')),
+          bottom: TabBar(tabs: [
+            Tab(text: t('Пайдаланушы келісімі')),
+            Tab(text: t('Құпиялылық саясаты')),
           ]),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            _LegalText(kTermsText),
-            _LegalText(kPrivacyText),
+            _LegalText(t(kTermsText)),
+            _LegalText(t(kPrivacyText)),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -33,8 +34,8 @@ class _SupportAdminScreenState extends State<SupportAdminScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (threads.isEmpty) {
-          return const EmptyState(
-              icon: Icons.forum_outlined, title: 'Чат жоқ');
+          return EmptyState(
+              icon: Icons.forum_outlined, title: t('Чат жоқ'));
         }
         return ListView.separated(
           padding: const EdgeInsets.all(12),
@@ -79,7 +80,7 @@ class _ThreadTile extends StatelessWidget {
                         .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(thread.isOpen ? 'Ашық' : 'Жабық',
+                  child: Text(thread.isOpen ? t('Ашық') : t('Жабық'),
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -104,9 +105,9 @@ class _ThreadTile extends StatelessWidget {
   }
 
   String _roleLabel(String? r) => switch (r) {
-        'executor' => 'Орындаушы',
-        'moderator' => 'Модератор',
-        _ => 'Клиент',
+        'executor' => t('Орындаушы'),
+        'moderator' => t('Модератор'),
+        _ => t('Клиент'),
       };
 }
 
@@ -119,7 +120,7 @@ class _ModeratorChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(user?.fullName ?? 'Чат'),
+        title: Text(user?.fullName ?? t('Чат')),
         actions: [
           TextButton.icon(
             onPressed: () async {
@@ -133,7 +134,7 @@ class _ModeratorChatScreen extends StatelessWidget {
               }
             },
             icon: const Icon(Icons.check, size: 18),
-            label: const Text('Аяқтау'),
+            label: Text(t('Аяқтау')),
           ),
         ],
       ),
@@ -211,8 +212,8 @@ class _OrderContextBar extends StatelessWidget {
                     onPressed: () =>
                         showOrderAdminSheet(context, orderId),
                     icon: const Icon(Icons.tune, size: 16),
-                    label: const Text('Заказды басқару (статус, тоқтату…)',
-                        style: TextStyle(fontSize: 12.5)),
+                    label: Text(t('Заказды басқару (статус, тоқтату…)'),
+                        style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
               ],

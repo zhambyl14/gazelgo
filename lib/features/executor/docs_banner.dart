@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../auth/executor_apply_screen.dart';
@@ -27,12 +28,12 @@ class ExecutorDocsBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(Gz.radius),
             border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
           ),
-          child: const Row(children: [
-            Icon(Icons.hourglass_top, color: Gz.blue),
-            SizedBox(width: 10),
+          child: Row(children: [
+            const Icon(Icons.hourglass_top, color: Gz.blue),
+            const SizedBox(width: 10),
             Expanded(
-              child: Text('Жаңартылған құжаттар модератор тексеруінде…',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(t('Жаңартылған құжаттар модератор тексеруінде…'),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
             ),
           ]),
         ),
@@ -61,13 +62,13 @@ class ExecutorDocsBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Құжаттарды жаңарту қажет',
-                          style: TextStyle(
+                      Text(t('Құжаттарды жаңарту қажет'),
+                          style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 14.5)),
                       Text(
                         e.docsUpdateComment?.isNotEmpty == true
                             ? e.docsUpdateComment!
-                            : 'Модератор құжаттарыңызды жаңартуды сұрады.',
+                            : t('Модератор құжаттарыңызды жаңартуды сұрады.'),
                         style: const TextStyle(
                             color: Gz.textSecondary, fontSize: 12.5),
                       ),
