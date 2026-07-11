@@ -7,6 +7,7 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
+import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
 import 'executor_order_screen.dart';
 
@@ -181,7 +182,9 @@ class _FeedCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(order.vehicleType.icon, order.vehicleType.label),
+                  _tag(Icons.local_shipping, order.vehicleType.label,
+                      leading: vehicleIcon(order.vehicleType,
+                          size: 14, color: Gz.textSecondary)),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -206,7 +209,8 @@ class _FeedCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(IconData icon, String text, {bool flexible = false}) {
+  Widget _tag(IconData icon, String text,
+      {bool flexible = false, Widget? leading}) {
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -216,7 +220,7 @@ class _FeedCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: Gz.textSecondary),
+          leading ?? Icon(icon, size: 13, color: Gz.textSecondary),
           const SizedBox(width: 4),
           Flexible(
             child: Text(text,
@@ -344,8 +348,8 @@ class _OrderSheet extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                         color: Gz.ink)),
               ),
-              Icon(o.vehicleType.icon, size: 18, color: Gz.textSecondary),
-              const SizedBox(width: 5),
+              vehicleIcon(o.vehicleType, size: 20, color: Gz.textSecondary),
+              const SizedBox(width: 6),
               Text(o.vehicleType.label,
                   style: const TextStyle(
                       fontWeight: FontWeight.w800,

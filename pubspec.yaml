@@ -24,6 +24,7 @@ dependencies:
   firebase_messaging: ^16.4.1
   shared_preferences: ^2.3.2
   package_info_plus: ^8.1.2
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +41,9 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/vehicles/
 
   fonts:
     - family: Rubik

@@ -1,8 +1,6 @@
 /// GazelGo модельдері — Supabase кестелерінің Dart көрінісі.
 library;
 
-import 'package:flutter/material.dart';
-
 import 'geo.dart';
 import 'lang.dart';
 
@@ -81,24 +79,10 @@ extension VehicleTypeX on VehicleType {
         VehicleType.minivan => t('Шағын жүк'),
         VehicleType.tractor => t('Қазу·тиеу·тазалау'),
       };
-  /// Көлік түрінің иконкасы — Material Icons жиынынан (эмодзи ЕМЕС: моно-түсті,
-  /// қосымша стиліне сай, кез келген өлшемде анық). Gazelle/Furgon/KamAZ/
-  /// Loader(погрузчик)/Minivan/Tractor нақты сәйкес; Crane/Manipulator/
-  /// Assenizator/Excavator — Material-де дәл техника белгісі жоқ болғандықтан
-  /// ең жақын машина/механизм белгісі. Пиксельге дәл болу үшін кейін SVG-ге
-  /// ауыстыруға болады (assets/vehicles/, flutter_svg) — PUBLISH.md қараңыз.
-  IconData get icon => switch (this) {
-        VehicleType.gazelle => Icons.airport_shuttle,
-        VehicleType.furgon => Icons.local_shipping,
-        VehicleType.kamaz => Icons.fire_truck,
-        VehicleType.crane => Icons.construction,
-        VehicleType.manipulator => Icons.precision_manufacturing,
-        VehicleType.assenizator => Icons.water_drop,
-        VehicleType.excavator => Icons.engineering,
-        VehicleType.loader => Icons.forklift,
-        VehicleType.minivan => Icons.directions_car,
-        VehicleType.tractor => Icons.agriculture,
-      };
+  /// Көлік түрінің иконкасы — әр түрдің НАҚТЫ силуэті бар SVG (эмодзи де,
+  /// жуықтаған Material белгісі де ЕМЕС). Файлдар `assets/vehicles/<name>.svg`,
+  /// бір түсті (currentColor) — UI жағында [vehicleIcon] арқылы боялады.
+  String get asset => 'assets/vehicles/$name.svg';
 }
 
 // ---------- Vehicle size ----------

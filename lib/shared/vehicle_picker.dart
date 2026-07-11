@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../core/lang.dart';
 import '../core/models.dart';
@@ -10,10 +11,22 @@ String vehicleCallLabel(VehicleType v) => Lang.current.value == AppLang.ru
     ? 'Вызвать ${v.label}'
     : '${v.label} шақыру';
 
+/// Көлік түрінің силуэт-иконкасы (SVG). [color] берілсе — сол түске боялады.
+Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) =>
+    SvgPicture.asset(
+      v.asset,
+      width: size,
+      height: size,
+      colorFilter:
+          color == null ? null : ColorFilter.mode(color, BlendMode.srcIn),
+    );
+
 /// Көлік түрін таңдау каруселі (indriver стилі): көлденең айналатын
-/// шаршы карточкалар — эмодзи + атауы ғана (қосымша сипаттама жоқ).
-/// Таңдалғаны қара фонда сары жиекпен ерекшеленеді. Клиент заказ бергенде
-/// де, орындаушы тіркелгенде де қолданылады.
+/// шаршы карточкалар — силуэт-иконка + атауы. Таңдалғаны қара фонда сары
+/// жиекпен ерекшеленеді. Атауы FittedBox арқылы карточкаға ӘРҚАШАН сыяды —
+/// «…» болып қиылмайды, екінші жолға түспейді, жүйе шрифті үлкейтілсе де
+/// (accessibility text scale) рамкадан аспайды. Клиент заказ бергенде де,
+/// орындаушы тіркелгенде де қолданылады.
 class VehicleTypeCarousel extends StatefulWidget {
   final VehicleType selected;
   final ValueChanged<VehicleType> onChanged;
@@ -28,8 +41,8 @@ class VehicleTypeCarousel extends StatefulWidget {
 }
 
 class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
-  static const _cardW = 74.0;
-  static const _cardH = 68.0;
+  static const _cardW = 82.0;
+  static const _cardH = 72.0;
   static const _gap = 8.0;
 
   late final ScrollController _scroll = ScrollController(
@@ -59,16 +72,17 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
         itemBuilder: (_, i) {
           final v = VehicleType.values[i];
           final sel = v == widget.selected;
+          final fg = sel ? Colors.white : Gz.ink;
           return GestureDetector(
             onTap: () => widget.onChanged(v),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               width: _cardW,
               height: _cardH,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
               decoration: BoxDecoration(
                 color: sel ? Gz.ink : Gz.bg,
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
@@ -77,19 +91,26 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(v.icon,
-                      size: 24, color: sel ? Colors.white : Gz.ink),
-                  const SizedBox(height: 4),
-                  Text(
-                    v.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10,
-                      height: 1.1,
-                      fontWeight: FontWeight.w800,
-                      color: sel ? Colors.white : Gz.ink,
+                  vehicleIcon(v, size: 27, color: fg),
+                  const SizedBox(height: 6),
+                  // FittedBox: атау рамкаға сыймаса — кішірейеді (қиылмайды,
+                  // екінші жолға түспейді). Тұрақты өлшемді box (ені + биіктігі)
+                  // жүйе шрифті масштабы үлкейгенде де асып кетуді болдырмайды.
+                  SizedBox(
+                    width: double.infinity,
+                    height: 14,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        v.label,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: fg,
+                        ),
+                      ),
                     ),
                   ),
                 ],

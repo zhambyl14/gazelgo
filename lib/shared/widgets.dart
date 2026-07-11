@@ -6,6 +6,7 @@ import '../core/models.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
 import 'map_widgets.dart';
+import 'vehicle_picker.dart';
 
 /// Async-әрекеті бар батырма: басқанда spinner көрсетеді.
 class BusyButton extends StatefulWidget {
@@ -452,7 +453,9 @@ class OrderCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(order.vehicleType.icon, order.vehicleType.label),
+                  _tag(Icons.local_shipping, order.vehicleType.label,
+                      leading: vehicleIcon(order.vehicleType,
+                          size: 14, color: Gz.textSecondary)),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -486,7 +489,8 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(IconData icon, String text, {Color? color}) => Container(
+  Widget _tag(IconData icon, String text, {Color? color, Widget? leading}) =>
+      Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: color == null ? Gz.bg : color.withValues(alpha: 0.12),
@@ -495,7 +499,7 @@ class OrderCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color ?? Gz.textSecondary),
+            leading ?? Icon(icon, size: 14, color: color ?? Gz.textSecondary),
             const SizedBox(width: 4),
             Text(text,
                 style: TextStyle(
