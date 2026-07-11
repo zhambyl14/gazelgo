@@ -172,79 +172,38 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(t('Тарифтер'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 17)),
-                  const Spacer(),
-                  if (s.isNight)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Gz.night.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.nightlight_round,
-                              size: 14, color: Gz.night),
-                          const SizedBox(width: 4),
-                          Text(t('Түнгі баға'),
-                              style: const TextStyle(
-                                  color: Gz.night,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+              Text(t('Тариф'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 4),
               if (s.trialActive)
                 _TrialBanner(trialUntil: s.trialUntil),
               const SizedBox(height: 4),
               Text(
-                t('Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
-                        'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
-                        'тариф жабылады, қайтадан сатып аласыз.') +
-                    (s.isNight ? '\n${t('Қазір түнгі баға (20:00–08:00).')}' : ''),
+                t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
+                    '1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
+                    'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
+                    'тариф жабылады, қайтадан сатып аласыз.'),
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 12),
               _TariffCard(
-                title: t('Қарапайым тариф'),
+                title: t('Тариф'),
                 color: Gz.blue,
                 icon: Icons.local_shipping_outlined,
                 description:
                     t('1 ауысым · 10 заказға дейін. Клиент бағасын өзі қояды — сіз '
                         'келісесіз немесе өз бағаңызды ұсынасыз.'),
-                price: s.priceSimple,
-                active: s.simpleActive,
-                ordersLeft: s.simpleLeft,
-                until: s.simpleUntil,
-                onBuy: () => _buy(context, ref, 'simple', s.priceSimple),
-              ),
-              const SizedBox(height: 10),
-              _TariffCard(
-                title: 'VIP ${t('тариф')}',
-                color: Gz.violet,
-                icon: Icons.workspace_premium_outlined,
-                description:
-                    t('1 ауысым · 10 заказға дейін. Жұмыс тәртібі Простоймен '
-                        'бірдей — клиент бағасын өзі қояды. Премиум деңгей.'),
-                price: s.priceVip,
-                active: s.vipActive,
-                ordersLeft: s.vipLeft,
-                until: s.vipUntil,
-                onBuy: () => _buy(context, ref, 'vip', s.priceVip),
+                price: s.price,
+                active: s.hasTariff,
+                ordersLeft: s.ordersLeft,
+                until: s.until,
+                onBuy: () => _buy(context, ref, s.price),
               ),
               const SizedBox(height: 10),
               Text(
-                t('Простой мен VIP — бөлек тарифтер. Әрқайсысының ауысымы да, '
-                    '10 заказ лимиті де өз тұсында саналады.'),
+                t('Жаңа тіркелген орындаушыларға алғашқы 1 ай тегін — тариф '
+                    'сатып алу қажет емес.'),
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 24),
@@ -255,23 +214,19 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _buy(
-      BuildContext context, WidgetRef ref, String kind, int price) async {
-    final isVip = kind == 'vip';
+  Future<void> _buy(BuildContext context, WidgetRef ref, int price) async {
     final ok = await confirmDialog(
       context,
-      title: isVip ? 'VIP ${t('тариф')}' : t('Қарапайым тариф'),
+      title: t('Тариф'),
       message: '${t('1 ауысым (12 сағат), 10 заказға дейін:')} ${fmtT(price)}.\n'
           '${t('Баланстан шешіледі. Жалғастырамыз ба?')}',
       confirmLabel: t('Иә, сатып аламын'),
-      confirmColor: isVip ? Gz.violet : Gz.blue,
-      icon: isVip
-          ? Icons.workspace_premium_outlined
-          : Icons.local_shipping_outlined,
+      confirmColor: Gz.blue,
+      icon: Icons.local_shipping_outlined,
     );
     if (!ok || !context.mounted) return;
     try {
-      await Repo.buyTariff(kind);
+      await Repo.buyTariff('simple');
       ref.invalidate(executorStatsStreamProvider);
       ref.invalidate(executorFeedStreamProvider);
       if (context.mounted) {
@@ -283,7 +238,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Тегін триал баннері (§7): расталған соң 24 сағат шексіз Простой заказ.
+/// Тегін кезең баннері (§7): жаңа расталған орындаушыға 1 ай шексіз заказ.
 class _TrialBanner extends StatelessWidget {
   final DateTime? trialUntil;
   const _TrialBanner({required this.trialUntil});
@@ -306,8 +261,8 @@ class _TrialBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${t('Тегін кезең белсенді —')} ${fmtTime(trialUntil)} '
-              '${t('дейін шексіз Простой заказ')}',
+              '${t('Тегін кезең белсенді —')} ${fmtDate(trialUntil)} '
+              '${t('дейін шексіз заказ (жаңа орындаушыға 1 ай тегін)')}',
               style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12.5,

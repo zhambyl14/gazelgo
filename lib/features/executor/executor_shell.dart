@@ -48,7 +48,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
   Future<void> _checkNewOrders() async {
     try {
       final stats = await Repo.executorStats();
-      if (!stats.simpleActive || !stats.onLine || stats.busyOrderId != null) {
+      if (!stats.hasTariff || !stats.onLine || stats.busyOrderId != null) {
         return;
       }
       final ep = await Repo.myExecutorProfile();
@@ -58,7 +58,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
           .select('id')
           .eq('status', 'searching')
           .eq('type', 'bidding')
-          .eq('size', ep.vehicleSize.db)
+          .eq('vehicle_type', ep.vehicleType.db)
           .order('created_at', ascending: false)
           .limit(10);
       final ids = (rows as List).map((m) => m['id'] as String).toList();

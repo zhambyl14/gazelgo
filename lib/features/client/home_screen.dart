@@ -12,6 +12,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
+import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
 import '../profile/profile_screen.dart';
 import 'address_picker.dart';
@@ -33,6 +34,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   PickedAddress? _from;
   bool _resolvingFrom = true;
   PickedAddress? _to;
+  VehicleType _vehicle = VehicleType.gazelle;
 
   @override
   void initState() {
@@ -130,7 +132,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     if (!mounted) return;
 
     await Navigator.of(context).push(
-      slideUpRoute(CreateOrderScreen(from: _from!, to: _to!)),
+      slideUpRoute(
+          CreateOrderScreen(from: _from!, to: _to!, vehicleType: _vehicle)),
     );
   }
 
@@ -261,7 +264,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(t('Газель керек пе?'),
+                                Text(t('Қандай көлік керек?'),
                                     style: const TextStyle(
                                         fontSize: 19,
                                         fontWeight: FontWeight.w900)),
@@ -276,7 +279,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      // көлік түрін таңдау — заказ тек сол түрдегі
+                      // орындаушыларға көрінеді
+                      VehicleTypeCarousel(
+                        selected: _vehicle,
+                        onChanged: (v) => setState(() => _vehicle = v),
+                      ),
+                      const SizedBox(height: 12),
                       // Қайдан — картамен байланысты, бірақ түртіп сәл өзгертуге болады
                       InkWell(
                         onTap: _resolvingFrom ? null : _editFrom,
@@ -362,7 +372,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         onPressed: (_from == null || _resolvingFrom)
                             ? null
                             : (_to == null ? _pickTo : _maybeContinue),
-                        child: Text(t('Газель шақыру')),
+                        child: Text(vehicleCallLabel(_vehicle)),
                       ),
                     ],
                   ),

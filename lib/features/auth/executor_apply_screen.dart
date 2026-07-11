@@ -9,12 +9,13 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
 
-/// Газелист өтінімі: құжаттар (права + селфі, азаматтыққа қарай жеке
-/// куәлік/шетел паспорты + селфі, техпаспорт + селфі), көлік деректері
-/// (маркасы, моделі, ЖЫЛЫ, гос нөмір) және 4 таңбаланған көлік фотосы.
-/// Газель ӨЛШЕМІ сұралмайды.
+/// Орындаушы өтінімі: КӨЛІК ТҮРІ (газель, фургон, КамАЗ…), құжаттар
+/// (права + селфі, азаматтыққа қарай жеке куәлік/шетел паспорты + селфі,
+/// техпаспорт + селфі), көлік деректері (маркасы, моделі, ЖЫЛЫ, гос нөмір)
+/// және 4 таңбаланған көлік фотосы. Заказдар көлік түріне қарай бөлінеді.
 class ExecutorApplyScreen extends ConsumerStatefulWidget {
   final ExecutorProfile? existing; // қайта жіберу кезінде
   const ExecutorApplyScreen({super.key, this.existing});
@@ -42,6 +43,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       TextEditingController(text: widget.existing?.vehiclePlate ?? '');
   late String? _city = widget.existing?.city;
   late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
+  late VehicleType _vehicleType =
+      widget.existing?.vehicleType ?? VehicleType.gazelle;
 
   // Құжаттар
   final _license = _PickedDoc();          // жүргізуші куәлігі (права)
@@ -197,6 +200,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         );
       } else {
         await Repo.submitExecutorApplication(
+          vehicleType: _vehicleType,
           brand: _brand.text,
           model: _model.text,
           year: int.tryParse(_year.text),
@@ -395,6 +399,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                Text(t('Көлік түрі'),
+                    style: const
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 6),
+                Text(
+                  t('Тек осы түрге берілген заказдарды көресіз — дұрыс таңдаңыз.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 10),
+                VehicleTypeCarousel(
+                  selected: _vehicleType,
+                  onChanged: (v) => setState(() => _vehicleType = v),
+                ),
+                const SizedBox(height: 20),
                 Text(t('Көлік туралы'),
                     style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -446,11 +464,6 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     ),
                   ),
                 ]),
-                const SizedBox(height: 6),
-                Text(
-                  t('Көлік жылы маңызды: VIP тарифті тек жаңарақ көлікке қосуға болады.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
-                ),
                 const SizedBox(height: 20),
                 Text(t('Құжаттар'),
                     style: const

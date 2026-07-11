@@ -275,8 +275,9 @@ class Repo {
     return m == null ? null : ExecutorProfile.fromMap(m);
   }
 
-  /// Орындаушы өтінімі (жаңа немесе қайта жіберу). Газель ӨЛШЕМІ сұралмайды.
+  /// Орындаушы өтінімі (жаңа немесе қайта жіберу). Көлік ТҮРІ таңдалады.
   static Future<void> submitExecutorApplication({
+    required VehicleType vehicleType,
     required String brand,
     required String model,
     int? year,
@@ -298,6 +299,7 @@ class Repo {
     if (id == null) throw Exception('AUTH');
     final data = {
       'vehicle_size': 'small', // өлшем ескерілмейді (кестеде not-null болғандықтан)
+      'vehicle_type': vehicleType.db,
       'vehicle_brand': brand.trim(),
       'vehicle_model': model.trim(),
       'vehicle_year': year,
@@ -414,7 +416,7 @@ class Repo {
           .toInt();
 
   static Future<String> createOrder({
-    required String tariff, // simple | vip — заказ санаты
+    required VehicleType vehicleType, // қажет көлік түрі
     required String fromAddress,
     required double fromLat,
     required double fromLng,
@@ -445,7 +447,7 @@ class Repo {
       'p_photos': photos,
       'p_from_city': fromCity,
       'p_to_city': toCity,
-      'p_tariff': tariff,
+      'p_vehicle_type': vehicleType.db,
     });
     return (res as Map)['id'] as String;
   }

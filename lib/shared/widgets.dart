@@ -425,11 +425,6 @@ class OrderCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (order.isVip) ...[
-                    const Icon(Icons.workspace_premium,
-                        size: 18, color: Gz.violet),
-                    const SizedBox(width: 4),
-                  ],
                   Expanded(
                     child: Text(
                       fmtT(order.displayPrice),
@@ -458,9 +453,8 @@ class OrderCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   _tag(
-                    order.isVip ? Icons.workspace_premium : Icons.local_shipping_outlined,
-                    order.isVip ? 'VIP' : t('Простой'),
-                    color: order.isVip ? Gz.violet : null,
+                    Icons.local_shipping_outlined,
+                    '${order.vehicleType.emoji} ${order.vehicleType.label}',
                   ),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(

@@ -10,8 +10,8 @@ import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'executor_order_screen.dart';
 
-/// Заказдар лентасы (басты бетке ендірілетін дене). БІР тізім — Простой мен
-/// VIP бөлек табтарда емес; VIP заказдар жоғарыда әрі ерекше көрінеді.
+/// Заказдар лентасы (басты бетке ендірілетін дене). Сервер орындаушының
+/// КӨЛІК ТҮРІНЕ сай заказдарды ғана береді (executor_feed → exec_can_take).
 /// Карточкалар ықшам (аз орын алады); басқанда ғана карта + «Келісу/Өз бағам»
 /// ашылады.
 class ExecutorFeedBody extends ConsumerStatefulWidget {
@@ -45,20 +45,14 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
               icon: Icons.power_settings_new,
               title: t('Тарифіңіз жоқ'),
               subtitle: t('Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
-                  '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).'),
+                  '(1 ауысым, 10 заказға дейін).'),
             ),
           ]);
         }
 
-        final all = feedAsync.value ?? const <Order>[];
-        // Орындаушы қай тарифке тиесілі заказдарды ғана көреді.
-        final eligible = all.where((o) {
-          if (o.tariff == 'vip') return stats.vipActive;
-          return stats.simpleActive;
-        }).toList();
-        // VIP жоғарыда, сосын жаңалары бірінші.
+        // Сервер көлік түрі мен қала фильтрін өзі жасайды — жаңалары бірінші.
+        final eligible = [...feedAsync.value ?? const <Order>[]];
         eligible.sort((a, b) {
-          if (a.isVip != b.isVip) return a.isVip ? -1 : 1;
           final ca = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
           final cb = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
           return cb.compareTo(ca);
@@ -145,7 +139,6 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
 
 /// Ықшам заказ карточкасы: клиент (аватар+рейтинг), баға, маршрут, тегтер,
 /// жүк (қысқа). Карта мен батырмалар ЖОҚ — олар басқанда парақта ашылады.
-/// VIP заказ ерекше (күлгін жиек + белгі) әрі тізімде жоғары тұрады.
 class _FeedCard extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
@@ -153,9 +146,8 @@ class _FeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vip = order.isVip;
     return Material(
-      color: vip ? const Color(0xFFF7F2FF) : Gz.surface,
+      color: Gz.surface,
       borderRadius: BorderRadius.circular(Gz.radius),
       child: InkWell(
         borderRadius: BorderRadius.circular(Gz.radius),
@@ -164,48 +156,21 @@ class _FeedCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Gz.radius),
-            border: Border.all(
-              color: vip ? Gz.violet.withValues(alpha: 0.55) : Gz.border,
-              width: vip ? 1.5 : 1,
-            ),
+            border: Border.all(color: Gz.border, width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  if (vip) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Gz.violet,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.workspace_premium,
-                              size: 12, color: Colors.white),
-                          SizedBox(width: 3),
-                          Text('VIP',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800)),
-                        ],
-                      ), // VIP - халықаралық белгі, аудармасыз
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   Expanded(child: _ClientMini(clientId: order.clientId)),
                   Text(
                     fmtT(order.displayPrice),
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
-                        color: vip ? Gz.violet : Gz.ink),
+                        color: Gz.ink),
                   ),
                 ],
               ),
@@ -216,6 +181,8 @@ class _FeedCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
+                  _tag(Icons.local_shipping_outlined,
+                      '${order.vehicleType.emoji} ${order.vehicleType.label}'),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -371,21 +338,17 @@ class _OrderSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              if (o.isVip) ...[
-                const Icon(Icons.workspace_premium, size: 20, color: Gz.violet),
-                const SizedBox(width: 6),
-              ],
               Expanded(
                 child: Text(fmtT(o.displayPrice),
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: o.isVip ? Gz.violet : Gz.ink)),
+                        color: Gz.ink)),
               ),
-              Text(o.isVip ? 'VIP' : t('Простой'),
-                  style: TextStyle(
+              Text('${o.vehicleType.emoji} ${o.vehicleType.label}',
+                  style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: o.isVip ? Gz.violet : Gz.textSecondary)),
+                      color: Gz.textSecondary)),
             ],
           ),
           const SizedBox(height: 12),

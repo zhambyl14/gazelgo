@@ -24,6 +24,75 @@ double _d(dynamic v) {
   return num.tryParse(v.toString())?.toDouble() ?? 0;
 }
 
+// ---------- Vehicle type (көлік түрі) ----------
+/// Заказ бен орындаушы осы түр бойынша сәйкестендіріледі: клиент газельге
+/// заказ берсе — оны тек газелист көреді (indriver-дегі көлік таңдау сияқты).
+enum VehicleType {
+  gazelle,
+  furgon,
+  kamaz,
+  crane,
+  manipulator,
+  assenizator,
+  excavator,
+  loader,
+  minivan,
+  tractor,
+}
+
+VehicleType vehicleTypeFrom(String? s) => switch (s) {
+      'furgon' => VehicleType.furgon,
+      'kamaz' => VehicleType.kamaz,
+      'crane' => VehicleType.crane,
+      'manipulator' => VehicleType.manipulator,
+      'assenizator' => VehicleType.assenizator,
+      'excavator' => VehicleType.excavator,
+      'loader' => VehicleType.loader,
+      'minivan' => VehicleType.minivan,
+      'tractor' => VehicleType.tractor,
+      _ => VehicleType.gazelle,
+    };
+
+extension VehicleTypeX on VehicleType {
+  String get db => name;
+  String get label => switch (this) {
+        VehicleType.gazelle => t('Газель'),
+        VehicleType.furgon => t('Фургон'),
+        VehicleType.kamaz => t('КамАЗ'),
+        VehicleType.crane => t('Кран'),
+        VehicleType.manipulator => t('Манипулятор'),
+        VehicleType.assenizator => t('Ассенизатор'),
+        VehicleType.excavator => t('Экскаватор'),
+        VehicleType.loader => t('Погрузчик'),
+        VehicleType.minivan => t('Мини вэн'),
+        VehicleType.tractor => t('Трактор 3в1'),
+      };
+  String get hint => switch (this) {
+        VehicleType.gazelle => t('1.5–3 т жүк'),
+        VehicleType.furgon => t('Жабық қорап'),
+        VehicleType.kamaz => t('Ірі жүк, 10+ т'),
+        VehicleType.crane => t('Автокран'),
+        VehicleType.manipulator => t('Кран-борт'),
+        VehicleType.assenizator => t('Сұйық қалдық'),
+        VehicleType.excavator => t('Қазу жұмысы'),
+        VehicleType.loader => t('Тиеу-түсіру'),
+        VehicleType.minivan => t('Шағын жүк'),
+        VehicleType.tractor => t('Қазу·тиеу·тазалау'),
+      };
+  String get emoji => switch (this) {
+        VehicleType.gazelle => '🚚',
+        VehicleType.furgon => '🚐',
+        VehicleType.kamaz => '🚛',
+        VehicleType.crane => '🏗️',
+        VehicleType.manipulator => '🦾',
+        VehicleType.assenizator => '🛢️',
+        VehicleType.excavator => '⛏️',
+        VehicleType.loader => '📦',
+        VehicleType.minivan => '🚙',
+        VehicleType.tractor => '🚜',
+      };
+}
+
 // ---------- Vehicle size ----------
 enum VehicleSize { small, medium, large }
 
@@ -117,6 +186,7 @@ class ExecutorProfile {
   final String userId;
   final String status; // pending | approved | rejected | blocked
   final VehicleSize vehicleSize;
+  final VehicleType vehicleType;
   final String vehicleBrand;
   final String vehicleModel;
   final int? vehicleYear;
@@ -148,6 +218,7 @@ class ExecutorProfile {
         status = m['status'] as String? ?? 'pending',
         city = m['city'] as String?,
         vehicleSize = sizeFrom(m['vehicle_size'] as String?),
+        vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
         vehicleBrand = m['vehicle_brand'] as String? ?? '',
         vehicleModel = m['vehicle_model'] as String? ?? '',
         vehicleYear = m['vehicle_year'] == null ? null : _i(m['vehicle_year']),
@@ -174,13 +245,13 @@ class ExecutorProfile {
         orderPushEnabled = m['order_push_enabled'] as bool? ?? true,
         createdAt = _dt(m['created_at']);
 
-  /// Құжат өрісінің қазақша атауы.
+  /// Құжат өрісінің атауы (ағымдағы тілде).
   static String docFieldLabel(String f) => switch (f) {
-        'id' => 'Жеке куәлік',
-        'passport' => 'Шетел паспорты',
-        'license' => 'Жүргізуші куәлігі',
-        'tech' => 'Техпаспорт',
-        'photos' => 'Көлік фотолары',
+        'id' => t('Жеке куәлік'),
+        'passport' => t('Шетел паспорты'),
+        'license' => t('Жүргізуші куәлігі'),
+        'tech' => t('Техпаспорт'),
+        'photos' => t('Көлік фотолары'),
         _ => f,
       };
 
@@ -195,7 +266,8 @@ class Order {
   final String id;
   final String clientId;
   final String type; // bidding (барлығы)
-  final String tariff; // simple | vip — заказ санаты
+  final String tariff; // simple — бірыңғай (ескі жазбаларда vip болуы мүмкін)
+  final VehicleType vehicleType; // қажет көлік түрі
   final String status;
   final String fromAddress, toAddress;
   final String? fromCity, toCity;
@@ -218,6 +290,7 @@ class Order {
         clientId = m['client_id'] as String,
         type = m['type'] as String,
         tariff = m['tariff'] as String? ?? 'simple',
+        vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
         status = m['status'] as String,
         fromAddress = m['from_address'] as String? ?? '',
         toAddress = m['to_address'] as String? ?? '',
@@ -392,10 +465,10 @@ class SupportMessage {
 }
 
 // ---------- Executor stats (RPC executor_stats) ----------
-/// Тариф = 1 ауысым (12 сағ), сол ауысымда макс 10 заказ. Простой мен VIP
-/// бөлек: [simpleLeft]/[vipLeft] — сол тарифтің АҒЫМДАҒЫ ауысымында қалған заказ,
-/// [simpleUntil]/[vipUntil] — сол ауысымның аяқталу уақыты. [trialUntil] — тегін
-/// 24 сағаттық триал (§7) аяқталуы.
+/// Тариф = 1 ауысым (12 сағ), сол ауысымда макс 10 заказ. Тариф бірыңғай:
+/// [ordersLeft] — ағымдағы ауысымда қалған заказ, [until] — ауысымның аяқталу
+/// уақыты, [price] — тариф бағасы (күндіз де, түнде де бірдей). [trialUntil] —
+/// жаңа орындаушының 1 айлық тегін кезеңінің (§7) аяқталуы.
 class ExecutorStats {
   final int balance;
   final int totalEarned;
@@ -403,18 +476,13 @@ class ExecutorStats {
   final int month;
   final String? busyOrderId;
   final int ordersLeft;
-  final int simpleLeft;
-  final int vipLeft;
-  final DateTime? simpleUntil;
-  final DateTime? vipUntil;
+  final DateTime? until;
   final int? vehicleYear;
+  final VehicleType vehicleType;
   final DateTime? trialUntil;
   final bool hasTariff;
-  final bool simpleActive;
-  final bool vipActive;
   final bool isNight;
-  final int priceSimple;
-  final int priceVip;
+  final int price;
   final bool onLine;
   final String? city;
 
@@ -425,23 +493,15 @@ class ExecutorStats {
         month = _i(m['month']),
         busyOrderId = m['busy_order_id'] as String?,
         ordersLeft = _i(m['orders_left']),
-        simpleLeft = _i(m['simple_left']),
-        vipLeft = _i(m['vip_left']),
-        simpleUntil = _dt(m['simple_until']),
-        vipUntil = _dt(m['vip_until']),
+        // жаңа RPC 'until' қайтарады; ескісінде simple_until болатын
+        until = _dt(m['until'] ?? m['simple_until']),
         vehicleYear = m['vehicle_year'] == null ? null : _i(m['vehicle_year']),
+        vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
         trialUntil = _dt(m['trial_until']),
-        // жаңа RPC bool қайтарады; ескі RPC- те simple_until болса — соған сүйенеміз
         hasTariff = m['has_tariff'] as bool? ??
-            (_dt(m['simple_until'])?.isAfter(DateTime.now()) ?? false) ||
-                (_dt(m['vip_until'])?.isAfter(DateTime.now()) ?? false),
-        simpleActive = m['simple_active'] as bool? ??
-            (_dt(m['simple_until'])?.isAfter(DateTime.now()) ?? false),
-        vipActive = m['vip_active'] as bool? ??
-            (_dt(m['vip_until'])?.isAfter(DateTime.now()) ?? false),
+            (_dt(m['trial_until'])?.isAfter(DateTime.now()) ?? false),
         isNight = m['is_night'] as bool? ?? false,
-        priceSimple = _i(m['price_simple']),
-        priceVip = _i(m['price_vip']),
+        price = _i(m['price'] ?? m['price_simple']),
         onLine = m['on_line'] as bool? ?? true,
         city = m['city'] as String?;
 

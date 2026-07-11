@@ -233,9 +233,7 @@ class _LineControlBar extends ConsumerWidget {
   String _tariffLabel(ExecutorStats s) {
     final parts = <String>[];
     if (s.trialActive) parts.add(t('Тегін кезең'));
-    // Әр тариф өз лимитімен бөлек көрсетіледі (қосылмайды).
-    if (s.simpleActive) parts.add('${t('Простой')} ${s.simpleLeft}/10');
-    if (s.vipActive) parts.add('VIP ${s.vipLeft}/10');
+    if (s.ordersLeft > 0) parts.add('${t('Тариф')} ${s.ordersLeft}/10');
     if (parts.isEmpty) return t('Тариф жоқ');
     return parts.join(' · ');
   }

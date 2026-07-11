@@ -139,7 +139,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)
                           InfoRow(t('Түсініктеме'), o.comment),
-                      InfoRow(t('Түрі'), o.isVip ? 'VIP' : t('Простой')),
+                      InfoRow(t('Көлік'),
+                          '${o.vehicleType.emoji} ${o.vehicleType.label}'),
                       if (o.distanceKm > 0)
                         InfoRow(t('Қашықтық'),
                             '${o.distanceKm.toStringAsFixed(1)} км'),

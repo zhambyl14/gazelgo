@@ -123,7 +123,8 @@ class _LineScreenState extends State<LineScreen> {
                               style: const TextStyle(
                                   fontWeight: FontWeight.w800)),
                           Text(
-                            sizeFrom(e['vehicle_size'] as String?).label,
+                            vehicleTypeFrom(e['vehicle_type'] as String?)
+                                .label,
                             style: const TextStyle(
                                 fontSize: 12, color: Gz.textSecondary),
                           ),
@@ -131,9 +132,11 @@ class _LineScreenState extends State<LineScreen> {
                       ),
                     ),
                     Wrap(spacing: 4, children: [
-                      if (e['simple_on'] == true)
-                        _chip(t('Қарапайым'), Gz.blue),
-                      if (e['vip_on'] == true) _chip('VIP', Gz.violet),
+                      if (e['trial_on'] == true)
+                        _chip(t('Тегін кезең'), Gz.green)
+                      else if (e['tariff_on'] == true ||
+                          e['simple_on'] == true)
+                        _chip(t('Тариф'), Gz.blue),
                       if (e['on_line'] == false)
                         _chip(t('Демалыста'), Gz.textSecondary)
                       else if (e['busy_order_id'] != null)
