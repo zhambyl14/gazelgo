@@ -1,6 +1,8 @@
 /// GazelGo модельдері — Supabase кестелерінің Dart көрінісі.
 library;
 
+import 'package:flutter/material.dart';
+
 import 'geo.dart';
 import 'lang.dart';
 
@@ -79,21 +81,23 @@ extension VehicleTypeX on VehicleType {
         VehicleType.minivan => t('Шағын жүк'),
         VehicleType.tractor => t('Қазу·тиеу·тазалау'),
       };
-  /// Барлық белгі — көлік/арнайы техника суреті (эмодзи), құрал/зат емес
-  /// (мыс. қол, бөшке, кетпен емес). Unicode-де кран/экскаватор/погрузчик
-  /// сияқты арнайы техникаға арнайы белгі жоқ болғандықтан, ең жақын
-  /// көлік-тектес белгілер қолданылады (кейбіреуі қайталанады).
-  String get emoji => switch (this) {
-        VehicleType.gazelle => '🚚',
-        VehicleType.furgon => '🚐',
-        VehicleType.kamaz => '🚛',
-        VehicleType.crane => '🏗️',
-        VehicleType.manipulator => '🛻',
-        VehicleType.assenizator => '🚒',
-        VehicleType.excavator => '🚜',
-        VehicleType.loader => '🚚',
-        VehicleType.minivan => '🚙',
-        VehicleType.tractor => '🚜',
+  /// Көлік түрінің иконкасы — Material Icons жиынынан (эмодзи ЕМЕС: моно-түсті,
+  /// қосымша стиліне сай, кез келген өлшемде анық). Gazelle/Furgon/KamAZ/
+  /// Loader(погрузчик)/Minivan/Tractor нақты сәйкес; Crane/Manipulator/
+  /// Assenizator/Excavator — Material-де дәл техника белгісі жоқ болғандықтан
+  /// ең жақын машина/механизм белгісі. Пиксельге дәл болу үшін кейін SVG-ге
+  /// ауыстыруға болады (assets/vehicles/, flutter_svg) — PUBLISH.md қараңыз.
+  IconData get icon => switch (this) {
+        VehicleType.gazelle => Icons.airport_shuttle,
+        VehicleType.furgon => Icons.local_shipping,
+        VehicleType.kamaz => Icons.fire_truck,
+        VehicleType.crane => Icons.construction,
+        VehicleType.manipulator => Icons.precision_manufacturing,
+        VehicleType.assenizator => Icons.water_drop,
+        VehicleType.excavator => Icons.engineering,
+        VehicleType.loader => Icons.forklift,
+        VehicleType.minivan => Icons.directions_car,
+        VehicleType.tractor => Icons.agriculture,
       };
 }
 

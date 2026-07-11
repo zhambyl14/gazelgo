@@ -452,10 +452,7 @@ class OrderCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(
-                    Icons.local_shipping_outlined,
-                    '${order.vehicleType.emoji} ${order.vehicleType.label}',
-                  ),
+                  _tag(order.vehicleType.icon, order.vehicleType.label),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity

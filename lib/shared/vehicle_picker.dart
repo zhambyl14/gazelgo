@@ -77,8 +77,9 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(v.emoji, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(height: 3),
+                  Icon(v.icon,
+                      size: 24, color: sel ? Colors.white : Gz.ink),
+                  const SizedBox(height: 4),
                   Text(
                     v.label,
                     textAlign: TextAlign.center,

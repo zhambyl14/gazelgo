@@ -526,8 +526,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                         style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 8),
-                    InfoRow(t('Көлік түрі'),
-                        '${ep.vehicleType.emoji} ${ep.vehicleType.label}'),
+                    InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                     InfoRow(t('Маркасы'), ep.vehicleTitle),
                     if (ep.city != null) InfoRow(t('Қала'), ep.city!),
                     InfoRow(t('Мемнөмір'), ep.vehiclePlate),
