@@ -104,11 +104,33 @@ flutter build appbundle --release   # Play Store үшін .aab
 
 - Apple Developer аккаунты ($99/жыл), Xcode
 - `ios/Runner` bundle id: `kz.gazelgo.app` қойыңыз
-- `ios/Runner/Info.plist`-ке рұқсат мәтіндері керек:
+- `ios/Runner/Info.plist`-ке рұқсат мәтіндері керек (баптары дайын тұр):
   `NSLocationWhenInUseUsageDescription`, `NSCameraUsageDescription`,
-  `NSPhotoLibraryUsageDescription`
+  `NSPhotoLibraryUsageDescription`, `UIBackgroundModes`(remote-notification)
 - `flutter build ipa` → App Store Connect → TestFlight
 - Әзірге iPhone-да тексеру үшін web-нұсқаны қолданыңыз (README қараңыз)
+
+### 2.1 Push-хабарландыруды iOS-та қосу (Android-та бұрыннан жұмыс істейді)
+
+Firebase кілттері екі платформа үшін де толтырылған, Dart коды да
+платформа-тәуелсіз (`lib/core/push.dart`) — бірақ iOS-та push жеткізілу
+үшін тағы **екі қадам** қажет, екеуі де тек Mac/Xcode/Apple Developer
+арқылы жасалады:
+
+1. **APNs кілті**: [Apple Developer](https://developer.apple.com) →
+   Certificates, IDs & Profiles → Keys → жаңа кілт (Apple Push
+   Notifications service) жасап, `.p8` файлды жүктеп алыңыз. Содан кейін
+   Firebase Console → Project settings → Cloud Messaging → **Apple app
+   configuration** → осы `.p8` кілтін (Key ID + Team ID-мен бірге)
+   жүктеңіз. Бұл қадамсыз FCM токен алынғанмен, хабарлама іс жүзінде
+   ЖЕТКІЗІЛМЕЙДІ.
+2. **Xcode capability**: `Runner.xcworkspace`-ті Xcode-та ашып, Runner
+   target → Signing & Capabilities → **+ Capability** → «Push
+   Notifications» қосыңыз (бұл автоматты `Runner.entitlements` файлын
+   жасап, жобаға қосады). `UIBackgroundModes` Info.plist-те дайын тұр.
+
+Осы екеуі жасалмайынша iOS қолданушылары push АЛМАЙДЫ (Android бұрыннан
+жұмыс істейді). Mac табылғанда осы бөлімді орындаңыз.
 
 ## 3. Web (қазір-ақ жариялауға болады)
 
