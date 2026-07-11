@@ -29,6 +29,9 @@ class ClientHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
+  /// Пин мен картаны төменгі панельдің биіктігіне сай жоғары ысыру мөлшері.
+  static const _pinShift = 70.0;
+
   final _map = MapController();
   Timer? _moveDebounce;
   PickedAddress? _from;
@@ -143,43 +146,55 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _map,
-            options: MapOptions(
-              initialCenter: Geo.almaty,
-              initialZoom: 13,
-              onPositionChanged: _onMapMove,
+          // Төменгі панель (көлік каруселімен) енді биік болғандықтан, карта
+          // мен пинді бірге, экранның НАҚ ортасы емес, көрінетін карта
+          // аймағының ортасына сай сәл жоғары ысырамыз (`_pinShift`).
+          // Екеуі бірдей тіктөртбұрышта жатуы МІНДЕТТІ — flutter_map
+          // `camera.center` дәл сол виджеттің геометриялық ортасын
+          // қайтарады, сол себепті пин визуалды жерімен нақты координата
+          // сәйкес келуі үшін FlutterMap-тың өзін де солай ысыру керек.
+          Positioned.fill(
+            bottom: _pinShift * 2,
+            child: FlutterMap(
+              mapController: _map,
+              options: MapOptions(
+                initialCenter: Geo.almaty,
+                initialZoom: 13,
+                onPositionChanged: _onMapMove,
+              ),
+              children: [osmTileLayer()],
             ),
-            children: [osmTileLayer()],
           ),
-          // орталық пин — картаның нақ ортасы = «Қайдан аламыз»
-          IgnorePointer(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedScale(
-                      duration: const Duration(milliseconds: 150),
-                      scale: _resolvingFrom ? 0.85 : 1,
-                      child: const Icon(Icons.location_on,
-                          size: 44,
-                          color: Gz.green,
-                          shadows: [
-                            Shadow(color: Colors.black38, blurRadius: 8)
-                          ]),
-                    ),
-                    Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.only(top: 2),
-                      decoration: const BoxDecoration(
-                        color: Colors.black26,
-                        shape: BoxShape.circle,
+          Positioned.fill(
+            bottom: _pinShift * 2,
+            child: IgnorePointer(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedScale(
+                        duration: const Duration(milliseconds: 150),
+                        scale: _resolvingFrom ? 0.85 : 1,
+                        child: const Icon(Icons.location_on,
+                            size: 44,
+                            color: Gz.green,
+                            shadows: [
+                              Shadow(color: Colors.black38, blurRadius: 8)
+                            ]),
                       ),
-                    ),
-                  ],
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(top: 2),
+                        decoration: const BoxDecoration(
+                          color: Colors.black26,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

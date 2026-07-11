@@ -11,9 +11,9 @@ String vehicleCallLabel(VehicleType v) => Lang.current.value == AppLang.ru
     : '${v.label} шақыру';
 
 /// Көлік түрін таңдау каруселі (indriver стилі): көлденең айналатын
-/// карточкалар — эмодзи, атауы, қысқа сипаттама. Таңдалғаны қара фонда
-/// сары жиекпен ерекшеленеді. Клиент заказ бергенде де, орындаушы
-/// тіркелгенде де қолданылады.
+/// шаршы карточкалар — эмодзи + атауы ғана (қосымша сипаттама жоқ).
+/// Таңдалғаны қара фонда сары жиекпен ерекшеленеді. Клиент заказ бергенде
+/// де, орындаушы тіркелгенде де қолданылады.
 class VehicleTypeCarousel extends StatefulWidget {
   final VehicleType selected;
   final ValueChanged<VehicleType> onChanged;
@@ -28,7 +28,8 @@ class VehicleTypeCarousel extends StatefulWidget {
 }
 
 class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
-  static const _cardW = 92.0;
+  static const _cardW = 74.0;
+  static const _cardH = 68.0;
   static const _gap = 8.0;
 
   late final ScrollController _scroll = ScrollController(
@@ -48,7 +49,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 98,
+      height: _cardH,
       child: ListView.separated(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
@@ -63,10 +64,11 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               width: _cardW,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              height: _cardH,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               decoration: BoxDecoration(
                 color: sel ? Gz.ink : Gz.bg,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(11),
                 border: Border.all(
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
@@ -75,25 +77,18 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(v.emoji, style: const TextStyle(fontSize: 26)),
-                  const SizedBox(height: 4),
+                  Text(v.emoji, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(height: 3),
                   Text(
                     v.label,
-                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 10,
+                      height: 1.1,
                       fontWeight: FontWeight.w800,
                       color: sel ? Colors.white : Gz.ink,
-                    ),
-                  ),
-                  Text(
-                    v.hint,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      color: sel ? Colors.white60 : Gz.textSecondary,
                     ),
                   ),
                 ],

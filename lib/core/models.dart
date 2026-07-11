@@ -79,15 +79,19 @@ extension VehicleTypeX on VehicleType {
         VehicleType.minivan => t('Шағын жүк'),
         VehicleType.tractor => t('Қазу·тиеу·тазалау'),
       };
+  /// Барлық белгі — көлік/арнайы техника суреті (эмодзи), құрал/зат емес
+  /// (мыс. қол, бөшке, кетпен емес). Unicode-де кран/экскаватор/погрузчик
+  /// сияқты арнайы техникаға арнайы белгі жоқ болғандықтан, ең жақын
+  /// көлік-тектес белгілер қолданылады (кейбіреуі қайталанады).
   String get emoji => switch (this) {
         VehicleType.gazelle => '🚚',
         VehicleType.furgon => '🚐',
         VehicleType.kamaz => '🚛',
         VehicleType.crane => '🏗️',
-        VehicleType.manipulator => '🦾',
-        VehicleType.assenizator => '🛢️',
-        VehicleType.excavator => '⛏️',
-        VehicleType.loader => '📦',
+        VehicleType.manipulator => '🛻',
+        VehicleType.assenizator => '🚒',
+        VehicleType.excavator => '🚜',
+        VehicleType.loader => '🚚',
         VehicleType.minivan => '🚙',
         VehicleType.tractor => '🚜',
       };

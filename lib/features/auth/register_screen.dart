@@ -128,11 +128,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 10),
                     Row(children: [
-                      _roleCard('client', Icons.person_outline, 'Клиент',
-                          'Жүк тасымалдатамын'),
+                      _roleCard('client', Icons.person_outline,
+                          'Тапсырыс беруші', 'Жүк тасымалдатамын'),
                       const SizedBox(width: 10),
                       _roleCard('executor', Icons.local_shipping_outlined,
-                          'Газелист', 'Заказ орындаймын'),
+                          'Тапсырыс орындаушы', 'Заказ орындаймын'),
                     ]),
                     const SizedBox(height: 20),
                     TextFormField(
@@ -261,9 +261,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(width: 9),
                             Expanded(
                               child: Text(
-                                t('Газелист тіркелген соң көлік деректері мен '
-                                'құжаттарды толтырады — өтінімді модератор '
-                                'тексереді.'),
+                                t('Тапсырыс орындаушы тіркелген соң көлік '
+                                'деректері мен құжаттарды толтырады — '
+                                'өтінімді модератор тексереді.'),
                                 style: const TextStyle(
                                     color: Color(0xFF8A6D00),
                                     fontSize: 12,

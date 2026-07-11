@@ -350,7 +350,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               TextField(
                 controller: _cargo,
                 decoration: InputDecoration(
-                  hintText: t('Не тасимыз? (мыс: диван, тоңазытқыш, көшу)'),
+                  labelText: t('Заказ туралы толығырақ'),
+                  hintText: t('мыс: диван, тоңазытқыш, көшу'),
                   prefixIcon: const Icon(Icons.inventory_2_outlined),
                 ),
               ),

@@ -294,7 +294,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     final resubmit = widget.existing != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(resubmit ? t('Өтінімді қайта жіберу') : t('Газелист өтінімі')),
+        title: Text(resubmit
+            ? t('Өтінімді қайта жіберу')
+            : t('Тапсырыс орындаушы өтінімі')),
         actions: [
           if (!resubmit)
             IconButton(
@@ -421,7 +423,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _brand,
-                      decoration: InputDecoration(hintText: t('Маркасы')),
+                      decoration: InputDecoration(labelText: t('Маркасы')),
                       validator: (v) =>
                           (v == null || v.trim().isEmpty) ? t('Қажет') : null,
                     ),
@@ -430,7 +432,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _model,
-                      decoration: InputDecoration(hintText: t('Моделі')),
+                      decoration: InputDecoration(labelText: t('Моделі')),
                     ),
                   ),
                 ]),
@@ -440,7 +442,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: TextFormField(
                       controller: _year,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(hintText: t('Шығарылған жылы')),
+                      decoration: InputDecoration(labelText: t('Шығарылған жылы')),
                       validator: (v) {
                         final y = int.tryParse(v?.trim() ?? '');
                         if (y == null || y < 1980 || y > DateTime.now().year + 1) {
@@ -457,7 +459,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       controller: _plate,
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
-                          hintText: t('Мемнөмір (123 ABC 02)')),
+                          labelText: t('Мемнөмір'),
+                          hintText: '123 ABC 02'),
                       validator: (v) => (v == null || v.trim().length < 4)
                           ? t('Мемнөмір қажет')
                           : null,

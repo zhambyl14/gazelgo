@@ -385,6 +385,18 @@ class Repo {
     return map;
   }
 
+  /// Мәжбүрлі жаңарту баптауы (0030) — авторизациясыз да шақырылады
+  /// (кіру экранында тұрған ескі нұсқаны да бұғаттау үшін).
+  static Future<Map<String, dynamic>> appVersionGate() async {
+    final res = await c.rpc('app_version_gate');
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  /// Модератор баптауды өзгертеді (тариф бағасы, Kaspi деректері, мәжбүрлі
+  /// жаңарту талабы) — SQL-сыз, 0030 миграциясы.
+  static Future<void> modUpdateSetting(String key, Map<String, dynamic> value) =>
+      c.rpc('mod_update_setting', params: {'p_key': key, 'p_value': value});
+
   // ================= RPC wrappers =================
   static Future<Map<String, dynamic>> buyTariff(String kind) async =>
       Map<String, dynamic>.from(

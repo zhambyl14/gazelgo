@@ -18,6 +18,7 @@ import 'features/client/client_shell.dart';
 import 'features/executor/executor_shell.dart';
 import 'features/moderator/moderator_shell.dart';
 import 'shared/location_gate.dart';
+import 'shared/update_gate.dart';
 import 'shared/widgets.dart';
 
 Future<void> main() async {
@@ -48,7 +49,9 @@ class GazelGoApp extends StatelessWidget {
         title: 'GazelGo',
         debugShowCheckedModeBanner: false,
         theme: Gz.theme(),
-        home: Env.isConfigured ? const AuthGate() : const _NotConfigured(),
+        home: Env.isConfigured
+            ? const UpdateGate(child: AuthGate())
+            : const _NotConfigured(),
       ),
     );
   }
