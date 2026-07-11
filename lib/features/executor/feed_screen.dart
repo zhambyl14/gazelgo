@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'executor_order_screen.dart';
 
-/// Қарапайым тарифтегі заказдар лентасы (басты бетке ендірілетін дене —
-/// өз Scaffold/AppBar-ы жоқ).
+/// Заказдар лентасы (басты бетке ендірілетін дене). БІР тізім — Простой мен
+/// VIP бөлек табтарда емес; VIP заказдар жоғарыда әрі ерекше көрінеді.
+/// Карточкалар ықшам (аз орын алады); басқанда ғана карта + «Келісу/Өз бағам»
+/// ашылады.
 class ExecutorFeedBody extends ConsumerStatefulWidget {
   const ExecutorFeedBody({super.key});
 
@@ -27,192 +31,440 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
-    // Лента стримі бөлек кэштелген провайдерден — статистика жаңарса да
-    // қайта жазылмайды (автообновление үзілмейді).
     final feedAsync = ref.watch(executorFeedStreamProvider);
 
     return statsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) =>
-            EmptyState(icon: Icons.wifi_off, title: errText(e)),
-        data: (stats) {
-          if (!stats.hasTariff) {
-            return RefreshIndicator(
-              color: Gz.ink,
-              onRefresh: _manualRefresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  EmptyState(
-                    icon: Icons.power_settings_new,
-                    title: 'Тарифіңіз жоқ',
-                    subtitle:
-                        'Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
-                        '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).',
-                  ),
-                ],
-              ),
-            );
-          }
-          final all = feedAsync.value ?? const <Order>[];
-          final simple = all
-              .where((o) => o.tariff == 'simple')
-              .toList()
-              .reversed
-              .toList();
-          final vip = all
-              .where((o) => o.tariff == 'vip')
-              .toList()
-              .reversed
-              .toList();
-          // §: Простой мен VIP лентасы бөлек табтарда
-          return DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                const TabBar(
-                  labelColor: Gz.ink,
-                  unselectedLabelColor: Gz.textSecondary,
-                  indicatorColor: Gz.yellowDark,
-                  tabs: [
-                    Tab(text: 'Простой'),
-                    Tab(text: 'VIP'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _feedList(simple, stats.simpleActive, 'Простой'),
-                      _feedList(vip, stats.vipActive, 'VIP'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-  }
-
-  Widget _feedList(List<Order> orders, bool kindActive, String kindLabel) {
-    if (!kindActive) {
-      return RefreshIndicator(
-        color: Gz.ink,
-        onRefresh: _manualRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 120),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
+      data: (stats) {
+        if (!stats.hasTariff) {
+          return _refreshable(const [
+            SizedBox(height: 120),
             EmptyState(
-              icon: Icons.lock_outline,
-              title: '$kindLabel тарифі жоқ',
-              subtitle:
-                  '$kindLabel заказдарды көру үшін жоғарыдан $kindLabel тарифін '
-                  'сатып алыңыз.',
+              icon: Icons.power_settings_new,
+              title: 'Тарифіңіз жоқ',
+              subtitle: 'Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
+                  '(Простой немесе VIP — 1 ауысым, 10 заказға дейін).',
             ),
-          ],
-        ),
-      );
-    }
-    if (orders.isEmpty) {
-      return RefreshIndicator(
-        color: Gz.ink,
-        onRefresh: _manualRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
+          ]);
+        }
+
+        final all = feedAsync.value ?? const <Order>[];
+        // Орындаушы қай тарифке тиесілі заказдарды ғана көреді.
+        final eligible = all.where((o) {
+          if (o.tariff == 'vip') return stats.vipActive;
+          return stats.simpleActive;
+        }).toList();
+        // VIP жоғарыда, сосын жаңалары бірінші.
+        eligible.sort((a, b) {
+          if (a.isVip != b.isVip) return a.isVip ? -1 : 1;
+          final ca = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final cb = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return cb.compareTo(ca);
+        });
+
+        if (eligible.isEmpty) {
+          return _refreshable(const [
             SizedBox(height: 120),
             EmptyState(
               icon: Icons.hourglass_empty,
               title: 'Әзірге заказ жоқ',
               subtitle: 'Жаңа заказдар осы жерде автоматты пайда болады.',
             ),
-          ],
+          ]);
+        }
+
+        return RefreshIndicator(
+          color: Gz.ink,
+          onRefresh: _manualRefresh,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(12),
+            itemCount: eligible.length,
+            separatorBuilder: (_, i) => const SizedBox(height: 8),
+            itemBuilder: (_, i) => _FeedCard(
+              order: eligible[i],
+              onTap: () => _openOrder(eligible[i]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _refreshable(List<Widget> children) => RefreshIndicator(
+        color: Gz.ink,
+        onRefresh: _manualRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: children,
         ),
       );
-    }
-    return RefreshIndicator(
-      color: Gz.ink,
-      onRefresh: _manualRefresh,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(12),
-        itemCount: orders.length,
-        separatorBuilder: (_, i) => const SizedBox(height: 8),
-        itemBuilder: (_, i) {
-          final o = orders[i];
-          return OrderCard(
-            order: o,
-            showMap: true,
-            trailing: Text(
-              fmtTime(o.createdAt),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
-            ),
-            footer: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Divider(height: 4),
-                const SizedBox(height: 8),
-                _ClientBrief(clientId: o.clientId),
-                if (o.photos.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  OrderPhotosStrip(paths: o.photos),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: BusyButton(
-                        label: 'Келісу · ${fmtT(o.clientPrice)}',
-                        onPressed: () => _offer(context, o, o.clientPrice!, ''),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            side:
-                                const BorderSide(color: Gz.ink, width: 1.6)),
-                        onPressed: () => _counterOffer(context, o),
-                        child: const Text('Өз бағам'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+
+  /// Заказ карточкасын басқанда — толық детальдар (карта, клиент, фото) +
+  /// «Келісу / Өз бағам» батырмалары қалқымалы парақта ашылады.
+  void _openOrder(Order o) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _OrderSheet(
+        order: o,
+        onAgree: () => _offer(o, o.clientPrice!, ''),
+        onCounter: () => _counterOffer(o),
       ),
     );
   }
 
-  Future<void> _offer(
-      BuildContext context, Order o, int price, String message) async {
+  Future<void> _offer(Order o, int price, String message) async {
     try {
       await Repo.placeOffer(o.id, price, message);
-      // Ұсыныстан кейін заказ ішіне кіреміз (лентада қалмаймыз)
-      if (context.mounted) {
+      if (mounted) {
         Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => ExecutorOrderScreen(orderId: o.id)));
       }
     } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
+      if (mounted) showSnack(context, errText(e), error: true);
     }
   }
 
-  Future<void> _counterOffer(BuildContext context, Order o) async {
+  Future<void> _counterOffer(Order o) async {
     final result = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => _PriceStepperSheet(order: o),
     );
-    if (result == null || !context.mounted) return;
-    await _offer(context, o, result, '');
+    if (result == null || !mounted) return;
+    await _offer(o, result, '');
+  }
+}
+
+/// Ықшам заказ карточкасы: клиент (аватар+рейтинг), баға, маршрут, тегтер,
+/// жүк (қысқа). Карта мен батырмалар ЖОҚ — олар басқанда парақта ашылады.
+/// VIP заказ ерекше (күлгін жиек + белгі) әрі тізімде жоғары тұрады.
+class _FeedCard extends StatelessWidget {
+  final Order order;
+  final VoidCallback onTap;
+  const _FeedCard({required this.order, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final vip = order.isVip;
+    return Material(
+      color: vip ? const Color(0xFFF7F2FF) : Gz.surface,
+      borderRadius: BorderRadius.circular(Gz.radius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Gz.radius),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Gz.radius),
+            border: Border.all(
+              color: vip ? Gz.violet.withValues(alpha: 0.55) : Gz.border,
+              width: vip ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (vip) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Gz.violet,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.workspace_premium,
+                              size: 12, color: Colors.white),
+                          SizedBox(width: 3),
+                          Text('VIP',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(child: _ClientMini(clientId: order.clientId)),
+                  Text(
+                    fmtT(order.displayPrice),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: vip ? Gz.violet : Gz.ink),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _CompactRoute(from: order.fromDisplay, to: order.toDisplay),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (order.fromCity != null && order.toCity != null)
+                    _tag(
+                      order.intercity
+                          ? Icons.alt_route
+                          : Icons.location_city_outlined,
+                      order.intercity ? 'Межгород' : 'Қала ішінде',
+                    ),
+                  if (order.distanceKm > 0)
+                    _tag(Icons.route,
+                        '≈ ${order.distanceKm.toStringAsFixed(1)} км'),
+                  if (order.cargoDesc.isNotEmpty)
+                    _tag(Icons.inventory_2_outlined,
+                        order.cargoDesc, flexible: true),
+                  if (order.createdAt != null)
+                    _tag(Icons.schedule, fmtTime(order.createdAt)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tag(IconData icon, String text, {bool flexible = false}) {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Gz.bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Gz.textSecondary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Gz.ink,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (!flexible) return chip;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 170),
+      child: chip,
+    );
+  }
+}
+
+/// Клиенттің шағын жолы (аватар + аты + рейтинг) — карточкаға сыятын ықшам.
+class _ClientMini extends StatelessWidget {
+  final String clientId;
+  const _ClientMini({required this.clientId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Profile?>(
+      future: Repo.profileOf(clientId),
+      builder: (context, snap) {
+        final p = snap.data;
+        return Row(
+          children: [
+            InitialsAvatar(p?.fullName ?? '?', radius: 15, imageUrl: p?.avatarUrl),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p?.fullName ?? '…',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13.5)),
+                  RatingStars(p?.rating ?? 0,
+                      count: p?.ratingCount ?? 0, size: 11),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Маршруттың ықшам көрінісі (қайдан → қайда), әр жол бір қатар.
+class _CompactRoute extends StatelessWidget {
+  final String from;
+  final String to;
+  const _CompactRoute({required this.from, required this.to});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _line(Icons.trip_origin, Gz.green, from),
+        const SizedBox(height: 3),
+        _line(Icons.location_on, Gz.red, to),
+      ],
+    );
+  }
+
+  Widget _line(IconData icon, Color color, String text) => Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      );
+}
+
+/// Заказ детальдары парағы: карта, толық маршрут, клиент, фото, жүк +
+/// «Келісу / Өз бағам» батырмалары.
+class _OrderSheet extends StatelessWidget {
+  final Order order;
+  final VoidCallback onAgree;
+  final VoidCallback onCounter;
+  const _OrderSheet(
+      {required this.order, required this.onAgree, required this.onCounter});
+
+  @override
+  Widget build(BuildContext context) {
+    final o = order;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      maxChildSize: 0.95,
+      builder: (context, scroll) => ListView(
+        controller: scroll,
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Gz.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (o.isVip) ...[
+                const Icon(Icons.workspace_premium, size: 20, color: Gz.violet),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Text(fmtT(o.displayPrice),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: o.isVip ? Gz.violet : Gz.ink)),
+              ),
+              Text(o.isVip ? 'VIP' : 'Простой',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: o.isVip ? Gz.violet : Gz.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          RouteMap(
+            from: LatLng(o.fromLat, o.fromLng),
+            to: LatLng(o.toLat, o.toLng),
+            height: 150,
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RouteLine(from: o.fromDisplay, to: o.toDisplay),
+                const Divider(height: 20),
+                InfoRow('Жүк', o.cargoDesc),
+                if (o.comment.isNotEmpty) InfoRow('Түсініктеме', o.comment),
+                InfoRow('Бағыты',
+                    o.intercity ? 'Қалааралық (межгород)' : 'Қала ішінде'),
+                if (o.distanceKm > 0)
+                  InfoRow('Қашықтық', '≈ ${o.distanceKm.toStringAsFixed(1)} км'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          _SheetClient(clientId: o.clientId),
+          if (o.photos.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SectionCard(child: OrderPhotosStrip(paths: o.photos)),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: BusyButton(
+                  label: 'Келісу · ${fmtT(o.clientPrice)}',
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    onAgree();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      side: const BorderSide(color: Gz.ink, width: 1.6)),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onCounter();
+                  },
+                  child: const Text('Өз бағам'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetClient extends StatelessWidget {
+  final String clientId;
+  const _SheetClient({required this.clientId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Profile?>(
+      future: Repo.profileOf(clientId),
+      builder: (context, snap) => SectionCard(
+        padding: const EdgeInsets.all(12),
+        child: ProfileBrief(profile: snap.data, subtitle: 'Клиент'),
+      ),
+    );
   }
 }
 
@@ -309,24 +561,6 @@ class _StepBtn extends StatelessWidget {
           border: Border.all(color: Gz.border, width: 1.4),
         ),
         child: Icon(icon, size: 28, color: Gz.ink),
-      ),
-    );
-  }
-}
-
-/// Клиенттің қысқа профилі (аты, рейтинг, рейс саны, аватар).
-class _ClientBrief extends StatelessWidget {
-  final String clientId;
-  const _ClientBrief({required this.clientId});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Profile?>(
-      future: Repo.profileOf(clientId),
-      builder: (context, snap) => ProfileBrief(
-        profile: snap.data,
-        radius: 18,
-        subtitle: 'Клиент',
       ),
     );
   }

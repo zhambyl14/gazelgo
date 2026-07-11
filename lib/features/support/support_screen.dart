@@ -19,7 +19,7 @@ class SupportOrderButton extends StatelessWidget {
         leading: const Icon(Icons.support_agent, color: Gz.ink),
         title: const Text('Қолдау қызметі',
             style: TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: const Text('Заказ бойынша мәселе болса — жазыңыз'),
+        subtitle: const Text('Жиі қойылатын сұрақтар / модераторға жазу'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => SupportScreen(orderId: orderId))),
@@ -28,8 +28,9 @@ class SupportOrderButton extends StatelessWidget {
   }
 }
 
-/// Пайдаланушы (клиент/орындаушы) жағындағы қолдау чаты.
-/// [orderId] берілсе — модератор чат қай заказ бойынша екенін көреді.
+/// Қолдау қызметі: алдымен жиі қойылатын сұрақтар (рөлге сай), төменде —
+/// «Модераторға жазу» түймесі (нағыз чат). Пайдаланушы бірден сообщение
+/// жазбай, көбіне жауабын осы жерден табады.
 class SupportScreen extends StatefulWidget {
   final String? orderId;
   const SupportScreen({super.key, this.orderId});
@@ -39,12 +40,194 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
+  String? _role; // client | executor | moderator
+
+  @override
+  void initState() {
+    super.initState();
+    Repo.myProfile().then((p) {
+      if (mounted) setState(() => _role = p?.role ?? 'client');
+    });
+  }
+
+  List<(String, String)> get _faq =>
+      _role == 'executor' ? _executorFaq : _clientFaq;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Қолдау қызметі'),
+      appBar: AppBar(title: const Text('Қолдау қызметі')),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          const Text('Жиі қойылатын сұрақтар',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text('Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
+              'модераторға жазыңыз.',
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+          const SizedBox(height: 12),
+          for (final (q, a) in _faq) _FaqItem(question: q, answer: a),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Gz.surface,
+              borderRadius: BorderRadius.circular(Gz.radius),
+              border: Border.all(color: Gz.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Жауабын таппадыңыз ба?',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                const Text('Модератор жеке жауап береді.',
+                    style:
+                        TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        SupportChatScreen(orderId: widget.orderId),
+                  )),
+                  icon: const Icon(Icons.support_agent),
+                  label: const Text('Қолдау алу (модераторға жазу)'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
+    );
+  }
+
+  static const _clientFaq = <(String, String)>[
+    (
+      'Газельді қалай шақырамын?',
+      'Басты беттен «Газель шақыру» → «Қайдан» және «Қайда» адрестерін '
+          'таңдап, бағаңызды қойып, заказ беріңіз. Орындаушылар ұсыныс жібереді.'
+    ),
+    (
+      'Бағаны кім қояды?',
+      'Бағаны СІЗ ұсынасыз. Орындаушылар келіседі немесе өз бағасын ұсынады — '
+          'қолайлысын таңдайсыз.'
+    ),
+    (
+      'Орындаушы келгенін қалай растаймын?',
+      'Орындаушы «Келдім» дегенде, заказ экранында «Тиеу басталды» түймесі '
+          'шығады. Орындаушы шынымен келсе ғана растаңыз — содан соң ол жолға '
+          'шыға алады.'
+    ),
+    (
+      'Заказды қалай тоқтатамын?',
+      'Заказ экранында «Заказды тоқтату» (орындаушы тиеуді бастамай тұрып '
+          'болады). Тиеу басталғаннан кейін тоқтатуға болмайды.'
+    ),
+    (
+      'Төлемді қалай жасаймын?',
+      'Төлем орындаушымен тікелей (Kaspi аударым немесе қолма-қол). Қосымша '
+          'ақшаңызды ұстамайды.'
+    ),
+    (
+      'Қандай жүкке тыйым салынған?',
+      'Заңсыз, қауіпті, тыйым салынған заттарды тасымалдауға болмайды. Толығын '
+          'Пайдаланушы келісімінен қараңыз.'
+    ),
+  ];
+
+  static const _executorFaq = <(String, String)>[
+    (
+      'Тариф деген не?',
+      'Тариф = 1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол ауысымда '
+          '10 заказға дейін. Простой мен VIP бөлек сатып алынады.'
+    ),
+    (
+      'Заказды қалай аламын?',
+      'Лентадан заказды таңдап «Келісу» (клиент бағасына) не «Өз бағам» '
+          '(қарсы ұсыныс). Клиент қабылдаса — заказ сіздікі.'
+    ),
+    (
+      'Клиент «Тиеу басталды» демей жатыр ше?',
+      'Сіз «Келдім» дегеннен кейін клиент тиеуді растауы керек. Ол растамайынша '
+          '«Жолға шықтық» батырмасы шықпайды — клиентке хабарласыңыз.'
+    ),
+    (
+      'Ақшамды қашан аламын?',
+      'Заказды аяқтағанда табысыңызға қосылады. Балансты Kaspi арқылы шешіп '
+          'аласыз (Баланс экранынан).'
+    ),
+    (
+      'VIP тариф неге қосылмайды?',
+      'VIP тек көлік жылы жеткілікті жаңа болса қосылады (әдепкі 2010+). '
+          'Ескі көлікте тек Простой қолжетімді.'
+    ),
+    (
+      'Құжаттарым қайтарылды ше?',
+      'Профильдегі / басты беттегі «Құжаттарды жаңарту» баннерін басып, '
+          'модератор көрсеткен құжатты қайта жүктеңіз.'
+    ),
+  ];
+}
+
+/// Бір FAQ жазбасы — басқанда жауабы ашылады.
+class _FaqItem extends StatelessWidget {
+  final String question;
+  final String answer;
+  const _FaqItem({required this.question, required this.answer});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          shape: const Border(),
+          title: Text(question,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 14)),
+          iconColor: Gz.ink,
+          collapsedIconColor: Gz.textSecondary,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(answer,
+                  style: const TextStyle(
+                      color: Gz.textSecondary, fontSize: 13.5, height: 1.45)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Нағыз қолдау чаты (пайдаланушы ↔ модератор). FAQ-тан «Қолдау алу»
+/// түймесі арқылы ашылады. [orderId] берілсе — модератор чат қай заказ
+/// бойынша екенін көреді.
+class SupportChatScreen extends StatefulWidget {
+  final String? orderId;
+  const SupportChatScreen({super.key, this.orderId});
+
+  @override
+  State<SupportChatScreen> createState() => _SupportChatScreenState();
+}
+
+class _SupportChatScreenState extends State<SupportChatScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Модераторға жазу')),
       body: StreamBuilder<List<SupportThread>>(
         stream: Repo.myThreadsStream(),
         builder: (context, snap) {

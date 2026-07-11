@@ -594,12 +594,44 @@ class OrderPhotosStrip extends StatelessWidget {
   }
 }
 
+/// Заказ аяқталғанда бағалау терезесін ҚАЛҚЫМАЛЫ (dialog) көрсетеді —
+/// экранның төменінде қалып, көрінбей қалмас үшін. Бұрын бағаланған болса
+/// мүлдем ашылмайды.
+Future<void> maybeShowReviewDialog(BuildContext context,
+    {required String orderId, required String title}) async {
+  try {
+    final rows = await Repo.c
+        .from('reviews')
+        .select('id')
+        .eq('order_id', orderId)
+        .eq('author_id', Repo.uid ?? '');
+    if ((rows as List).isNotEmpty) return;
+  } catch (_) {
+    return; // тексере алмасақ — қалқымалыны ашпаймыз (inline нұсқасы қалады)
+  }
+  if (!context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.transparent,
+      child: ReviewPrompt(
+        orderId: orderId,
+        title: title,
+        onDone: () => Navigator.of(ctx).maybePop(),
+      ),
+    ),
+  );
+}
+
 /// Пікір қалдыру блогы (клиент те, орындаушы да — екінші тарапты бағалайды).
 class ReviewPrompt extends StatefulWidget {
   final String orderId;
   final String title;
+  final VoidCallback? onDone;
   const ReviewPrompt(
-      {super.key, required this.orderId, this.title = 'Бағалаңыз'});
+      {super.key, required this.orderId, this.title = 'Бағалаңыз', this.onDone});
 
   @override
   State<ReviewPrompt> createState() => _ReviewPromptState();
@@ -689,6 +721,10 @@ class _ReviewPromptState extends State<ReviewPrompt> {
               try {
                 await Repo.submitReview(widget.orderId, _rating, _comment.text);
                 if (mounted) setState(() => _done = true);
+                if (context.mounted) {
+                  showSnack(context, 'Пікіріңіз үшін рахмет!');
+                }
+                widget.onDone?.call();
               } catch (e) {
                 if (context.mounted) {
                   showSnack(context, errText(e), error: true);

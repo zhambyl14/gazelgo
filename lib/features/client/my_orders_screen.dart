@@ -29,12 +29,16 @@ class MyOrdersScreen extends StatelessWidget {
             }
             final all = (snap.data ?? []).reversed.toList();
             final active = all.where((o) => o.isActive).toList();
-            final history = all.where((o) => !o.isActive).toList();
+            // Тарихта тек СӘТТІ аяқталған заказдар (тоқтатылған/мерзімі
+            // өткендер көрсетілмейді).
+            final history =
+                all.where((o) => o.status == 'completed').toList();
             return TabBarView(
               children: [
                 _list(context, active,
                     empty: 'Белсенді заказ жоқ.\nБасты беттен газель шақырыңыз.'),
-                _list(context, history, empty: 'Тарих әзірге бос.'),
+                _list(context, history,
+                    empty: 'Аяқталған заказ әзірге жоқ.'),
               ],
             );
           },

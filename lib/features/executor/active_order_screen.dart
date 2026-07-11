@@ -12,19 +12,41 @@ import '../../shared/widgets.dart';
 import '../support/support_screen.dart';
 
 /// Орындаушының белсенді заказ экраны: клиент, маршрут, статус ауыстыру.
-class ActiveOrderScreen extends StatelessWidget {
+class ActiveOrderScreen extends StatefulWidget {
   final String orderId;
   const ActiveOrderScreen({super.key, required this.orderId});
+
+  @override
+  State<ActiveOrderScreen> createState() => _ActiveOrderScreenState();
+}
+
+class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
+  bool _reviewShown = false;
 
   /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
   static const _proximityKm = 1.5;
 
+  // «arrived → loading» әдейі ЖОҚ: тиеуді енді КЛИЕНТ растайды (0027).
+  // Орындаушы «Келдім» дегеннен кейін клиенттің растауын күтеді, содан соң
+  // ғана «Жолға шықтық» батырмасы (loading → in_transit) көрінеді.
   static const _next = {
     'accepted': ('arrived', 'Келдім', Icons.location_on),
-    'arrived': ('loading', 'Тиеуді бастадық', Icons.upload),
     'loading': ('in_transit', 'Жолға шықтық', Icons.local_shipping),
     'in_transit': ('completed', 'Заказды аяқтау', Icons.check_circle),
   };
+
+  /// Заказ аяқталғанда клиентті бағалау терезесін бір рет қалқымалы ашамыз.
+  void _maybeShowReview(Order o) {
+    if (!_reviewShown && o.status == 'completed') {
+      _reviewShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          maybeShowReviewDialog(context,
+              orderId: o.id, title: 'Клиентті бағалаңыз');
+        }
+      });
+    }
+  }
 
   /// Геолокация + жақындықты тексереді. Қажет болмаса — true.
   Future<bool> _checkProximity(
@@ -65,12 +87,13 @@ class ActiveOrderScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Белсенді заказ')),
       body: StreamBuilder<Order?>(
-        stream: Repo.orderStream(orderId),
+        stream: Repo.orderStream(widget.orderId),
         builder: (context, snap) {
           final o = snap.data;
           if (o == null) {
             return const Center(child: CircularProgressIndicator());
           }
+          _maybeShowReview(o);
           final next = _next[o.status];
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -128,6 +151,31 @@ class ActiveOrderScreen extends StatelessWidget {
                   ReportSuspiciousButton(orderId: o.id),
                 ],
                 const SizedBox(height: 16),
+                // «Келдім» дегеннен кейін — клиенттің тиеуді растауын күтеміз
+                if (o.status == 'arrived')
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Gz.blue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(Gz.radius),
+                      border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.hourglass_top, color: Gz.blue),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Клиенттің «Тиеу басталды» деп растауын күтіңіз. '
+                            'Растаған соң «Жолға шықтық» батырмасы шығады.',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (o.status == 'arrived') const SizedBox(height: 10),
                 if (next != null)
                   BusyButton(
                     label: next.$2,

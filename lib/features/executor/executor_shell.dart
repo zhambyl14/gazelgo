@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
 import '../../core/notify.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -68,7 +69,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
         _feedPrimed = true;
         return;
       }
-      if (fresh.isNotEmpty) {
+      if (fresh.isNotEmpty && await Prefs.orderNotify()) {
         Notify.show('Жаңа заказ бар! 🚚',
             'Лентада ${fresh.length} жаңа заказ күтіп тұр — қараңыз.',
             id: 2);

@@ -23,11 +23,25 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Timer? _vipTimer;
   bool _photosCleaned = false;
+  bool _reviewShown = false;
 
   @override
   void dispose() {
     _vipTimer?.cancel();
     super.dispose();
+  }
+
+  /// Заказ аяқталғанда бағалау терезесін бір рет қалқымалы етіп ашамыз.
+  void _maybeShowReview(Order o) {
+    if (!_reviewShown && o.status == 'completed') {
+      _reviewShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          maybeShowReviewDialog(context,
+              orderId: o.id, title: 'Орындаушыны бағалаңыз');
+        }
+      });
+    }
   }
 
   /// Заказ аяқталса/бас тартылса — тіркелген фотоларды өшіру (жадты үнемдеу).
@@ -104,6 +118,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           }
           _ensureVipTimer(o);
           _maybeCleanupPhotos(o);
+          _maybeShowReview(o);
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -189,13 +204,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return [
           _ExecutorCard(executorId: o.executorId!),
           const SizedBox(height: 10),
+          // Орындаушы «Келдім» дегенде — клиент тиеуді растайды (0027).
+          // Расталмайынша орындаушы «Жолға шықтық» дей алмайды.
+          if (o.status == 'arrived') ...[
+            _ConfirmLoadingCard(orderId: o.id),
+            const SizedBox(height: 10),
+          ],
           _Timeline(status: o.status),
           const SizedBox(height: 10),
           SupportOrderButton(orderId: o.id),
         ];
       case 'completed':
         return [
-          _ExecutorCard(executorId: o.executorId!),
+          // Аяқталған заказда орындаушының телефоны көрсетілмейді
+          // (хабарласу батырмасы жоқ) — тарихта байланыс сақталмайды.
+          _ExecutorCard(executorId: o.executorId!, showCall: false),
           const SizedBox(height: 10),
           ReviewPrompt(orderId: o.id, title: 'Орындаушыны бағалаңыз'),
         ];
@@ -227,6 +250,60 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
         ];
     }
+  }
+}
+
+/// Орындаушы келгенін клиент растайды: «Тиеу басталды» → status=loading.
+/// Осыдан кейін ғана орындаушы «Жолға шықтық» дей алады (0027).
+class _ConfirmLoadingCard extends StatelessWidget {
+  final String orderId;
+  const _ConfirmLoadingCard({required this.orderId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Gz.green.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.green.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.local_shipping, color: Gz.green),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Орындаушы жеткен жоқ па?',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
+            'орындаушы жолға шыға алмайды.',
+            style: TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 12),
+          BusyButton(
+            label: 'Тиеу басталды',
+            icon: Icons.check_circle,
+            color: Gz.green,
+            onPressed: () async {
+              try {
+                await Repo.orderAdvance(orderId, 'loading');
+              } catch (e) {
+                if (context.mounted) showSnack(context, errText(e), error: true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -606,7 +683,8 @@ class _DispatchCountdownState extends State<_DispatchCountdown> {
 // ===================== ОРЫНДАУШЫ КАРТАСЫ =====================
 class _ExecutorCard extends StatelessWidget {
   final String executorId;
-  const _ExecutorCard({required this.executorId});
+  final bool showCall;
+  const _ExecutorCard({required this.executorId, this.showCall = true});
 
   @override
   Widget build(BuildContext context) {
@@ -651,7 +729,7 @@ class _ExecutorCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (p != null && p.phone.isNotEmpty)
+                  if (showCall && p != null && p.phone.isNotEmpty)
                     IconButton.filled(
                       style: IconButton.styleFrom(
                           backgroundColor: Gz.green,

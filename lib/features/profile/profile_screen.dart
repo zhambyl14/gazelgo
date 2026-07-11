@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/models.dart';
-import '../../core/name_guard.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -107,48 +105,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _edit(Profile p) async {
-    final name = TextEditingController(text: p.fullName);
-    final phone = TextEditingController(text: p.phone);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Профильді өзгерту'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(hintText: 'Аты-жөні'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: 'Телефон'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Болдырмау')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Сақтау')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    final nameError = NameGuard.validate(name.text);
-    if (nameError != null) {
-      if (mounted) showSnack(context, nameError, error: true);
-      return;
-    }
-    await Repo.updateProfile(fullName: name.text, phone: phone.text);
-    ref.invalidate(myProfileProvider);
-  }
-
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
@@ -228,10 +184,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () => _edit(p),
-                      icon: const Icon(Icons.edit_outlined),
                     ),
                   ],
                 ),

@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
 import '../../core/models.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -176,46 +177,55 @@ class _LineControlBar extends ConsumerWidget {
       );
     }
 
-    // Тариф белсенді — статус + басқару (линия/демалыс тумблері жоқ)
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
-      decoration: BoxDecoration(
-        color: Gz.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Gz.green.withValues(alpha: 0.4)),
-        boxShadow: Gz.cardShadow,
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: Gz.green, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Тариф белсенді',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
-                        color: Gz.green)),
-                Text(_tariffLabel(s),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Gz.textSecondary, fontSize: 12)),
-              ],
+    // Тариф белсенді — толық ені бар «Тариф пен баланс» түймесі + астында
+    // жаңа заказ уведомлениесін қосу/өшіру тумблері.
+    return Column(
+      children: [
+        Material(
+          color: Gz.surface,
+          elevation: 0,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _openTariffs(context),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Gz.green.withValues(alpha: 0.4)),
+                boxShadow: Gz.cardShadow,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Gz.green, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Тариф пен баланс',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15)),
+                        Text('Белсенді · ${_tariffLabel(s)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Gz.green, fontSize: 12.5)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Gz.textSecondary),
+                ],
+              ),
             ),
           ),
-          IconButton(
-            tooltip: 'Тариф пен баланс',
-            onPressed: () => _openTariffs(context),
-            icon: const Icon(Icons.tune, color: Gz.ink),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        const _OrderNotifyToggle(),
+      ],
     );
   }
 
@@ -227,6 +237,59 @@ class _LineControlBar extends ConsumerWidget {
     if (s.vipActive) parts.add('VIP ${s.vipLeft}/10');
     if (parts.isEmpty) return 'Тариф жоқ';
     return parts.join(' · ');
+  }
+}
+
+/// Жаңа заказ уведомлениелерін қосу/өшіру тумблері (құрылғыда сақталады).
+class _OrderNotifyToggle extends StatefulWidget {
+  const _OrderNotifyToggle();
+
+  @override
+  State<_OrderNotifyToggle> createState() => _OrderNotifyToggleState();
+}
+
+class _OrderNotifyToggleState extends State<_OrderNotifyToggle> {
+  bool _on = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Prefs.orderNotify().then((v) {
+      if (mounted) setState(() => _on = v);
+    });
+  }
+
+  Future<void> _toggle(bool v) async {
+    setState(() => _on = v);
+    await Prefs.setOrderNotify(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
+      decoration: BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Row(
+        children: [
+          Icon(_on ? Icons.notifications_active : Icons.notifications_off,
+              size: 20, color: _on ? Gz.yellowDark : Gz.textSecondary),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text('Заказдарға уведомление',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          ),
+          Switch(
+            value: _on,
+            activeThumbColor: Gz.green,
+            onChanged: _toggle,
+          ),
+        ],
+      ),
+    );
   }
 }
 
