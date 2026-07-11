@@ -46,6 +46,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late VehicleType _vehicleType =
       widget.existing?.vehicleType ?? VehicleType.gazelle;
 
+  // Профиль селфиі — тіркелу кезінде түсіріледі, кейін профильде көрсетіледі
+  final _selfie = _PickedDoc();
+
   // Құжаттар
   final _license = _PickedDoc();          // жүргізуші куәлігі (права)
   final _licenseSelfie = _PickedDoc();     // правамен селфи
@@ -67,6 +70,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   @override
   void initState() {
     super.initState();
+    final avatarUrl = ref.read(myProfileProvider).value?.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      _selfie.existingPath = avatarUrl;
+    }
     final e = widget.existing;
     if (e != null) {
       _license.existingPath = e.licensePath;
@@ -125,6 +132,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (!_selfie.isSet) {
+      showSnack(context, t('Профиліңізге өз селфиіңізді түсіріңіз'),
+          error: true);
+      return;
+    }
     if (_city == null || _city!.trim().isEmpty) {
       showSnack(context, t('Қай қалада жұмыс істейтініңізді таңдаңыз'),
           error: true);
@@ -158,8 +170,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     }
     try {
       Future<String?> up(_PickedDoc d, String name) async {
-        if (d.bytes != null) return Repo.uploadDoc('$name.jpg', d.bytes!);
+        if (d.bytes != null) {
+          final path = await Repo.uploadDoc('$name.jpg', d.bytes!);
+          d.bytes = null; // жүктелген соң жадыны бірден босату
+          return path;
+        }
         return d.existingPath;
+      }
+
+      if (_selfie.bytes != null) {
+        await Repo.updateAvatar(_selfie.bytes!);
+        _selfie.bytes = null;
       }
 
       final licPath = await up(_license, 'license');
@@ -225,6 +246,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         } catch (_) {}
       }
       ref.invalidate(myExecutorProfileProvider);
+      ref.invalidate(myProfileProvider);
       if (mounted) {
         showSnack(context,
             isDocsResponse ? t('Жіберілді — модератор тексереді') : t('Жіберілді'));
@@ -249,7 +271,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             ),
             clipBehavior: Clip.antiAlias,
             child: doc.bytes != null
-                ? Image.memory(doc.bytes!, fit: BoxFit.cover)
+                ? Image.memory(doc.bytes!,
+                    fit: BoxFit.cover,
+                    cacheWidth:
+                        (56 * MediaQuery.devicePixelRatioOf(context)).round(),
+                    cacheHeight:
+                        (56 * MediaQuery.devicePixelRatioOf(context)).round())
                 : Icon(
                     doc.existingPath != null
                         ? Icons.check_circle
@@ -401,6 +428,19 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                Text(t('Профиль суретіңіз'),
+                    style: const
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 6),
+                Text(
+                  t('Бетіңіз анық көрінетін селфи түсіріңіз — бұл сурет '
+                      'профиліңізде көрсетіледі.'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 10),
+                _docTile(t('Профиль селфиі'), _selfie,
+                    hint: t('Камерамен өз бетіңізді түсіріңіз')),
+                const SizedBox(height: 20),
                 Text(t('Көлік түрі'),
                     style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -437,36 +477,31 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ]),
                 const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _year,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: t('Шығарылған жылы')),
-                      validator: (v) {
-                        final y = int.tryParse(v?.trim() ?? '');
-                        if (y == null || y < 1980 || y > DateTime.now().year + 1) {
-                          return t('Жылын дұрыс жазыңыз');
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _plate,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                          labelText: t('Мемнөмір'),
-                          hintText: '123 ABC 02'),
-                      validator: (v) => (v == null || v.trim().length < 4)
-                          ? t('Мемнөмір қажет')
-                          : null,
-                    ),
-                  ),
-                ]),
+                TextFormField(
+                  controller: _year,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                      labelText: t('Көлік шығарылған жыл'),
+                      hintText: t('Мысалы: 2015')),
+                  validator: (v) {
+                    final y = int.tryParse(v?.trim() ?? '');
+                    if (y == null || y < 1980 || y > DateTime.now().year + 1) {
+                      return t('Жылын дұрыс жазыңыз');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _plate,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                      labelText: t('Мемлекеттік нөмір'),
+                      hintText: '123 ABC 02'),
+                  validator: (v) => (v == null || v.trim().length < 4)
+                      ? t('Мемлекеттік нөмір қажет')
+                      : null,
+                ),
                 const SizedBox(height: 20),
                 Text(t('Құжаттар'),
                     style: const

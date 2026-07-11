@@ -217,6 +217,12 @@ class _Bubble extends StatelessWidget {
                       width: 180,
                       height: 180,
                       fit: BoxFit.cover,
+                      cacheWidth:
+                          (180 * MediaQuery.devicePixelRatioOf(context))
+                              .round(),
+                      cacheHeight:
+                          (180 * MediaQuery.devicePixelRatioOf(context))
+                              .round(),
                     ),
                   ),
                 ),

@@ -245,7 +245,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ],
                           ),
                         ),
-                      InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                      InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                       InfoRow(t('Статус'), switch (ep.status) {
                         'approved' => t('Расталған'),
                         'pending' => t('Тексерілуде'),

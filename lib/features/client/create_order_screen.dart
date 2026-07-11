@@ -392,7 +392,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.memory(_photos[i],
-                              width: 84, height: 84, fit: BoxFit.cover),
+                              width: 84,
+                              height: 84,
+                              fit: BoxFit.cover,
+                              cacheWidth:
+                                  (84 * MediaQuery.devicePixelRatioOf(context))
+                                      .round(),
+                              cacheHeight:
+                                  (84 * MediaQuery.devicePixelRatioOf(context))
+                                      .round()),
                         ),
                         Positioned(
                           top: 2,

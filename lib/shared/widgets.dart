@@ -175,10 +175,11 @@ class InitialsAvatar extends StatelessWidget {
       ),
     );
     if (imageUrl == null || imageUrl!.isEmpty) return fallback;
+    final px = (radius * 2 * MediaQuery.devicePixelRatioOf(context)).round();
     return CircleAvatar(
       radius: radius,
       backgroundColor: Gz.bg,
-      foregroundImage: NetworkImage(imageUrl!),
+      foregroundImage: ResizeImage(NetworkImage(imageUrl!), width: px, height: px),
       onForegroundImageError: (_, _) {},
       child: Text(
         initials.isEmpty ? '?' : initials,
@@ -334,64 +335,6 @@ class RouteLine extends StatelessWidget {
           child: Container(width: 2, height: 14, color: Gz.border),
         ),
         row(const Icon(Icons.location_on, size: 18, color: Gz.red), t('Қайда'), to),
-      ],
-    );
-  }
-}
-
-class VehicleSizeSelector extends StatelessWidget {
-  final VehicleSize value;
-  final ValueChanged<VehicleSize> onChanged;
-  const VehicleSizeSelector(
-      {super.key, required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (final s in VehicleSize.values) ...[
-          Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(s),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: value == s ? Gz.yellow : Gz.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: value == s ? Gz.yellowDark : Gz.border,
-                      width: 1.4),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.local_shipping,
-                        size: s == VehicleSize.small
-                            ? 22
-                            : s == VehicleSize.medium
-                                ? 27
-                                : 32,
-                        color: Gz.ink),
-                    const SizedBox(height: 6),
-                    Text(
-                      s.label.split(' ').first,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 13),
-                    ),
-                    Text(
-                      s.hint,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 10.5, color: Gz.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (s != VehicleSize.large) const SizedBox(width: 8),
-        ],
       ],
     );
   }
@@ -573,6 +516,12 @@ class OrderPhotosStrip extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: Image.network(url,
                       width: 84, height: 84, fit: BoxFit.cover,
+                      cacheWidth:
+                          (84 * MediaQuery.devicePixelRatioOf(context))
+                              .round(),
+                      cacheHeight:
+                          (84 * MediaQuery.devicePixelRatioOf(context))
+                              .round(),
                       errorBuilder: (_, e, s) => Container(
                             width: 84,
                             height: 84,

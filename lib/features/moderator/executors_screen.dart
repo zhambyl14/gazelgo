@@ -529,7 +529,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                     InfoRow(t('Маркасы'), ep.vehicleTitle),
                     if (ep.city != null) InfoRow(t('Қала'), ep.city!),
-                    InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                    InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                     InfoRow(t('Баланс'), fmtT(ep.balance)),
                     InfoRow(t('Жалпы табыс'), fmtT(ep.totalEarned)),
                   ],

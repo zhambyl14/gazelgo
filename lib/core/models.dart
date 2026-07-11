@@ -67,18 +67,6 @@ extension VehicleTypeX on VehicleType {
         VehicleType.minivan => t('Мини вэн'),
         VehicleType.tractor => t('Трактор 3в1'),
       };
-  String get hint => switch (this) {
-        VehicleType.gazelle => t('1.5–3 т жүк'),
-        VehicleType.furgon => t('Жабық қорап'),
-        VehicleType.kamaz => t('Ірі жүк, 10+ т'),
-        VehicleType.crane => t('Автокран'),
-        VehicleType.manipulator => t('Кран-борт'),
-        VehicleType.assenizator => t('Сұйық қалдық'),
-        VehicleType.excavator => t('Қазу жұмысы'),
-        VehicleType.loader => t('Тиеу-түсіру'),
-        VehicleType.minivan => t('Шағын жүк'),
-        VehicleType.tractor => t('Қазу·тиеу·тазалау'),
-      };
   /// Түрлі-түсті PNG иконкасы бар түрлер (`assets/vehicles/<name>.png`) —
   /// қалғандары ([emoji] арқылы) эмодзимен көрсетіледі. UI жағында
   /// [vehicleIcon] екеуін бір өлшемге сәйкестендіріп рендерлейді.
@@ -99,29 +87,6 @@ extension VehicleTypeX on VehicleType {
         VehicleType.furgon => '🚐',
         VehicleType.tractor => '🚜',
         _ => '🚚',
-      };
-}
-
-// ---------- Vehicle size ----------
-enum VehicleSize { small, medium, large }
-
-VehicleSize sizeFrom(String? s) => switch (s) {
-      'medium' => VehicleSize.medium,
-      'large' => VehicleSize.large,
-      _ => VehicleSize.small,
-    };
-
-extension VehicleSizeX on VehicleSize {
-  String get db => name;
-  String get label => switch (this) {
-        VehicleSize.small => t('Кіші газель'),
-        VehicleSize.medium => t('Орта газель'),
-        VehicleSize.large => t('Үлкен газель'),
-      };
-  String get hint => switch (this) {
-        VehicleSize.small => t('1.5 т дейін · 3 м'),
-        VehicleSize.medium => t('3 т дейін · 4 м'),
-        VehicleSize.large => t('5 т және одан көп'),
       };
 }
 
@@ -194,7 +159,6 @@ class OrderReport {
 class ExecutorProfile {
   final String userId;
   final String status; // pending | approved | rejected | blocked
-  final VehicleSize vehicleSize;
   final VehicleType vehicleType;
   final String vehicleBrand;
   final String vehicleModel;
@@ -226,7 +190,6 @@ class ExecutorProfile {
       : userId = m['user_id'] as String,
         status = m['status'] as String? ?? 'pending',
         city = m['city'] as String?,
-        vehicleSize = sizeFrom(m['vehicle_size'] as String?),
         vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
         vehicleBrand = m['vehicle_brand'] as String? ?? '',
         vehicleModel = m['vehicle_model'] as String? ?? '',
@@ -284,7 +247,6 @@ class Order {
   final double distanceKm;
   final String cargoDesc;
   final String comment;
-  final VehicleSize size;
   final int? clientPrice;
   final int? systemPrice;
   final int? finalPrice;
@@ -312,7 +274,6 @@ class Order {
         distanceKm = _d(m['distance_km']),
         cargoDesc = m['cargo_desc'] as String? ?? '',
         comment = m['comment'] as String? ?? '',
-        size = sizeFrom(m['size'] as String?),
         clientPrice = m['client_price'] == null ? null : _i(m['client_price']),
         systemPrice = m['system_price'] == null ? null : _i(m['system_price']),
         finalPrice = m['final_price'] == null ? null : _i(m['final_price']),

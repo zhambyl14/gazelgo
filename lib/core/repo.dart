@@ -420,13 +420,6 @@ class Repo {
   static Future<void> setAutoAcceptVip(bool value) =>
       c.rpc('set_auto_accept_vip', params: {'p_value': value});
 
-  static Future<int> instantQuote(VehicleSize size, double distanceKm) async =>
-      (await c.rpc('instant_quote', params: {
-        'p_size': size.db,
-        'p_distance_km': distanceKm,
-      }) as num)
-          .toInt();
-
   static Future<String> createOrder({
     required VehicleType vehicleType, // қажет көлік түрі
     required String fromAddress,
@@ -1029,12 +1022,16 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
 final executorStatsProvider =
     FutureProvider<ExecutorStats>((ref) => Repo.executorStats());
 
-/// Тікелей жаңарып отыратын статистика стримі.
+/// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
+/// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.
 final executorStatsStreamProvider =
-    StreamProvider<ExecutorStats>((ref) => Repo.executorStatsStream());
+    StreamProvider.autoDispose<ExecutorStats>(
+        (ref) => Repo.executorStatsStream());
 
 /// Орындаушы лентасы (§5/§6). Riverpod стримді КЭШТЕЙДІ — сондықтан статистика
 /// әр 4 сек жаңарғанда бет қайта құрылса да, лента стримі қайта жазылмайды
 /// (әйтпесе әр рефреште ресетке түсіп, автообновление «жоғалатын»).
+/// `autoDispose` — ешкім тыңдамай қалса polling тоқтайды.
 final executorFeedStreamProvider =
-    StreamProvider<List<Order>>((ref) => Repo.executorFeedStream());
+    StreamProvider.autoDispose<List<Order>>(
+        (ref) => Repo.executorFeedStream());

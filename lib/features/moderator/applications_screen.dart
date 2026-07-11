@@ -309,7 +309,7 @@ class ApplicationDetailScreen extends StatelessWidget {
                   InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                   InfoRow(t('Маркасы'), ep.vehicleTitle),
                   if (ep.city != null) InfoRow(t('Қала'), ep.city!),
-                  InfoRow(t('Мемнөмір'), ep.vehiclePlate),
+                  InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                   InfoRow(t('Өтінім күні'), fmtDate(ep.createdAt)),
                 ],
               ),
@@ -540,7 +540,11 @@ class DocImage extends StatelessWidget {
                             height: 20,
                             child:
                                 CircularProgressIndicator(strokeWidth: 2)))
-                    : Image.network(url, fit: BoxFit.cover),
+                    : Image.network(url,
+                        fit: BoxFit.cover,
+                        cacheHeight:
+                            (110 * MediaQuery.devicePixelRatioOf(context))
+                                .round()),
               ),
               const SizedBox(height: 4),
               Text(label,

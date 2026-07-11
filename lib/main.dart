@@ -23,6 +23,10 @@ import 'shared/widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Flutter әдепкі бойынша 1000 сурет / 100 МБ дейін кэштейді — мобильді
+  // қосымша үшін тым үлкен. Жадыны үнемдеу үшін шектейміз.
+  PaintingBinding.instance.imageCache.maximumSize = 150;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 30 << 20; // 30 МБ
   if (Env.isConfigured) {
     await Supabase.initialize(
       url: Env.supabaseUrl,
