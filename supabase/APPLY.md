@@ -178,10 +178,19 @@ Backend толығымен осы папкада дайын. Оны нақты S
      болу керек. Жаңа `orders.cancelled_at` бағаны қосылып, `cancel_order`/
      `mod_cancel_order` соны толтырады, триггер соны қолданады.
 
+   - `migrations/0032_storage_retention_cron.sql` ← **Storage автоматты
+     тазалау** (0031-ден кейін орындаңыз): `trigger_storage_cleanup()`
+     функциясы + оны күн сайын шақыратын `pg_cron` тапсырмасы. Бұл
+     миграция өзі ештеңе өшірмейді — тек cron-ды баптайды; нақты өшіру
+     `cleanup-storage` edge function-да (төмендегі «Storage тазалау
+     (cron)» бөлімін қараңыз, **міндетті түрде edge function deploy
+     ЖӘНЕ секрет қою керек**, әйтпесе cron үнсіз ештеңе істемейді).
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
    **0013, содан соң 0014, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023,
-   0024, 0025, 0026, 0027, 0028, 0029, 0030, ең соңынан 0031-ді орындаңыз.**
+   0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, ең соңынан 0032-ні
+   орындаңыз.**
 2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
    - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
      тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).
@@ -330,6 +339,64 @@ Firebase Console (веб-браузер) мен Supabase Dashboard арқылы 
 жіберсе — модератордың телефонына push келуі керек (қосымша жабық болса да).
 Push келмесе — Supabase Dashboard → Edge Functions → `push-notify` → Logs
 бөлімінен қатені қараңыз.
+
+## Storage тазалау (cron) — заказ/қолдау фотолары шексіз жиналмасын
+
+Неге керек: заказдың жүк фотолары мен қолдау чатының скриншоттары бұрын
+тек біреу тиісті экранды АШҚАНДА ғана тазаланатын (client-side, `Repo.
+deleteOrderPhotos`/`cleanupSupportImages`) — ешкім ашпаса, файл Storage-та
+мәңгі қалады. Бұл нақты кепілдік емес, тек «сирек болса да тазаланады»
+дегенді білдіреді. Енді сервер жағында, экранға тәуелсіз, күн сайын
+жұмыс істейтін нақты тазалау бар:
+
+- **Заказдар**: 5+ күн бұрын аяқталған/бас тартылған/мерзімі өткен
+  заказдың Storage-тағы жүк фотолары өшіріледі (заказдың өзі — тарих,
+  дау/тексеру үшін — қалады, тек `photos` бос массивке ауыстырылады).
+- **Қолдау тредтері**: 5+ күн бұрын ЖАБЫЛҒАН тред — хабарламаларымен
+  және Storage суреттерімен қоса — толық өшіріледі (ашық/белсенді
+  тредтерге тиіспейді).
+
+Storage файлдарын SQL тікелей өшіре алмайды (Supabase шектеуі), сол
+себепті бұл — edge function + `pg_cron` арқылы:
+
+### 1-қадам: Edge function deploy
+
+Dashboard → Edge Functions → **Deploy new function** → аты
+`cleanup-storage`, коды `supabase/functions/cleanup-storage/index.ts`,
+**Verify JWT = OFF** (pg_net-тен, JWT-сіз шақырылады — орнына функцияның
+өз ішінде `x-cron-secret` header тексеріледі).
+
+### 2-қадам: Секрет қою (екі жерде, БІРДЕЙ мән)
+
+1. **Edge Function Secrets** (Dashboard → Edge Functions → Manage secrets)
+   → `CRON_SECRET` — өзіңіз ойлап тапқан ұзын құпия жол (мыс. терминалда
+   `openssl rand -hex 32`).
+2. SQL Editor-да (0032 миграциясы қолданылған СОҢ, БІР РЕТ) — 2.1-дегімен
+   **дәл сол бір** мәнді қойыңыз (секрет `push_trigger_secret`-пен бірдей
+   `app_secrets` кестесінде сақталады):
+   ```sql
+   insert into public.app_secrets (key, value)
+   values ('cron_cleanup_secret', 'СІЗДІҢ_ҚҰПИЯ_ЖОЛЫҢЫЗ')
+   on conflict (key) do update set value = excluded.value;
+   ```
+   (Мәндер сәйкес келмесе — cron үнсіз ештеңе істемейді, ешбір қате де
+   көрсетілмейді, себебі `trigger_storage_cleanup()` секрет бос болса
+   үнсіз қайтады.)
+
+### Тексеру
+
+SQL Editor-да қолмен бір рет шақырып көруге болады:
+```sql
+select public.trigger_storage_cleanup();
+```
+Содан соң Supabase Dashboard → Edge Functions → `cleanup-storage` →
+**Logs** бөлімінен нәтижені (`threadsDeleted`, `orderPhotosDeleted`, т.б.)
+көріңіз. Cron тапсырмасының өзін (`tasu-storage-cleanup`, күн сайын
+02:30 UTC) Database → Cron бөлімінен көруге/өшіруге болады.
+
+Мерзімді (5 күн) өзгерту керек болса — `supabase/functions/cleanup-storage/
+index.ts` ішіндегі `RETENTION_DAYS` константасын түзетіп, функцияны
+қайта deploy жасаңыз.
 
 ## Сторға шығар алдындағы тізім (App Store / Play Market)
 
