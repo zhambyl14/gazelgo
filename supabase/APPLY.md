@@ -212,11 +212,25 @@ Backend толығымен осы папкада дайын. Оны нақты S
      (тек әлі әдепкі "GazelGo" болып тұрса ғана түзетеді — модератор
      Баптаулар табынан өзгертіп қойған болса тимейді).
 
+   - `migrations/0036_remove_vip_dispatch.sql` ← **VIP/instant заказ
+     тарату механизмі толық өшіріледі** (0029-дан бастап `create_order`
+     ешқашан `type='instant'` жасамайды — сол себепті `vip_dispatches`
+     кестесі, `assign_next_vip`/`accept_vip`/`decline_vip`/`advance_vip`/
+     `advance_all_vip`/`set_auto_accept_vip` RPC-тері, `has_my_dispatch`
+     RLS функциясы, `gazelgo-vip-advance` cron job (әр 10 секунд сайын
+     жұмыс істеп тұрған!), `instant_quote`, `executor_profiles.
+     auto_accept_vip` бағаны — бәрі өлі код еді). `cancel_order`/
+     `mod_cancel_order`/`expire_stale_orders` осы тәуелділіктерсіз қайта
+     анықталады, bidding-логикасы толық сақталады. Клиент (Dart) жағы
+     да сәйкесінше тазаланды (executor_shell.dart, order_detail_screen.
+     dart, vip_dispatch_dialog.dart өшірілді). **Ретті сақтаңыз** —
+     файлдың өзінде тәуелділік ретімен түсіндірме бар.
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
    **0013, содан соң 0014, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023,
-   0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, ең
-   соңынан 0035-ті орындаңыз.**
+   0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035,
+   ең соңынан 0036-ны орындаңыз.**
 2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
    - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
      тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).

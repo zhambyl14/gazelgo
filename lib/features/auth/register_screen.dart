@@ -9,6 +9,10 @@ import '../../shared/telegram_verify.dart';
 import '../../shared/widgets.dart';
 import '../legal/legal_screen.dart';
 
+/// Тіркелу — 3 қадамдық wizard:
+/// 1) рөл + аты-жөні
+/// 2) құпиясөз (2 рет) + келісім
+/// 3) телефонды Telegram арқылы растау → тіркелу
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -17,7 +21,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _form = GlobalKey<FormState>();
+  int _step = 0;
+  static const _stepCount = 3;
+
   final _name = TextEditingController();
   final _password = TextEditingController();
   final _password2 = TextEditingController();
@@ -46,17 +52,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  /// Тіркелу — нөмір Telegram-мен расталған соң ғана.
-  Future<void> _register() async {
-    if (!_form.currentState!.validate()) return;
-    if (_verifiedPhone == null || _tgToken == null) {
-      showSnack(context, t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
-          error: true);
-      return;
+  bool _validateStep1() {
+    final err = NameGuard.validate(_name.text);
+    if (err != null) {
+      showSnack(context, err, error: true);
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateStep2() {
+    if (_password.text.length < 6) {
+      showSnack(context, t('Кемінде 6 таңба'), error: true);
+      return false;
+    }
+    if (_password.text != _password2.text) {
+      showSnack(context, t('Құпиясөздер сәйкес емес'), error: true);
+      return false;
     }
     if (!_agree) {
       showSnack(context,
           t('Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет'),
+          error: true);
+      return false;
+    }
+    return true;
+  }
+
+  void _next() {
+    final ok = switch (_step) {
+      0 => _validateStep1(),
+      1 => _validateStep2(),
+      _ => true,
+    };
+    if (ok && _step < _stepCount - 1) setState(() => _step++);
+  }
+
+  bool _back() {
+    if (_step == 0) return true; // экраннан шығуға рұқсат
+    setState(() => _step--);
+    return false;
+  }
+
+  /// Тіркелу — нөмір Telegram-мен расталған соң ғана.
+  Future<void> _register() async {
+    if (_verifiedPhone == null || _tgToken == null) {
+      showSnack(context, t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
           error: true);
       return;
     }
@@ -107,173 +148,278 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Widget _stepDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < _stepCount; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: i == _step ? 22 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: i <= _step ? Gz.ink : Gz.border,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _step1() {
+    return Column(
+      key: const ValueKey('step1'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t('Кім ретінде тіркелесіз?'),
+            style:
+                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        Row(children: [
+          _roleCard('client', Icons.person_outline, 'Тапсырыс беруші',
+              'Жүк тасымалдатамын'),
+          const SizedBox(width: 10),
+          _roleCard('executor', Icons.local_shipping_outlined,
+              'Тапсырыс орындаушы', 'Заказ орындаймын'),
+        ]),
+        const SizedBox(height: 20),
+        TextFormField(
+          controller: _name,
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: t('Аты-жөніңіз'),
+            prefixIcon: const Icon(Icons.badge_outlined),
+          ),
+          onFieldSubmitted: (_) => _next(),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(onPressed: _next, child: Text(t('Келесі'))),
+      ],
+    );
+  }
+
+  Widget _step2() {
+    return Column(
+      key: const ValueKey('step2'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t('Құпиясөз орнатыңыз'),
+            style:
+                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: _password,
+          obscureText: _obscure,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: t('Құпиясөз (кемінде 6 таңба)'),
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(
+                  _obscure ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _password2,
+          obscureText: _obscure,
+          decoration: InputDecoration(
+            hintText: t('Құпиясөзді қайталаңыз'),
+            prefixIcon: const Icon(Icons.lock_outline),
+          ),
+          onFieldSubmitted: (_) => _next(),
+        ),
+        const SizedBox(height: 16),
+        // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _agree = !_agree),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _agree,
+                      activeColor: Gz.ink,
+                      checkColor: Colors.white,
+                      side: const BorderSide(color: Gz.border, width: 1.6),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onChanged: (v) => setState(() => _agree = v ?? false),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.45,
+                          color: Gz.textSecondary),
+                      children: [
+                        TextSpan(text: t('Мен ')),
+                        TextSpan(
+                          text: t('Пайдаланушы келісімімен'),
+                          recognizer: _termsTap,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Gz.ink,
+                              decoration: TextDecoration.underline),
+                        ),
+                        TextSpan(text: t(' және ')),
+                        TextSpan(
+                          text: t('Құпиялылық саясатымен'),
+                          recognizer: _privacyTap,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Gz.ink,
+                              decoration: TextDecoration.underline),
+                        ),
+                        TextSpan(
+                            text: t(
+                                ' таныстым, дербес деректерімді өңдеуге келісемін.')),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+                onPressed: () => setState(() => _step--),
+                child: Text(t('Артқа'))),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: FilledButton(onPressed: _next, child: Text(t('Келесі'))),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _step3() {
+    return Column(
+      key: const ValueKey('step3'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t('Телефоныңызды растаңыз'),
+            style:
+                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        TelegramVerify(
+          onVerified: (token, phone) => setState(() {
+            _tgToken = token;
+            _verifiedPhone = phone;
+          }),
+        ),
+        const SizedBox(height: 20),
+        BusyButton(label: t('Тіркелу'), onPressed: _register),
+        if (_role == 'executor') ...[
+          const SizedBox(height: 12),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8DE),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: const Color(0xFFF2DE8A)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline,
+                    size: 17, color: Color(0xFFB58900)),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    t('Тапсырыс орындаушы тіркелген соң көлік '
+                        'деректері мен құжаттарды толтырады — '
+                        'өтінімді модератор тексереді.'),
+                    style: const TextStyle(
+                        color: Color(0xFF8A6D00), fontSize: 12, height: 1.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            onPressed: () => setState(() => _step--),
+            child: Text(t('Артқа')),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Gz.surface,
-      appBar: AppBar(title: Text(t('Тіркелу')), backgroundColor: Gz.surface),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _form,
+    return PopScope(
+      canPop: _step == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        backgroundColor: Gz.surface,
+        appBar: AppBar(
+          title: Text(t('Тіркелу')),
+          backgroundColor: Gz.surface,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (_back()) Navigator.of(context).maybePop();
+            },
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(t('Кім ретінде тіркелесіз?'),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15)),
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      _roleCard('client', Icons.person_outline,
-                          'Тапсырыс беруші', 'Жүк тасымалдатамын'),
-                      const SizedBox(width: 10),
-                      _roleCard('executor', Icons.local_shipping_outlined,
-                          'Тапсырыс орындаушы', 'Заказ орындаймын'),
-                    ]),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(
-                        hintText: t('Аты-жөніңіз'),
-                        prefixIcon: const Icon(Icons.badge_outlined),
-                      ),
-                      validator: (v) => NameGuard.validate(v ?? ''),
-                    ),
-                    const SizedBox(height: 12),
-                    TelegramVerify(
-                      onVerified: (token, phone) => setState(() {
-                        _tgToken = token;
-                        _verifiedPhone = phone;
-                      }),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscure,
-                      decoration: InputDecoration(
-                        hintText: t('Құпиясөз (кемінде 6 таңба)'),
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_off
-                              : Icons.visibility),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                    _stepDots(),
+                    const SizedBox(height: 24),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                                  begin: const Offset(0.04, 0),
+                                  end: Offset.zero)
+                              .animate(anim),
+                          child: child,
                         ),
                       ),
-                      validator: (v) => (v == null || v.length < 6)
-                          ? t('Кемінде 6 таңба')
-                          : null,
+                      child: switch (_step) {
+                        0 => _step1(),
+                        1 => _step2(),
+                        _ => _step3(),
+                      },
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _password2,
-                      obscureText: _obscure,
-                      decoration: InputDecoration(
-                        hintText: t('Құпиясөзді қайталаңыз'),
-                        prefixIcon: const Icon(Icons.lock_outline),
-                      ),
-                      validator: (v) =>
-                          v != _password.text ? t('Құпиясөздер сәйкес емес') : null,
-                    ),
-                    const SizedBox(height: 16),
-                    // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
-                    InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => setState(() => _agree = !_agree),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: Checkbox(
-                                value: _agree,
-                                activeColor: Gz.ink,
-                                onChanged: (v) =>
-                                    setState(() => _agree = v ?? false),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text.rich(
-                                TextSpan(
-                                  style: const TextStyle(
-                                      fontSize: 12.5,
-                                      height: 1.45,
-                                      color: Gz.textSecondary),
-                                  children: [
-                                    TextSpan(text: t('Мен ')),
-                                    TextSpan(
-                                      text: t('Пайдаланушы келісімімен'),
-                                      recognizer: _termsTap,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          color: Gz.ink,
-                                          decoration:
-                                              TextDecoration.underline),
-                                    ),
-                                    TextSpan(text: t(' және ')),
-                                    TextSpan(
-                                      text: t('Құпиялылық саясатымен'),
-                                      recognizer: _privacyTap,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          color: Gz.ink,
-                                          decoration:
-                                              TextDecoration.underline),
-                                    ),
-                                    TextSpan(
-                                        text: t(
-                                            ' таныстым, дербес деректерімді өңдеуге келісемін.')),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    BusyButton(label: t('Тіркелу'), onPressed: _register),
-                    if (_role == 'executor') ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 13, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF8DE),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(color: const Color(0xFFF2DE8A)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.info_outline,
-                                size: 17, color: Color(0xFFB58900)),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Text(
-                                t('Тапсырыс орындаушы тіркелген соң көлік '
-                                'деректері мен құжаттарды толтырады — '
-                                'өтінімді модератор тексереді.'),
-                                style: const TextStyle(
-                                    color: Color(0xFF8A6D00),
-                                    fontSize: 12,
-                                    height: 1.45),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
