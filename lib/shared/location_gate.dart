@@ -85,7 +85,7 @@ class _LocationGateState extends State<LocationGate>
       _LocState.serviceOff => (
           Icons.location_off_outlined,
           t('GPS өшірулі'),
-          t('GazelGo дұрыс жұмыс істеуі үшін (жақын заказдар, қаланы анықтау, '
+          t('Tasu дұрыс жұмыс істеуі үшін (жақын заказдар, қаланы анықтау, '
               'навигация) құрылғының орналасу қызметі қосулы болуы керек.'),
           t('Параметрлерді ашу'),
           () async {
