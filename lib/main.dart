@@ -191,10 +191,13 @@ class _Splash extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              t('Жүк тасымалы және арнайы техника платформасы'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                t('Жүк тасымалы және арнайы техника платформасы'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+              ),
             ),
           ],
         ),

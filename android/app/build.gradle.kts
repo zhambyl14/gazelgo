@@ -64,6 +64,15 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // R8: кодты кішірейту/обфускация + пайдаланылмаған ресурстарды алып
+            // тастау (APK/AAB өлшемін азайтады). Плагиндер өз consumer-rules-ын
+            // әкеледі, қосымша қорғаныс ережелері — proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

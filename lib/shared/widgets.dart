@@ -697,12 +697,11 @@ class GazelGoHero extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Жаңа брендтік логотип (өз ішінде «Tasu» жазуы бар) — сол себепті
+        // бөлек мәтіндік жазу қосылмайды.
         Container(
-          width: 78,
-          height: 78,
           decoration: BoxDecoration(
-            color: Gz.yellow,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(28),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x73FFC400),
@@ -711,19 +710,18 @@ class GazelGoHero extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.local_shipping, size: 40, color: Gz.ink),
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'Tasu',
-          style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-              color: Gz.ink),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.asset(
+              'assets/icon/icon.png',
+              width: 108,
+              height: 108,
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 16),
           Text(
             subtitle!,
             textAlign: TextAlign.center,
@@ -1113,16 +1111,16 @@ class GazelGoLogo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: size * 0.3, vertical: size * 0.12),
-          decoration: BoxDecoration(
-            color: Gz.yellow,
-            borderRadius: BorderRadius.circular(size * 0.3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(size * 0.32),
+          child: Image.asset(
+            'assets/icon/icon.png',
+            width: size * 1.35,
+            height: size * 1.35,
+            fit: BoxFit.cover,
           ),
-          child: Icon(Icons.local_shipping, size: size * 0.9, color: Gz.ink),
         ),
-        SizedBox(width: size * 0.3),
+        SizedBox(width: size * 0.34),
         Text(
           'Tasu',
           style: TextStyle(

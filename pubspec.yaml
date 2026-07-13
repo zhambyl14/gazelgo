@@ -43,11 +43,16 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icon/icon_fg.png"
 
 flutter_native_splash:
+  # Ақ фон — қосымша ашылғанда Flutter-дегі _Splash экранымен (Gz.surface = ақ)
+  # дәл сәйкес келеді, сондықтан native splash → логотип+слоган үзіліссіз ауысады.
   color: "#FFFFFF"
-  image: "assets/icon/icon.png"
+  # icon.png-тың орнына шеті бос (padding-і бар) арнайы splash суреті —
+  # логотип өз өлшемінде тұрады, «жақындап/үлкейіп» кетпейді.
+  image: "assets/icon/splash.png"
   android_12:
     color: "#FFFFFF"
-    image: "assets/icon/icon.png"
+    # Android 12+ дөңгелек масканың ішіне сыятын, айналасы бос нұсқа.
+    image: "assets/icon/splash_android12.png"
   android: true
   ios: true
   web: false
