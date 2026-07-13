@@ -1,11 +1,11 @@
 {
-    "name": "GazelGo",
-    "short_name": "GazelGo",
+    "name": "Tasu",
+    "short_name": "Tasu",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFC400",
     "theme_color": "#FFC400",
-    "description": "GazelGo — газель жүк тасымалы платформасы.",
+    "description": "Tasu — жүк тасымалы және спецтехника платформасы.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

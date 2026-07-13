@@ -18,7 +18,7 @@ class Notify {
   static const _channelId = 'gazelgo_high';
   static const _channel = AndroidNotificationChannel(
     _channelId,
-    'GazelGo хабарламалары',
+    'Tasu хабарламалары',
     description: 'Жаңа заказдар, өтінімдер, статус өзгерістері',
     importance: Importance.high,
   );
@@ -47,7 +47,7 @@ class Notify {
       const details = NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
-          'GazelGo хабарламалары',
+          'Tasu хабарламалары',
           channelDescription: 'Жаңа заказдар, өтінімдер, статус өзгерістері',
           importance: Importance.high,
           priority: Priority.high,

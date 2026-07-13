@@ -18,7 +18,7 @@ class BlockedScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GazelGo'),
+        title: const Text('Tasu'),
         actions: [
           IconButton(
             tooltip: t('Жаңарту'),

@@ -50,7 +50,7 @@ class GazelGoApp extends StatelessWidget {
     return ValueListenableBuilder<AppLang>(
       valueListenable: Lang.current,
       builder: (context, _, _) => MaterialApp(
-        title: 'GazelGo',
+        title: 'Tasu',
         debugShowCheckedModeBanner: false,
         theme: Gz.theme(),
         home: Env.isConfigured
@@ -176,15 +176,16 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Gz.surface,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GazelGoHero(),
-            SizedBox(height: 32),
-            SizedBox(
+            GazelGoHero(
+                subtitle: t('Жүк тасымалы және арнайы техника платформасы')),
+            const SizedBox(height: 32),
+            const SizedBox(
               width: 26,
               height: 26,
               child: CircularProgressIndicator(strokeWidth: 3, color: Gz.ink),

@@ -43,7 +43,7 @@ class Push {
       FirebaseMessaging.onMessage.listen((m) {
         final n = m.notification;
         if (n != null) {
-          Notify.show(n.title ?? 'GazelGo', n.body ?? '', id: 3);
+          Notify.show(n.title ?? 'Tasu', n.body ?? '', id: 3);
         }
       });
     } catch (_) {

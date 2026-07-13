@@ -359,7 +359,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               const Center(
-                child: Text('GazelGo v1.0',
+                child: Text('Tasu v1.0',
                     style: TextStyle(color: Gz.textSecondary, fontSize: 12)),
               ),
             ],

@@ -3,11 +3,11 @@
 // Іске қосу: dart run tool/i18n_audit.dart
 import 'dart:io';
 
-import 'package:gazelgo/core/i18n/ru_auth.dart';
-import 'package:gazelgo/core/i18n/ru_client.dart';
-import 'package:gazelgo/core/i18n/ru_executor.dart';
-import 'package:gazelgo/core/i18n/ru_moderator.dart';
-import 'package:gazelgo/core/i18n/ru_shared.dart';
+import 'package:tasu/core/i18n/ru_auth.dart';
+import 'package:tasu/core/i18n/ru_client.dart';
+import 'package:tasu/core/i18n/ru_executor.dart';
+import 'package:tasu/core/i18n/ru_moderator.dart';
+import 'package:tasu/core/i18n/ru_shared.dart';
 
 void main() {
   final dict = <String, String>{

@@ -36,7 +36,7 @@ class _ClientShellState extends State<ClientShell> {
         _ => null,
       };
       if (msg != null) {
-        Notify.show('GazelGo', msg, id: o.id.hashCode & 0x7fffffff);
+        Notify.show('Tasu', msg, id: o.id.hashCode & 0x7fffffff);
       }
     }
     _primed = true;

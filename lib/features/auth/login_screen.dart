@@ -61,7 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     Center(
                       child: GazelGoHero(
-                          subtitle: t('Газель жүк тасымалы платформасы')),
+                          subtitle:
+                              t('Жүк тасымалы және арнайы техника платформасы')),
                     ),
                     const SizedBox(height: 38),
                     Text(t('Кіру'),

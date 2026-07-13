@@ -687,7 +687,7 @@ class _ReviewPromptState extends State<ReviewPrompt> {
 }
 
 /// Үлкен hero-логотип (кіру/сплэш экрандарына): сары дөңгелектелген
-/// тақтайша + көлік белгісі + «GazelGo» атауы.
+/// тақтайша + көлік белгісі + «Tasu» атауы.
 class GazelGoHero extends StatelessWidget {
   final String? subtitle;
   const GazelGoHero({super.key, this.subtitle});
@@ -714,23 +714,13 @@ class GazelGoHero extends StatelessWidget {
           child: const Icon(Icons.local_shipping, size: 40, color: Gz.ink),
         ),
         const SizedBox(height: 18),
-        const Text.rich(
-          TextSpan(children: [
-            TextSpan(
-                text: 'Gazel',
-                style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                    color: Gz.ink)),
-            TextSpan(
-                text: 'Go',
-                style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                    color: Gz.yellowDark)),
-          ]),
+        const Text(
+          'Tasu',
+          style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+              color: Gz.ink),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 6),
@@ -1113,7 +1103,7 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
   }
 }
 
-/// GazelGo логотипі (мәтіндік).
+/// Tasu логотипі (мәтіндік).
 class GazelGoLogo extends StatelessWidget {
   final double size;
   const GazelGoLogo({super.key, this.size = 28});
@@ -1133,21 +1123,10 @@ class GazelGoLogo extends StatelessWidget {
           child: Icon(Icons.local_shipping, size: size * 0.9, color: Gz.ink),
         ),
         SizedBox(width: size * 0.3),
-        Text.rich(
-          TextSpan(children: [
-            TextSpan(
-                text: 'Gazel',
-                style: TextStyle(
-                    fontSize: size,
-                    fontWeight: FontWeight.w900,
-                    color: Gz.ink)),
-            TextSpan(
-                text: 'Go',
-                style: TextStyle(
-                    fontSize: size,
-                    fontWeight: FontWeight.w900,
-                    color: Gz.yellowDark)),
-          ]),
+        Text(
+          'Tasu',
+          style: TextStyle(
+              fontSize: size, fontWeight: FontWeight.w900, color: Gz.ink),
         ),
       ],
     );

@@ -1,5 +1,5 @@
-name: gazelgo
-description: "GazelGo — газель жүк тасымалы платформасы (клиент, орындаушы, модератор)."
+name: tasu
+description: "Tasu — жүк тасымалы және спецтехника платформасы (клиент, орындаушы, модератор)."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -34,6 +34,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/icon/icon.png"
   adaptive_icon_background: "#FFC400"
   adaptive_icon_foreground: "assets/icon/icon_fg.png"

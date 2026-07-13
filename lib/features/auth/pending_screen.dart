@@ -42,7 +42,7 @@ class PendingScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GazelGo'),
+        title: const Text('Tasu'),
         actions: [
           IconButton(
             tooltip: t('Жаңарту'),

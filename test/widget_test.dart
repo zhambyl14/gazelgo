@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gazelgo/main.dart';
+import 'package:tasu/main.dart';
 
 void main() {
   testWidgets('app boots to config screen when env is not set',

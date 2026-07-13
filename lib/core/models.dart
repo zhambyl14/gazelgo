@@ -490,7 +490,7 @@ class AppConfig {
 
   AppConfig({
     this.kaspiNumber = '+7 777 000 0000',
-    this.kaspiName = 'GazelGo',
+    this.kaspiName = 'Tasu',
     this.minTopup = 500,
   });
 
@@ -498,7 +498,7 @@ class AppConfig {
     if (payment == null) return AppConfig();
     return AppConfig(
       kaspiNumber: payment['kaspi_number'] as String? ?? '+7 777 000 0000',
-      kaspiName: payment['kaspi_name'] as String? ?? 'GazelGo',
+      kaspiName: payment['kaspi_name'] as String? ?? 'Tasu',
       minTopup: _i(payment['min_topup'] ?? 500),
     );
   }

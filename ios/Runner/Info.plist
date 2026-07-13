@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>GazelGo</string>
+	<string>Tasu</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
 	<key>NSCameraUsageDescription</key>
