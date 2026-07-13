@@ -606,6 +606,8 @@ class Repo {
       c.rpc('mod_reject_docs', params: {'p_user': userId, 'p_comment': comment});
 
   /// Орындаушының тек сұралған құжаттарды жаңартуы (ревьюге түседі).
+  /// Нақты ауыстырылған өрістердің ЕСКІ файлдары Storage-тан да өшіріледі
+  /// (RPC ескі жолдарды қайтарады — тимеген өрістер жойылмайды).
   static Future<void> submitDocsUpdate({
     String? idDocPath,
     String? licensePath,
@@ -616,18 +618,25 @@ class Repo {
     String? techPassportPath,
     String? techPassportSelfiePath,
     List<String>? photos,
-  }) =>
-      c.rpc('submit_docs_update', params: {
-        'p_id_doc': idDocPath,
-        'p_license': licensePath,
-        'p_tech': techPassportPath,
-        'p_photos': photos,
-        'p_id_selfie': idSelfiePath,
-        'p_license_selfie': licenseSelfiePath,
-        'p_passport': passportPath,
-        'p_passport_selfie': passportSelfiePath,
-        'p_tech_selfie': techPassportSelfiePath,
-      });
+  }) async {
+    final res = await c.rpc('submit_docs_update', params: {
+      'p_id_doc': idDocPath,
+      'p_license': licensePath,
+      'p_tech': techPassportPath,
+      'p_photos': photos,
+      'p_id_selfie': idSelfiePath,
+      'p_license_selfie': licenseSelfiePath,
+      'p_passport': passportPath,
+      'p_passport_selfie': passportSelfiePath,
+      'p_tech_selfie': techPassportSelfiePath,
+    });
+    final oldPaths = (res as List?)?.cast<String>() ?? const [];
+    if (oldPaths.isNotEmpty) {
+      try {
+        await c.storage.from('docs').remove(oldPaths);
+      } catch (_) {}
+    }
+  }
 
   /// Ревью күтіп тұрған құжат жаңартулары (модератор үшін).
   static Future<List<ExecutorProfile>> docsReviewPending() async {
