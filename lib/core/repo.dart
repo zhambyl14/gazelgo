@@ -466,7 +466,10 @@ class Repo {
     await c.storage.from('orders').uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+          // upsert=false: жол әрқашан бірегей (timestamp), қайшылық болмайды.
+          // upsert=true болса Storage "ON CONFLICT DO UPDATE" шығарады да,
+          // ол UPDATE RLS саясатын талап етіп, 403 бере алады.
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
         );
     return path;
   }
@@ -719,7 +722,9 @@ class Repo {
     await c.storage.from('support').uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+          // upsert=false: жол бірегей — «ON CONFLICT DO UPDATE» шақырмай,
+          // тек INSERT саясатымен жұмыс істейді (403 болмайды).
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
         );
     return path;
   }

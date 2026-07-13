@@ -197,11 +197,20 @@ Backend толығымен осы папкада дайын. Оны нақты S
      ЖАЗЫЛМАЙТЫН еді (`vehicle_photos =` SET тізімінен жоғалып қалған
      болатын) — қалпына келтірілді.
 
+   - `migrations/0034_orders_support_storage_update_policy.sql` ←
+     **"new row violates row-level security policy" қатесін түзету**
+     (заказ фотосын жүктегенде): `Repo.uploadOrderPhoto`/support фото
+     жүктеу `upsert: true` қолданады, ал Supabase Storage upsert
+     кезінде ішінде "ON CONFLICT DO UPDATE" шығарады — соған UPDATE
+     RLS саясаты керек, нақты қайшылық болмаса да. `orders`/`support`
+     бакеттерінде ол жоқ болатын (`docs`/`avatars`-та бар еді) — енді
+     екеуіне де `*_update_own` саясаты қосылды.
+
    Егер 0001–0004 бұрын орындалған болса, тек жаңа нөмірленген файлдарды
    ретімен іске қосыңыз (олар қайта орындауға қауіпсіз — idempotent).
    **0013, содан соң 0014, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023,
-   0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, ең соңынан
-   0033-ті орындаңыз.**
+   0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, ең
+   соңынан 0034-ті орындаңыз.**
 2. Edge functions: Dashboard → Edge Functions → **Deploy new function**:
    - аты `signup`, коды `functions/signup/index.ts`, **Verify JWT = OFF** —
      тіркелу осы функция арқылы (SMS-сыз, email растауын айналып өтеді).
