@@ -182,13 +182,19 @@ class _Splash extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GazelGoHero(
-                subtitle: t('Жүк тасымалы және арнайы техника платформасы')),
-            const SizedBox(height: 32),
-            const SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 3, color: Gz.ink),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Image.asset(
+                'assets/icon/icon.png',
+                width: 120,
+                height: 120,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              t('Жүк тасымалы және арнайы техника платформасы'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
             ),
           ],
         ),
