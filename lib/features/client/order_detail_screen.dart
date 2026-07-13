@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,7 +10,7 @@ import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import '../support/support_screen.dart';
 
-/// Клиенттің заказ экраны: ұсыныстар, VIP іздеу, барыс, пікір.
+/// Клиенттің заказ экраны: ұсыныстар, барыс, пікір.
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
   const OrderDetailScreen({super.key, required this.orderId});
@@ -22,15 +20,8 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  Timer? _vipTimer;
   bool _photosCleaned = false;
   bool _reviewShown = false;
-
-  @override
-  void dispose() {
-    _vipTimer?.cancel();
-    super.dispose();
-  }
 
   /// Заказ аяқталғанда бағалау терезесін бір рет қалқымалы етіп ашамыз.
   void _maybeShowReview(Order o) {
@@ -51,18 +42,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (!_photosCleaned && terminal.contains(o.status) && o.photos.isNotEmpty) {
       _photosCleaned = true;
       Repo.deleteOrderPhotos(o.photos);
-    }
-  }
-
-  void _ensureVipTimer(Order o) {
-    final need = o.type == 'instant' && o.status == 'searching';
-    if (need && _vipTimer == null) {
-      _vipTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        Repo.advanceVip(widget.orderId).catchError((_) {});
-      });
-    } else if (!need && _vipTimer != null) {
-      _vipTimer!.cancel();
-      _vipTimer = null;
     }
   }
 
@@ -102,7 +81,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           if (o == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          _ensureVipTimer(o);
           _maybeCleanupPhotos(o);
           _maybeShowReview(o);
           return SingleChildScrollView(
@@ -180,9 +158,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   List<Widget> _statusSection(Order o) {
     switch (o.status) {
       case 'searching':
-        return o.type == 'bidding'
-            ? [_OffersSection(order: o)]
-            : [_VipSearchSection(order: o)];
+        return [_OffersSection(order: o)];
       case 'accepted':
       case 'arrived':
       case 'loading':
@@ -572,96 +548,6 @@ class _ExecutorBrief extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-// ===================== VIP ІЗДЕУ (instant) =====================
-class _VipSearchSection extends StatelessWidget {
-  final Order order;
-  const _VipSearchSection({required this.order});
-
-  @override
-  Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        children: [
-          const SizedBox(height: 6),
-          const SizedBox(
-            width: 44,
-            height: 44,
-            child: CircularProgressIndicator(strokeWidth: 3, color: Gz.violet),
-          ),
-          const SizedBox(height: 14),
-          Text(t('VIP орындаушы ізделуде…'),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 6),
-          Text(
-            '${t('Баға:')} ${fmtT(order.systemPrice)}',
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
-          ),
-          const SizedBox(height: 10),
-          StreamBuilder<List<VipDispatch>>(
-            stream: Repo.orderDispatchesStream(order.id),
-            builder: (context, snap) {
-              final live =
-                  (snap.data ?? []).where((d) => d.isLive).toList();
-              if (live.isEmpty) {
-                return Text(
-                  t('Бос орындаушы қарастырылуда…'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-                );
-              }
-              return _DispatchCountdown(expiresAt: live.first.expiresAt);
-            },
-          ),
-          const SizedBox(height: 6),
-        ],
-      ),
-    );
-  }
-}
-
-class _DispatchCountdown extends StatefulWidget {
-  final DateTime expiresAt;
-  const _DispatchCountdown({required this.expiresAt});
-
-  @override
-  State<_DispatchCountdown> createState() => _DispatchCountdownState();
-}
-
-class _DispatchCountdownState extends State<_DispatchCountdown> {
-  Timer? _t;
-
-  @override
-  void initState() {
-    super.initState();
-    _t = Timer.periodic(
-        const Duration(seconds: 1), (_) => mounted ? setState(() {}) : null);
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final left = widget.expiresAt.difference(DateTime.now()).inSeconds;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Gz.violet.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        left > 0
-            ? '${t('Орындаушыға жіберілді · жауап:')} $left ${t('с')}'
-            : t('Келесі орындаушыға өтуде…'),
-        style: const TextStyle(
-            color: Gz.violet, fontWeight: FontWeight.w700, fontSize: 13),
-      ),
     );
   }
 }

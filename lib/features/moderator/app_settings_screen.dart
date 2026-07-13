@@ -82,8 +82,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await Repo.modUpdateSetting('tariffs', {
       'simple_day': price,
       'simple_night': price,
-      'vip_day': price,
-      'vip_night': price,
     });
     if (mounted) showSnack(context, t('Сақталды'));
   }

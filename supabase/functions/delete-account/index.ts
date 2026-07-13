@@ -1,4 +1,4 @@
-// GazelGo · delete-account edge function
+// Tasu · delete-account edge function
 // App Store 5.1.1(v) / Play Market талабы: пайдаланушы аккаунтын қосымша
 // ішінен өшіре алуы МІНДЕТТІ. verify_jwt = TRUE (тек өз аккаунтын өшіреді).
 //

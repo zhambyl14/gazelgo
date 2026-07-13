@@ -76,10 +76,6 @@ class _LineScreenState extends State<LineScreen> {
                     t('баға ұсыну'), Gz.blue, Icons.gavel)),
             const SizedBox(width: 8),
             Expanded(
-                child: _tile(t('Іздеуде'), '${s['searching_instant']}',
-                    t('жедел'), Gz.violet, Icons.flash_on)),
-            const SizedBox(width: 8),
-            Expanded(
                 child: _tile(t('Орындалуда'), '${s['active_orders']}',
                     t('заказ'), Gz.green, Icons.local_shipping)),
           ]),

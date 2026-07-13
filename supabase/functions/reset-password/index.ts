@@ -1,4 +1,4 @@
-// GazelGo · reset-password edge function
+// Tasu · reset-password edge function
 // Құпиясөзді қалпына келтіру — SMS-сіз, Telegram арқылы. Пайдаланушы нөмірін
 // Telegram-мен растайды (tg_token), сосын жаңа құпиясөз орнатады. Нөмір
 // расталған жазбадан алынады (өтірік нөмірге жол жоқ), сол нөмірдің

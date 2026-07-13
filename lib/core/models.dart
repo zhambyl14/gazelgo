@@ -317,24 +317,6 @@ class Offer {
         createdAt = _dt(m['created_at']);
 }
 
-// ---------- VIP dispatch ----------
-class VipDispatch {
-  final String id;
-  final String orderId;
-  final String executorId;
-  final String status; // pending | accepted | declined | expired
-  final DateTime expiresAt;
-
-  VipDispatch.fromMap(Map<String, dynamic> m)
-      : id = m['id'] as String,
-        orderId = m['order_id'] as String,
-        executorId = m['executor_id'] as String,
-        status = m['status'] as String? ?? 'pending',
-        expiresAt = _dt(m['expires_at']) ?? DateTime.now();
-
-  bool get isLive => status == 'pending' && expiresAt.isAfter(DateTime.now());
-}
-
 // ---------- Topup ----------
 class TopupRequest {
   final String id;

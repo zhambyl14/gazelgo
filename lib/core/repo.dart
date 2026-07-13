@@ -412,13 +412,9 @@ class Repo {
           Map<String, dynamic>.from(await c.rpc('executor_stats') as Map)),
       every: const Duration(seconds: 4));
 
-  /// Орындаушы линияға кіру/шығуы (жаңа заказ хабарламалары мен VIP тағайындау үшін).
+  /// Орындаушы линияға кіру/шығуы (жаңа заказ хабарламалары үшін).
   static Future<void> setOnLine(bool value) =>
       c.rpc('set_on_line', params: {'p_value': value});
-
-  /// VIP заказды терезесіз, бірден автоматты қабылдау (жіберіп алмау үшін).
-  static Future<void> setAutoAcceptVip(bool value) =>
-      c.rpc('set_auto_accept_vip', params: {'p_value': value});
 
   static Future<String> createOrder({
     required VehicleType vehicleType, // қажет көлік түрі
@@ -515,17 +511,6 @@ class Repo {
         'p_order': orderId,
         'p_price': price,
       });
-
-  static Future<void> advanceVip(String orderId) =>
-      c.rpc('advance_vip', params: {'p_order': orderId});
-
-  static Future<String> acceptVip(String dispatchId) async {
-    final res = await c.rpc('accept_vip', params: {'p_dispatch': dispatchId});
-    return (res as Map)['order_id'] as String;
-  }
-
-  static Future<void> declineVip(String dispatchId) =>
-      c.rpc('decline_vip', params: {'p_dispatch': dispatchId});
 
   static Future<void> placeOffer(String orderId, int price, String message) =>
       c.rpc('place_offer', params: {
@@ -876,33 +861,6 @@ class Repo {
             .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
             .toList();
       }, every: const Duration(seconds: 3));
-
-  static Stream<List<VipDispatch>> myDispatchesStream() {
-    final id = uid;
-    if (id == null) return const Stream.empty();
-    return _poll(() async {
-      final rows = await c
-          .from('vip_dispatches')
-          .select()
-          .eq('executor_id', id)
-          .order('created_at');
-      return (rows as List)
-          .map((m) => VipDispatch.fromMap(Map<String, dynamic>.from(m)))
-          .toList();
-    }, every: const Duration(seconds: 2));
-  }
-
-  static Stream<List<VipDispatch>> orderDispatchesStream(String orderId) =>
-      _poll(() async {
-        final rows = await c
-            .from('vip_dispatches')
-            .select()
-            .eq('order_id', orderId)
-            .order('created_at');
-        return (rows as List)
-            .map((m) => VipDispatch.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 2));
 
   static Stream<ExecutorProfile?> myExecutorProfileStream() {
     final id = uid;

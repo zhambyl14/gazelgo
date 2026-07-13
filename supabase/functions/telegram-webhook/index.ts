@@ -1,4 +1,4 @@
-// GazelGo · telegram-webhook edge function
+// Tasu · telegram-webhook edge function
 // Telegram Bot API вебхукы: тіркелуде телефонды растайды (SMS-сіз, тегін).
 //
 // Ағын (0026 миграциясы):
@@ -64,7 +64,7 @@ async function handle(update: TgUpdate) {
     const token = parts.length > 1 ? parts[1] : "";
     if (!token) {
       await send(chatId,
-        "Сәлеметсіз бе! Тіркелуді аяқтау үшін GazelGo қосымшасынан «Telegram арқылы растау» түймесін басыңыз.");
+        "Сәлеметсіз бе! Тіркелуді аяқтау үшін Tasu қосымшасынан «Telegram арқылы растау» түймесін басыңыз.");
       return;
     }
     // Токенді осы chat_id-ге байлаймыз (біткен болса — елемейді)
@@ -137,7 +137,7 @@ async function handle(update: TgUpdate) {
       .eq("token", pending.token);
     await send(
       chatId,
-      "✅ Нөміріңіз расталды! GazelGo қосымшасына оралып, тіркелуді жалғастырыңыз.",
+      "✅ Нөміріңіз расталды! Tasu қосымшасына оралып, тіркелуді жалғастырыңыз.",
       { remove_keyboard: true },
     );
     return;

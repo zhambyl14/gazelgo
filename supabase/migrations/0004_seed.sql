@@ -9,7 +9,7 @@ insert into public.app_settings (key, value) values
      "medium": {"base": 3500, "per_km": 300, "min": 4500},
      "large":  {"base": 5000, "per_km": 350, "min": 6500}
    }'),
-  ('payment', '{"kaspi_number": "+7 777 000 0000", "kaspi_name": "GazelGo", "min_topup": 500}'),
+  ('payment', '{"kaspi_number": "+7 777 000 0000", "kaspi_name": "Tasu", "min_topup": 500}'),
   ('shift', '{"day_start": 8, "day_end": 20, "tz": "Asia/Almaty"}')
 on conflict (key) do update set value = excluded.value;
 

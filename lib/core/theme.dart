@@ -16,7 +16,7 @@ class Gz {
   static const green = Color(0xFF16A34A);
   static const red = Color(0xFFDC2626);
   static const blue = Color(0xFF2563EB);
-  static const violet = Color(0xFF7C3AED); // VIP
+  static const violet = Color(0xFF7C3AED);
   static const night = Color(0xFF3730A3);
 
   static const radius = 20.0;
@@ -253,8 +253,6 @@ String errText(Object e) {
     'BUSY': 'Сізде орындалып жатқан заказ бар.',
     'EXEC_BUSY': 'Бұл орындаушы қазір бос емес.',
     'EXEC_UNAVAILABLE': 'Бұл орындаушы қазір қолжетімсіз.',
-    'EXPIRED': 'Уақыт өтіп кетті — заказ басқаға жіберілді.',
-    'ORDER_TAKEN': 'Заказ басқа орындаушыға кетті.',
     'NOT_PENDING': 'Бұл ұсыныс енді белсенді емес.',
     'NOT_AVAILABLE': 'Заказ енді қолжетімсіз.',
     'SIZE_MISMATCH': 'Газель өлшемі сәйкес емес.',

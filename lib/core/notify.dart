@@ -3,7 +3,7 @@ import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Локал уведомлениелер: жаңа заказ, VIP тарату, заказ статусы.
+/// Локал уведомлениелер: жаңа заказ, заказ статусы.
 /// Қосымша ашық/минимизацияда тұрғанда жұмыс істейді.
 /// (Қосымша толық жабық кезде push үшін FCM қажет — README қараңыз.)
 class Notify {

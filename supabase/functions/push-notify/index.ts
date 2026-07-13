@@ -1,4 +1,4 @@
-// GazelGo · push-notify edge function
+// Tasu · push-notify edge function
 // Postgres триггерден (pg_net, `send_push()` RPC, 0025 миграциясы)
 // шақырылады: title/body/data + міндетті емес target_user_ids жібереді.
 // target_user_ids болмаса — БАРЛЫҚ модераторға broadcast (0019-дағы ескі

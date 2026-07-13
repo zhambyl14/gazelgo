@@ -1,4 +1,4 @@
-// GazelGo · signup edge function
+// Tasu · signup edge function
 // Email-растаусыз тіркелу: admin.createUser(email_confirm: true).
 // verify_jwt = false (бұл көпшілікке ашық тіркелу endpoint-і).
 import { createClient } from "jsr:@supabase/supabase-js@2";

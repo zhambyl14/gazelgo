@@ -12,7 +12,6 @@ import '../../shared/widgets.dart';
 import '../profile/profile_screen.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
-import 'vip_dispatch_dialog.dart';
 
 class ExecutorShell extends StatefulWidget {
   const ExecutorShell({super.key});
@@ -23,10 +22,7 @@ class ExecutorShell extends StatefulWidget {
 
 class _ExecutorShellState extends State<ExecutorShell> {
   int _index = 0;
-  final Set<String> _shownDispatches = {};
   final Set<String> _notifiedOrders = {};
-  final Set<String> _notifiedAutoAccepts = {};
-  bool _autoAcceptPrimed = false;
   Timer? _feedWatch;
   bool _feedPrimed = false;
 
@@ -80,76 +76,35 @@ class _ExecutorShellState extends State<ExecutorShell> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<VipDispatch>>(
-      stream: Repo.myDispatchesStream(),
-      builder: (context, snap) {
-        // жаңа VIP заказ түскенде диалог + уведомление
-        final live = (snap.data ?? []).where((d) => d.isLive).toList();
-        for (final d in live) {
-          if (!_shownDispatches.contains(d.id)) {
-            _shownDispatches.add(d.id);
-            Notify.show(t('VIP заказ! ⚡'), t('Жауапқа 25 секунд — ашыңыз!'), id: 1);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) showVipDispatchDialog(context, d);
-            });
-          }
-        }
-        // "автоматты қабылдау" арқылы терезесіз тағайындалған VIP заказдар
-        final all = snap.data ?? [];
-        if (!_autoAcceptPrimed) {
-          if (snap.hasData) {
-            for (final d in all) {
-              _notifiedAutoAccepts.add(d.id);
-            }
-            _autoAcceptPrimed = true;
-          }
-        } else {
-          for (final d in all.where((d) => d.status == 'accepted')) {
-            if (!_notifiedAutoAccepts.contains(d.id)) {
-              _notifiedAutoAccepts.add(d.id);
-              Notify.show(t('VIP заказ автоматты тағайындалды! ⚡'),
-                  t('Жолға шығуға дайындалыңыз — заказ ашылды.'),
-                  id: 1);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ActiveOrderScreen(orderId: d.orderId)));
-                }
-              });
-            }
-          }
-        }
-        return Scaffold(
-          body: Column(
-            children: [
-              Expanded(
-                child: IndexedStack(
-                  index: _index,
-                  children: const [
-                    ExecutorHomeScreen(),
-                    ProfileScreen(),
-                  ],
-                ),
-              ),
-              const _BusyOrderBanner(),
-            ],
+    return Scaffold(
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: const [
+                ExecutorHomeScreen(),
+                ProfileScreen(),
+              ],
+            ),
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: [
-              NavigationDestination(
-                  icon: const Icon(Icons.home_outlined),
-                  selectedIcon: const Icon(Icons.home),
-                  label: t('Басты')),
-              NavigationDestination(
-                  icon: const Icon(Icons.person_outline),
-                  selectedIcon: const Icon(Icons.person),
-                  label: t('Профиль')),
-            ],
-          ),
-        );
-      },
+          const _BusyOrderBanner(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: [
+          NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home),
+              label: t('Басты')),
+          NavigationDestination(
+              icon: const Icon(Icons.person_outline),
+              selectedIcon: const Icon(Icons.person),
+              label: t('Профиль')),
+        ],
+      ),
     );
   }
 }

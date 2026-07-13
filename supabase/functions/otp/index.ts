@@ -1,4 +1,4 @@
-// GazelGo · otp edge function
+// Tasu · otp edge function
 // Телефон + құпиясөз аутентификациясы, SMS кодын Mobizon арқылы жіберу.
 //
 // Actions (POST body { action, ... }):
@@ -135,7 +135,7 @@ async function handleSend(
   if (!testCode) {
     const sent = await sendSms(
       phone,
-      `GazelGo коды: ${code}. Ешкімге бермеңіз.`,
+      `Tasu коды: ${code}. Ешкімге бермеңіз.`,
     );
     if (!sent) return json({ error: "SMS_FAILED" }, 502);
   }
