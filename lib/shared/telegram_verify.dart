@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -29,6 +30,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
   String? _token;
   String? _phone;
   bool _busy = false;
+  bool _noTg = false; // Telegram орнатылмаған (мобильде анықталса)
   Timer? _poll;
 
   @override
@@ -71,18 +73,32 @@ class _TelegramVerifyState extends State<TelegramVerify> {
       return;
     }
     // Мобильде алдымен Telegram қосымшасын ТІКЕЛЕЙ ашамыз: `tg://` схемасы
-    // `t.me` доменін МҮЛДЕМ пайдаланбайды, сол себепті ҚР-да жиі кездесетін
-    // `t.me` DNS-бұғаттауын айналып өтеді. Қосымша жоқ болса — https-ке түсеміз.
+    // `t.me` доменін МҮЛДЕМ пайдаланбайды → ҚР-дағы `t.me` DNS-бұғаттауын
+    // айналып өтеді. Қосымша ЖОҚ болса — бұзылған `t.me` браузер-сілтемесіне
+    // ЛАҚТЫРМАЙ, «Telegram орнату» экранын көрсетеміз (тұйыққа тіремейміз).
     final tg = Uri.parse('tg://resolve?domain=$bot&start=$t');
     () async {
+      var installed = false;
       try {
-        if (await canLaunchUrl(tg)) {
-          await launchUrl(tg, mode: LaunchMode.externalApplication);
-          return;
-        }
-      } catch (_) {/* tg:// сәтсіз — https-ке түсеміз */}
-      await launchUrl(https, mode: LaunchMode.externalApplication);
+        installed = await canLaunchUrl(tg);
+      } catch (_) {/* қате — орнатылмаған деп есептейміз */}
+      if (!mounted) return;
+      if (installed) {
+        if (_noTg) setState(() => _noTg = false);
+        await launchUrl(tg, mode: LaunchMode.externalApplication);
+      } else {
+        setState(() => _noTg = true); // → «Telegram орнату» экраны
+      }
     }();
+  }
+
+  /// Telegram қосымшасын дүкеннен орнату бетін ашу (құрылғыда Telegram жоқ
+  /// болса). Play Store / App Store домендері бұғатталмайды.
+  void _openStore() {
+    final url = defaultTargetPlatform == TargetPlatform.iOS
+        ? 'https://apps.apple.com/app/id686449807'
+        : 'https://play.google.com/store/apps/details?id=org.telegram.messenger';
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
   Future<void> _check() async {
@@ -127,6 +143,56 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                           fontWeight: FontWeight.w700, fontSize: 14)),
                 ],
               ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Telegram орнатылмаған — тұйық сілтеме орнына орнату экраны.
+    if (_noTg) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF4E5),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: const Color(0xFFF0C088)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline,
+                    size: 18, color: Color(0xFFB26A00)),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    t('Құрылғыда Telegram жоқ. Нөмірді растау Telegram арқылы '
+                        'жүреді (SMS-сіз, тегін). Telegram-ды орнатып, «Қайта '
+                        'тексеру» түймесін басыңыз.'),
+                    style: const TextStyle(
+                        color: Color(0xFF8A5200), fontSize: 12.5, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2B7DC4),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(46),
+              ),
+              onPressed: _openStore,
+              icon: const Icon(Icons.download),
+              label: Text(t('Telegram орнату')),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _busy ? null : _open, // қайта тексереміз
+              child: Text(t('Қайта тексеру')),
             ),
           ],
         ),
