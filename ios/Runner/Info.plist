@@ -8,11 +8,15 @@
 		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
 		<string>Tasu</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 		<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Камера жүк фотосын түсіру және газелист құжаттарын жүктеу үшін қажет.</string>
@@ -25,7 +29,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>magazel</string>
+		<string>Tasu</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
