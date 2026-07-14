@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/env.dart';
@@ -264,8 +265,70 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                     style: const TextStyle(color: Color(0xFF1C5A91), fontSize: 12)),
               ],
             ),
+            // Веб-те t.me DNS-пен бұғатталуы мүмкін (кейбір желілерде) —
+            // толық DNS-сыз балама: Telegram-ды қолмен ашып, ботты іздеу
+            // (Telegram-ның ішкі іздеуі t.me доменін пайдаланбайды).
+            if (kIsWeb) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Color(0xFF9DCBF5)),
+              const SizedBox(height: 10),
+              Text(
+                t('Сілтеме ашылмаса (Telegram веб-те бұғатталған желілерде '
+                    'болады): Telegram қолданбасын қолмен ашып, төмендегі '
+                    'ботты іздеп, кодты жіберіңіз.'),
+                style: const TextStyle(
+                    color: Color(0xFF1C5A91), fontSize: 12, height: 1.4),
+              ),
+              const SizedBox(height: 8),
+              _CopyRow(label: t('Бот'), value: '@${Env.telegramBot}'),
+              const SizedBox(height: 6),
+              _CopyRow(label: t('Код'), value: '/start ${_token!}'),
+            ],
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Мәтінді көрсетіп, түртсе Clipboard-қа көшіретін жол (веб DNS-fallback).
+class _CopyRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _CopyRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: value));
+        showSnack(context, t('Көшірілді'));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF9DCBF5)),
+        ),
+        child: Row(
+          children: [
+            Text('$label: ',
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1C5A91))),
+            Expanded(
+              child: Text(value,
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      fontFamily: 'monospace',
+                      color: Color(0xFF0F1720))),
+            ),
+            const Icon(Icons.copy, size: 15, color: Color(0xFF2B7DC4)),
+          ],
+        ),
       ),
     );
   }
