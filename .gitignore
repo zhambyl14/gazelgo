@@ -49,3 +49,13 @@ app.*.map.json
 /android/.kotlin/
 
 lib.zip
+
+# Қол қою құпиялары — ЕШҚАШАН git-ке түспеуі керек!
+# Android upload/signing
+key.properties
+android/key.properties
+*.jks
+*.keystore
+# iOS APNs auth key (AuthKey_*.p8) — қайта жүктеп алуға болмайды, сақтап қой
+*.p8
+AuthKey_*.p8

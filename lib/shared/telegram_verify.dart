@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -62,10 +63,26 @@ class _TelegramVerifyState extends State<TelegramVerify> {
   void _open() {
     final t = _token;
     if (t == null) return;
-    launchUrl(
-      Uri.parse('https://t.me/${Env.telegramBot}?start=$t'),
-      mode: LaunchMode.externalApplication,
-    );
+    final bot = Env.telegramBot;
+    final https = Uri.parse('https://t.me/$bot?start=$t');
+    // Вебте tg:// схемасы жоқ әрі await popup-ты бөгейді — тікелей https ашамыз.
+    if (kIsWeb) {
+      launchUrl(https, mode: LaunchMode.externalApplication);
+      return;
+    }
+    // Мобильде алдымен Telegram қосымшасын ТІКЕЛЕЙ ашамыз: `tg://` схемасы
+    // `t.me` доменін МҮЛДЕМ пайдаланбайды, сол себепті ҚР-да жиі кездесетін
+    // `t.me` DNS-бұғаттауын айналып өтеді. Қосымша жоқ болса — https-ке түсеміз.
+    final tg = Uri.parse('tg://resolve?domain=$bot&start=$t');
+    () async {
+      try {
+        if (await canLaunchUrl(tg)) {
+          await launchUrl(tg, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {/* tg:// сәтсіз — https-ке түсеміз */}
+      await launchUrl(https, mode: LaunchMode.externalApplication);
+    }();
   }
 
   Future<void> _check() async {

@@ -67,5 +67,12 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="tel"/>
         </intent>
+        <!-- Telegram қосымшасын tg:// схемасымен тікелей ашу (t.me/DNS-сыз,
+             телефон растау үшін) — canLaunchUrl Android 11+-те осы болмаса
+             false қайтарады. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tg"/>
+        </intent>
     </queries>
 </manifest>
