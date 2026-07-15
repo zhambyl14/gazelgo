@@ -12,16 +12,22 @@
 		<false/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleLocalizations</key>
+		<array>
+			<string>en</string>
+			<string>ru</string>
+			<string>kk</string>
+		</array>
 		<key>CFBundleDisplayName</key>
 		<string>Tasu</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
+		<string>Location is used to mark your pickup point on the map and show nearby orders.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Геолокация жүкті алу нүктесін картада дәл белгілеу және жақын заказдарды көрсету үшін қолданылады.</string>
+		<string>Location is used to mark your pickup point on the map and show nearby orders.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Камера жүк фотосын түсіру және газелист құжаттарын жүктеу үшін қажет.</string>
+		<string>Camera access is used to take photos of cargo and upload driver documents.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Галерея жүк фотосын, аватарды және құжат суреттерін таңдау үшін қажет.</string>
+		<string>Photo library access is used to choose cargo photos, your avatar, and document images.</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>

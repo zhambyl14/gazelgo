@@ -17,7 +17,6 @@ import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
 import 'features/executor/executor_shell.dart';
 import 'features/moderator/moderator_shell.dart';
-import 'shared/location_gate.dart';
 import 'shared/update_gate.dart';
 import 'shared/widgets.dart';
 
@@ -142,7 +141,7 @@ class _RoleRouter extends ConsumerWidget {
           case 'executor':
             return const _ExecutorRouter();
           default:
-            return const LocationGate(child: ClientShell());
+            return const ClientShell();
         }
       },
     );
@@ -163,7 +162,7 @@ class _ExecutorRouter extends ConsumerWidget {
       data: (e) {
         if (e == null) return const ExecutorApplyScreen();
         if (e.status == 'approved') {
-          return const LocationGate(child: ExecutorShell());
+          return const ExecutorShell();
         }
         return PendingScreen(profile: e);
       },

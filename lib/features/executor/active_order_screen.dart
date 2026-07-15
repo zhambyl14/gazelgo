@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -67,7 +68,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 
     final pos = await Geo.currentPosition();
     if (pos == null) {
-      if (context.mounted) showSnack(context, errText('LOCATION_OFF'), error: true);
+      if (context.mounted) await _showLocationNeeded(context);
       return false;
     }
     final dist =
@@ -82,6 +83,42 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       return false;
     }
     return true;
+  }
+
+  /// Геолокация өшірулі не рұқсат берілмеген кезде — түсіндірме терезесі.
+  /// Тек орындаушы «Келдім/Аяқтау» түймесін өзі басқанда шығады (локацияға
+  /// тәуелді нақты әрекет), сол себепті параметрлерге өту өз еркімен — мұны
+  /// App Store ережесі (5.1.1) осындай жағдайда рұқсат етеді.
+  Future<void> _showLocationNeeded(BuildContext context) async {
+    final serviceOn = await Geolocator.isLocationServiceEnabled();
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t('Геолокация керек')),
+        content: Text(t(
+            '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
+            '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
+            'қосыңыз.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(t('Жабу')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (serviceOn) {
+                Geolocator.openAppSettings();
+              } else {
+                Geolocator.openLocationSettings();
+              }
+            },
+            child: Text(t('Параметрлерді ашу')),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

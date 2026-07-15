@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -43,7 +44,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   void initState() {
     super.initState();
     _resolveFrom(Geo.almaty);
-    _initLocation();
+    _initStart();
   }
 
   @override
@@ -52,12 +53,21 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _initLocation() async {
+  Future<void> _initStart() async {
+    // 1) Соңғы сақталған орын болса — бірден соған жылжимыз. GPS рұқсаты
+    //    болмаса да клиент өткен рет қалдырған қаласынан ашылады (Алматы емес).
+    final last = await Prefs.lastLocation();
+    if (last != null && mounted) {
+      final p = LatLng(last.$1, last.$2);
+      _map.move(p, 14);
+      _resolveFrom(p);
+    }
+    // 2) GPS рұқсаты болса — нақты орынмен жаңартамыз әрі есте сақтаймыз.
     final pos = await Geo.currentPosition();
     if (pos != null && mounted) {
       final p = LatLng(pos.latitude, pos.longitude);
       _map.move(p, 15.5);
-      _resolveFrom(p);
+      _resolveFrom(p, persist: true);
     }
   }
 
@@ -69,17 +79,17 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     }
     final p = LatLng(pos.latitude, pos.longitude);
     _map.move(p, 16);
-    _resolveFrom(p);
+    _resolveFrom(p, persist: true);
   }
 
   void _onMapMove(MapCamera camera, bool hasGesture) {
     if (!hasGesture) return;
     _moveDebounce?.cancel();
-    _moveDebounce = Timer(
-        const Duration(milliseconds: 500), () => _resolveFrom(camera.center));
+    _moveDebounce = Timer(const Duration(milliseconds: 500),
+        () => _resolveFrom(camera.center, persist: true));
   }
 
-  Future<void> _resolveFrom(LatLng center) async {
+  Future<void> _resolveFrom(LatLng center, {bool persist = false}) async {
     setState(() => _resolvingFrom = true);
     final (addr, city) = await Geo.reverseWithCity(center);
     if (!mounted) return;
@@ -87,13 +97,20 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       _from = PickedAddress(addr, center, city);
       _resolvingFrom = false;
     });
+    // Клиент өзі белгілеген орынды есте сақтаймыз (келесі ашылудың әдепкісі).
+    if (persist) {
+      unawaited(Prefs.setLastLocation(center.latitude, center.longitude));
+    }
   }
 
   /// Автоматты анықталған «Қайдан» адресін сәл өзгертуге мүмкіндік береді.
   Future<void> _editFrom() async {
     final res = await CityStreetSheet.show(context,
         title: t('Қайдан аламыз?'), initial: _from);
-    if (res != null && mounted) setState(() => _from = res);
+    if (res != null && mounted) {
+      setState(() => _from = res);
+      unawaited(Prefs.setLastLocation(res.point.latitude, res.point.longitude));
+    }
   }
 
   Future<void> _pickTo() async {

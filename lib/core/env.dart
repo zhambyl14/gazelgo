@@ -26,5 +26,5 @@ class Env {
   /// Пайдаланушы `t.me/<осы>?start=<токен>` арқылы ботқа өтіп, нөмірін
   /// бөліседі. Ботты BotFather-де құрып, вебхукын `telegram-webhook` edge
   /// функциясына қосу керек (supabase/APPLY.md → «Telegram верификация»).
-  static const telegramBot = 'gazelgobot';
+  static const telegramBot = 'tasuappbot';
 }
