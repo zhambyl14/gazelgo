@@ -27,7 +27,11 @@ class Notify {
     if (kIsWeb || _ready) return;
     try {
       const android = AndroidInitializationSettings('ic_stat_notify');
-      const ios = DarwinInitializationSettings();
+      const ios = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       await _plugin.initialize(
         const InitializationSettings(android: android, iOS: ios),
       );
@@ -54,7 +58,15 @@ class Notify {
           icon: 'ic_stat_notify',
           color: Color(0xFFFFC400),
         ),
-        iOS: DarwinNotificationDetails(),
+        // iOS-та presentSound анық true болмаса, локал хабарлама
+        // дыбыссыз (тек баннер) көрсетіледі — flutter_local_notifications-тың
+        // белгілі мінезі, null әдепкі мән дыбысты өшіріп тастайды.
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'default',
+        ),
       );
       await _plugin.show(id, title, body, details);
     } catch (_) {}

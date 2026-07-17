@@ -52,6 +52,22 @@ class GazelGoApp extends StatelessWidget {
         title: 'Tasu',
         debugShowCheckedModeBanner: false,
         theme: Gz.theme(),
+        // Жүйелік қаріп өлшемін шектейміз: кейбір Android-та қаріпті қатты
+        // үлкейтсе, бүкіл интерфейс (әсіресе картадағы төменгі панель) шектен
+        // тыс үлкейіп, карта көрінбей қалатын. 1.0–1.25 аралығына қысамыз —
+        // оқылымдылық сақталады, бірақ орналасу бұзылмайды.
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          return MediaQuery(
+            data: mq.copyWith(
+              textScaler: mq.textScaler.clamp(
+                minScaleFactor: 1.0,
+                maxScaleFactor: 1.25,
+              ),
+            ),
+            child: child!,
+          );
+        },
         home: Env.isConfigured
             ? const UpdateGate(child: AuthGate())
             : const _NotConfigured(),
@@ -220,19 +236,20 @@ class _RetryScreen extends StatelessWidget {
             children: [
               const Icon(Icons.wifi_off, size: 48, color: Gz.textSecondary),
               const SizedBox(height: 16),
-              const Text('Жүктеу мүмкін болмады',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              Text(t('Жүктеу мүмкін болмады'),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 20),
               SizedBox(
                 width: 220,
                 child: FilledButton(
                   onPressed: onRetry,
-                  child: const Text('Қайталау'),
+                  child: Text(t('Қайталау')),
                 ),
               ),
               TextButton(
                 onPressed: () => confirmSignOut(context),
-                child: const Text('Шығу'),
+                child: Text(t('Шығу')),
               ),
             ],
           ),

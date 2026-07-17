@@ -37,7 +37,7 @@ class _UpdateGateState extends State<UpdateGate> {
   Future<void> _check() async {
     try {
       final gate = await Repo.appVersionGate();
-      final minBuild = int.tryParse('${gate['min_build'] ?? 0}') ?? 0;
+      final minBuild = _minBuildFor(gate);
       if (minBuild <= 0) {
         if (mounted) setState(() => _checked = true);
         return;
@@ -57,6 +57,23 @@ class _UpdateGateState extends State<UpdateGate> {
       // сервермен байланыс жоқ не бапталмаған — жібере береміз
     }
     if (mounted) setState(() => _checked = true);
+  }
+
+  /// Осы платформаға тиесілі минималды build. Android мен iOS дүкенде әр
+  /// нұсқада болатындықтан (App Store шолуы Play-ден кеш) — әр платформаға
+  /// ЖЕКЕ шек. Платформаға арналған мән толмаса, ескі жалпы `min_build`-ке
+  /// қайтады (кері үйлесімділік). Бұл: Android-та жаңа нұсқа шыққанда, iOS
+  /// App Store-да ол әлі жоқ болса, iPhone соңғы нұсқада отырса да қате
+  /// бұғатталатын багты жояды.
+  int _minBuildFor(Map<String, dynamic> gate) {
+    final generic = int.tryParse('${gate['min_build'] ?? 0}') ?? 0;
+    if (!kIsWeb && Platform.isIOS) {
+      return int.tryParse('${gate['min_build_ios'] ?? ''}') ?? generic;
+    }
+    if (!kIsWeb && Platform.isAndroid) {
+      return int.tryParse('${gate['min_build_android'] ?? ''}') ?? generic;
+    }
+    return generic;
   }
 
   Future<void> _openStore() async {
