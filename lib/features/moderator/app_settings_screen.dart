@@ -22,7 +22,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _kaspiNumber = TextEditingController();
   final _kaspiName = TextEditingController();
   final _minTopup = TextEditingController();
-  final _minBuild = TextEditingController();
+  final _minBuildAndroid = TextEditingController();
+  final _minBuildIos = TextEditingController();
   final _androidUrl = TextEditingController();
   final _iosUrl = TextEditingController();
   final _updateMessage = TextEditingController();
@@ -39,7 +40,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _kaspiNumber.dispose();
     _kaspiName.dispose();
     _minTopup.dispose();
-    _minBuild.dispose();
+    _minBuildAndroid.dispose();
+    _minBuildIos.dispose();
     _androidUrl.dispose();
     _iosUrl.dispose();
     _updateMessage.dispose();
@@ -60,7 +62,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
       _minTopup.text = '${payment['min_topup'] ?? 500}';
-      _minBuild.text = '${gate['min_build'] ?? 0}';
+      // Ескі жалғыз min_build бар болса — екі өріске де көшіріледі.
+      _minBuildAndroid.text =
+          '${gate['min_build_android'] ?? gate['min_build'] ?? 0}';
+      _minBuildIos.text = '${gate['min_build_ios'] ?? gate['min_build'] ?? 0}';
       _androidUrl.text = '${gate['android_url'] ?? ''}';
       _iosUrl.text = '${gate['ios_url'] ?? ''}';
       _updateMessage.text = '${gate['message'] ?? ''}';
@@ -97,9 +102,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Future<void> _saveVersionGate() async {
-    final minBuild = _int(_minBuild) ?? 0;
+    final android = _int(_minBuildAndroid) ?? 0;
+    final ios = _int(_minBuildIos) ?? 0;
     await Repo.modUpdateSetting('version_gate', {
-      'min_build': minBuild,
+      'min_build_android': android,
+      'min_build_ios': ios,
+      // Ескі (build ≤ соңғы шыққанға дейінгі) клиенттер платформаны
+      // ажыратпай тек `min_build`-ті оқиды — оларды ешбір платформада
+      // ҚАТЕ бұғаттамау үшін екеуінің КІШІсін жазамыз (fail-open).
+      'min_build': android < ios ? android : ios,
       'android_url': _androidUrl.text.trim(),
       'ios_url': _iosUrl.text.trim(),
       'message': _updateMessage.text.trim(),
@@ -189,11 +200,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
-            t('App Store/Play Market-ке жаңа нұсқа шығарғанда, осы жерден '
-                'минималды build нөмірін көтеріңіз — одан төмен нұсқадағы '
-                'пайдаланушылар қосымшаны аша алмайды, тек «Жаңарту» '
-                'батырмасын көреді. Build нөмірі — pubspec.yaml-дағы '
-                '"+N" (мыс. 1.0.2+5 → 5). 0 қойсаңыз — тексеру өшеді.'),
+            t('Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң, сол платформаның '
+                'минималды build нөмірін көтеріңіз — одан төмен нұсқадағылар '
+                'тек «Жаңарту» батырмасын көреді. Android мен iOS ЖЕКЕ: App '
+                'Store шолуы Play-ден баяу, сондықтан iOS санын App Store-да '
+                'жарияланғанша көтермеңіз — әйтпесе iPhone соңғы нұсқада '
+                'отырса да бұғатталады. Build нөмірі — pubspec.yaml-дағы '
+                '"+N" (мыс. 1.0.2+5 → 5). 0 = сол платформада тексеру өшулі.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -202,11 +215,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextField(
-                  controller: _minBuild,
+                  controller: _minBuildAndroid,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: t('Минималды build нөмірі'),
-                    prefixIcon: const Icon(Icons.system_update_outlined),
+                    labelText: t('Android минималды build'),
+                    prefixIcon: const Icon(Icons.android),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _minBuildIos,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('iOS минималды build'),
+                    prefixIcon: const Icon(Icons.apple),
                   ),
                 ),
                 const SizedBox(height: 10),

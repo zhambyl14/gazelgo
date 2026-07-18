@@ -331,7 +331,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }),
         ),
         const SizedBox(height: 20),
-        BusyButton(label: t('Тіркелу'), onPressed: _register),
+        // Нөмір Telegram арқылы РАСТАЛМАЙ тұрып «Тіркелу» батырмасы сұр әрі
+        // басылмайтын күйде тұрады — назар алдымен жоғарыдағы растауға
+        // аударылады (қолданушылар шатаспас үшін).
+        BusyButton(
+          label: t('Тіркелу'),
+          enabled: _verifiedPhone != null && _tgToken != null,
+          onPressed: _register,
+        ),
+        if (_verifiedPhone == null) ...[
+          const SizedBox(height: 8),
+          Text(
+            t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+        ],
         if (_role == 'executor') ...[
           const SizedBox(height: 12),
           Container(

@@ -176,9 +176,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 4),
-              if (s.trialActive)
-                _TrialBanner(trialUntil: s.trialUntil),
-              const SizedBox(height: 4),
               Text(
                 t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
                     '1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
@@ -199,12 +196,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 ordersLeft: s.ordersLeft,
                 until: s.until,
                 onBuy: () => _buy(context, ref, s.price),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                t('Жаңа тіркелген орындаушыларға алғашқы 1 ай тегін — тариф '
-                    'сатып алу қажет емес.'),
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 24),
             ],
@@ -235,43 +226,6 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
-  }
-}
-
-/// Тегін кезең баннері (§7): жаңа расталған орындаушыға 1 ай шексіз заказ.
-class _TrialBanner extends StatelessWidget {
-  final DateTime? trialUntil;
-  const _TrialBanner({required this.trialUntil});
-
-  @override
-  Widget build(BuildContext context) {
-    if (trialUntil == null || !trialUntil!.isAfter(DateTime.now())) {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Gz.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.card_giftcard, size: 18, color: Gz.green),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '${t('Тегін кезең белсенді —')} ${fmtDate(trialUntil)} '
-              '${t('дейін шексіз заказ (жаңа орындаушыға 1 ай тегін)')}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                  color: Gz.green),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

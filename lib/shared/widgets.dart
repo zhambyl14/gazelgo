@@ -16,6 +16,10 @@ class BusyButton extends StatefulWidget {
   final Color? color;
   final IconData? icon;
 
+  /// false болса — батырма сұр әрі басылмайтын күйде (мыс. алдын ала бір
+  /// шарт орындалмаса). Дефолт — қосулы.
+  final bool enabled;
+
   const BusyButton({
     super.key,
     required this.label,
@@ -23,6 +27,7 @@ class BusyButton extends StatefulWidget {
     this.outlined = false,
     this.color,
     this.icon,
+    this.enabled = true,
   });
 
   @override
@@ -62,11 +67,12 @@ class _BusyButtonState extends State<BusyButton> {
               ),
             ],
           );
+    final active = widget.enabled && !_busy;
     if (widget.outlined) {
-      return OutlinedButton(onPressed: _busy ? null : _run, child: child);
+      return OutlinedButton(onPressed: active ? _run : null, child: child);
     }
     return FilledButton(
-      onPressed: _busy ? null : _run,
+      onPressed: active ? _run : null,
       style: widget.color == null
           ? null
           : FilledButton.styleFrom(

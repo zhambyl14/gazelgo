@@ -1,13 +1,20 @@
 // Tasu · cleanup-storage edge function
 // pg_cron (supabase/migrations/0032_storage_retention_cron.sql) күн сайын
 // осы функцияны шақырады:
-//   (1) 5+ күн бұрын ЖАБЫЛҒАН қолдау тредтерін — хабарламаларымен және
+//   (1) 1+ күн бұрын ЖАБЫЛҒАН қолдау тредтерін — хабарламаларымен және
 //       Storage суреттерімен қоса — толық өшіреді (support_messages
-//       support_threads-ке ON DELETE CASCADE-пен байланған).
+//       support_threads-ке ON DELETE CASCADE-пен байланған). Қысқа мерзім,
+//       себебі чатта дау/шағым терезесі жоқ — тек хабарласу тарихы.
 //   (2) 5+ күн бұрын аяқталған/бас тартылған/мерзімі өткен заказдардың
 //       Storage-тағы жүк фотоларын өшіреді. Заказдың өзі (тарих, дау
 //       болғанда дәлел ретінде тарифтік/модерация есебі үшін) қалады —
-//       тек `photos` бағаны бос массивке ауыстырылады.
+//       тек `photos` бағаны бос массивке ауыстырылады. Ұзағырақ мерзім,
+//       себебі аяқталған заказ бойынша шағым/дау бірнеше күн ішінде
+//       түсуі мүмкін, модератор дәлел ретінде фотоны көруі керек.
+//   (3) `storage_purge_queue`-дегі (0037 миграциясы) мерзімі жеткен
+//       жазбаларды өшіреді — аккаунт өшіргенде тергеу үшін 30 күн
+//       сақталған docs/avatars файлдары (delete-account функциясын
+//       қараңыз).
 //
 // verify_jwt = false (Dashboard-та осылай қойыңыз — pg_net-тен, JWT-сіз
 // шақырылады). Орнына `x-cron-secret` header тексеріледі — Edge Function
@@ -15,7 +22,11 @@
 // endpoint-ті сырттан біреу біліп қалса да, секретсіз шақыра алмайды.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const RETENTION_DAYS = 5;
+// Тредтің дау/шағым мүмкіндігі жоқ (тек хабарласу тарихы), сол себепті
+// қолдау фотолары қысқа сақталады. Заказ фотолары — шағым/дау дәлелі
+// ретінде модераторға керек болуы мүмкін, сол себепті ұзағырақ.
+const ORDER_RETENTION_DAYS = 5;
+const SUPPORT_RETENTION_DAYS = 1;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 Deno.serve(async (req: Request) => {
@@ -33,10 +44,10 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * MS_PER_DAY)
+  const supportCutoff = new Date(Date.now() - SUPPORT_RETENTION_DAYS * MS_PER_DAY)
     .toISOString();
 
-  // ---------- 1) 5+ күн бұрын жабылған қолдау тредтері ----------
+  // ---------- 1) 1+ күн бұрын жабылған қолдау тредтері ----------
   let threadsDeleted = 0;
   let supportPhotosDeleted = 0;
   {
@@ -44,7 +55,7 @@ Deno.serve(async (req: Request) => {
       .from("support_threads")
       .select("id")
       .eq("status", "closed")
-      .lt("closed_at", cutoff)
+      .lt("closed_at", supportCutoff)
       .limit(500);
 
     const threadIds = (threads ?? []).map((t) => t.id as string);
@@ -73,7 +84,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ---------- 2) 5+ күн бұрын аяқталған/бас тартылған заказ фотолары ----------
+  // ---------- 2) 5+ (ORDER_RETENTION_DAYS) күн бұрын аяқталған/бас тартылған заказ фотолары ----------
   let ordersCleaned = 0;
   let orderPhotosDeleted = 0;
   {
@@ -90,7 +101,7 @@ Deno.serve(async (req: Request) => {
       if (paths.length === 0) continue;
 
       const ts = (o.completed_at ?? o.cancelled_at ?? o.created_at) as string;
-      if (new Date(ts).getTime() > Date.now() - RETENTION_DAYS * MS_PER_DAY) {
+      if (new Date(ts).getTime() > Date.now() - ORDER_RETENTION_DAYS * MS_PER_DAY) {
         continue; // әлі сақтау мерзімі толмаған
       }
 
@@ -106,12 +117,40 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // ---------- 3) мерзімі жеткен purge-кезегі (аккаунт өшіру, 0037) ----------
+  let purgedFiles = 0;
+  {
+    const { data: due } = await admin
+      .from("storage_purge_queue")
+      .select("id, bucket, path")
+      .lte("purge_after", new Date().toISOString())
+      .limit(500);
+
+    const byBucket = new Map<string, { ids: string[]; paths: string[] }>();
+    for (const row of due ?? []) {
+      const bucket = row.bucket as string;
+      const entry = byBucket.get(bucket) ?? { ids: [], paths: [] };
+      entry.ids.push(row.id as string);
+      entry.paths.push(row.path as string);
+      byBucket.set(bucket, entry);
+    }
+    for (const [bucket, entry] of byBucket) {
+      await admin.storage.from(bucket).remove(entry.paths).catch(() => {});
+      const { error: delErr } = await admin
+        .from("storage_purge_queue")
+        .delete()
+        .in("id", entry.ids);
+      if (!delErr) purgedFiles += entry.paths.length;
+    }
+  }
+
   return json({
     ok: true,
     threadsDeleted,
     supportPhotosDeleted,
     ordersCleaned,
     orderPhotosDeleted,
+    purgedFiles,
   }, 200);
 });
 

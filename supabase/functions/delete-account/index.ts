@@ -10,12 +10,23 @@
 // қараңыз.)
 //
 // ЕНДІ: аккаунт ӨШІРІЛМЕЙДІ — АНОНИМДЕЛЕДІ. Жеке дерек (аты, телефон,
-// аватар, құжат фотолары) МӘҢГІ өшіріледі және STORAGE-тан да жойылады,
-// кіру мүмкіндігі (email/құпиясөз) біржола жабылады — App Store/Play
-// тұрғысынан бұл толыққанды «аккаунтты өшіру». Ал заказ транзакциялары
-// (GPS маршруты, баға, уақыты) — заң бұзушылықты тергеу мақсатында да,
-// қарсы тараптың өз тарихын сақтау үшін де — өзгеріссіз қалады
-// (Пайдаланушы келісімі §6, lib/features/legal/legal_screen.dart).
+// аватар, құжат фотолары) МӘҢГІ өшіріледі, кіру мүмкіндігі (email/
+// құпиясөз) біржола жабылады — App Store/Play тұрғысынан бұл толыққанды
+// «аккаунтты өшіру». Ал заказ транзакциялары (GPS маршруты, баға,
+// уақыты) — заң бұзушылықты тергеу мақсатында да, қарсы тараптың өз
+// тарихын сақтау үшін де — өзгеріссіз қалады (Пайдаланушы келісімі §6,
+// lib/features/legal/legal_screen.dart).
+//
+// STORAGE (0037 миграциясы): полиция тергеу кезінде құжат/аватар сұрауы
+// мүмкін болғандықтан, файлдар БІРДЕН емес, шартты түрде өшіріледі —
+//   - docs: орындаушы КЕМІНДЕ 1 заказды АЯҚТАҒАН болса → 30 күн сақталып,
+//     содан кейін cleanup-storage cron арқылы өшеді. Аяқталған заказы
+//     мүлдем болмаса → бірден өшіріледі.
+//   - avatars: аккаунтта (клиент не орындаушы ретінде) КЕМІНДЕ 1
+//     аяқталған заказ болса → 30 күн сақталып, содан кейін өшеді.
+//     Болмаса → бірден өшіріледі.
+// DB көрсеткіштері (profiles.avatar_url, executor_profiles.*_path) бұл
+// екі жағдайда да БІРДЕН тазаланады — тек нақты Storage файлы кідіреді.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
@@ -65,7 +76,27 @@ Deno.serve(async (req: Request) => {
     return json({ error: "HAS_ACTIVE_ORDERS" }, 400);
   }
 
-  // ---------- storage-тан құжат/көлік/аватар файлдарын нақты өшіру ----------
+  // ---------- заказ тарихы: сақтау мерзімін осыдан анықтаймыз ----------
+  const PURGE_RETENTION_DAYS = 30;
+  const purgeAfter = new Date(
+    Date.now() + PURGE_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { count: execCompletedCount } = await admin
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("executor_id", uid)
+    .eq("status", "completed");
+  const hasCompletedAsExecutor = (execCompletedCount ?? 0) > 0;
+
+  const { count: anyCompletedCount } = await admin
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .or(`client_id.eq.${uid},executor_id.eq.${uid}`)
+    .eq("status", "completed");
+  const hasCompletedAny = (anyCompletedCount ?? 0) > 0;
+
+  // ---------- storage-тан құжат/көлік файлдарын өшіру не кезекке қою ----------
   const docPaths: string[] = [];
   const { data: ep } = await admin
     .from("executor_profiles")
@@ -83,9 +114,17 @@ Deno.serve(async (req: Request) => {
     }
   }
   if (docPaths.length > 0) {
-    await admin.storage.from("docs").remove(docPaths).catch(() => {});
+    if (hasCompletedAsExecutor) {
+      // тергеу сұрауы үшін 30 күн сақтаймыз — бірден өшірмейміз
+      await admin.from("storage_purge_queue").insert(
+        docPaths.map((path) => ({ bucket: "docs", path, purge_after: purgeAfter })),
+      ).catch(() => {});
+    } else {
+      await admin.storage.from("docs").remove(docPaths).catch(() => {});
+    }
   }
 
+  // ---------- аватар файлын өшіру не кезекке қою ----------
   const { data: prof } = await admin
     .from("profiles")
     .select("avatar_url")
@@ -97,7 +136,15 @@ Deno.serve(async (req: Request) => {
     const idx = avatarUrl.indexOf(marker);
     if (idx >= 0) {
       const path = avatarUrl.slice(idx + marker.length);
-      await admin.storage.from("avatars").remove([path]).catch(() => {});
+      if (hasCompletedAny) {
+        await admin.from("storage_purge_queue").insert({
+          bucket: "avatars",
+          path,
+          purge_after: purgeAfter,
+        }).catch(() => {});
+      } else {
+        await admin.storage.from("avatars").remove([path]).catch(() => {});
+      }
     }
   }
 

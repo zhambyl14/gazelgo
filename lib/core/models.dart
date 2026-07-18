@@ -31,6 +31,7 @@ enum VehicleType {
   gazelle,
   furgon,
   kamaz,
+  fura,
   crane,
   manipulator,
   assenizator,
@@ -43,6 +44,7 @@ enum VehicleType {
 VehicleType vehicleTypeFrom(String? s) => switch (s) {
       'furgon' => VehicleType.furgon,
       'kamaz' => VehicleType.kamaz,
+      'fura' => VehicleType.fura,
       'crane' => VehicleType.crane,
       'manipulator' => VehicleType.manipulator,
       'assenizator' => VehicleType.assenizator,
@@ -59,6 +61,7 @@ extension VehicleTypeX on VehicleType {
         VehicleType.gazelle => t('Газель'),
         VehicleType.furgon => t('Фургон'),
         VehicleType.kamaz => t('КамАЗ'),
+        VehicleType.fura => t('Фура'),
         VehicleType.crane => t('Кран'),
         VehicleType.manipulator => t('Манипулятор'),
         VehicleType.assenizator => t('Ассенизатор'),
@@ -72,6 +75,7 @@ extension VehicleTypeX on VehicleType {
   /// [vehicleIcon] екеуін бір өлшемге сәйкестендіріп рендерлейді.
   String? get pngAsset => switch (this) {
         VehicleType.kamaz => 'assets/vehicles/kamaz.png',
+        VehicleType.fura => 'assets/vehicles/fura.png',
         VehicleType.crane => 'assets/vehicles/crane.png',
         VehicleType.manipulator => 'assets/vehicles/manipulator.png',
         VehicleType.assenizator => 'assets/vehicles/assenizator.png',
@@ -87,6 +91,13 @@ extension VehicleTypeX on VehicleType {
         VehicleType.furgon => '🚐',
         VehicleType.tractor => '🚜',
         _ => '🚚',
+      };
+
+  /// Көлік түрінің қысқа түсініктемесі (сыйымдылық/жүктеме). Бос жол болса —
+  /// UI бұл жолды көрсетпейді. Каруселде таңдалған түрдің астында шығады.
+  String get description => switch (this) {
+        VehicleType.fura => t('Ауыр жүк көлігі · 5–20 тонна'),
+        _ => '',
       };
 }
 
