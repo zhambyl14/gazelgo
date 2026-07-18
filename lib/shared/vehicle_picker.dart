@@ -70,6 +70,37 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final desc = widget.selected.description;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _carousel(),
+        // Таңдалған көлік түрінің түсініктемесі (мыс. «Фура» — 5–20 тонна).
+        // Түсініктеме бар түрлерге ғана көрінеді, таңдау өзгергенде жаңарады.
+        if (desc.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.info_outline, size: 15, color: Gz.textSecondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  desc,
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _carousel() {
     return SizedBox(
       height: _cardH,
       child: ListView.separated(
