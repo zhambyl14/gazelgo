@@ -15,7 +15,14 @@ import 'dashboard_screen.dart';
 import 'executor_order_screen.dart';
 
 /// Орындаушының заказға ұсыныс беруіне кедергі себебі (feed гейті).
-enum _Gate { noTariff, underReview, rejected, docsUpdate, docsReview, wrongCity }
+enum _Gate {
+  noTariff,
+  underReview,
+  rejected,
+  docsUpdate,
+  docsReview,
+  wrongCity,
+}
 
 /// Заказдар лентасы (басты бетке ендірілетін дене). Сервер орындаушының
 /// КӨЛІК ТҮРІНЕ сай заказдарды ғана береді (executor_feed → exec_can_take).
@@ -99,7 +106,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// ашылмайды, оған не істеу керегі айтылады (тариф сатып алу / күту /
   /// қайта толтыру). Құқығы болса — толық детальдар парағы ашылады.
   void _openOrder(Order o) {
-    final gate = _actionGate();
+    final gate = _actionGate(o);
     if (gate != null) {
       _showGate(gate);
       return;
@@ -119,9 +126,10 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     );
   }
 
-  /// Орындаушы қазір ұсыныс бере ала ма? null — рұқсат; әйтпесе бөгеу себебі.
-  /// Сервер де осыны қайта тексереді (place_offer) — бұл тек ыңғайлы ескерту.
-  _Gate? _actionGate() {
+  /// Орындаушы осы заказға қазір ұсыныс бере ала ма? null — рұқсат; әйтпесе
+  /// бөгеу себебі. Сервер де осыны қайта тексереді (exec_can_take ішінде,
+  /// place_offer/accept_offer арқылы) — бұл тек ыңғайлы алдын ала ескерту.
+  _Gate? _actionGate(Order o) {
     final ep = ref.read(myExecutorProfileProvider).value;
     final stats = ref.read(executorStatsStreamProvider).value;
     if (ep == null) return _Gate.underReview;
@@ -130,6 +138,14 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     if (ep.docsUpdateRequested) return _Gate.docsUpdate;
     if (ep.docsReviewPending) return _Gate.docsReview;
     if (stats == null || !stats.hasTariff) return _Gate.noTariff;
+    // ҚАЛА ЕРЕЖЕСІ: жергілікті (межгород ЕМЕС) заказды тек сол қаладағы
+    // орындаушы алады; межгород заказды кез келген қаладағы орындаушы алады.
+    if (!o.intercity &&
+        ep.city != null &&
+        o.fromCity != null &&
+        !Geo.sameCity(o.fromCity, ep.city)) {
+      return _Gate.wrongCity;
+    }
     return null;
   }
 
@@ -205,6 +221,17 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           text: t(
             'Жаңартылған құжаттарыңыз модератор тексеруінде. Расталған '
             'соң заказ қабылдай аласыз.',
+          ),
+        );
+      case _Gate.wrongCity:
+        _gateDialog(
+          icon: Icons.location_off_outlined,
+          color: Gz.textSecondary,
+          title: t('Бұл сіздің қалаңызда емес'),
+          text: t(
+            'Бұл — қала ішіндегі (жергілікті) заказ, тек сол қаладағы '
+            'орындаушылар ала алады. Сіз тек межгород (қалааралық) '
+            'заказдарды ала аласыз.',
           ),
         );
     }
