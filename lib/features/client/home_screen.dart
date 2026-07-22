@@ -15,6 +15,7 @@ import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
 import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
+import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
@@ -23,15 +24,28 @@ import 'my_orders_screen.dart';
 import 'order_detail_screen.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
-  const ClientHomeScreen({super.key});
+  /// Гест режимі (кірмеген қолданушы): картамен заказды толық толтыра алады,
+  /// бірақ «Шақыру» мен профиль батырмасы кіру экранына бағыттайды.
+  final bool isGuest;
+  const ClientHomeScreen({super.key, this.isGuest = false});
 
   @override
   ConsumerState<ClientHomeScreen> createState() => _ClientHomeScreenState();
 }
 
 class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
-  /// Пин мен картаны төменгі панельдің биіктігіне сай жоғары ысыру мөлшері.
-  static const _pinShift = 70.0;
+  /// Негізгі панельдің (тек соның — локация батырмасы мен банер кірмейді,
+  /// олар картаның үстінде қалқып тұрады) НАҚТЫ өлшенген биіктігі — карта
+  /// мен пинді сол мөлшерге сай жоғары ысырамыз. Қатаң санмен емес, әр
+  /// кадрда `_blockKey` арқылы өлшенеді, сол себепті шрифт үлкейтілген
+  /// құрылғыларда да, панель бүктелгенде де пин панельдің астында қалып
+  /// қоймайды.
+  final _blockKey = GlobalKey();
+  double _bottomInset = 140;
+
+  /// Негізгі панель бүктелген бе (қолмен төмен тартып жасырылған).
+  bool _panelCollapsed = false;
+  double _dragAccum = 0;
 
   final _map = MapController();
   Timer? _moveDebounce;
@@ -85,8 +99,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   void _onMapMove(MapCamera camera, bool hasGesture) {
     if (!hasGesture) return;
     _moveDebounce?.cancel();
-    _moveDebounce = Timer(const Duration(milliseconds: 500),
-        () => _resolveFrom(camera.center, persist: true));
+    _moveDebounce = Timer(
+      const Duration(milliseconds: 500),
+      () => _resolveFrom(camera.center, persist: true),
+    );
   }
 
   Future<void> _resolveFrom(LatLng center, {bool persist = false}) async {
@@ -105,8 +121,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
   /// Автоматты анықталған «Қайдан» адресін сәл өзгертуге мүмкіндік береді.
   Future<void> _editFrom() async {
-    final res = await CityStreetSheet.show(context,
-        title: t('Қайдан аламыз?'), initial: _from);
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Қайдан аламыз?'),
+      initial: _from,
+    );
     if (res != null && mounted) {
       setState(() => _from = res);
       unawaited(Prefs.setLastLocation(res.point.latitude, res.point.longitude));
@@ -114,13 +133,57 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   }
 
   Future<void> _pickTo() async {
-    final res = await CityStreetSheet.show(context,
-        title: t('Қайда жеткіземіз?'), initial: _to);
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Қайда жеткіземіз?'),
+      initial: _to,
+    );
     if (res != null) setState(() => _to = res);
+  }
+
+  void _onPanelDragUpdate(DragUpdateDetails d) => _dragAccum += d.delta.dy;
+
+  void _onPanelDragEnd(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (!_panelCollapsed && (_dragAccum > 24 || v > 300)) {
+      setState(() => _panelCollapsed = true);
+    } else if (_panelCollapsed && (_dragAccum < -24 || v < -300)) {
+      setState(() => _panelCollapsed = false);
+    }
+    _dragAccum = 0;
+  }
+
+  /// Астыңғы блоктың нақты биіктігін өлшеп, карта/пиннің ысыру мөлшерін
+  /// соған сай ұстап тұрады (`AnimatedSize` анимациясы кезінде де кадр
+  /// сайын қайта өлшеніп, картаны панельмен бірге тегіс жылжытады).
+  void _measureBottomInset() {
+    if (!mounted) return;
+    final h = _blockKey.currentContext?.size?.height;
+    if (h == null) return;
+    final target = h + MediaQuery.paddingOf(context).bottom;
+    if ((target - _bottomInset).abs() > 0.5) {
+      setState(() => _bottomInset = target);
+    }
   }
 
   Future<void> _maybeContinue() async {
     if (_from == null || _to == null || !mounted) return;
+
+    // Гест: белсенді заказ тексерусіз (auth жоқ) — бірден заказ толтыруға.
+    // «Заказ жариялау» басылғанда кіру сұралады (CreateOrderScreen.isGuest).
+    if (widget.isGuest) {
+      await Navigator.of(context).push(
+        slideUpRoute(
+          CreateOrderScreen(
+            from: _from!,
+            to: _to!,
+            vehicleType: _vehicle,
+            isGuest: true,
+          ),
+        ),
+      );
+      return;
+    }
 
     // белсенді заказ бар ма? — ескерту
     final active = await Repo.c
@@ -135,15 +198,18 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
         builder: (ctx) => AlertDialog(
           title: Text(t('Белсенді заказ бар')),
           content: Text(
-              '${t('Сізде')} $count ${t('белсенді заказ бар. Оны «Тапсырыстар» бетінен қадағалай аласыз.')}\n\n'
-              '${t('Жаңа заказ бересіз бе?')}'),
+            '${t('Сізде')} $count ${t('белсенді заказ бар. Оны «Тапсырыстар» бетінен қадағалай аласыз.')}\n\n'
+            '${t('Жаңа заказ бересіз бе?')}',
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('Жоқ'))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(t('Жоқ')),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('Иә, жаңа заказ'))),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(t('Иә, жаңа заказ')),
+            ),
           ],
         ),
       );
@@ -153,25 +219,29 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
     await Navigator.of(context).push(
       slideUpRoute(
-          CreateOrderScreen(from: _from!, to: _to!, vehicleType: _vehicle)),
+        CreateOrderScreen(from: _from!, to: _to!, vehicleType: _vehicle),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureBottomInset());
     return Scaffold(
       body: Stack(
         children: [
-          // Төменгі панель (көлік каруселімен) енді биік болғандықтан, карта
-          // мен пинді бірге, экранның НАҚ ортасы емес, көрінетін карта
-          // аймағының ортасына сай сәл жоғары ысырамыз (`_pinShift`).
-          // Екеуі бірдей тіктөртбұрышта жатуы МІНДЕТТІ — flutter_map
-          // `camera.center` дәл сол виджеттің геометриялық ортасын
-          // қайтарады, сол себепті пин визуалды жерімен нақты координата
-          // сәйкес келуі үшін FlutterMap-тың өзін де солай ысыру керек.
+          // Негізгі панельдің нақты өлшенген биіктігіне сай карта мен
+          // пинді бірге жоғары ысырамыз (`_bottomInset`,
+          // `_measureBottomInset` арқылы әр кадрда жаңартылады). Локация
+          // батырмасы мен банер картаның үстінде қалқып тұрады, inset-ке
+          // кірмейді. Екеуі бірдей тіктөртбұрышта жатуы МІНДЕТТІ —
+          // flutter_map `camera.center` дәл сол виджеттің геометриялық
+          // ортасын қайтарады, сол себепті пин визуалды жерімен нақты
+          // координата сәйкес келуі үшін FlutterMap-тың өзін де солай
+          // ысыру керек.
           Positioned.fill(
-            bottom: _pinShift * 2,
+            bottom: _bottomInset,
             child: FlutterMap(
               mapController: _map,
               options: MapOptions(
@@ -183,7 +253,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
             ),
           ),
           Positioned.fill(
-            bottom: _pinShift * 2,
+            bottom: _bottomInset,
             child: IgnorePointer(
               child: Center(
                 child: Padding(
@@ -194,12 +264,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                       AnimatedScale(
                         duration: const Duration(milliseconds: 150),
                         scale: _resolvingFrom ? 0.85 : 1,
-                        child: const Icon(Icons.location_on,
-                            size: 44,
-                            color: Gz.green,
-                            shadows: [
-                              Shadow(color: Colors.black38, blurRadius: 8)
-                            ]),
+                        child: const Icon(
+                          Icons.location_on,
+                          size: 44,
+                          color: Gz.green,
+                          shadows: [
+                            Shadow(color: Colors.black38, blurRadius: 8),
+                          ],
+                        ),
                       ),
                       Container(
                         width: 6,
@@ -223,22 +295,26 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                   child: Row(
                     children: [
-                      Material(
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(12),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          child: GazelGoLogo(size: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
                         ),
                       ),
                       const Spacer(),
-                      _ProfileButton(profile: profileAsync.value),
+                      _ProfileButton(
+                        profile: profileAsync.value,
+                        isGuest: widget.isGuest,
+                      ),
                     ],
                   ),
                 ),
                 const Spacer(),
-                // менің локациям батырмасы
+                // менің локациям батырмасы — картаның үстінде қалқып тұрады,
+                // карта inset-іне кірмейді (жай ғана карта аймағында жүзеді)
                 Padding(
                   padding: const EdgeInsets.only(right: 12, bottom: 10),
                   child: Row(
@@ -253,8 +329,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                           onTap: _goToMyLocation,
                           child: const Padding(
                             padding: EdgeInsets.all(12),
-                            child:
-                                Icon(Icons.my_location, color: Gz.ink, size: 22),
+                            child: Icon(
+                              Icons.my_location,
+                              color: Gz.ink,
+                              size: 22,
+                            ),
                           ),
                         ),
                       ),
@@ -263,156 +342,272 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                 ),
                 // белсенді («Іздеуде») заказ баннері — локация батырмасының астында
                 const _ActiveOrdersBanner(),
-                // негізгі панель
-                Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Gz.surface,
-                    borderRadius: BorderRadius.circular(26),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x260F1720),
-                          blurRadius: 30,
-                          offset: Offset(0, 10))
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(9),
-                            decoration: BoxDecoration(
-                              color: Gz.yellow,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.local_shipping,
-                                size: 22, color: Gz.ink),
+                // Панельдің (жалғыз опак блок) биіктігі өзгергенде (бүктелу
+                // анимациясы, шрифт масштабы) картаның inset-і сол сәтте
+                // қайта өлшенеді — `build()` шақырылуын күтпей, сол себепті
+                // карта панельмен тегіс жылжиды. Локация батырмасы мен
+                // баннер бұған кірмейді — олар әдепкідей картаның үстінде
+                // қалқып тұруы керек (map inset-ін ұлғайтпайды).
+                NotificationListener<SizeChangedLayoutNotification>(
+                  onNotification: (_) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _measureBottomInset(),
+                    );
+                    return true;
+                  },
+                  child: SizeChangedLayoutNotifier(
+                    child: Container(
+                      key: _blockKey,
+                      // негізгі панель — тұтқасынан (не тақырыптан) қолмен
+                      // төмен тартса бүктеледі де карта ашылады, қайта жоғары
+                      // тартса не түртсе қайта ашылады
+                      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                      decoration: BoxDecoration(
+                        color: Gz.surface,
+                        borderRadius: BorderRadius.circular(26),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x260F1720),
+                            blurRadius: 30,
+                            offset: Offset(0, 10),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(
+                              () => _panelCollapsed = !_panelCollapsed,
+                            ),
+                            onVerticalDragUpdate: _onPanelDragUpdate,
+                            onVerticalDragEnd: _onPanelDragEnd,
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(t('Қандай көлік керек?'),
-                                    style: const TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w900)),
-                                Text(
-                                  t('Картаны жылжытып, орныңызды белгілеңіз'),
-                                  style: const TextStyle(
-                                      color: Gz.textSecondary,
-                                      fontSize: 12.5),
+                                Container(
+                                  width: 40,
+                                  height: 4,
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  decoration: BoxDecoration(
+                                    color: Gz.border,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: Gz.yellow,
+                                        borderRadius: BorderRadius.circular(11),
+                                      ),
+                                      child: const Icon(
+                                        Icons.local_shipping,
+                                        size: 19,
+                                        color: Gz.ink,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            t('Қандай көлік керек?'),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          if (!_panelCollapsed)
+                                            Text(
+                                              t(
+                                                'Картаны жылжытып, орныңызды белгілеңіз',
+                                              ),
+                                              style: const TextStyle(
+                                                color: Gz.textSecondary,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    AnimatedRotation(
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      turns: _panelCollapsed ? 0.5 : 0,
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Gz.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeInOut,
+                            alignment: Alignment.topCenter,
+                            child: _panelCollapsed
+                                ? const SizedBox(width: double.infinity)
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      const SizedBox(height: 10),
+                                      // көлік түрін таңдау — заказ тек сол
+                                      // түрдегі орындаушыларға көрінеді
+                                      VehicleTypeCarousel(
+                                        selected: _vehicle,
+                                        onChanged: (v) =>
+                                            setState(() => _vehicle = v),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      // Қайдан — картамен байланысты, бірақ
+                                      // түртіп сәл өзгертуге болады
+                                      InkWell(
+                                        onTap: _resolvingFrom
+                                            ? null
+                                            : _editFrom,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 11,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Gz.bg,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.trip_origin,
+                                                size: 18,
+                                                color: Gz.green,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  _resolvingFrom
+                                                      ? t('Анықталуда…')
+                                                      : (_from?.address ??
+                                                            t(
+                                                              'Картаны жылжытыңыз',
+                                                            )),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Gz.ink,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (_resolvingFrom)
+                                                const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              else
+                                                const Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 16,
+                                                  color: Gz.textSecondary,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      InkWell(
+                                        onTap: _pickTo,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 11,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Gz.bg,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.location_on,
+                                                size: 18,
+                                                color: Gz.red,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  _to?.address ??
+                                                      t('Қайда жеткіземіз?'),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontWeight: _to == null
+                                                        ? FontWeight.w500
+                                                        : FontWeight.w700,
+                                                    color: _to == null
+                                                        ? Gz.textSecondary
+                                                        : Gz.ink,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              const Icon(
+                                                Icons.chevron_right,
+                                                color: Gz.textSecondary,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      FilledButton(
+                                        onPressed:
+                                            (_from == null || _resolvingFrom)
+                                            ? null
+                                            : (_to == null
+                                                  ? _pickTo
+                                                  : _maybeContinue),
+                                        // FittedBox: ұзын атаулар
+                                        // («Ассенизатор шақыру» т.б.) не жүйе
+                                        // шрифті үлкейтілген кезде де 1
+                                        // жолда қалады.
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            vehicleCallLabel(_vehicle),
+                                            maxLines: 1,
+                                            softWrap: false,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      // көлік түрін таңдау — заказ тек сол түрдегі
-                      // орындаушыларға көрінеді
-                      VehicleTypeCarousel(
-                        selected: _vehicle,
-                        onChanged: (v) => setState(() => _vehicle = v),
-                      ),
-                      const SizedBox(height: 12),
-                      // Қайдан — картамен байланысты, бірақ түртіп сәл өзгертуге болады
-                      InkWell(
-                        onTap: _resolvingFrom ? null : _editFrom,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 13),
-                          decoration: BoxDecoration(
-                            color: Gz.bg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.trip_origin,
-                                  size: 18, color: Gz.green),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _resolvingFrom
-                                      ? t('Анықталуда…')
-                                      : (_from?.address ?? t('Картаны жылжытыңыз')),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: Gz.ink,
-                                      fontSize: 14.5),
-                                ),
-                              ),
-                              if (_resolvingFrom)
-                                const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2))
-                              else
-                                const Icon(Icons.edit_outlined,
-                                    size: 16, color: Gz.textSecondary),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _pickTo,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 13),
-                          decoration: BoxDecoration(
-                            color: Gz.bg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.location_on,
-                                  size: 18, color: Gz.red),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _to?.address ?? t('Қайда жеткіземіз?'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: _to == null
-                                        ? FontWeight.w500
-                                        : FontWeight.w700,
-                                    color: _to == null
-                                        ? Gz.textSecondary
-                                        : Gz.ink,
-                                    fontSize: 14.5,
-                                  ),
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right,
-                                  color: Gz.textSecondary),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: (_from == null || _resolvingFrom)
-                            ? null
-                            : (_to == null ? _pickTo : _maybeContinue),
-                        // FittedBox: ұзын атаулар («Ассенизатор шақыру» т.б.)
-                        // не жүйе шрифті үлкейтілген кезде де 1 жолда қалады.
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(vehicleCallLabel(_vehicle),
-                              maxLines: 1, softWrap: false),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -426,32 +621,33 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
 class _ProfileButton extends StatelessWidget {
   final Profile? profile;
-  const _ProfileButton({this.profile});
+  final bool isGuest;
+  const _ProfileButton({this.profile, this.isGuest = false});
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24));
     return Material(
       elevation: 2,
-      shape: shape,
+      shape: const CircleBorder(),
       color: Gz.surface,
       child: InkWell(
-        customBorder: shape,
+        customBorder: const CircleBorder(),
+        // Гест профильге кіре алмайды — түртсе кіру экраны ашылады.
         onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProfileScreen())),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 3, 12, 3),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InitialsAvatar(profile?.fullName ?? '?',
-                  radius: 17, imageUrl: profile?.avatarUrl),
-              const SizedBox(width: 8),
-              Icon(Icons.keyboard_arrow_down_rounded,
-                  size: 18, color: Gz.textSecondary.withValues(alpha: 0.7)),
-            ],
+          MaterialPageRoute(
+            builder: (_) =>
+                isGuest ? const LoginScreen() : const ProfileScreen(),
           ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: isGuest
+              ? const Icon(Icons.person_outline, color: Gz.ink, size: 26)
+              : InitialsAvatar(
+                  profile?.fullName ?? '?',
+                  radius: 17,
+                  imageUrl: profile?.avatarUrl,
+                ),
         ),
       ),
     );
@@ -466,19 +662,24 @@ class _ActiveOrdersBanner extends StatelessWidget {
     return StreamBuilder<List<Order>>(
       stream: Repo.myOrdersStream(),
       builder: (context, snap) {
-        final active =
-            (snap.data ?? []).where((o) => o.isActive).toList().reversed.toList();
+        final active = (snap.data ?? [])
+            .where((o) => o.isActive)
+            .toList()
+            .reversed
+            .toList();
         if (active.isEmpty) return const SizedBox.shrink();
         final o = active.first;
         return GestureDetector(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
               builder: (_) => active.length > 1
                   ? const MyOrdersScreen()
-                  : OrderDetailScreen(orderId: o.id))),
+                  : OrderDetailScreen(orderId: o.id),
+            ),
+          ),
           child: Container(
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Gz.ink,
               borderRadius: BorderRadius.circular(16),
@@ -488,9 +689,14 @@ class _ActiveOrdersBanner extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: const BoxDecoration(
-                      color: Gz.yellow, shape: BoxShape.circle),
-                  child: const Icon(Icons.local_shipping,
-                      size: 18, color: Gz.ink),
+                    color: Gz.yellow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping,
+                    size: 18,
+                    color: Gz.ink,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -500,16 +706,19 @@ class _ActiveOrdersBanner extends StatelessWidget {
                       Text(
                         statusLabel(o.status),
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         '${o.fromDisplay} → ${o.toDisplay}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: Colors.white70, fontSize: 12),
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -517,14 +726,17 @@ class _ActiveOrdersBanner extends StatelessWidget {
                 if (active.length > 1)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white24,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('+${active.length - 1}',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 12)),
+                    child: Text(
+                      '+${active.length - 1}',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
                 const Icon(Icons.chevron_right, color: Colors.white70),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
@@ -9,7 +10,12 @@ import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
+import '../auth/executor_apply_screen.dart';
+import 'dashboard_screen.dart';
 import 'executor_order_screen.dart';
+
+/// Орындаушының заказға ұсыныс беруіне кедергі себебі (feed гейті).
+enum _Gate { noTariff, underReview, rejected, docsUpdate, docsReview, wrongCity }
 
 /// Заказдар лентасы (басты бетке ендірілетін дене). Сервер орындаушының
 /// КӨЛІК ТҮРІНЕ сай заказдарды ғана береді (executor_feed → exec_can_take).
@@ -38,20 +44,11 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     return statsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
-      data: (stats) {
-        if (!stats.hasTariff) {
-          return _refreshable([
-            const SizedBox(height: 120),
-            EmptyState(
-              icon: Icons.power_settings_new,
-              title: t('Тарифіңіз жоқ'),
-              subtitle: t('Заказдарды көру үшін жоғарыдан тариф сатып алыңыз '
-                  '(1 ауысым, 10 заказға дейін).'),
-            ),
-          ]);
-        }
-
-        // Сервер көлік түрі мен қала фильтрін өзі жасайды — жаңалары бірінші.
+      data: (_) {
+        // Лента БАРЛЫҚ орындаушыға көрінеді (тарифсіз/расталмаған да) —
+        // сервер `executor_feed` көлік түрі мен қала фильтрін жасайды,
+        // жаңалары бірінші. Ұсыныс беру құқығы (тариф/мақұлдау) заказды
+        // басқанда `_openOrder` ішінде тексеріледі.
         final eligible = [...feedAsync.value ?? const <Order>[]];
         eligible.sort((a, b) {
           final ca = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -89,17 +86,24 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   }
 
   Widget _refreshable(List<Widget> children) => RefreshIndicator(
-        color: Gz.ink,
-        onRefresh: _manualRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: children,
-        ),
-      );
+    color: Gz.ink,
+    onRefresh: _manualRefresh,
+    child: ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: children,
+    ),
+  );
 
-  /// Заказ карточкасын басқанда — толық детальдар (карта, клиент, фото) +
-  /// «Келісу / Өз бағам» батырмалары қалқымалы парақта ашылады.
+  /// Заказ карточкасын басқанда — алдымен ұсыныс беру құқығын тексереміз.
+  /// Тарифсіз/расталмаған/құжаты жаңартылуы керек орындаушыға заказ беті
+  /// ашылмайды, оған не істеу керегі айтылады (тариф сатып алу / күту /
+  /// қайта толтыру). Құқығы болса — толық детальдар парағы ашылады.
   void _openOrder(Order o) {
+    final gate = _actionGate();
+    if (gate != null) {
+      _showGate(gate);
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -115,12 +119,137 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     );
   }
 
+  /// Орындаушы қазір ұсыныс бере ала ма? null — рұқсат; әйтпесе бөгеу себебі.
+  /// Сервер де осыны қайта тексереді (place_offer) — бұл тек ыңғайлы ескерту.
+  _Gate? _actionGate() {
+    final ep = ref.read(myExecutorProfileProvider).value;
+    final stats = ref.read(executorStatsStreamProvider).value;
+    if (ep == null) return _Gate.underReview;
+    if (ep.status == 'rejected') return _Gate.rejected;
+    if (ep.status != 'approved') return _Gate.underReview;
+    if (ep.docsUpdateRequested) return _Gate.docsUpdate;
+    if (ep.docsReviewPending) return _Gate.docsReview;
+    if (stats == null || !stats.hasTariff) return _Gate.noTariff;
+    return null;
+  }
+
+  void _showGate(_Gate gate) {
+    final ep = ref.read(myExecutorProfileProvider).value;
+    switch (gate) {
+      case _Gate.noTariff:
+        _gateDialog(
+          icon: Icons.bolt,
+          color: Gz.yellowDark,
+          title: t('Тарифіңіз жоқ'),
+          text: t(
+            'Заказ қабылдау үшін алдымен тариф сатып алыңыз '
+            '(1 ауысым, 10 заказға дейін).',
+          ),
+          actionLabel: t('Тарифке кіру'),
+          onAction: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ExecutorDashboardScreen()),
+          ),
+        );
+      case _Gate.underReview:
+        _gateDialog(
+          icon: Icons.hourglass_top,
+          color: Gz.blue,
+          title: t('Аккаунтыңыз тексеруде'),
+          text: t(
+            'Модератор құжаттарыңызды тексеруде. Расталған соң тариф '
+            'сатып алып, заказ қабылдай аласыз.',
+          ),
+        );
+      case _Gate.rejected:
+        _gateDialog(
+          icon: Icons.cancel_outlined,
+          color: Gz.red,
+          title: t('Өтінім қабылданбады'),
+          text: ep?.moderationComment?.isNotEmpty == true
+              ? '${t('Себебі:')} ${ep!.moderationComment}'
+              : t('Деректерді түзетіп, қайта жіберіңіз.'),
+          actionLabel: t('Қайта толтыру'),
+          onAction: ep == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ExecutorApplyScreen(existing: ep),
+                  ),
+                ),
+        );
+      case _Gate.docsUpdate:
+        _gateDialog(
+          icon: Icons.assignment_late,
+          color: Gz.red,
+          title: t('Құжаттарды жаңарту қажет'),
+          text: ep?.docsUpdateComment?.isNotEmpty == true
+              ? ep!.docsUpdateComment!
+              : t(
+                  'Модератор құжаттарыңызды жаңартуды сұрады. Жаңартып, '
+                  'растауын күтіңіз.',
+                ),
+          actionLabel: t('Жаңарту'),
+          onAction: ep == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ExecutorApplyScreen(existing: ep),
+                  ),
+                ),
+        );
+      case _Gate.docsReview:
+        _gateDialog(
+          icon: Icons.hourglass_top,
+          color: Gz.blue,
+          title: t('Құжаттар тексеруде'),
+          text: t(
+            'Жаңартылған құжаттарыңыз модератор тексеруінде. Расталған '
+            'соң заказ қабылдай аласыз.',
+          ),
+        );
+    }
+  }
+
+  void _gateDialog({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String text,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(icon, color: color, size: 34),
+        title: Text(title, textAlign: TextAlign.center),
+        content: Text(text, textAlign: TextAlign.center),
+        actions: [
+          if (actionLabel != null && onAction != null)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                onAction();
+              },
+              child: Text(actionLabel),
+            )
+          else
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(t('Түсінікті')),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _offer(Order o, int price, String message) async {
     try {
       await Repo.placeOffer(o.id, price, message);
       if (mounted) {
-        Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => ExecutorOrderScreen(orderId: o.id)));
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ExecutorOrderScreen(orderId: o.id)),
+        );
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -168,10 +297,11 @@ class _FeedCard extends StatelessWidget {
                   Text(
                     fmtT(order.displayPrice),
                     style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                        color: Gz.ink),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                      color: Gz.ink,
+                    ),
                   ),
                 ],
               ),
@@ -182,9 +312,15 @@ class _FeedCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(Icons.local_shipping, order.vehicleType.label,
-                      leading: vehicleIcon(order.vehicleType,
-                          size: 14, color: Gz.textSecondary)),
+                  _tag(
+                    Icons.local_shipping,
+                    order.vehicleType.label,
+                    leading: vehicleIcon(
+                      order.vehicleType,
+                      size: 14,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -193,11 +329,16 @@ class _FeedCard extends StatelessWidget {
                       order.intercity ? t('Межгород') : t('Қала ішінде'),
                     ),
                   if (order.distanceKm > 0)
-                    _tag(Icons.route,
-                        '≈ ${order.distanceKm.toStringAsFixed(1)} км'),
+                    _tag(
+                      Icons.route,
+                      '≈ ${order.distanceKm.toStringAsFixed(1)} км',
+                    ),
                   if (order.cargoDesc.isNotEmpty)
-                    _tag(Icons.inventory_2_outlined,
-                        order.cargoDesc, flexible: true),
+                    _tag(
+                      Icons.inventory_2_outlined,
+                      order.cargoDesc,
+                      flexible: true,
+                    ),
                   if (order.createdAt != null)
                     _tag(Icons.schedule, fmtTime(order.createdAt)),
                 ],
@@ -209,8 +350,12 @@ class _FeedCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(IconData icon, String text,
-      {bool flexible = false, Widget? leading}) {
+  Widget _tag(
+    IconData icon,
+    String text, {
+    bool flexible = false,
+    Widget? leading,
+  }) {
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -223,13 +368,16 @@ class _FeedCard extends StatelessWidget {
           leading ?? Icon(icon, size: 13, color: Gz.textSecondary),
           const SizedBox(width: 4),
           Flexible(
-            child: Text(text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 11.5,
-                    color: Gz.ink,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Gz.ink,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -255,19 +403,30 @@ class _ClientMini extends StatelessWidget {
         final p = snap.data;
         return Row(
           children: [
-            InitialsAvatar(p?.fullName ?? '?', radius: 15, imageUrl: p?.avatarUrl),
+            InitialsAvatar(
+              p?.fullName ?? '?',
+              radius: 15,
+              imageUrl: p?.avatarUrl,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p?.fullName ?? '…',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 13.5)),
-                  RatingStars(p?.rating ?? 0,
-                      count: p?.ratingCount ?? 0, size: 11),
+                  Text(
+                    p?.fullName ?? '…',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  RatingStars(
+                    p?.rating ?? 0,
+                    count: p?.ratingCount ?? 0,
+                    size: 11,
+                  ),
                 ],
               ),
             ),
@@ -297,17 +456,19 @@ class _CompactRoute extends StatelessWidget {
   }
 
   Widget _line(IconData icon, Color color, String text) => Row(
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      );
+    children: [
+      Icon(icon, size: 14, color: color),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
+    ],
+  );
 }
 
 /// Заказ детальдары парағы: карта, толық маршрут, клиент, фото, жүк +
@@ -316,8 +477,11 @@ class _OrderSheet extends StatelessWidget {
   final Order order;
   final VoidCallback onAgree;
   final VoidCallback onCounter;
-  const _OrderSheet(
-      {required this.order, required this.onAgree, required this.onCounter});
+  const _OrderSheet({
+    required this.order,
+    required this.onAgree,
+    required this.onCounter,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -335,25 +499,33 @@ class _OrderSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Gz.border, borderRadius: BorderRadius.circular(2)),
+                color: Gz.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: Text(fmtT(o.displayPrice),
-                    style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Gz.ink)),
+                child: Text(
+                  fmtT(o.displayPrice),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Gz.ink,
+                  ),
+                ),
               ),
               vehicleIcon(o.vehicleType, size: 20, color: Gz.textSecondary),
               const SizedBox(width: 6),
-              Text(o.vehicleType.label,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Gz.textSecondary)),
+              Text(
+                o.vehicleType.label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Gz.textSecondary,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -372,10 +544,15 @@ class _OrderSheet extends StatelessWidget {
                 const Divider(height: 20),
                 InfoRow(t('Жүк'), o.cargoDesc),
                 if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
-                InfoRow(t('Бағыты'),
-                    o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде')),
+                InfoRow(
+                  t('Бағыты'),
+                  o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде'),
+                ),
                 if (o.distanceKm > 0)
-                  InfoRow(t('Қашықтық'), '≈ ${o.distanceKm.toStringAsFixed(1)} км'),
+                  InfoRow(
+                    t('Қашықтық'),
+                    '≈ ${o.distanceKm.toStringAsFixed(1)} км',
+                  ),
               ],
             ),
           ),
@@ -403,8 +580,9 @@ class _OrderSheet extends StatelessWidget {
                 flex: 2,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      side: const BorderSide(color: Gz.ink, width: 1.6)),
+                    minimumSize: const Size.fromHeight(48),
+                    side: const BorderSide(color: Gz.ink, width: 1.6),
+                  ),
                   onPressed: () {
                     Navigator.of(context).pop();
                     onCounter();
@@ -468,34 +646,48 @@ class _PriceStepperSheetState extends State<_PriceStepperSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(t('Өз бағаңызды ұсыныңыз'),
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          Text(
+            t('Өз бағаңызды ұсыныңыз'),
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+          ),
           const SizedBox(height: 4),
           if (base != null)
-            Text('${t('Клиенттің бағасы:')} ${fmtT(base)}',
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13)),
+            Text(
+              '${t('Клиенттің бағасы:')} ${fmtT(base)}',
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _StepBtn(
-                  icon: Icons.remove,
-                  onTap: () => _bump(-_step),
-                  onLong: () => _bump(-1000)),
+                icon: Icons.remove,
+                onTap: () => _bump(-_step),
+                onLong: () => _bump(-1000),
+              ),
               Column(
                 children: [
-                  Text(fmtT(_price),
-                      style: const TextStyle(
-                          fontSize: 30, fontWeight: FontWeight.w900)),
-                  Text(t('±100 ₸ қадам'),
-                      style: const TextStyle(
-                          fontSize: 11.5, color: Gz.textSecondary)),
+                  Text(
+                    fmtT(_price),
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    t('±100 ₸ қадам'),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               _StepBtn(
-                  icon: Icons.add,
-                  onTap: () => _bump(_step),
-                  onLong: () => _bump(1000)),
+                icon: Icons.add,
+                onTap: () => _bump(_step),
+                onLong: () => _bump(1000),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -513,8 +705,11 @@ class _StepBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final VoidCallback onLong;
-  const _StepBtn(
-      {required this.icon, required this.onTap, required this.onLong});
+  const _StepBtn({
+    required this.icon,
+    required this.onTap,
+    required this.onLong,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -121,7 +121,10 @@ class AuthGate extends ConsumerWidget {
       error: (e, st) => const LoginScreen(),
       data: (state) {
         final session = Supabase.instance.client.auth.currentSession;
-        if (session == null) return const LoginScreen();
+        // Кірмеген қолданушы (жаңа орнатқан не аккаунттан шыққан) — гест режимі:
+        // клиенттің басты беті ашылады, заказды толық толтыра алады. Аккаунт тек
+        // «Шақыру» басылғанда немесе профильге кіргенде сұралады.
+        if (session == null) return const ClientShell(guest: true);
         // Push-токенді тіркеу — қосымша толық жабық тұрғанда да
         // хабарландыру жеткізілуі үшін. Firebase бапталмаса — үнсіз өтеді.
         unawaited(Push.init());
@@ -174,13 +177,18 @@ class _ExecutorRouter extends ConsumerWidget {
     return ep.when(
       loading: () => const _Splash(),
       error: (e, st) => _RetryScreen(
-          onRetry: () => ref.invalidate(myExecutorProfileProvider)),
+        onRetry: () => ref.invalidate(myExecutorProfileProvider),
+      ),
       data: (e) {
+        // Әлі өтінім толтырмаған (профиль жоқ) — толтыру экраны.
         if (e == null) return const ExecutorApplyScreen();
-        if (e.status == 'approved') {
-          return const ExecutorShell();
-        }
-        return PendingScreen(profile: e);
+        // Модератор БҰҒАТТАҒАН аккаунт — қосымшаға кіре алмайды.
+        if (e.status == 'blocked') return PendingScreen(profile: e);
+        // Қалғаны (pending/rejected/approved) — кәдімгі орындаушыдай кіреді:
+        // заказдар лентасы мен профильге қолжетімді. Расталмаған/қабылданбаған
+        // болса — лентада «тексеруде / қайта толтыру» деп ескертіледі әрі
+        // ұсыныс беру бөгеледі (feed_screen ішіндегі гейт + сервер).
+        return const ExecutorShell();
       },
     );
   }
@@ -236,9 +244,13 @@ class _RetryScreen extends StatelessWidget {
             children: [
               const Icon(Icons.wifi_off, size: 48, color: Gz.textSecondary),
               const SizedBox(height: 16),
-              Text(t('Жүктеу мүмкін болмады'),
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800)),
+              Text(
+                t('Жүктеу мүмкін болмады'),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: 220,

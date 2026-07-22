@@ -33,7 +33,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_form.currentState!.validate()) return;
     try {
       await Repo.signInPhone(_phone.text, _password.text);
-      // AuthGate өзі бағыттайды
+      // Кіру сәтті. Бұл экран стек үстіне итерілген болса (гест ағыны) —
+      // түбіне дейін жабамыз; AuthGate «/» бетін кірген күйге қайта салады,
+      // ал толтырылған жоба заказ болса ClientShell оны жалғастырады.
+      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }
@@ -54,20 +57,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: LanguageSwitcher(),
+                    Row(
+                      children: [
+                        // Гест ағынында бұл экран итерілген — артқа қайтуға болады.
+                        if (Navigator.canPop(context))
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            icon: const Icon(Icons.arrow_back),
+                          ),
+                        const Spacer(),
+                        const LanguageSwitcher(),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Center(
                       child: GazelGoHero(
-                          subtitle:
-                              t('Жүк тасымалы және арнайы техника платформасы')),
+                        subtitle: t(
+                          'Жүк тасымалы және арнайы техника платформасы',
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 38),
-                    Text(t('Кіру'),
-                        style: const TextStyle(
-                            fontSize: 23, fontWeight: FontWeight.w900)),
+                    Text(
+                      t('Кіру'),
+                      style: const TextStyle(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 18),
                     TextFormField(
                       controller: _phone,
@@ -80,9 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: t('Телефон (+7 ...)'),
                         prefixIcon: const Icon(Icons.phone_outlined),
                       ),
-                      validator: (v) => Phone.isValid(v ?? '')
-                          ? null
-                          : t('Нөмір дұрыс емес'),
+                      validator: (v) =>
+                          Phone.isValid(v ?? '') ? null : t('Нөмір дұрыс емес'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -92,11 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: t('Құпиясөз'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_off
-                              : Icons.visibility),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) => (v == null || v.length < 6)
@@ -108,10 +125,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextButton(
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordScreen()),
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
                         ),
                         style: TextButton.styleFrom(
-                            foregroundColor: Gz.yellowDark),
+                          foregroundColor: Gz.yellowDark,
+                        ),
                         child: Text(t('Құпиясөзді ұмыттыңыз ба?')),
                       ),
                     ),
@@ -121,16 +140,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const RegisterScreen()),
+                          builder: (_) => const RegisterScreen(),
+                        ),
                       ),
-                      child: Text.rich(TextSpan(children: [
+                      child: Text.rich(
                         TextSpan(
-                            text: '${t('Аккаунт жоқ па?')}  ',
-                            style: const TextStyle(
+                          children: [
+                            TextSpan(
+                              text: '${t('Аккаунт жоқ па?')}  ',
+                              style: const TextStyle(
                                 color: Gz.textSecondary,
-                                fontWeight: FontWeight.w500)),
-                        TextSpan(text: t('Тіркелу')),
-                      ])),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(text: t('Тіркелу')),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
