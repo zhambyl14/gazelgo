@@ -50,6 +50,9 @@ app.*.map.json
 
 lib.zip
 
+# Graphify knowledge graph cache
+graphify-out/
+
 # Қол қою құпиялары — ЕШҚАШАН git-ке түспеуі керек!
 # Android upload/signing
 key.properties

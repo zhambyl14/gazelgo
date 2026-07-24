@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -19,6 +20,7 @@ import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'draft_order.dart';
 import 'order_detail_screen.dart';
+import 'saved_addresses.dart';
 
 /// Заказ құру: жүк детальдары, көлік түрі, баға.
 /// Адрестерді осы экранда өзгертуге болады — опциялар жоғалмайды.
@@ -271,6 +273,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         fromCity: _from.city,
         toCity: _to.city,
       );
+      // Заказ берілген мекенжайларды тарихқа қосамыз («Соңғы» тізімі үшін):
+      // алдымен «қайдан», сосын «қайда» — соңғысы тізімде бірінші тұрады.
+      unawaited(AddressBook.pushRecent(_from));
+      unawaited(AddressBook.pushRecent(_to));
       if (!mounted) return;
       Navigator.of(context).pop(true);
       Navigator.of(

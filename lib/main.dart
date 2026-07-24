@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,10 +17,30 @@ import 'features/auth/executor_apply_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
+import 'features/client/order_detail_screen.dart';
 import 'features/executor/executor_shell.dart';
 import 'features/moderator/moderator_shell.dart';
 import 'shared/update_gate.dart';
 import 'shared/widgets.dart';
+
+/// Push/локал уведомлениелерден навигация үшін — түбір Navigator кілті.
+final navigatorKey = GlobalKey<NavigatorState>();
+
+/// Хабарламаны басқанда тиісті бетке өту. FCM (onMessageOpenedApp,
+/// getInitialMessage) және Android foreground локал уведомлениесі де осында
+/// келеді. Клиентке бағытталған заказ хабарлары (еске салу, мерзім бітуі,
+/// ұсыныс) — заказ бетін ашады; `new_order` орындаушыға арналған (лента
+/// ашылады), сол себепті оны қозғамаймыз.
+void _navigateFromData(Map<String, dynamic> data) {
+  final orderId = data['order_id'] as String?;
+  final type = data['type'] as String?;
+  if (orderId == null || orderId.isEmpty || type == 'new_order') return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: orderId)),
+    );
+  });
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +57,16 @@ Future<void> main() async {
   }
   await Notify.init();
   await Lang.init();
+  // Хабарламаны басқанда навигация: FCM тап (Push.onOpen) және Android
+  // foreground локал уведомлениесінің тап-payload-ы (Notify.onSelect) —
+  // екеуі де бір навигация логикасына бағытталады.
+  Push.onOpen = _navigateFromData;
+  Notify.onSelect = (payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      _navigateFromData(jsonDecode(payload) as Map<String, dynamic>);
+    } catch (_) {}
+  };
   runApp(const ProviderScope(child: GazelGoApp()));
 }
 
@@ -44,14 +76,29 @@ class GazelGoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Тіл ауысқанда бүкіл ағаш қайта салынуы үшін — `t()` жаппай
-    // қолданылатын const емес қарапайым функция, ешбір widget оны
-    // "тыңдамайды", сол себепті осы деңгейде толық rebuild мәжбүрлейміз.
+    // қолданылатын const емес қарапайым функция, оны ешбір widget
+    // "тыңдамайды". Сондықтан тіл өзгергенде `key: ValueKey(lang)` арқылы
+    // бүкіл MaterialApp-ты (Navigator стегімен қоса) жаңадан құрып, барлық
+    // экрандағы `t()` мәтіндері сол мезетте жаңа тілде салынады. Riverpod
+    // ProviderScope MaterialApp-тан жоғарыда тұрғандықтан, auth/профиль
+    // күйі кэштелген күйінде қалады — қайта кіру не splash жыпылықтауы жоқ.
     return ValueListenableBuilder<AppLang>(
       valueListenable: Lang.current,
-      builder: (context, _, _) => MaterialApp(
+      builder: (context, lang, _) => MaterialApp(
+        key: ValueKey(lang),
+        navigatorKey: navigatorKey,
         title: 'Tasu',
         debugShowCheckedModeBanner: false,
         theme: Gz.theme(),
+        // Жүйелік Material/Cupertino элементтерін (артқа тултипі, мәтін
+        // таңдау мәзірі, күнтізбе, семантика) таңдалған тілде көрсету.
+        locale: Locale(lang == AppLang.ru ? 'ru' : 'kk'),
+        supportedLocales: const [Locale('kk'), Locale('ru')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         // Жүйелік қаріп өлшемін шектейміз: кейбір Android-та қаріпті қатты
         // үлкейтсе, бүкіл интерфейс (әсіресе картадағы төменгі панель) шектен
         // тыс үлкейіп, карта көрінбей қалатын. 1.0–1.25 аралығына қысамыз —

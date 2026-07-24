@@ -7,6 +7,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart' show CityPickerSheet;
+import '../client/my_addresses_screen.dart';
 import '../client/my_orders_screen.dart';
 import '../executor/docs_banner.dart';
 import '../executor/earnings_screen.dart';
@@ -27,7 +28,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _changeAvatar() async {
     final f = await ImagePicker().pickImage(
-        source: ImageSource.gallery, imageQuality: 70, maxWidth: 1000);
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1000,
+    );
     if (f == null) return;
     setState(() => _uploadingAvatar = true);
     try {
@@ -46,10 +50,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final first = await confirmDialog(
       context,
       title: t('Аккаунтты өшіру'),
-      message: t('Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
-          'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. Бұл '
-          'әрекетті кері қайтару МҮМКІН ЕМЕС.\n\nБелсенді заказыңыз болса, '
-          'алдымен оны аяқтаңыз.'),
+      message: t(
+        'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
+        'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. Бұл '
+        'әрекетті кері қайтару МҮМКІН ЕМЕС.\n\nБелсенді заказыңыз болса, '
+        'алдымен оны аяқтаңыз.',
+      ),
       cancelLabel: t('Болдырмау'),
       confirmLabel: t('Жалғастыру'),
       confirmColor: Gz.red,
@@ -132,17 +138,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onTap: _uploadingAvatar ? null : _changeAvatar,
                       child: Stack(
                         children: [
-                          InitialsAvatar(p.fullName,
-                              radius: 30, imageUrl: p.avatarUrl),
+                          InitialsAvatar(
+                            p.fullName,
+                            radius: 30,
+                            imageUrl: p.avatarUrl,
+                          ),
                           if (_uploadingAvatar)
                             const Positioned.fill(
                               child: CircleAvatar(
                                 backgroundColor: Colors.black38,
                                 child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white)),
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             )
                           else
@@ -152,9 +164,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: const BoxDecoration(
-                                    color: Gz.yellow, shape: BoxShape.circle),
-                                child: const Icon(Icons.camera_alt,
-                                    size: 13, color: Gz.ink),
+                                  color: Gz.yellow,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 13,
+                                  color: Gz.ink,
+                                ),
                               ),
                             ),
                         ],
@@ -165,24 +182,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(p.fullName,
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w800)),
-                          Text(p.phone,
-                              style: const TextStyle(
-                                  color: Gz.textSecondary, fontSize: 13.5)),
+                          Text(
+                            p.fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            p.phone,
+                            style: const TextStyle(
+                              color: Gz.textSecondary,
+                              fontSize: 13.5,
+                            ),
+                          ),
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              RatingStars(p.rating,
-                                  count: p.ratingCount, size: 14),
+                              RatingStars(
+                                p.rating,
+                                count: p.ratingCount,
+                                size: 14,
+                              ),
                               const SizedBox(width: 10),
-                              const Icon(Icons.local_shipping,
-                                  size: 13, color: Gz.textSecondary),
+                              const Icon(
+                                Icons.local_shipping,
+                                size: 13,
+                                color: Gz.textSecondary,
+                              ),
                               const SizedBox(width: 3),
-                              Text('${p.trips} ${t('рейс')}',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Gz.textSecondary)),
+                              Text(
+                                '${p.trips} ${t('рейс')}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Gz.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -207,9 +242,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t('Көлігім'),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
+                      Text(
+                        t('Көлігім'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       InfoRow(t('Көлік'), ep.vehicleTitle),
                       if (ep.city != null)
@@ -220,27 +259,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             children: [
                               SizedBox(
                                 width: 130,
-                                child: Text(t('Қала'),
-                                    style: const TextStyle(
-                                        color: Gz.textSecondary,
-                                        fontSize: 13.5)),
+                                child: Text(
+                                  t('Қала'),
+                                  style: const TextStyle(
+                                    color: Gz.textSecondary,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
                               ),
                               Expanded(
-                                child: Text(ep.city!,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13.5)),
+                                child: Text(
+                                  ep.city!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
                               ),
                               TextButton(
                                 onPressed: () => _changeCity(context),
                                 style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap),
-                                child: Text(t('Ауыстыру'),
-                                    style: const TextStyle(fontSize: 12.5)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  t('Ауыстыру'),
+                                  style: const TextStyle(fontSize: 12.5),
+                                ),
                               ),
                             ],
                           ),
@@ -262,12 +311,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   padding: EdgeInsets.zero,
                   child: ListTile(
                     leading: const Icon(Icons.receipt_long, color: Gz.blue),
-                    title: Text(t('Тапсырыстар'),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                      t('Тапсырыстар'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(t('Белсенді және өткен заказдар')),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const MyOrdersScreen())),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SectionCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.bookmark_rounded,
+                      color: Gz.green,
+                    ),
+                    title: Text(
+                      t('Менің мекенжайларым'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      t('Үй, жұмыс — бір рет сақтап, жылдам таңдау'),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MyAddressesScreen(),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -275,21 +350,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SectionCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  leading: const Icon(Icons.star_rounded, color: Color(0xFFF59E0B)),
-                  title: Text(t('Пікірлер'),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(p.ratingCount == 0
-                      ? t('Әзірге пікір жоқ')
-                      : '${p.rating.toStringAsFixed(1)} · ${p.ratingCount} ${t('пікір')}'),
+                  leading: const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFF59E0B),
+                  ),
+                  title: Text(
+                    t('Пікірлер'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    p.ratingCount == 0
+                        ? t('Әзірге пікір жоқ')
+                        : '${p.rating.toStringAsFixed(1)} · ${p.ratingCount} ${t('пікір')}',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ReviewsScreen(
-                      userId: p.id,
-                      name: p.fullName,
-                      rating: p.rating,
-                      ratingCount: p.ratingCount,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReviewsScreen(
+                        userId: p.id,
+                        name: p.fullName,
+                        rating: p.rating,
+                        ratingCount: p.ratingCount,
+                      ),
                     ),
-                  )),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -297,12 +381,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: EdgeInsets.zero,
                 child: ListTile(
                   leading: const Icon(Icons.support_agent, color: Gz.ink),
-                  title: Text(t('Қолдау қызметі'),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(
+                    t('Қолдау қызметі'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   subtitle: Text(t('Сұрақ, шағым, көмек')),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const SupportScreen())),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SupportScreen()),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -310,8 +397,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: EdgeInsets.zero,
                 child: ListTile(
                   leading: const Icon(Icons.language, color: Gz.blue),
-                  title: Text(t('Тіл'),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(
+                    t('Тіл'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   trailing: const LanguageSwitcher(),
                   onTap: null,
                 ),
@@ -320,15 +409,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SectionCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  leading: const Icon(Icons.description_outlined,
-                      color: Gz.textSecondary),
-                  title: Text(t('Заңдық құжаттар'),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle:
-                      Text(t('Пайдаланушы келісімі · Құпиялылық саясаты')),
+                  leading: const Icon(
+                    Icons.description_outlined,
+                    color: Gz.textSecondary,
+                  ),
+                  title: Text(
+                    t('Заңдық құжаттар'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    t('Пайдаланушы келісімі · Құпиялылық саясаты'),
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const LegalScreen())),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LegalScreen()),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -338,29 +433,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.logout, color: Gz.red),
-                      title: Text(t('Шығу'),
-                          style: const TextStyle(
-                              color: Gz.red, fontWeight: FontWeight.w700)),
+                      title: Text(
+                        t('Шығу'),
+                        style: const TextStyle(
+                          color: Gz.red,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       onTap: () => confirmSignOut(context),
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.manage_accounts_outlined,
-                          color: Gz.textSecondary),
-                      title: Text(t('Есептік жазба баптаулары'),
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      leading: const Icon(
+                        Icons.manage_accounts_outlined,
+                        color: Gz.textSecondary,
+                      ),
+                      title: Text(
+                        t('Есептік жазба баптаулары'),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => _AccountSettingsScreen(
-                              onDelete: _deleteAccount))),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              _AccountSettingsScreen(onDelete: _deleteAccount),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
               const Center(
-                child: Text('Tasu v1.0',
-                    style: TextStyle(color: Gz.textSecondary, fontSize: 12)),
+                child: Text(
+                  'Tasu v1.0',
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                ),
               ),
             ],
           );
@@ -388,11 +496,17 @@ class _AccountSettingsScreen extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: ListTile(
               leading: const Icon(Icons.delete_forever_outlined, color: Gz.red),
-              title: Text(t('Аккаунтты өшіру'),
-                  style: const TextStyle(
-                      color: Gz.red, fontWeight: FontWeight.w700)),
-              subtitle: Text(t('Барлық деректер біржола жойылады'),
-                  style: const TextStyle(fontSize: 12)),
+              title: Text(
+                t('Аккаунтты өшіру'),
+                style: const TextStyle(
+                  color: Gz.red,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: Text(
+                t('Барлық деректер біржола жойылады'),
+                style: const TextStyle(fontSize: 12),
+              ),
               onTap: () => onDelete(context),
             ),
           ),
@@ -417,16 +531,23 @@ class _ExecEarningsCard extends ConsumerWidget {
             children: [
               const Icon(Icons.payments_outlined, size: 18, color: Gz.green),
               const SizedBox(width: 8),
-              Text(t('Табыс'),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              Text(
+                t('Табыс'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
               const Spacer(),
               TextButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const EarningsScreen())),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const EarningsScreen()),
+                ),
                 style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: Text(t('Толық тарих')),
               ),
             ],
@@ -438,7 +559,9 @@ class _ExecEarningsCard extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(child: _mini(t('Осы ай'), fmtT(s?.month), Gz.blue)),
               const SizedBox(width: 8),
-              Expanded(child: _mini(t('Барлығы'), fmtT(s?.totalEarned), Gz.ink)),
+              Expanded(
+                child: _mini(t('Барлығы'), fmtT(s?.totalEarned), Gz.ink),
+              ),
             ],
           ),
         ],
@@ -456,14 +579,21 @@ class _ExecEarningsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5)),
+          Text(
+            label,
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+          ),
           const SizedBox(height: 3),
-          Text(value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 15.5, fontWeight: FontWeight.w900, color: color)),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

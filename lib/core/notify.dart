@@ -4,11 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Локал уведомлениелер: жаңа заказ, заказ статусы.
-/// Қосымша ашық/минимизацияда тұрғанда жұмыс істейді.
+/// Қосымша ашық/минимизацияда тұрғанда жұмыс істейді (Android foreground-та
+/// FCM жүйелік баннер шығармайтындықтан, [Push] осы арқылы көрсетеді).
 /// (Қосымша толық жабық кезде push үшін FCM қажет — README қараңыз.)
 class Notify {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
+
+  /// Локал уведомлениені басқанда шақырылады (навигация үшін). Payload —
+  /// FCM `data` картасының JSON жолы. Қосымша (main.dart) орнатады, себебі
+  /// core қабаты features экрандарына тәуелді болмауы керек.
+  static void Function(String? payload)? onSelect;
 
   /// Жоғары маңыздылықтағы канал — экранға ҚАЛҚЫП ШЫҒАТЫН (heads-up), дыбысты
   /// уведомлениелер. FCM push та (қосымша жабық кезде) осы каналды қолданады
@@ -34,9 +40,13 @@ class Notify {
       );
       await _plugin.initialize(
         const InitializationSettings(android: android, iOS: ios),
+        onDidReceiveNotificationResponse: (resp) =>
+            onSelect?.call(resp.payload),
       );
-      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidImpl = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidImpl?.createNotificationChannel(_channel);
       await androidImpl?.requestNotificationsPermission();
       _ready = true;
@@ -45,7 +55,12 @@ class Notify {
     }
   }
 
-  static Future<void> show(String title, String body, {int id = 0}) async {
+  static Future<void> show(
+    String title,
+    String body, {
+    int id = 0,
+    String? payload,
+  }) async {
     if (kIsWeb || !_ready) return;
     try {
       const details = NotificationDetails(
@@ -68,7 +83,7 @@ class Notify {
           sound: 'default',
         ),
       );
-      await _plugin.show(id, title, body, details);
+      await _plugin.show(id, title, body, details, payload: payload);
     } catch (_) {}
   }
 }

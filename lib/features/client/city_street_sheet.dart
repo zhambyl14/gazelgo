@@ -8,6 +8,8 @@ import '../../core/kz_cities.dart';
 import '../../core/lang.dart';
 import '../../core/theme.dart';
 import 'address_picker.dart';
+import 'my_addresses_screen.dart';
+import 'saved_addresses.dart';
 
 /// Адрес таңдау: қала бөлек, көше мен үй нөмірі бөлек өрісте.
 /// Осылай адрес жолында тек «көше, үй нөмірі» ғана қалады, ал көше іздеу
@@ -18,8 +20,11 @@ class CityStreetSheet extends StatefulWidget {
   final PickedAddress? initial;
   const CityStreetSheet({super.key, required this.title, this.initial});
 
-  static Future<PickedAddress?> show(BuildContext context,
-      {required String title, PickedAddress? initial}) {
+  static Future<PickedAddress?> show(
+    BuildContext context, {
+    required String title,
+    PickedAddress? initial,
+  }) {
     return showModalBottomSheet<PickedAddress>(
       context: context,
       isScrollControlled: true,
@@ -41,6 +46,10 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   LatLng? _point;
   bool _detectingCity = false;
 
+  // Сақталған + соңғы мекенжайлар (жылдам таңдау үшін).
+  List<SavedAddress> _saved = [];
+  List<PickedAddress> _recent = [];
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +57,39 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     _street = widget.initial?.address;
     _point = widget.initial?.point;
     if (_city == null) _detectCity();
+    _loadBook();
+  }
+
+  /// Сақталған және соңғы мекенжайларды жүктейді. Соңғылардан сақталғанмен
+  /// қайталанатындарын алып тастаймыз (екі рет көрсетпеу үшін).
+  Future<void> _loadBook() async {
+    final s = await AddressBook.saved();
+    final r = await AddressBook.recent();
+    String key(String a, String? c) =>
+        '${a.trim().toLowerCase()}|${(c ?? '').trim().toLowerCase()}';
+    final savedKeys = s.map((e) => key(e.address, e.city)).toSet();
+    final recent = r
+        .where((e) => !savedKeys.contains(key(e.address, e.city)))
+        .toList();
+    if (mounted) {
+      setState(() {
+        _saved = s;
+        _recent = recent;
+      });
+    }
+  }
+
+  /// Ағымдағы (қала + көше + нүкте толық) мекенжайды сақтауға ұсынады.
+  Future<void> _saveCurrent() async {
+    final city = _city, street = _street, point = _point;
+    if (city == null || street == null || point == null) return;
+    final ok = await showSaveAddressSheet(
+      context,
+      place: PickedAddress(street, point, city),
+    );
+    if (!ok) return;
+    await _loadBook();
+    if (mounted) showSnack(context, t('Мекенжай сақталды'));
   }
 
   /// Өз орнының қаласын автоматты анықтайды (GPS арқылы).
@@ -107,7 +149,10 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _StreetPickerSheet(
-          city: city, initialQuery: _street, initialPoint: _point),
+        city: city,
+        initialQuery: _street,
+        initialPoint: _point,
+      ),
     );
     if (picked != null && mounted) {
       setState(() {
@@ -130,61 +175,205 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   @override
   Widget build(BuildContext context) {
     final canSubmit = _city != null && _street != null && _point != null;
+    final maxH = MediaQuery.of(context).size.height * 0.9;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         top: false,
-        child: Column(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxH),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Gz.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_saved.isNotEmpty || _recent.isNotEmpty) ...[
+                        _quickPick(),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Text(
+                                t('немесе жаңа мекенжай'),
+                                style: const TextStyle(
+                                  color: Gz.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      _fieldTile(
+                        label: t('Қай қала/елді мекенге?'),
+                        value: _detectingCity ? t('Анықталуда…') : _city,
+                        onTap: _pickCity,
+                      ),
+                      const SizedBox(height: 10),
+                      _fieldTile(
+                        label: t('Үй нөмірі мен көше'),
+                        value: _street,
+                        onTap: _pickStreet,
+                      ),
+                      if (canSubmit) ...[
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _saveCurrent,
+                            icon: const Icon(
+                              Icons.bookmark_add_outlined,
+                              size: 18,
+                            ),
+                            label: Text(t('Осы мекенжайды сақтау')),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: canSubmit ? _done : null,
+                    child: Text(t('Дайын')),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Сақталған (чиптер) + соңғы (тізім) мекенжайлар — бір рет түртіп таңдау.
+  Widget _quickPick() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_saved.isNotEmpty) ...[
+          _quickHeader(Icons.bookmark_rounded, t('Сақталған')),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [for (final a in _saved) _savedChip(a)],
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (_recent.isNotEmpty) ...[
+          _quickHeader(Icons.history_rounded, t('Соңғы')),
+          const SizedBox(height: 2),
+          for (final p in _recent) _recentRow(p),
+        ],
+      ],
+    );
+  }
+
+  Widget _quickHeader(IconData icon, String label) => Row(
+    children: [
+      Icon(icon, size: 15, color: Gz.textSecondary),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 12.5,
+          color: Gz.textSecondary,
+        ),
+      ),
+    ],
+  );
+
+  Widget _savedChip(SavedAddress a) {
+    return InkWell(
+      onTap: () => Navigator.of(context).pop(a.toPicked()),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: Gz.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: a.isPrimary ? Gz.yellowDark : Gz.border),
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Gz.border, borderRadius: BorderRadius.circular(2)),
+            Icon(
+              a.isPrimary ? Icons.star_rounded : savedAddressIcon(a.kind),
+              size: 17,
+              color: a.isPrimary ? Gz.yellowDark : Gz.ink,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(widget.title,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 7),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  savedAddressTitle(a),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Column(
-                children: [
-                  _fieldTile(
-                    label: t('Қай қала/елді мекенге?'),
-                    value: _detectingCity ? t('Анықталуда…') : _city,
-                    onTap: _pickCity,
-                  ),
-                  const SizedBox(height: 10),
-                  _fieldTile(
-                    label: t('Үй нөмірі мен көше'),
-                    value: _street,
-                    onTap: _pickStreet,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: canSubmit ? _done : null,
-                      child: Text(t('Дайын')),
+                ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 170),
+                  child: Text(
+                    a.address,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Gz.textSecondary,
+                      fontSize: 11.5,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -192,8 +381,49 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     );
   }
 
-  Widget _fieldTile(
-      {required String label, required String? value, required VoidCallback onTap}) {
+  Widget _recentRow(PickedAddress p) {
+    return InkWell(
+      onTap: () => Navigator.of(context).pop(p),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.history_rounded,
+              size: 18,
+              color: Gz.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                p.city != null && p.city!.isNotEmpty
+                    ? '${p.address} · ${p.city}'
+                    : p.address,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.north_west_rounded,
+              size: 15,
+              color: Gz.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldTile({
+    required String label,
+    required String? value,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -210,20 +440,25 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style:
-                          const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Gz.textSecondary,
+                      fontSize: 12.5,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     value == null || value.isEmpty ? '—' : value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                        color: value == null || value.isEmpty
-                            ? Gz.textSecondary
-                            : Gz.ink),
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: value == null || value.isEmpty
+                          ? Gz.textSecondary
+                          : Gz.ink,
+                    ),
                   ),
                 ],
               ),
@@ -276,7 +511,9 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-                color: Gz.border, borderRadius: BorderRadius.circular(2)),
+              color: Gz.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -294,15 +531,20 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
           Expanded(
             child: _filtered.isEmpty
                 ? Center(
-                    child: Text(t('Табылмады'),
-                        style: const TextStyle(color: Gz.textSecondary)))
+                    child: Text(
+                      t('Табылмады'),
+                      style: const TextStyle(color: Gz.textSecondary),
+                    ),
+                  )
                 : ListView.separated(
                     controller: scroll,
                     itemCount: _filtered.length,
                     separatorBuilder: (_, i) => const Divider(height: 1),
                     itemBuilder: (_, i) => ListTile(
-                      leading: const Icon(Icons.location_city_outlined,
-                          color: Gz.textSecondary),
+                      leading: const Icon(
+                        Icons.location_city_outlined,
+                        color: Gz.textSecondary,
+                      ),
                       title: Text(_filtered[i]),
                       onTap: () => Navigator.of(context).pop(_filtered[i]),
                     ),
@@ -318,8 +560,11 @@ class _StreetPickerSheet extends StatefulWidget {
   final String city;
   final String? initialQuery;
   final LatLng? initialPoint;
-  const _StreetPickerSheet(
-      {required this.city, this.initialQuery, this.initialPoint});
+  const _StreetPickerSheet({
+    required this.city,
+    this.initialQuery,
+    this.initialPoint,
+  });
 
   @override
   State<_StreetPickerSheet> createState() => _StreetPickerSheetState();
@@ -382,13 +627,14 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
         p.city!.isNotEmpty &&
         !Geo.sameCity(p.city, widget.city)) {
       showSnack(
-          context,
-          Lang.current.value == AppLang.ru
-              ? 'Эта точка не в городе ${widget.city}. '
+        context,
+        Lang.current.value == AppLang.ru
+            ? 'Эта точка не в городе ${widget.city}. '
                   'Отметьте в пределах ${widget.city}.'
-              : 'Бұл нүкте ${widget.city} ішінде емес. '
+            : 'Бұл нүкте ${widget.city} ішінде емес. '
                   '${widget.city} шегінде белгілеңіз.',
-          error: true);
+        error: true,
+      );
       return false;
     }
     return true;
@@ -396,14 +642,17 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
 
   Future<void> _findOnMap() async {
     // Карта таңдалған қаланың ортасынан ашылады.
-    final res = await AddressPickerScreen.pick(context,
-        title: widget.city,
-        initial: widget.initialPoint ?? Geo.cityCenter(widget.city));
+    final res = await AddressPickerScreen.pick(
+      context,
+      title: widget.city,
+      initial: widget.initialPoint ?? Geo.cityCenter(widget.city),
+    );
     if (res != null && mounted) {
       if (!_pointInSelectedCity(res)) return;
       // Қаланы таңдалған қалаға бекітеміз (координата сол қалада расталды).
-      Navigator.of(context)
-          .pop(PickedAddress(res.address, res.point, widget.city));
+      Navigator.of(
+        context,
+      ).pop(PickedAddress(res.address, res.point, widget.city));
     }
   }
 
@@ -419,8 +668,9 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
     LatLng? point = _results.isNotEmpty ? _results.first.point : null;
     if (point == null) {
       setState(() => _loading = true);
-      final res =
-          _onlySelectedCity(await Geo.searchStreet(city: widget.city, street: text));
+      final res = _onlySelectedCity(
+        await Geo.searchStreet(city: widget.city, street: text),
+      );
       point = res.isNotEmpty ? res.first.point : null;
       if (mounted) setState(() => _loading = false);
     }
@@ -446,7 +696,9 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.7,
@@ -459,13 +711,19 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Gz.border, borderRadius: BorderRadius.circular(2)),
+                color: Gz.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text('${widget.city}: ${t('көше мен үй нөмірі')}',
-                  style:
-                      const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              child: Text(
+                '${widget.city}: ${t('көше мен үй нөмірі')}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -480,10 +738,10 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                       ? const Padding(
                           padding: EdgeInsets.all(12),
                           child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2)),
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         )
                       : null,
                 ),
@@ -491,8 +749,10 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
             ),
             if (_search.text.trim().length >= 2)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: FilledButton.icon(
                   onPressed: _loading ? null : _useTyped,
                   style: FilledButton.styleFrom(
@@ -501,7 +761,9 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                     shadowColor: const Color(0x5916A34A),
                     minimumSize: const Size.fromHeight(50),
                     textStyle: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 14.5),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                    ),
                   ),
                   icon: const Icon(Icons.add_location_alt, size: 20),
                   label: Text(
@@ -520,8 +782,10 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                   children: [
                     const Icon(Icons.map_outlined, size: 20, color: Gz.ink),
                     const SizedBox(width: 8),
-                    Text(t('Картадан табу'),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      t('Картадан табу'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
@@ -536,12 +800,16 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                           _search.text.trim().length < 2
                               ? t('Көше мен үй нөмірін жазыңыз')
                               : (_loading
-                                  ? ''
-                                  : t('Тізімнен табылмады? Жоғарыдағы «Осы адресті '
-                                      'қолдану» → картадан дәл жерді белгілейсіз')),
+                                    ? ''
+                                    : t(
+                                        'Тізімнен табылмады? Жоғарыдағы «Осы адресті '
+                                        'қолдану» → картадан дәл жерді белгілейсіз',
+                                      )),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 13.5),
+                            color: Gz.textSecondary,
+                            fontSize: 13.5,
+                          ),
                         ),
                       ),
                     )
@@ -550,14 +818,24 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                       itemCount: _results.length,
                       separatorBuilder: (_, i) => const Divider(height: 1),
                       itemBuilder: (_, i) => ListTile(
-                        leading:
-                            const Icon(Icons.place_outlined, color: Gz.red),
-                        title: Text(_results[i].name,
-                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        leading: const Icon(
+                          Icons.place_outlined,
+                          color: Gz.red,
+                        ),
+                        title: Text(
+                          _results[i].name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         // Қала әрдайым таңдалған қала болып қалады (нәтиже
                         // онсыз да сол қала ішінен фильтрленген).
-                        onTap: () => Navigator.of(context).pop(PickedAddress(
-                            _results[i].name, _results[i].point, widget.city)),
+                        onTap: () => Navigator.of(context).pop(
+                          PickedAddress(
+                            _results[i].name,
+                            _results[i].point,
+                            widget.city,
+                          ),
+                        ),
                       ),
                     ),
             ),

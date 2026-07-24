@@ -3,12 +3,13 @@ description: "Tasu — жүк тасымалы және спецтехника �
 publish_to: 'none'
 
 version: 1.0.3+1
-
 environment:
   sdk: ^3.11.5
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.8.0
