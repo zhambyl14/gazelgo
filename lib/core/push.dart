@@ -36,11 +36,30 @@ class Push {
     _initStarted = true;
     try {
       await Firebase.initializeApp(options: FirebaseOpts.currentPlatform);
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (_) {
+      // Firebase жобасы толық бапталмаған/платформа қолдамайды — өшірулі
+      // қалады, қосымша бұзылмайды.
+      return;
+    }
 
-      final messaging = FirebaseMessaging.instance;
+    final messaging = FirebaseMessaging.instance;
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // Навигация мен foreground баннер листенерлерін БАСҚА ҚАДАМДАРДАН БҰРЫН
+    // тіркейміз: permission сұрау не getToken() желі/құрылғы себебімен
+    // сәтсіз аяқталса да (бөлек try-catch төменде), осы екеуі әрқашан
+    // жұмыс істеуі керек — әйтпесе пуш жүйелік tray арқылы келгенімен,
+    // басқанда навигация болмай қалады (бір try-блокта бәрі бірге тұрғанда
+    // осы дәл осылай сынған еді).
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen((m) => onOpen?.call(m.data));
+    try {
+      final initial = await messaging.getInitialMessage();
+      if (initial != null) onOpen?.call(initial.data);
+    } catch (_) {}
+
+    try {
       await messaging.requestPermission(alert: true, badge: true, sound: true);
-
       // iOS: қосымша АШЫҚ (foreground) тұрғанда да жүйелік баннер + дыбыс +
       // белгіше көрсетілсін. Бұл болмаса, iOS foreground push-ты мүлдем
       // көрсетпейді (firebase_messaging делегаты хабарды жасырады).
@@ -49,24 +68,13 @@ class Push {
         badge: true,
         sound: true,
       );
+    } catch (_) {}
 
+    try {
       final token = await messaging.getToken();
       if (token != null) await _saveToken(token);
       messaging.onTokenRefresh.listen(_saveToken);
-
-      // 1) Қосымша АШЫҚ тұрғанда келген хабар.
-      FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-
-      // 2) Хабарламаны басып қосымша фоннан ашылды.
-      FirebaseMessaging.onMessageOpenedApp.listen((m) => onOpen?.call(m.data));
-
-      // 3) Қосымша ТОЛЫҚ ЖАБЫҚ болғанда хабарламадан ашылды.
-      final initial = await messaging.getInitialMessage();
-      if (initial != null) onOpen?.call(initial.data);
-    } catch (_) {
-      // Firebase жобасы толық бапталмаған/платформа қолдамайды — өшірулі
-      // қалады, қосымша бұзылмайды.
-    }
+    } catch (_) {}
   }
 
   /// Foreground хабарды көрсету. iOS-та жүйе баннерді өзі шығарады
