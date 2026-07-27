@@ -30,28 +30,30 @@ double _d(dynamic v) {
 enum VehicleType {
   gazelle,
   furgon,
+  minivan,
   kamaz,
   fura,
-  crane,
   manipulator,
-  assenizator,
-  excavator,
+  crane,
   loader,
-  minivan,
+  excavator,
+  avtovyshka,
   tractor,
+  assenizator,
 }
 
 VehicleType vehicleTypeFrom(String? s) => switch (s) {
   'furgon' => VehicleType.furgon,
+  'minivan' => VehicleType.minivan,
   'kamaz' => VehicleType.kamaz,
   'fura' => VehicleType.fura,
-  'crane' => VehicleType.crane,
   'manipulator' => VehicleType.manipulator,
-  'assenizator' => VehicleType.assenizator,
-  'excavator' => VehicleType.excavator,
+  'crane' => VehicleType.crane,
   'loader' => VehicleType.loader,
-  'minivan' => VehicleType.minivan,
+  'excavator' => VehicleType.excavator,
+  'avtovyshka' => VehicleType.avtovyshka,
   'tractor' => VehicleType.tractor,
+  'assenizator' => VehicleType.assenizator,
   _ => VehicleType.gazelle,
 };
 
@@ -60,15 +62,16 @@ extension VehicleTypeX on VehicleType {
   String get label => switch (this) {
     VehicleType.gazelle => t('Газель'),
     VehicleType.furgon => t('Фургон'),
+    VehicleType.minivan => t('Мини вэн'),
     VehicleType.kamaz => t('КамАЗ'),
     VehicleType.fura => t('Фура'),
-    VehicleType.crane => t('Кран'),
     VehicleType.manipulator => t('Манипулятор'),
-    VehicleType.assenizator => t('Ассенизатор'),
-    VehicleType.excavator => t('Экскаватор'),
+    VehicleType.crane => t('Кран'),
     VehicleType.loader => t('Погрузчик'),
-    VehicleType.minivan => t('Мини вэн'),
+    VehicleType.excavator => t('Экскаватор'),
+    VehicleType.avtovyshka => t('Автовышка'),
     VehicleType.tractor => t('Трактор 3в1'),
+    VehicleType.assenizator => t('Ассенизатор'),
   };
 
   /// Түрлі-түсті PNG иконкасы бар түрлер (`assets/vehicles/<name>.png`) —
@@ -83,6 +86,7 @@ extension VehicleTypeX on VehicleType {
     VehicleType.excavator => 'assets/vehicles/excavator.png',
     VehicleType.loader => 'assets/vehicles/loader.png',
     VehicleType.minivan => 'assets/vehicles/minivan.png',
+    VehicleType.avtovyshka => 'assets/vehicles/avtovyshka.png',
     _ => null,
   };
 
@@ -97,8 +101,25 @@ extension VehicleTypeX on VehicleType {
   /// Көлік түрінің қысқа түсініктемесі (сыйымдылық/жүктеме). Бос жол болса —
   /// UI бұл жолды көрсетпейді. Каруселде таңдалған түрдің астында шығады.
   String get description => switch (this) {
-    VehicleType.fura => t('Ауыр жүк көлігі · 5–20 тонна'),
-    _ => '',
+    VehicleType.gazelle => t('Әмбебап жүк тасымалына арналған көлік'),
+    VehicleType.furgon => t('Жабық жүк тасымалына арналған көлік'),
+    VehicleType.minivan =>
+      t('Жолаушы және шағын жүк тасымалына арналған көлік'),
+    VehicleType.kamaz => t('Ауыр жүктерді тасымалдауға арналған көлік'),
+    VehicleType.fura => t('Ұзақ қашықтыққа жүк тасымалдауға арналған көлік'),
+    VehicleType.manipulator =>
+      t('Жүкті тиеуге, тасымалдауға және түсіруге арналған кран-манипулятор'),
+    VehicleType.crane => t('Жүк көтеруге арналған автокран'),
+    VehicleType.loader =>
+      t('Жүк тиеу және құрылыс жұмыстарына арналған тиегіш'),
+    VehicleType.excavator =>
+      t('Қазу және жер жұмыстарына арналған экскаватор'),
+    VehicleType.avtovyshka =>
+      t('Биіктікте жұмыс істеуге арналған автокөтергіш'),
+    VehicleType.tractor =>
+      t('Әмбебап трактор (3в1) · әртүрлі жұмыстарға арналған'),
+    VehicleType.assenizator =>
+      t('Сұйық қалдықтарды соруға арналған арнайы көлік'),
   };
 }
 
