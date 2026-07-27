@@ -506,6 +506,98 @@ class ExecutorStats {
   bool get canWork => hasTariff;
 }
 
+// ---------- Хабарландыру (board) ----------
+/// Хабарландырулар тақтасының жазбасы (0043 миграциясы).
+///
+/// Түрі АВТОРДЫҢ РӨЛІНЕН шығады, сол себепті екі жақ бір-бірін шатастырмайды:
+///   [ListingKind.service] — орындаушы жариялаған ҚЫЗМЕТ («КамАЗым бар…»).
+///                           Клиент оны «Қызметтер» табынан көреді.
+///   [ListingKind.job]     — клиент жариялаған ЖҰМЫС («10 күнге фура керек»).
+///                           Орындаушы оны «Жұмыстар» табынан көреді.
+///
+/// [views] тек авторға беріледі (басқаға сервер null қайтарады).
+enum ListingKind { job, service }
+
+/// Хабарландырудың лентада тұратын мерзімі — фотолар да дәл сонша сақталады.
+const int kListingDays = 7;
+
+/// Бір хабарландыруға рұқсат етілген макс фото саны.
+const int kListingMaxPhotos = 4;
+
+/// Бір адамның бір мезгілде ұстай алатын макс белсенді хабарландыруы.
+const int kListingMaxActive = 5;
+
+class Listing {
+  final String id;
+  final ListingKind kind;
+  final VehicleType vehicleType;
+  final String city;
+  final String body;
+  final String priceText;
+
+  /// >0 болса — «N күндік жұмыс» (тек [ListingKind.job] үшін).
+  final int durationDays;
+  final List<String> photos;
+
+  /// Тек автордың өзіне беріледі — басқа жағдайда null.
+  final int? views;
+  final String status; // active | expired | archived
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
+  final bool mine;
+  final String authorId;
+
+  /// client | executor — автордың жариялау кезіндегі рөлі.
+  final String authorRole;
+  final String authorName;
+  final String? authorAvatar;
+  final double authorRating;
+  final int authorRatingCount;
+  final int authorTrips;
+
+  /// Тек [Repo.openListing] қайтарған детальда толтырылады.
+  final String? authorPhone;
+
+  Listing.fromMap(Map<String, dynamic> m)
+    : id = m['id'] as String,
+      kind = m['kind'] == 'job' ? ListingKind.job : ListingKind.service,
+      vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
+      city = m['city'] as String? ?? '',
+      body = m['body'] as String? ?? '',
+      priceText = m['price_text'] as String? ?? '',
+      durationDays = _i(m['duration_days']),
+      photos = (m['photos'] as List?)?.cast<String>() ?? const [],
+      views = m['views'] == null ? null : _i(m['views']),
+      status = m['status'] as String? ?? 'active',
+      createdAt = _dt(m['created_at']),
+      expiresAt = _dt(m['expires_at']),
+      mine = m['mine'] as bool? ?? false,
+      authorId = m['author_id'] as String? ?? '',
+      authorRole = m['author_role'] as String? ?? 'client',
+      authorName = m['author_name'] as String? ?? '',
+      authorAvatar = m['author_avatar'] as String?,
+      authorRating = _d(m['author_rating']),
+      authorRatingCount = _i(m['author_rating_count']),
+      authorTrips = _i(m['author_trips']),
+      authorPhone = m['author_phone'] as String?;
+
+  bool get isActive =>
+      status == 'active' &&
+      (expiresAt == null || expiresAt!.isAfter(DateTime.now()));
+
+  /// Бағасы жазылмаған болса — «Келісім бойынша».
+  String get priceDisplay =>
+      priceText.trim().isEmpty ? t('Келісім бойынша') : priceText.trim();
+
+  /// Мерзімі бітуіне қалған күн (белсенді емес болса 0).
+  int get daysLeft {
+    final e = expiresAt;
+    if (!isActive || e == null) return 0;
+    final d = e.difference(DateTime.now()).inHours / 24;
+    return d <= 0 ? 0 : d.ceil();
+  }
+}
+
 // ---------- App settings ----------
 class AppConfig {
   final String kaspiNumber;

@@ -952,6 +952,128 @@ class Repo {
         .toList();
   }
 
+  // ================= ХАБАРЛАНДЫРУЛАР ТАҚТАСЫ (0043) =================
+  /// Тақта қосулы ма (модератор Баптаулардан басқарады). Желі қатесінде
+  /// `false` — фича «жоқ» болып қалады, ешбір экран сынбайды.
+  static Future<bool> boardEnabled() async {
+    try {
+      return (await c.rpc('board_enabled')) as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Лента: ҚАРСЫ рөлдің хабарландырулары (сервер рөл бойынша өзі шешеді —
+  /// клиентке қызметтер, орындаушыға жұмыстар). [city] бос болса — барлық
+  /// қала, [vehicle] null болса — барлық көлік түрі.
+  static Future<List<Listing>> boardFeed({
+    String? city,
+    VehicleType? vehicle,
+  }) async {
+    final rows = await c.rpc(
+      'board_feed',
+      params: {'p_city': city ?? '', 'p_vehicle': vehicle?.db ?? 'all'},
+    );
+    return (rows as List)
+        .map((m) => Listing.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  /// Өз хабарландыруларым (белсенді + мерзімі өткені), көру санымен.
+  static Future<List<Listing>> myListings() async {
+    final rows = await c.rpc('my_listings');
+    return (rows as List)
+        .map((m) => Listing.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  /// Хабарландыруды ашу — көруді тіркейді (бір адам = 1 көру) әрі байланыс
+  /// телефонын қоса қайтарады.
+  static Future<Listing> openListing(String id) async {
+    final m = await c.rpc('open_listing', params: {'p_id': id});
+    return Listing.fromMap(Map<String, dynamic>.from(m as Map));
+  }
+
+  /// Хабарландыру жариялау. Түрі (жұмыс/қызмет) рөлден автоматты анықталады.
+  static Future<String> createListing({
+    required VehicleType vehicleType,
+    required String city,
+    required String body,
+    String priceText = '',
+    int durationDays = 0,
+    List<String> photos = const [],
+  }) async {
+    final res = await c.rpc('create_listing', params: {
+      'p_vehicle_type': vehicleType.db,
+      'p_city': city,
+      'p_body': body,
+      'p_price_text': priceText,
+      'p_duration_days': durationDays,
+      'p_photos': photos,
+    });
+    return res as String;
+  }
+
+  /// Өз хабарландыруын мерзімінен бұрын алып тастау (архивке).
+  static Future<void> archiveListing(String id) =>
+      c.rpc('archive_listing', params: {'p_id': id});
+
+  /// Архивтегіні қайта жариялау — мерзім жаңа [kListingDays] күнге ұзарады,
+  /// көру саны нөлден басталады. Ескі фотолар Storage-тан өшіп кеткен, сол
+  /// себепті [photos] қайта беріледі. Қалған өрістер де түзетілуі мүмкін.
+  static Future<void> repostListing({
+    required String id,
+    required List<String> photos,
+    required String body,
+    required String priceText,
+    required VehicleType vehicleType,
+    required String city,
+    int durationDays = 0,
+  }) =>
+      c.rpc('repost_listing', params: {
+        'p_id': id,
+        'p_photos': photos,
+        'p_body': body,
+        'p_price_text': priceText,
+        'p_vehicle_type': vehicleType.db,
+        'p_city': city,
+        'p_duration_days': durationDays,
+      });
+
+  static Future<void> deleteListing(String id) =>
+      c.rpc('delete_listing', params: {'p_id': id});
+
+  /// Хабарландыру фотосын жүктеу (public 'listings' бакеті). Жолын қайтарады.
+  static Future<String> uploadListingPhoto(Uint8List bytes, int index) async {
+    final id = uid;
+    if (id == null) throw Exception('AUTH');
+    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
+    await c.storage.from('listings').uploadBinary(
+          path,
+          bytes,
+          // upsert=false: жол timestamp арқылы бірегей — UPDATE саясаты
+          // талап етілмейді (orders бакетіндегідей тәртіп).
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
+    return path;
+  }
+
+  static String listingPhotoUrl(String path) =>
+      c.storage.from('listings').getPublicUrl(path);
+
+  /// Модератордың жалпы шолу статистикасы (пайдаланушылар, заказдар,
+  /// хабарландырулар — бір сұраныста).
+  static Future<Map<String, dynamic>> modOverviewStats() async =>
+      Map<String, dynamic>.from(await c.rpc('mod_overview_stats') as Map);
+
+  /// Модераторға хабарландырулар тізімі. [status]: active | expired | null.
+  static Future<List<Listing>> modListings(String? status) async {
+    final rows = await c.rpc('mod_listings', params: {'p_status': status ?? ''});
+    return (rows as List)
+        .map((m) => Listing.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
   // ================= STORAGE =================
   /// Файлды docs бакетіне жүктеп, жолын қайтарады.
   static Future<String> uploadDoc(String name, Uint8List bytes) async {
@@ -993,6 +1115,11 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
 
 final executorStatsProvider =
     FutureProvider<ExecutorStats>((ref) => Repo.executorStats());
+
+/// Хабарландырулар тақтасы қосулы ма (0043). Модератор Баптаулардан
+/// қосқанда/өшіргенде `ref.invalidate(boardEnabledProvider)` шақырылады.
+final boardEnabledProvider =
+    FutureProvider<bool>((ref) => Repo.boardEnabled());
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.

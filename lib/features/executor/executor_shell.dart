@@ -9,7 +9,6 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
-import '../profile/profile_screen.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
 
@@ -21,7 +20,6 @@ class ExecutorShell extends StatefulWidget {
 }
 
 class _ExecutorShellState extends State<ExecutorShell> {
-  int _index = 0;
   final Set<String> _notifiedOrders = {};
   Timer? _feedWatch;
   bool _feedPrimed = false;
@@ -76,33 +74,13 @@ class _ExecutorShellState extends State<ExecutorShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Төменгі навбар ЖОЙЫЛДЫ: профиль енді логотип батырмасынан ашылатын
+    // sidebar-дың ішінде (клиенттегідей бір экранды дизайн).
+    return const Scaffold(
       body: Column(
         children: [
-          Expanded(
-            child: IndexedStack(
-              index: _index,
-              children: const [
-                ExecutorHomeScreen(),
-                ProfileScreen(),
-              ],
-            ),
-          ),
-          const _BusyOrderBanner(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home),
-              label: t('Басты')),
-          NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person),
-              label: t('Профиль')),
+          Expanded(child: ExecutorHomeScreen()),
+          _BusyOrderBanner(),
         ],
       ),
     );

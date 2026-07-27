@@ -8,6 +8,7 @@ import '../../core/models.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/app_drawer.dart';
 import '../auth/executor_apply_screen.dart';
 import 'balance_screen.dart';
 import 'dashboard_screen.dart';
@@ -25,22 +26,34 @@ class ExecutorHomeScreen extends ConsumerWidget {
     final s = ref.watch(executorStatsStreamProvider).value;
     final ep = ref.watch(myExecutorProfileProvider).value;
     return Scaffold(
+      drawer: const AppDrawer(),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // жоғарғы жолақ: лого + баланс
+            // жоғарғы жолақ: лого (sidebar батырмасы) + баланс
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'assets/icon/icon.png',
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
+                  // Логотип — sidebar ашатын батырма: профиль, баланс, табыс,
+                  // хабарландырулар тақтасы — бәрі сонда (бөлек «Профиль»
+                  // табы жойылды).
+                  Builder(
+                    builder: (ctx) => Material(
+                      elevation: 2,
+                      borderRadius: BorderRadius.circular(10),
+                      clipBehavior: Clip.antiAlias,
+                      color: Gz.surface,
+                      child: InkWell(
+                        onTap: () => Scaffold.of(ctx).openDrawer(),
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
                   const Spacer(),

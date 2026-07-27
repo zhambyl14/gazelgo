@@ -11,12 +11,10 @@ import '../../core/models.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/app_drawer.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
 import '../../shared/vehicle_picker.dart';
-import '../../shared/widgets.dart';
-import '../auth/login_screen.dart';
-import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
@@ -42,6 +40,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   /// қоймайды.
   final _blockKey = GlobalKey();
   double _bottomInset = 140;
+
+  /// Логотип батырмасы sidebar-ды осы кілт арқылы ашады (Scaffold.of()
+  /// бұл жерде жарамайды — логотип Scaffold-тың ӨЗ build-інде тұр).
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// Негізгі панель бүктелген бе (қолмен төмен тартып жасырылған).
   bool _panelCollapsed = false;
@@ -226,9 +228,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profileAsync = ref.watch(myProfileProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureBottomInset());
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: AppDrawer(isGuest: widget.isGuest),
+      // Шеттен саусақпен тарту ӨШІРУЛІ: бүкіл экранды карта алып тұр, әйтпесе
+      // картаны солға жылжытқан сайын sidebar ашылып кетер еді. Sidebar тек
+      // логотип батырмасымен ашылады.
+      drawerEnableOpenDragGesture: false,
       body: Stack(
         children: [
           // Негізгі панельдің нақты өлшенген биіктігіне сай карта мен
@@ -293,22 +300,27 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  // Логотип — ЕНДІ БАТЫРМА: sol жақтан sidebar ашады
+                  // (профиль, тапсырыстар, хабарландырулар тақтасы — бәрі
+                  // сонда). Оң жақтағы бөлек профиль батырмасы жойылды.
                   child: Row(
                     children: [
-                      ClipRRect(
+                      Material(
+                        elevation: 2,
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.asset(
-                          'assets/icon/icon.png',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
+                        clipBehavior: Clip.antiAlias,
+                        color: Gz.surface,
+                        child: InkWell(
+                          onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                          child: Image.asset(
+                            'assets/icon/icon.png',
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                       const Spacer(),
-                      _ProfileButton(
-                        profile: profileAsync.value,
-                        isGuest: widget.isGuest,
-                      ),
                     ],
                   ),
                 ),
@@ -614,41 +626,6 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ProfileButton extends StatelessWidget {
-  final Profile? profile;
-  final bool isGuest;
-  const _ProfileButton({this.profile, this.isGuest = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 2,
-      shape: const CircleBorder(),
-      color: Gz.surface,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        // Гест профильге кіре алмайды — түртсе кіру экраны ашылады.
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                isGuest ? const LoginScreen() : const ProfileScreen(),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: isGuest
-              ? const Icon(Icons.person_outline, color: Gz.ink, size: 26)
-              : InitialsAvatar(
-                  profile?.fullName ?? '?',
-                  radius: 17,
-                  imageUrl: profile?.avatarUrl,
-                ),
-        ),
       ),
     );
   }

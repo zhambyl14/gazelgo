@@ -18,6 +18,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Хабарландырулар тақтасы қосулы ма (0043). Бүкіл жаңа фича осының
+  /// қолында: false болса, клиент те, орындаушы да «әлі қосылмады» дегенді
+  /// ғана көреді.
+  bool _boardEnabled = false;
+  bool _boardSaving = false;
+
   final _tariffPrice = TextEditingController();
   final _kaspiNumber = TextEditingController();
   final _kaspiName = TextEditingController();
@@ -60,6 +66,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final tariffs = (s['tariffs'] as Map?) ?? {};
       final payment = (s['payment'] as Map?) ?? {};
       final gate = (s['version_gate'] as Map?) ?? {};
+      final board = (s['listings'] as Map?) ?? {};
+      _boardEnabled = board['enabled'] == true;
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
@@ -105,6 +113,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     if (mounted) showSnack(context, t('Сақталды'));
   }
 
+  /// Тақтаны қосу/өшіру — бірден сақталады (бөлек «Сақтау» батырмасы жоқ,
+  /// себебі бұл бір ғана қосқыш).
+  Future<void> _toggleBoard(bool v) async {
+    setState(() {
+      _boardEnabled = v;
+      _boardSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('listings', {'enabled': v});
+      if (mounted) {
+        showSnack(
+          context,
+          v
+              ? t('Хабарландырулар тақтасы ҚОСЫЛДЫ')
+              : t('Хабарландырулар тақтасы ӨШІРІЛДІ'),
+        );
+      }
+    } catch (e) {
+      // Сәтсіз болса — қосқышты кері қайтарамыз (жалған күй қалмауы үшін).
+      if (mounted) {
+        setState(() => _boardEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _boardSaving = false);
+    }
+  }
+
   Future<void> _saveVersionGate() async {
     final android = _int(_minBuildAndroid) ?? 0;
     final ios = _int(_minBuildIos) ?? 0;
@@ -138,6 +174,72 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _sectionTitle(t('Хабарландырулар тақтасы')),
+          Text(
+            t(
+              'Клиент пен орындаушының логотип батырмасындағы «Хабарландырулар» '
+              'бөлімі. ӨШУЛІ болса — тармақ көрініп тұрады, бірақ басқанда '
+              '«әлі қосылмаған» деп шығады, ешкім хабарландыру бере алмайды. '
+              'ҚОСУЛЫ болса — орындаушылар өз қызметтерін, клиенттер өз '
+              'жұмыстарын жариялап, бір-бірімен тікелей хабарласа алады. '
+              'Әр хабарландыру 7 күн тұрады, суреттері де сонша сақталып, '
+              'содан кейін автоматты өшіріледі.',
+            ),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+            child: Row(
+              children: [
+                Icon(
+                  _boardEnabled ? Icons.storefront : Icons.storefront_outlined,
+                  color: _boardEnabled ? Gz.green : Gz.textSecondary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _boardEnabled ? t('Қосулы') : t('Өшулі'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: _boardEnabled ? Gz.green : Gz.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        _boardEnabled
+                            ? t('Қолданушылар хабарландыру бере алады')
+                            : t('Қолданушыларға «әлі қосылмады» деп шығады'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Gz.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_boardSaving)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else
+                  Switch(
+                    value: _boardEnabled,
+                    activeThumbColor: Gz.green,
+                    onChanged: _toggleBoard,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),
           Text(
             t(

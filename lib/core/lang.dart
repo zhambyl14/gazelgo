@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'i18n/ru_auth.dart';
+import 'i18n/ru_board.dart';
 import 'i18n/ru_client.dart';
 import 'i18n/ru_executor.dart';
 import 'i18n/ru_moderator.dart';
@@ -35,6 +36,9 @@ final Map<String, String> _kkToRu = {
   ...ruClient,
   ...ruExecutor,
   ...ruModerator,
+  // Хабарландырулар тақтасы (0043) — соңында тұрады: жаңа фичаның
+  // мәтіндері ескі сөздіктердегі бірдей кілттерді басып озады.
+  ...ruBoard,
 };
 
 /// Қазақша мәтінді ағымдағы тілге аудару. Тек RU тілінде сөздіктен
