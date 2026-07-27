@@ -246,6 +246,7 @@ declare
   v_uid  uuid := auth.uid();
   v_row  public.listings;
   v_mine boolean;
+  v_live boolean;
   v_new  int := 0;
 begin
   if v_uid is null then raise exception 'AUTH'; end if;
@@ -255,9 +256,12 @@ begin
   if v_row.id is null then raise exception 'NOT_FOUND'; end if;
 
   v_mine := (v_row.author_id = v_uid);
+  -- cron әлі жүрмей, мерзімі жаңа ғана өтіп кеткен болуы мүмкін — сол
+  -- себепті `status`-қа ғана сенбей, `expires_at`-ты да тексереміз.
+  v_live := (v_row.status = 'active' and v_row.expires_at > now());
 
   -- Көру санағышы: тек бөгде адам, тек белсенді хабарландыру, тек 1 рет.
-  if not v_mine and v_row.status = 'active' then
+  if not v_mine and v_live then
     insert into public.listing_views (listing_id, viewer_id)
     values (p_id, v_uid)
     on conflict do nothing;
@@ -270,8 +274,10 @@ begin
 
   return public.listing_json(v_row, v_mine)
          || jsonb_build_object(
+              -- Телефон тек ТІРІ хабарландыруда ашылады (өз жазбаңда
+              -- әрқашан — ол өзіңдікі).
               'author_phone',
-              case when v_mine or v_row.status = 'active'
+              case when v_mine or v_live
                    then (select phone from public.profiles where id = v_row.author_id)
                    else null end);
 end;
