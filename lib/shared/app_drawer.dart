@@ -7,7 +7,6 @@ import '../core/theme.dart';
 import '../features/auth/login_screen.dart';
 import '../features/board/board_screen.dart';
 import '../features/client/my_addresses_screen.dart';
-import '../features/client/my_orders_screen.dart';
 import '../features/executor/balance_screen.dart';
 import '../features/executor/earnings_screen.dart';
 import '../features/legal/legal_screen.dart';
@@ -118,47 +117,46 @@ class AppDrawer extends ConsumerWidget {
                     t('Профиль'),
                     () => _open(context, const ProfileScreen()),
                   ),
-                  if (isExecutor) ...[
+
+                  // Гестте тізім ҚЫСҚА: кірмей тұрып мәні бар тармақтар ғана
+                  // (хабарландырулар, профиль, заңдық құжаттар, тіл, кіру).
+                  if (isGuest)
                     _item(
                       context,
-                      Icons.account_balance_wallet_outlined,
-                      t('Баланс'),
-                      () => _open(context, const BalanceScreen()),
-                    ),
+                      Icons.description_outlined,
+                      t('Заңдық құжаттар'),
+                      // Сторлар талабы: келісімді кірмей тұрып оқи алу керек,
+                      // сол себепті бұл тармақ кіру экранына бұрылмайды.
+                      () => _go(context, const LegalScreen()),
+                    )
+                  else ...[
+                    if (isExecutor) ...[
+                      _item(
+                        context,
+                        Icons.account_balance_wallet_outlined,
+                        t('Баланс'),
+                        () => _open(context, const BalanceScreen()),
+                      ),
+                      _item(
+                        context,
+                        Icons.payments_outlined,
+                        t('Табыс'),
+                        () => _open(context, const EarningsScreen()),
+                      ),
+                    ] else
+                      _item(
+                        context,
+                        Icons.bookmark_outline,
+                        t('Менің мекенжайларым'),
+                        () => _open(context, const MyAddressesScreen()),
+                      ),
                     _item(
                       context,
-                      Icons.payments_outlined,
-                      t('Табыс'),
-                      () => _open(context, const EarningsScreen()),
-                    ),
-                  ] else ...[
-                    _item(
-                      context,
-                      Icons.receipt_long_outlined,
-                      t('Менің тапсырыстарым'),
-                      () => _open(context, const MyOrdersScreen()),
-                    ),
-                    _item(
-                      context,
-                      Icons.bookmark_outline,
-                      t('Менің мекенжайларым'),
-                      () => _open(context, const MyAddressesScreen()),
+                      Icons.support_agent,
+                      t('Қолдау қызметі'),
+                      () => _open(context, const SupportScreen()),
                     ),
                   ],
-                  _item(
-                    context,
-                    Icons.support_agent,
-                    t('Қолдау қызметі'),
-                    () => _open(context, const SupportScreen()),
-                  ),
-                  _item(
-                    context,
-                    Icons.description_outlined,
-                    t('Заңдық құжаттар'),
-                    // Заңдық құжаттар гестке де ашық болуы керек (сторлар
-                    // талабы: келісімді кірмей тұрып оқи алу).
-                    () => _go(context, const LegalScreen()),
-                  ),
 
                   const Divider(height: 24),
                   Padding(
@@ -188,8 +186,10 @@ class AppDrawer extends ConsumerWidget {
               ),
             ),
 
-            const Divider(height: 1),
-            if (isGuest)
+            // «Шығу» ӘДЕЙІ жоқ: ол тек Профильде тұрады — sidebar-дың соңында
+            // тұрғанда кездейсоқ басылып қалу қаупі бар еді.
+            if (isGuest) ...[
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.login, color: Gz.ink),
                 title: Text(
@@ -197,22 +197,8 @@ class AppDrawer extends ConsumerWidget {
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 onTap: () => _go(context, const LoginScreen()),
-              )
-            else
-              ListTile(
-                leading: const Icon(Icons.logout, color: Gz.red),
-                title: Text(
-                  t('Шығу'),
-                  style: const TextStyle(
-                    color: Gz.red,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  confirmSignOut(context);
-                },
               ),
+            ],
           ],
         ),
       ),

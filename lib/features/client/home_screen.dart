@@ -307,15 +307,15 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                     children: [
                       Material(
                         elevation: 2,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(13),
                         clipBehavior: Clip.antiAlias,
                         color: Gz.surface,
                         child: InkWell(
                           onTap: () => _scaffoldKey.currentState?.openDrawer(),
                           child: Image.asset(
                             'assets/icon/icon.png',
-                            width: 40,
-                            height: 40,
+                            width: 46,
+                            height: 46,
                             fit: BoxFit.cover,
                           ),
                         ),
