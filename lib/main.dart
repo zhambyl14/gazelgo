@@ -18,8 +18,12 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
 import 'features/client/order_detail_screen.dart';
+import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
+import 'features/moderator/applications_screen.dart';
 import 'features/moderator/moderator_shell.dart';
+import 'features/moderator/support_admin_screen.dart';
+import 'features/support/support_screen.dart';
 import 'shared/update_gate.dart';
 import 'shared/widgets.dart';
 
@@ -28,17 +32,41 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 /// Хабарламаны басқанда тиісті бетке өту. FCM (onMessageOpenedApp,
 /// getInitialMessage) және Android foreground локал уведомлениесі де осында
-/// келеді. Клиентке бағытталған заказ хабарлары (еске салу, мерзім бітуі,
-/// ұсыныс) — заказ бетін ашады; `new_order` орындаушыға арналған (лента
-/// ашылады), сол себепті оны қозғамаймыз.
+/// келеді. Хабардың `type`-ы аудиторияны білдіреді (сервер тек тиісті
+/// пайдаланушыға жібереді), сол себепті рөлді бөлек сұрамай, тип бойынша
+/// тиісті экранды ашамыз:
+///   new_order        → орындаушы: заказды қарап, ұсыныс беру экраны
+///   order_expired    → клиент: өз заказының беті
+///   order_reminder   → клиент: өз заказының беті
+///   support_reply    → клиент/орындаушы: қолдау қызметі
+///   support_message  → модератор: қолдау чаттары
+///   new_application  → модератор: жаңа өтінімдер
 void _navigateFromData(Map<String, dynamic> data) {
-  final orderId = data['order_id'] as String?;
   final type = data['type'] as String?;
-  if (orderId == null || orderId.isEmpty || type == 'new_order') return;
+  final orderId = data['order_id'] as String?;
+
+  Widget? screen;
+  if (type == 'new_order' && orderId != null && orderId.isNotEmpty) {
+    screen = ExecutorOrderScreen(orderId: orderId);
+  } else if ((type == 'order_expired' || type == 'order_reminder') &&
+      orderId != null &&
+      orderId.isNotEmpty) {
+    screen = OrderDetailScreen(orderId: orderId);
+  } else if (type == 'support_reply') {
+    screen = const SupportScreen();
+  } else if (type == 'support_message') {
+    screen = const SupportAdminScreen();
+  } else if (type == 'new_application') {
+    screen = const ApplicationsScreen();
+  } else if (orderId != null && orderId.isNotEmpty) {
+    // Тип белгісіз, бірақ заказ id-і бар — қауіпсіз әдепкі: заказ беті.
+    screen = OrderDetailScreen(orderId: orderId);
+  }
+  if (screen == null) return;
+
+  final target = screen;
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: orderId)),
-    );
+    navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => target));
   });
 }
 

@@ -21,6 +21,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _tariffPrice = TextEditingController();
   final _kaspiNumber = TextEditingController();
   final _kaspiName = TextEditingController();
+  final _kaspiTopupUrl = TextEditingController();
   final _minTopup = TextEditingController();
   final _minBuildAndroid = TextEditingController();
   final _minBuildIos = TextEditingController();
@@ -39,6 +40,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _tariffPrice.dispose();
     _kaspiNumber.dispose();
     _kaspiName.dispose();
+    _kaspiTopupUrl.dispose();
     _minTopup.dispose();
     _minBuildAndroid.dispose();
     _minBuildIos.dispose();
@@ -61,6 +63,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
+      _kaspiTopupUrl.text = '${payment['kaspi_topup_url'] ?? ''}';
       _minTopup.text = '${payment['min_topup'] ?? 500}';
       // Ескі жалғыз min_build бар болса — екі өріске де көшіріледі.
       _minBuildAndroid.text =
@@ -96,6 +99,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await Repo.modUpdateSetting('payment', {
       'kaspi_number': _kaspiNumber.text.trim(),
       'kaspi_name': _kaspiName.text.trim(),
+      'kaspi_topup_url': _kaspiTopupUrl.text.trim(),
       'min_topup': minTopup,
     });
     if (mounted) showSnack(context, t('Сақталды'));
@@ -122,10 +126,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return ListView(children: [
-        const SizedBox(height: 120),
-        EmptyState(icon: Icons.wifi_off, title: _error!),
-      ]);
+      return ListView(
+        children: [
+          const SizedBox(height: 120),
+          EmptyState(icon: Icons.wifi_off, title: _error!),
+        ],
+      );
     }
     return RefreshIndicator(
       onRefresh: _load,
@@ -134,8 +140,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         children: [
           _sectionTitle(t('Тариф бағасы')),
           Text(
-            t('Орындаушы 1 ауысымға (12 сағат, 10 заказға дейін) төлейтін баға. '
-                'Бағасы күндіз де, түнде де бірдей.'),
+            t(
+              'Орындаушы 1 ауысымға (12 сағат, 10 заказға дейін) төлейтін баға. '
+              'Бағасы күндіз де, түнде де бірдей.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -168,10 +176,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextField(
+                  controller: _kaspiTopupUrl,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    labelText: t('Kaspi QR / төлем сілтемесі'),
+                    hintText: 'https://pay.kaspi.kz/pay/...',
+                    helperMaxLines: 3,
+                    helperText: t(
+                      'KaspiQR сілтемесін қойыңыз. Орындаушыда '
+                      '«Kaspi-мен төлеу» түймесі осы сілтемені ашып, Kaspi '
+                      'қосымшасына (сома енгізіп → төлеуге) тікелей апарады. '
+                      'Бос болса — түйме көрсетілмейді.',
+                    ),
+                    prefixIcon: const Icon(Icons.qr_code_2),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
                   controller: _kaspiNumber,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: t('Kaspi нөмірі'),
+                    labelText: t('Kaspi нөмірі (қосымша)'),
                     prefixIcon: const Icon(Icons.phone_outlined),
                   ),
                 ),
@@ -189,7 +215,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: t('Минималды толтыру сомасы (₸)'),
-                    prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+                    prefixIcon: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -200,13 +228,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
-            t('Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң, сол платформаның '
-                'минималды build нөмірін көтеріңіз — одан төмен нұсқадағылар '
-                'тек «Жаңарту» батырмасын көреді. Android мен iOS ЖЕКЕ: App '
-                'Store шолуы Play-ден баяу, сондықтан iOS санын App Store-да '
-                'жарияланғанша көтермеңіз — әйтпесе iPhone соңғы нұсқада '
-                'отырса да бұғатталады. Build нөмірі — pubspec.yaml-дағы '
-                '"+N" (мыс. 1.0.2+5 → 5). 0 = сол платформада тексеру өшулі.'),
+            t(
+              'Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң, сол платформаның '
+              'минималды build нөмірін көтеріңіз — одан төмен нұсқадағылар '
+              'тек «Жаңарту» батырмасын көреді. Android мен iOS ЖЕКЕ: App '
+              'Store шолуы Play-ден баяу, сондықтан iOS санын App Store-да '
+              'жарияланғанша көтермеңіз — әйтпесе iPhone соңғы нұсқада '
+              'отырса да бұғатталады. Build нөмірі — pubspec.yaml-дағы '
+              '"+N" (мыс. 1.0.2+5 → 5). 0 = сол платформада тексеру өшулі.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -268,8 +298,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _sectionTitle(String s) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(s,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-      );
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Text(
+      s,
+      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+    ),
+  );
 }
