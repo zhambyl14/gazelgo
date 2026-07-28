@@ -38,21 +38,36 @@ final navigatorKey = GlobalKey<NavigatorState>();
 /// пайдаланушыға жібереді), сол себепті рөлді бөлек сұрамай, тип бойынша
 /// тиісті экранды ашамыз:
 ///   new_order        → орындаушы: заказды қарап, ұсыныс беру экраны
+///   offer_accepted   → орындаушы: ұсынысы қабылданды (белсенді заказға өтеді)
+///   offer_rejected   → орындаушы: ұсынысының нәтижесі
 ///   order_expired    → клиент: өз заказының беті
 ///   order_reminder   → клиент: өз заказының беті
+///   new_offer        → клиент: ұсыныстар тізімі (заказ беті)
+///   order_status     → клиент: заказ барысы (заказ беті)
 ///   support_reply    → клиент/орындаушы: қолдау қызметі
 ///   support_message  → модератор: қолдау чаттары
 ///   new_application  → модератор: жаңа өтінімдер
 void _navigateFromData(Map<String, dynamic> data) {
   final type = data['type'] as String?;
   final orderId = data['order_id'] as String?;
+  final hasOrder = orderId != null && orderId.isNotEmpty;
 
   Widget? screen;
-  if (type == 'new_order' && orderId != null && orderId.isNotEmpty) {
+  if (hasOrder &&
+      (type == 'new_order' ||
+          type == 'offer_accepted' ||
+          type == 'offer_rejected')) {
     screen = ExecutorOrderScreen(orderId: orderId);
-  } else if ((type == 'order_expired' || type == 'order_reminder') &&
-      orderId != null &&
-      orderId.isNotEmpty) {
+  } else if (hasOrder && type == 'order_status') {
+    // Статус өзгерісі екі жаққа да келуі мүмкін (мыс. «тиеу расталды» —
+    // орындаушыға), сол себепті сервер `audience` жібереді.
+    screen = data['audience'] == 'executor'
+        ? ExecutorOrderScreen(orderId: orderId)
+        : OrderDetailScreen(orderId: orderId);
+  } else if (hasOrder &&
+      (type == 'order_expired' ||
+          type == 'order_reminder' ||
+          type == 'new_offer')) {
     screen = OrderDetailScreen(orderId: orderId);
   } else if (type == 'support_reply') {
     screen = const SupportScreen();
@@ -60,7 +75,7 @@ void _navigateFromData(Map<String, dynamic> data) {
     screen = const SupportAdminScreen();
   } else if (type == 'new_application') {
     screen = const ApplicationsScreen();
-  } else if (orderId != null && orderId.isNotEmpty) {
+  } else if (hasOrder) {
     // Тип белгісіз, бірақ заказ id-і бар — қауіпсіз әдепкі: заказ беті.
     screen = OrderDetailScreen(orderId: orderId);
   }
@@ -216,7 +231,12 @@ class AuthGate extends ConsumerWidget {
         if (session == null) return const ClientShell(guest: true);
         // Push-токенді тіркеу — қосымша толық жабық тұрғанда да
         // хабарландыру жеткізілуі үшін. Firebase бапталмаса — үнсіз өтеді.
+        // `init()` енді әр кіруде токенді АҒЫМДАҒЫ пайдаланушыға қайта
+        // тіркейді (бір телефонда аккаунт ауысса, ескі иесінің push-ы
+        // жаңа иесіне келмеуі үшін), ал `Lang.syncToServer()` push тілін
+        // серверге жеткізеді.
         unawaited(Push.init());
+        unawaited(Lang.syncToServer());
         return const _RoleRouter();
       },
     );

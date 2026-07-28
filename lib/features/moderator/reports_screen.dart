@@ -251,7 +251,7 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => showOrderAdminSheet(context, o.id),
-                    child: Text(t('Заказды ашу'),
+                    child: BtnLabel(t('Заказды ашу'),
                         style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
@@ -260,7 +260,7 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _setStatus('dismissed'),
-                    child: Text(t('Елеусіз қалдыру'),
+                    child: BtnLabel(t('Елеусіз қалдыру'),
                         style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),
@@ -269,7 +269,7 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _setStatus('reviewed'),
-                    child: Text(t('Қаралды'),
+                    child: BtnLabel(t('Қаралды'),
                         style: const TextStyle(fontSize: 12.5)),
                   ),
                 ),

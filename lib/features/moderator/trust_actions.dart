@@ -193,7 +193,7 @@ class _TrustSheetState extends State<_TrustSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _busy ? null : () => _adjust(-15),
-                  child: Text(t('−15 (күдікті)'),
+                  child: BtnLabel(t('−15 (күдікті)'),
                       style: const TextStyle(fontSize: 12.5)),
                 ),
               ),
@@ -201,7 +201,7 @@ class _TrustSheetState extends State<_TrustSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _busy ? null : () => _adjust(15),
-                  child: Text(t('+15 (сенімді қалпына келтіру)'),
+                  child: BtnLabel(t('+15 (сенімді қалпына келтіру)'),
                       style: const TextStyle(fontSize: 12.5)),
                 ),
               ),

@@ -130,6 +130,15 @@ class Repo {
         'p_platform': platform,
       });
 
+  /// Аккаунттан шыққанда осы құрылғының токенін өшіреді (0045) — әйтпесе
+  /// телефон ескі иесінің push-ын ала береді.
+  static Future<void> deletePushToken(String token) =>
+      c.rpc('delete_push_token', params: {'p_token': token});
+
+  /// Қосымша тілін СЕРВЕРГЕ сақтайды (0045): push сол тілде БІР РЕТ келеді.
+  static Future<void> setMyLang(String lang) =>
+      c.rpc('set_my_lang', params: {'p_lang': lang});
+
   /// Күдікті жүк туралы модераторға дереу хабарлайды (0021 миграциясы) —
   /// заказдың нақты қатысушысы (клиент не орындаушы) ғана жібере алады.
   static Future<void> reportOrder(String orderId, String reason) =>

@@ -258,7 +258,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(
-                                width: 130,
+                                width: 100,
                                 child: Text(
                                   t('Қала'),
                                   style: const TextStyle(
@@ -270,6 +270,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               Expanded(
                                 child: Text(
                                   ep.city!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13.5,
@@ -286,7 +288,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: Text(
+                                // «Ауыстыру» → орысша «Заменить» ұзынырақ:
+                                // қала атауымен қатарда екі жолға сынып,
+                                // қиылып тұратын.
+                                child: BtnLabel(
                                   t('Ауыстыру'),
                                   style: const TextStyle(fontSize: 12.5),
                                 ),
@@ -579,19 +584,33 @@ class _ExecEarningsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+          // Үш карточка бір қатарда тұрғандықтан ені тар: ұзын атау мен
+          // үлкен сома (мыс. «548 300 ₸») бұрын «548 3…» болып ҚИЫЛЫП
+          // көрінбей қалатын. FittedBox `scaleDown` — сыймаса кішірейтеді,
+          // сыйса өлшемін өзгертпейді, ешқашан қиылмайды.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+            ),
           ),
           const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.w900,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
             ),
           ),
         ],

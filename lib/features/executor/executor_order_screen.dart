@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
+import 'feed_screen.dart' show PriceStepperSheet;
 
 /// Ұсыныс жібергеннен кейінгі орындаушы экраны:
 /// клиент жауабын күту → қабылданса белсенді заказға өту.
@@ -113,8 +114,13 @@ class ExecutorOrderScreen extends StatelessWidget {
         for (final of in snap.data ?? <Offer>[]) {
           if (of.executorId == myId) mine = of;
         }
+        // Әлі ұсыныс бермеген: бұл экран «Жаңа заказ» хабарландыруын басып
+        // ашылғанда осы күйде келеді. Бұрын мұнда БОС орын (SizedBox.shrink)
+        // қайтатын — заказ көрінетін, бірақ ештеңе істей алмайтын («тек
+        // қарап тұрасың»). Енді лентадағыдай «Келісу / Өз бағам»
+        // батырмалары көрсетіледі.
         if (mine == null) {
-          return const SizedBox.shrink();
+          return _OfferActions(order: o);
         }
         if (mine.status == 'rejected' || mine.status == 'withdrawn') {
           return SectionCard(
@@ -172,6 +178,63 @@ class ExecutorOrderScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// «Келісу · баға» / «Өз бағам» — әлі ұсыныс берілмеген заказ үшін.
+///
+/// Ұсыныс беру құқығын (тариф, растау, қала) СЕРВЕР `place_offer` ішінде
+/// тексереді — рұқсат болмаса, қатенің себебі snack арқылы көрсетіледі.
+class _OfferActions extends StatelessWidget {
+  final Order order;
+  const _OfferActions({required this.order});
+
+  Future<void> _send(BuildContext context, int price) async {
+    try {
+      await Repo.placeOffer(order.id, price, '');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _counter(BuildContext context) async {
+    final price = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => PriceStepperSheet(order: order),
+    );
+    if (price == null || !context.mounted) return;
+    await _send(context, price);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = order.clientPrice;
+    return Row(
+      children: [
+        if (base != null) ...[
+          Expanded(
+            flex: 3,
+            child: BusyButton(
+              label: '${t('Келісу')} · ${fmtT(base)}',
+              onPressed: () => _send(context, base),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          flex: 2,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                side: const BorderSide(color: Gz.ink, width: 1.6)),
+            onPressed: () => _counter(context),
+            child: BtnLabel(t('Өз бағам')),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -24,7 +24,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class Push {
   static bool _initStarted = false;
+  static bool _ready = false;
   static int _fgId = 100; // foreground локал уведомлениелердің өспелі id-і
+
+  /// Токен ҚАЙ пайдаланушыға тіркелгені. Бір телефонда аккаунт ауысса
+  /// (мыс. орындаушыдан клиентке), токен ЖАҢА иесіне қайта тіркелуі керек —
+  /// әйтпесе сервер оны әлі ескі иесі деп санап, клиентке орындаушының
+  /// «Жаңа заказ» push-ы келеді (нақты табылған ақау).
+  static String? _syncedUid;
+
+  /// Нағыз push (FCM) жұмыс істеп тұр ма? Қосымша ішіндегі қосарланған локал
+  /// уведомлениелер осыны тексереді: push бар болса — оқиға туралы сервер
+  /// БІР РЕТ, пайдаланушының тілінде хабарлайды.
+  static bool get isActive => _ready;
 
   /// Хабарламаны басып қосымшаны ашқанда шақырылады (навигация үшін). FCM
   /// `data` картасын береді. Қосымша (main.dart) орнатады — core қабаты
@@ -32,7 +44,13 @@ class Push {
   static void Function(Map<String, dynamic> data)? onOpen;
 
   static Future<void> init() async {
-    if (kIsWeb || _initStarted || !FirebaseOpts.isConfigured) return;
+    if (kIsWeb || !FirebaseOpts.isConfigured) return;
+    // Бастапқы баптау бір рет қана, ал ТОКЕН СИНХРОНЫ әр кіруде қайталанады
+    // (төменде) — сол себепті ерте `return` жасамаймыз.
+    if (_initStarted) {
+      await syncToken();
+      return;
+    }
     _initStarted = true;
     try {
       await Firebase.initializeApp(options: FirebaseOpts.currentPlatform);
@@ -71,9 +89,44 @@ class Push {
     } catch (_) {}
 
     try {
-      final token = await messaging.getToken();
-      if (token != null) await _saveToken(token);
-      messaging.onTokenRefresh.listen(_saveToken);
+      messaging.onTokenRefresh.listen((t) {
+        _syncedUid = null; // жаңа токен — қайта тіркеу қажет
+        _saveToken(t);
+      });
+      await syncToken();
+    } catch (_) {}
+  }
+
+  /// FCM токенін АҒЫМДАҒЫ пайдаланушыға тіркеу. Кірген сайын шақырылады:
+  /// бір телефонда аккаунт ауысса, токен жаңа иесіне көшеді (`save_push_token`
+  /// сервер жағында `on conflict (token)` арқылы иесін ауыстырады).
+  static Future<void> syncToken() async {
+    if (kIsWeb || !_initStarted) return;
+    final uid = Repo.uid;
+    if (uid == null || uid == _syncedUid) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+      // `_saveToken` қатені жұтады — мұнда тікелей шақырамыз, сәтсіз болса
+      // төмендегі `_ready` орнатылмай, резерв уведомлениелер қосулы қалады.
+      await Repo.savePushToken(token, defaultTargetPlatform.name);
+      _syncedUid = uid;
+      // Токен нақты сақталған соң ғана «push жұмыс істейді» деп есептейміз:
+      // әйтпесе (Play Services жоқ, желі жоқ т.б.) сервер бұл құрылғыға
+      // жете алмайды, ал қосымша ішіндегі резерв уведомлениелер де
+      // өшірулі тұрып, пайдаланушы ЕШТЕҢЕ алмай қалатын еді.
+      _ready = true;
+    } catch (_) {}
+  }
+
+  /// Аккаунттан шыққанда токенді серверден өшіру: әйтпесе бұл құрылғыға
+  /// шыққан пайдаланушының push-ы келе береді (жаңа иесі кірмей тұрып та).
+  static Future<void> clearToken() async {
+    _syncedUid = null;
+    if (kIsWeb || !_initStarted) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await Repo.deletePushToken(token);
     } catch (_) {}
   }
 

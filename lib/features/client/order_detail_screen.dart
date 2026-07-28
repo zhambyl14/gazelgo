@@ -457,6 +457,9 @@ class _OfferCard extends StatelessWidget {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
+                      // Ұзын мәтін («Отклонить») тар батырмада сынбауы үшін
+                      // көлденең padding кішірейтілген.
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       foregroundColor: Gz.red,
                       side: const BorderSide(color: Gz.border)),
                   onPressed: () async {
@@ -468,7 +471,7 @@ class _OfferCard extends StatelessWidget {
                       }
                     }
                   },
-                  child: Text(t('Қабылдамау')),
+                  child: BtnLabel(t('Қабылдамау')),
                 ),
               ),
               const SizedBox(width: 8),

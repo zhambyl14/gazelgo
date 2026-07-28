@@ -25,6 +25,12 @@ Deno.serve(async (req: Request) => {
   let body: {
     title?: string;
     body?: string;
+    // Орысша нұсқасы (0045) — берілмесе, қазақшасы қолданылады. Әр
+    // пайдаланушыға `profiles.lang` бойынша БІР ҒАНА тіл жіберіледі
+    // (бұрын қосымша сол оқиға туралы екінші, аударылған локал
+    // уведомление көрсететін — сол қосарлану жойылды).
+    title_ru?: string;
+    body_ru?: string;
     data?: Record<string, string>;
     target_user_ids?: string[] | null;
   };
@@ -60,10 +66,27 @@ Deno.serve(async (req: Request) => {
 
   const { data: tokenRows, error: tokError } = await admin
     .from("push_tokens")
-    .select("token")
+    .select("token, user_id")
     .in("user_id", targetIds);
   if (tokError) return json({ error: "SERVER_ERROR" }, 500);
-  const tokens = [...new Set((tokenRows ?? []).map((t) => t.token as string))];
+
+  // Әр пайдаланушының тілі (0045). Оқу сәтсіз болса — бәріне қазақша.
+  const langOf = new Map<string, string>();
+  const { data: langRows } = await admin
+    .from("profiles")
+    .select("id, lang")
+    .in("id", targetIds);
+  for (const r of langRows ?? []) {
+    langOf.set(r.id as string, (r.lang as string) === "ru" ? "ru" : "kk");
+  }
+
+  // Бір токен бірнеше рет келмеуі керек (әйтпесе БІР құрылғыға екі
+  // хабарландыру түседі).
+  const byToken = new Map<string, string>(); // token → user_id
+  for (const r of tokenRows ?? []) {
+    byToken.set(r.token as string, r.user_id as string);
+  }
+  const tokens = [...byToken.keys()];
   if (tokens.length === 0) return json({ ok: true, sent: 0 }, 200);
 
   let accessToken: string;
@@ -75,13 +98,18 @@ Deno.serve(async (req: Request) => {
   }
   const projectId = Deno.env.get("FCM_PROJECT_ID")!;
 
-  const title = body.title;
-  const bodyText = body.body;
   const data = body.data ?? {};
+  const titleKk = body.title;
+  const bodyKk = body.body;
+  const titleRu = body.title_ru ?? titleKk;
+  const bodyRu = body.body_ru ?? bodyKk;
 
   let sent = 0;
   const staleTokens: string[] = [];
   for (const token of tokens) {
+    const ru = langOf.get(byToken.get(token)!) === "ru";
+    const title = ru ? titleRu : titleKk;
+    const bodyText = ru ? bodyRu : bodyKk;
     try {
       const res = await fetch(
         `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,

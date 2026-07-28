@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
+import '../../core/push.dart';
 import '../../core/repo.dart';
 import 'create_order_screen.dart';
 import 'draft_order.dart';
@@ -58,6 +59,12 @@ class _ClientShellState extends ConsumerState<ClientShell> {
   }
 
   /// Заказ статусы өзгергенде клиентке хабарлау.
+  ///
+  /// FCM қосулы болса — бұл хабарламаларды енді СЕРВЕР жібереді (0045
+  /// `notify_order_status_change`): қосымша ЖАБЫҚ тұрса да жетеді әрі
+  /// пайдаланушының тілінде БІР РЕТ келеді. Мұндағы локал нұсқа тек push
+  /// мүлдем жоқ жағдайда (Firebase бапталмаған) резерв ретінде қалады —
+  /// әйтпесе бір оқиға туралы екі хабарландыру шығатын.
   void _watchStatuses(List<Order> orders) {
     for (final o in orders) {
       final prev = _lastStatus[o.id];
@@ -74,7 +81,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
         ),
         _ => null,
       };
-      if (msg != null) {
+      if (msg != null && !Push.isActive) {
         Notify.show('Tasu', msg, id: o.id.hashCode & 0x7fffffff);
       }
     }

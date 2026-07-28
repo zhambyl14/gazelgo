@@ -287,7 +287,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     final result = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => _PriceStepperSheet(order: o),
+      builder: (ctx) => PriceStepperSheet(order: o),
     );
     if (result == null || !mounted) return;
     await _offer(o, result, '');
@@ -608,13 +608,14 @@ class _OrderSheet extends StatelessWidget {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     side: const BorderSide(color: Gz.ink, width: 1.6),
                   ),
                   onPressed: () {
                     Navigator.of(context).pop();
                     onCounter();
                   },
-                  child: Text(t('Өз бағам')),
+                  child: BtnLabel(t('Өз бағам')),
                 ),
               ),
             ],
@@ -643,15 +644,18 @@ class _SheetClient extends StatelessWidget {
 }
 
 /// −/+ батырмаларымен баға ұсыну терезесі (100 ₸ қадаммен).
-class _PriceStepperSheet extends StatefulWidget {
+///
+/// Лентадан да, хабарландыруды басып ашылған заказ бетінен де
+/// ([ExecutorOrderScreen]) қолданылады — сол себепті ашық (public).
+class PriceStepperSheet extends StatefulWidget {
   final Order order;
-  const _PriceStepperSheet({required this.order});
+  const PriceStepperSheet({super.key, required this.order});
 
   @override
-  State<_PriceStepperSheet> createState() => _PriceStepperSheetState();
+  State<PriceStepperSheet> createState() => _PriceStepperSheetState();
 }
 
-class _PriceStepperSheetState extends State<_PriceStepperSheet> {
+class _PriceStepperSheetState extends State<PriceStepperSheet> {
   late int _price = widget.order.clientPrice ?? 1000;
   static const _step = 100;
 

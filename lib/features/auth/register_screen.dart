@@ -303,12 +303,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Expanded(
             child: OutlinedButton(
                 onPressed: () => setState(() => _step--),
-                child: Text(t('Артқа'))),
+                child: BtnLabel(t('Артқа'))),
           ),
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
-            child: FilledButton(onPressed: _next, child: Text(t('Келесі'))),
+            child: FilledButton(onPressed: _next, child: BtnLabel(t('Келесі'))),
           ),
         ]),
       ],

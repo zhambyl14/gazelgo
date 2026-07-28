@@ -6,6 +6,7 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
 import '../../core/prefs.dart';
+import '../../core/push.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -64,7 +65,13 @@ class _ExecutorShellState extends State<ExecutorShell> {
         _feedPrimed = true;
         return;
       }
-      if (fresh.isNotEmpty && await Prefs.orderNotify()) {
+      // FCM қосулы болса — жаңа заказ туралы СЕРВЕР хабарлайды (0028/0045):
+      // қосымша жабық тұрса да жетеді әрі пайдаланушының тілінде БІР РЕТ
+      // келеді. Мұнда қайта көрсетсек, орындаушыға сол заказ туралы ЕКІ
+      // хабарландыру (сервердікі қазақша + мынау аударылған) түсетін —
+      // нақты табылған ақау. Сол себепті локал нұсқасы тек push мүлдем
+      // жоқ жағдайда (Firebase бапталмаған) резерв ретінде қалады.
+      if (fresh.isNotEmpty && !Push.isActive && await Prefs.orderNotify()) {
         Notify.show(t('Жаңа заказ бар! 🚚'),
             '${t('Лентада')} ${fresh.length} ${t('жаңа заказ күтіп тұр — қараңыз.')}',
             id: 2);

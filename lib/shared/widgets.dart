@@ -3,10 +3,36 @@ import 'package:latlong2/latlong.dart';
 
 import '../core/lang.dart';
 import '../core/models.dart';
+import '../core/push.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
 import 'map_widgets.dart';
 import 'vehicle_picker.dart';
+
+/// Батырма мәтіні: ені жетпесе — ЕКІНШІ ЖОЛҒА ТҮСПЕЙДІ, кішірейіп сыяды.
+///
+/// Орыс тіліндегі мәтіндер қазақшадан ұзын («Қабылдамау» → «Отклонить»,
+/// «Келісу · 5 855 ₸» → «Согласиться · 5 855 ₸»), сол себепті тар
+/// батырмаларда мәтін екі жолға сынып, төменгі бөлігі қиылып көрінбей
+/// қалатын (Android-та әсіресе). [FittedBox] `scaleDown` мәтінді тек қажет
+/// болғанда кішірейтеді — сыйып тұрса, өлшемі өзгермейді.
+class BtnLabel extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  const BtnLabel(this.text, {super.key, this.style});
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          style: style,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+}
 
 /// Async-әрекеті бар батырма: басқанда spinner көрсетеді.
 class BusyButton extends StatefulWidget {
@@ -62,9 +88,9 @@ class _BusyButtonState extends State<BusyButton> {
                 Icon(widget.icon, size: 20),
                 const SizedBox(width: 8),
               ],
-              Flexible(
-                child: Text(widget.label, overflow: TextOverflow.ellipsis),
-              ),
+              // Ұзын мәтін (әсіресе орысша) екінші жолға сынып қиылмауы
+              // үшін — қажет болса кішірейеді.
+              Flexible(child: BtnLabel(widget.label)),
             ],
           );
     final active = widget.enabled && !_busy;
@@ -851,6 +877,10 @@ Future<void> confirmSignOut(BuildContext context) async {
   );
   if (!ok || !context.mounted) return;
   Navigator.of(context).popUntil((r) => r.isFirst);
+  // Push-токенді АЛДЫМЕН өшіреміз (әлі сессия бар — RPC өтеді): әйтпесе
+  // құрылғы шыққан пайдаланушының хабарландыруларын ала береді, ал басқа
+  // аккаунтпен кіргенде «бөтен» push келеді.
+  await Push.clearToken();
   await Repo.signOut();
 }
 

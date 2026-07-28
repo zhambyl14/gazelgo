@@ -7,6 +7,7 @@ import 'i18n/ru_executor.dart';
 import 'i18n/ru_moderator.dart';
 import 'i18n/ru_shared.dart';
 import 'prefs.dart';
+import 'repo.dart';
 
 enum AppLang { kk, ru }
 
@@ -26,6 +27,17 @@ class Lang {
     if (current.value == l) return;
     current.value = l;
     await Prefs.setLanguage(l == AppLang.ru ? 'ru' : 'kk');
+    await syncToServer();
+  }
+
+  /// Тілді серверге жеткізу (0045): push-хабарландырулар сол тілде БІР РЕТ
+  /// келуі үшін. Кірген сайын да, тіл ауысқанда да шақырылады. Кірмеген
+  /// күйде/желі жоқта үнсіз өтеді — тіл жергілікті сақталған күйінде қалады.
+  static Future<void> syncToServer() async {
+    if (Repo.uid == null) return;
+    try {
+      await Repo.setMyLang(current.value == AppLang.ru ? 'ru' : 'kk');
+    } catch (_) {}
   }
 }
 
