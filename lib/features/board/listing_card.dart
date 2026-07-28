@@ -5,7 +5,6 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/vehicle_picker.dart';
-import '../../shared/widgets.dart';
 
 /// Хабарландырудың түрі бойынша атауы (ЖАЗБАНЫҢ өзіне қатысты, көрушінің
 /// рөліне емес): орындаушының жазбасы — «Қызмет», клиенттікі — «Жұмыс».
@@ -135,36 +134,9 @@ class ListingCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                if (!showViews) ...[
-                  const SizedBox(height: 9),
-                  Row(
-                    children: [
-                      InitialsAvatar(
-                        l.authorName.isEmpty ? '?' : l.authorName,
-                        radius: 12,
-                        imageUrl: l.authorAvatar,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          l.authorName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      RatingStars(
-                        l.authorRating,
-                        count: l.authorRatingCount,
-                        size: 12,
-                      ),
-                    ],
-                  ),
-                ],
+                // Автор ӘДЕЙІ көрсетілмейді: лентада тек хабарландырудың өзі
+                // тұрады (тізім таза әрі бірдей биіктікте), ал кім жариялағаны
+                // карточканы ашқанда — listing_detail-де шығады.
               ],
             ),
           ),

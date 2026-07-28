@@ -1074,6 +1074,30 @@ class Repo {
         .toList();
   }
 
+  // ---- хабарландыруға шағым (0044) ----
+  /// Күдікті хабарландыру туралы модераторға шағым жіберу. Бір адам бір
+  /// хабарландыруға бір ғана ашық шағым бере алады ('ALREADY_REPORTED').
+  static Future<String> reportListing(String listingId, String reason) async =>
+      (await c.rpc('report_listing', params: {
+        'p_listing': listingId,
+        'p_reason': reason,
+      })) as String;
+
+  /// Модераторға шағымдар тізімі. [status]: open | closed | '' (барлығы).
+  static Future<List<ListingReport>> modListingReports(String status) async {
+    final rows =
+        await c.rpc('mod_listing_reports', params: {'p_status': status});
+    return (rows as List)
+        .map((m) => ListingReport.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  /// Модератордың шешімі. [action]: 'delete' (хабарландыруды өшіру, сол
+  /// хабарландырудың барлық ашық шағымы жабылады) | 'keep' (елеусіз қалдыру).
+  static Future<void> modResolveListingReport(String id, String action) =>
+      c.rpc('mod_resolve_listing_report',
+          params: {'p_id': id, 'p_action': action});
+
   // ================= STORAGE =================
   /// Файлды docs бакетіне жүктеп, жолын қайтарады.
   static Future<String> uploadDoc(String name, Uint8List bytes) async {

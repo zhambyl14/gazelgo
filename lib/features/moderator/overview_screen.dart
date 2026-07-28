@@ -398,6 +398,8 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
               Icons.account_balance_wallet_outlined, Gz.yellowDark),
           _todo(t('Ашық шағымдар'), _n('reports_open'),
               Icons.flag_outlined, Gz.red),
+          _todo(t('Хабарландыруға шағымдар'), _n('listing_reports_open'),
+              Icons.report_gmailerrorred_outlined, Gz.red),
           _todo(t('Ашық қолдау чаттары'), _n('support_open'),
               Icons.support_agent, Gz.green),
           const SizedBox(height: 24),

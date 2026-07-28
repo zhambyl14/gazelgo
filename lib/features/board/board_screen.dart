@@ -77,11 +77,14 @@ class _BoardTabs extends ConsumerStatefulWidget {
   ConsumerState<_BoardTabs> createState() => _BoardTabsState();
 }
 
-class _BoardTabsState extends ConsumerState<_BoardTabs> {
+class _BoardTabsState extends ConsumerState<_BoardTabs>
+    with SingleTickerProviderStateMixin {
   /// null = барлық қала
   String? _city;
   /// null = барлық көлік түрі
   VehicleType? _vehicle;
+
+  late final TabController _tabs;
 
   late Future<List<Listing>> _feed;
   late Future<List<Listing>> _mine;
@@ -89,10 +92,20 @@ class _BoardTabsState extends ConsumerState<_BoardTabs> {
   @override
   void initState() {
     super.initState();
+    // Таб ауысқанда FAB көрінісі өзгереді (тек «менікі» табында тұрады) —
+    // сол себепті контроллерді өзіміз ұстаймыз.
+    _tabs = TabController(length: 2, vsync: this)
+      ..addListener(() => setState(() {}));
     // Орындаушының тіркелген қаласы белгілі — лентаны сол қаладан бастаймыз.
     _city = ref.read(myExecutorProfileProvider).value?.city;
     _feed = Repo.boardFeed(city: _city, vehicle: _vehicle);
     _mine = Repo.myListings();
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
   }
 
   void _reloadFeed() =>
@@ -105,18 +118,9 @@ class _BoardTabsState extends ConsumerState<_BoardTabs> {
     _reloadMine();
   }
 
-  Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const CityPickerSheet(),
-    );
-    if (picked == null || !mounted) return;
-    _city = picked;
+  void _applyFilter(String? city, VehicleType? vehicle) {
+    _city = city;
+    _vehicle = vehicle;
     _reloadFeed();
   }
 
@@ -134,64 +138,65 @@ class _BoardTabsState extends ConsumerState<_BoardTabs> {
     final feedTab = isExecutor ? t('Жұмыстар') : t('Қызметтер');
     final mineTab =
         isExecutor ? t('Менің қызметтерім') : t('Менің жұмыстарым');
+    // Жариялау батырмасы ТЕК «менің хабарландыруларым» табында тұрады:
+    // қарсы рөлдің лентасында ол «мына жұмысқа жауап беру» деп қате
+    // оқылатын (клиент «Қызметтер» табында «Жұмыс беру» деген түймені
+    // көретін).
+    final onMineTab = _tabs.index == 1;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(t('Хабарландырулар')),
-          bottom: TabBar(tabs: [Tab(text: feedTab), Tab(text: mineTab)]),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t('Хабарландырулар')),
+        bottom: TabBar(
+          controller: _tabs,
+          tabs: [Tab(text: feedTab), Tab(text: mineTab)],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _create,
-          backgroundColor: Gz.yellow,
-          foregroundColor: Gz.ink,
-          icon: const Icon(Icons.add),
-          label: Text(
-            isExecutor ? t('Қызмет беру') : t('Жұмыс беру'),
-            style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      floatingActionButton: onMineTab
+          ? FloatingActionButton.extended(
+              onPressed: _create,
+              backgroundColor: Gz.yellow,
+              foregroundColor: Gz.ink,
+              icon: const Icon(Icons.add),
+              label: Text(
+                isExecutor ? t('Қызмет беру') : t('Жұмыс беру'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            )
+          : null,
+      body: TabBarView(
+        controller: _tabs,
+        children: [
+          _FeedTab(
+            future: _feed,
+            city: _city,
+            vehicle: _vehicle,
+            isExecutor: isExecutor,
+            onApply: _applyFilter,
+            onRefresh: _reloadFeed,
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _FeedTab(
-              future: _feed,
-              city: _city,
-              vehicle: _vehicle,
-              isExecutor: isExecutor,
-              onPickCity: _pickCity,
-              onClearCity: () {
-                _city = null;
-                _reloadFeed();
-              },
-              onVehicle: (v) {
-                _vehicle = v;
-                _reloadFeed();
-              },
-              onRefresh: _reloadFeed,
-            ),
-            _MineTab(
-              future: _mine,
-              isExecutor: isExecutor,
-              onRefresh: _reloadMine,
-              onCreate: _create,
-            ),
-          ],
-        ),
+          _MineTab(
+            future: _mine,
+            isExecutor: isExecutor,
+            onRefresh: _reloadMine,
+            onCreate: _create,
+          ),
+        ],
       ),
     );
   }
 }
 
-/// 1-таб: қарсы рөлдің хабарландырулары (сүзгілермен).
+/// 1-таб: қарсы рөлдің хабарландырулары. Барлық сүзгі (қала + көлік түрі)
+/// ЖАЛҒЫЗ «Сүзгі» батырмасының артында — тізім жоғарысы таза тұрады.
 class _FeedTab extends StatelessWidget {
   final Future<List<Listing>> future;
   final String? city;
   final VehicleType? vehicle;
   final bool isExecutor;
-  final VoidCallback onPickCity;
-  final VoidCallback onClearCity;
-  final ValueChanged<VehicleType?> onVehicle;
+
+  /// (қала, көлік түрі) — екеуі де null болса «барлығы».
+  final void Function(String? city, VehicleType? vehicle) onApply;
   final VoidCallback onRefresh;
 
   const _FeedTab({
@@ -199,91 +204,74 @@ class _FeedTab extends StatelessWidget {
     required this.city,
     required this.vehicle,
     required this.isExecutor,
-    required this.onPickCity,
-    required this.onClearCity,
-    required this.onVehicle,
+    required this.onApply,
     required this.onRefresh,
   });
+
+  int get _activeCount => (city == null ? 0 : 1) + (vehicle == null ? 0 : 1);
+
+  Future<void> _openFilter(BuildContext context) async {
+    final res = await showModalBottomSheet<_BoardFilter>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => _FilterSheet(city: city, vehicle: vehicle),
+    );
+    if (res != null) onApply(res.city, res.vehicle);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ---- сүзгілер ----
+        // ---- сүзгі жолағы ----
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
           child: Row(
             children: [
-              Expanded(
-                child: InkWell(
-                  onTap: onPickCity,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Gz.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: city == null ? Gz.border : Gz.ink,
-                        width: 1.3,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.location_city_outlined,
-                          size: 17,
-                          color: Gz.green,
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            city ?? t('Барлық қала'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        if (city != null)
-                          GestureDetector(
-                            onTap: onClearCity,
-                            child: const Icon(
-                              Icons.close,
-                              size: 17,
-                              color: Gz.textSecondary,
-                            ),
-                          )
-                        else
-                          const Icon(
-                            Icons.expand_more,
-                            size: 18,
-                            color: Gz.textSecondary,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+              _FilterButton(
+                count: _activeCount,
+                onTap: () => _openFilter(context),
               ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 46,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            children: [
-              _vehicleChip(t('Барлығы'), vehicle == null, () => onVehicle(null)),
-              for (final v in VehicleType.values) ...[
-                const SizedBox(width: 6),
-                _vehicleChip(v.label, vehicle == v, () => onVehicle(v)),
-              ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: _activeCount == 0
+                    ? Text(
+                        t('Барлық хабарландыру'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Gz.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : SizedBox(
+                        height: 32,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            if (city != null)
+                              _ActiveChip(
+                                icon: Icons.location_city_outlined,
+                                label: city!,
+                                onClear: () => onApply(null, vehicle),
+                              ),
+                            if (city != null && vehicle != null)
+                              const SizedBox(width: 6),
+                            if (vehicle != null)
+                              _ActiveChip(
+                                icon: Icons.local_shipping_outlined,
+                                label: vehicle!.label,
+                                onClear: () => onApply(city, null),
+                              ),
+                          ],
+                        ),
+                      ),
+              ),
             ],
           ),
         ),
@@ -352,12 +340,303 @@ class _FeedTab extends StatelessWidget {
     );
   }
 
-  Widget _vehicleChip(String label, bool active, VoidCallback onTap) => InkWell(
+}
+
+/// Сүзгі жолағының сол жағындағы жалғыз батырма. Белсенді сүзгі болса —
+/// қара түске боялып, санын көрсетеді.
+class _FilterButton extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+  const _FilterButton({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final on = count > 0;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: on ? Gz.ink : Gz.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: on ? Gz.yellow : Gz.border,
+            width: on ? 1.6 : 1.3,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.tune, size: 17, color: on ? Gz.yellow : Gz.ink),
+            const SizedBox(width: 7),
+            Text(
+              t('Сүзгі'),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: on ? Colors.white : Gz.ink,
+              ),
+            ),
+            if (on) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 18,
+                height: 18,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Gz.yellow,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Қосулы сүзгінің шағын белгісі — ✕ басқанда сол сүзгі ғана алынады.
+class _ActiveChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onClear;
+  const _ActiveChip({
+    required this.icon,
+    required this.label,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 10, right: 6),
+      decoration: BoxDecoration(
+        color: Gz.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Gz.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 2),
+          IconButton(
+            onPressed: onClear,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close, size: 15, color: Gz.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Сүзгі парағының нәтижесі.
+class _BoardFilter {
+  final String? city;
+  final VehicleType? vehicle;
+  const _BoardFilter(this.city, this.vehicle);
+}
+
+/// Бүкіл сүзгі бір жерде: қала + көлік түрі. «Көрсету» басылғанда ғана
+/// қолданылады — қолданушы таңдап жатқанда лента бос жыпылықтамайды.
+class _FilterSheet extends StatefulWidget {
+  final String? city;
+  final VehicleType? vehicle;
+  const _FilterSheet({required this.city, required this.vehicle});
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late String? _city = widget.city;
+  late VehicleType? _vehicle = widget.vehicle;
+
+  Future<void> _pickCity() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const CityPickerSheet(),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _city = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dirty = _city != null || _vehicle != null;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Gz.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    t('Сүзгі'),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (dirty)
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _city = null;
+                      _vehicle = null;
+                    }),
+                    child: Text(t('Тазалау')),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            _label(t('Қала')),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: _pickCity,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Gz.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _city == null ? Gz.border : Gz.ink,
+                    width: 1.3,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_city_outlined,
+                      size: 18,
+                      color: Gz.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _city ?? t('Барлық қала'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+                    if (_city != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _city = null),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Gz.textSecondary,
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.expand_more,
+                        size: 19,
+                        color: Gz.textSecondary,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _label(t('Көлік түрі')),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.34,
+              ),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _chip(t('Барлығы'), _vehicle == null,
+                        () => setState(() => _vehicle = null)),
+                    for (final v in VehicleType.values)
+                      _chip(v.label, _vehicle == v,
+                          () => setState(() => _vehicle = v)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () =>
+                    Navigator.pop(context, _BoardFilter(_city, _vehicle)),
+                child: Text(t('Көрсету')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _label(String text) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w800,
+      color: Gz.textSecondary,
+    ),
+  );
+
+  Widget _chip(String label, bool active, VoidCallback onTap) => InkWell(
     borderRadius: BorderRadius.circular(20),
     onTap: onTap,
     child: Container(
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
         color: active ? Gz.ink : Gz.surface,
         borderRadius: BorderRadius.circular(20),

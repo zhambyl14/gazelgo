@@ -5,15 +5,51 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import 'listing_reports_screen.dart';
 import 'order_admin.dart';
 import 'trust_actions.dart';
 
-/// Модератор «Хабарламалар» табы: «Күдікті жүк туралы хабарлау» арқылы
-/// түскен барлық жазбалар (0021/0024) — ашықтар бірінші, қаралғандар соңында.
-/// Әр жазбада хабарланған тараптың сенім деңгейін көріп, дереу әрекет
-/// ете алады (балл түзету, блоктау, заказды ашу).
+/// Модератор «Хабарламалар» табы — екі түрлі шағым бір жерде:
+///
+///   «Жүк туралы»    — заказ ішіндегі «күдікті жүк» хабарламалары (0021/0024);
+///   «Хабарландыру»  — тақтадағы хабарландыруға түскен шағымдар (0044).
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Material(
+            color: Gz.surface,
+            child: TabBar(
+              tabs: [
+                Tab(text: t('Жүк туралы')),
+                Tab(text: t('Хабарландыру')),
+              ],
+            ),
+          ),
+          const Expanded(
+            child: TabBarView(
+              children: [
+                _OrderReportsList(),
+                ListingReportsScreen(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «Күдікті жүк туралы хабарлау» арқылы түскен жазбалар — ашықтар бірінші,
+/// қаралғандар соңында. Әр жазбада хабарланған тараптың сенім деңгейін көріп,
+/// дереу әрекет ете алады (балл түзету, блоктау, заказды ашу).
+class _OrderReportsList extends StatelessWidget {
+  const _OrderReportsList();
 
   @override
   Widget build(BuildContext context) {

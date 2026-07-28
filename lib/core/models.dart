@@ -598,6 +598,71 @@ class Listing {
   }
 }
 
+/// Хабарландыруға түскен шағым (0044). Хабарландырудың өзі өшіп кетсе де
+/// модератор нені қарағанын көру үшін мәтіні/қаласы/фотолары шағым жазбасына
+/// СНИМОК болып сақталған — сол себепті бұл [Listing]-тен бөлек модель.
+class ListingReport {
+  final String id;
+
+  /// Хабарландыру әлі бар болса — оның id-і, өшірілген болса null.
+  final String? listingId;
+  final bool listingAlive;
+  final String reason;
+
+  /// open | resolved | dismissed
+  final String status;
+
+  /// deleted | kept (шешім қабылданған болса)
+  final String? action;
+  final DateTime? createdAt;
+  final DateTime? resolvedAt;
+
+  final String reporterId;
+  final String reporterName;
+  final String reporterRole;
+
+  final String? authorId;
+  final String authorName;
+  final String authorRole;
+  final bool authorBlocked;
+
+  // ---- хабарландырудың снимогі ----
+  final String body;
+  final String city;
+  final VehicleType vehicleType;
+  final ListingKind kind;
+  final List<String> photos;
+
+  /// Осы хабарландыруға түскен шағымдардың ЖАЛПЫ саны (қайталанса — мәселе
+  /// шынымен бар деген белгі).
+  final int reportsTotal;
+
+  ListingReport.fromMap(Map<String, dynamic> m)
+    : id = m['id'] as String,
+      listingId = m['listing_id'] as String?,
+      listingAlive = m['listing_alive'] as bool? ?? false,
+      reason = m['reason'] as String? ?? '',
+      status = m['status'] as String? ?? 'open',
+      action = m['action'] as String?,
+      createdAt = _dt(m['created_at']),
+      resolvedAt = _dt(m['resolved_at']),
+      reporterId = m['reporter_id'] as String? ?? '',
+      reporterName = m['reporter_name'] as String? ?? '',
+      reporterRole = m['reporter_role'] as String? ?? 'client',
+      authorId = m['author_id'] as String?,
+      authorName = m['author_name'] as String? ?? '',
+      authorRole = m['author_role'] as String? ?? 'client',
+      authorBlocked = m['author_blocked'] as bool? ?? false,
+      body = m['body'] as String? ?? '',
+      city = m['city'] as String? ?? '',
+      vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
+      kind = m['kind'] == 'job' ? ListingKind.job : ListingKind.service,
+      photos = (m['photos'] as List?)?.cast<String>() ?? const [],
+      reportsTotal = _i(m['reports_total']);
+
+  bool get isOpen => status == 'open';
+}
+
 // ---------- App settings ----------
 class AppConfig {
   final String kaspiNumber;

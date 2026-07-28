@@ -66,8 +66,9 @@ class _ListingSheetState extends State<_ListingSheet> {
     }
   }
 
-  /// Күдікті хабарландыру туралы модераторға жазу — қолдау тредін ашады
-  /// (бөлек механизм құрмай, бар арнаны қолданамыз).
+  /// Күдікті хабарландыру туралы модераторға шағым (0044). Шағым бөлек
+  /// кестеге түседі: модератор оны «Шағымдар» табынан көріп, хабарландыруды
+  /// сол жерден бірден өшіре алады.
   Future<void> _report(Listing l) async {
     final ctrl = TextEditingController();
     final send = await showDialog<bool>(
@@ -110,12 +111,7 @@ class _ListingSheetState extends State<_ListingSheet> {
     );
     if (send != true || !mounted) return;
     try {
-      await Repo.supportSend(
-        '${t('Хабарландыруға шағым')} (id: ${l.id})\n'
-        '${t('Автор')}: ${l.authorName}\n'
-        '${t('Мәтіні')}: ${l.body}\n\n'
-        '${t('Себебі')}: ${ctrl.text.trim().isEmpty ? '—' : ctrl.text.trim()}',
-      );
+      await Repo.reportListing(l.id, ctrl.text.trim());
       if (mounted) showSnack(context, t('Шағым модераторға жіберілді'));
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
