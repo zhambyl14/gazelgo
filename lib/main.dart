@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,6 +25,7 @@ import 'features/moderator/applications_screen.dart';
 import 'features/moderator/moderator_shell.dart';
 import 'features/moderator/support_admin_screen.dart';
 import 'features/support/support_screen.dart';
+import 'shared/portrait_frame.dart';
 import 'shared/update_gate.dart';
 import 'shared/widgets.dart';
 
@@ -72,6 +74,16 @@ void _navigateFromData(Map<String, dynamic> data) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Қосымша ТЕК ТІК (портрет) режимде жұмыс істейді: бүкіл интерфейс — карта,
+  // төменгі панельдер, хабарландыру карточкалары — тік телефонға есептелген,
+  // көлденең бұрылғанда олар созылып бұзылатын. Android/iOS-та бұл жүйе
+  // деңгейінде де бекітілген (AndroidManifest `screenOrientation="portrait"`,
+  // Info.plist тек `Portrait`), мұндағы шақыру — қосымша ішінде де
+  // өзгермейтініне кепілдік. Вебте бұрылысты бұғаттау мүмкін емес, сол
+  // жағдайды [PortraitFrame] шешеді.
+  unawaited(
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+  );
   // Flutter әдепкі бойынша 1000 сурет / 100 МБ дейін кэштейді — мобильді
   // қосымша үшін тым үлкен. Жадыны үнемдеу үшін шектейміз.
   PaintingBinding.instance.imageCache.maximumSize = 150;
@@ -140,7 +152,9 @@ class GazelGoApp extends StatelessWidget {
                 maxScaleFactor: 1.25,
               ),
             ),
-            child: child!,
+            // Тік (9:16) формат: телефонда — өзгеріссіз, кең терезеде
+            // (веб/ноутбук/планшет) қосымша сол пропорцияда ортада салынады.
+            child: PortraitFrame(child: child!),
           );
         },
         home: Env.isConfigured
