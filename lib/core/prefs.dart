@@ -29,6 +29,26 @@ class Prefs {
     await p.setString(_kLanguage, v);
   }
 
+  static const _kLegalConfirms = 'client_legal_confirms';
+
+  /// «Жүгім заңды» белгісін клиент қанша рет ҚОЛМЕН қойды. Алғашқы
+  /// [kLegalAutoAfter] реттен кейін белгі автоматты қойылып тұрады — әр
+  /// заказда бір әрекет үнемделеді (қолданушы оны алып тастай алады).
+  static const kLegalAutoAfter = 3;
+
+  static Future<int> legalConfirms() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt(_kLegalConfirms) ?? 0;
+  }
+
+  /// Заказ сәтті жарияланғанда шақырылады (белгі қолмен қойылған болса).
+  static Future<void> bumpLegalConfirms() async {
+    final p = await SharedPreferences.getInstance();
+    final n = p.getInt(_kLegalConfirms) ?? 0;
+    if (n >= kLegalAutoAfter) return;
+    await p.setInt(_kLegalConfirms, n + 1);
+  }
+
   static const _kLastLat = 'client_last_lat';
   static const _kLastLng = 'client_last_lng';
 

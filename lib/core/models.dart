@@ -27,7 +27,12 @@ double _d(dynamic v) {
 // ---------- Vehicle type (көлік түрі) ----------
 /// Заказ бен орындаушы осы түр бойынша сәйкестендіріледі: клиент газельге
 /// заказ берсе — оны тек газелист көреді (indriver-дегі көлік таңдау сияқты).
+/// [taxi] — 0046-да қосылған ЖАҢА түр: жолаушы тасымалы. Ол ӘРҚАШАН
+/// бірінші тұрады (тізімнің басы), бірақ модератор «Такси» бөлімін
+/// қоспайынша клиентке де, орындаушыға да КӨРІНБЕЙДІ — сол себепті
+/// қалған көлік түрлері [kCargoVehicleTypes] тізімімен бөлек беріледі.
 enum VehicleType {
+  taxi,
   gazelle,
   furgon,
   minivan,
@@ -42,7 +47,14 @@ enum VehicleType {
   assenizator,
 }
 
+/// Жүк көлігі мен арнайы техника (таксиден басқасының бәрі) — «Грузовые /
+/// спецтехника» санатының тізімі әрі такси өшулі кездегі әдепкі тізім.
+final List<VehicleType> kCargoVehicleTypes = VehicleType.values
+    .where((v) => v != VehicleType.taxi)
+    .toList(growable: false);
+
 VehicleType vehicleTypeFrom(String? s) => switch (s) {
+  'taxi' => VehicleType.taxi,
   'furgon' => VehicleType.furgon,
   'minivan' => VehicleType.minivan,
   'kamaz' => VehicleType.kamaz,
@@ -60,6 +72,7 @@ VehicleType vehicleTypeFrom(String? s) => switch (s) {
 extension VehicleTypeX on VehicleType {
   String get db => name;
   String get label => switch (this) {
+    VehicleType.taxi => t('Такси'),
     VehicleType.gazelle => t('Газель'),
     VehicleType.furgon => t('Фургон'),
     VehicleType.minivan => t('Мини вэн'),
@@ -92,6 +105,7 @@ extension VehicleTypeX on VehicleType {
 
   /// PNG иконкасы жоқ түрлерге арналған эмодзи (gazelle/furgon/tractor).
   String get emoji => switch (this) {
+    VehicleType.taxi => '🚕',
     VehicleType.gazelle => '🚚',
     VehicleType.furgon => '🚐',
     VehicleType.tractor => '🚜',
@@ -101,25 +115,19 @@ extension VehicleTypeX on VehicleType {
   /// Көлік түрінің қысқа түсініктемесі (сыйымдылық/жүктеме). Бос жол болса —
   /// UI бұл жолды көрсетпейді. Каруселде таңдалған түрдің астында шығады.
   String get description => switch (this) {
-    VehicleType.gazelle => t('Әмбебап жүк тасымалына арналған көлік'),
-    VehicleType.furgon => t('Жабық жүк тасымалына арналған көлік'),
-    VehicleType.minivan =>
-      t('Жолаушы және шағын жүк тасымалына арналған көлік'),
-    VehicleType.kamaz => t('Ауыр жүктерді тасымалдауға арналған көлік'),
-    VehicleType.fura => t('Ұзақ қашықтыққа жүк тасымалдауға арналған көлік'),
-    VehicleType.manipulator =>
-      t('Жүкті тиеуге, тасымалдауға және түсіруге арналған кран-манипулятор'),
-    VehicleType.crane => t('Жүк көтеруге арналған автокран'),
-    VehicleType.loader =>
-      t('Жүк тиеу және құрылыс жұмыстарына арналған тиегіш'),
-    VehicleType.excavator =>
-      t('Қазу және жер жұмыстарына арналған экскаватор'),
-    VehicleType.avtovyshka =>
-      t('Биіктікте жұмыс істеуге арналған автокөтергіш'),
-    VehicleType.tractor =>
-      t('Әмбебап трактор (3в1) · әртүрлі жұмыстарға арналған'),
-    VehicleType.assenizator =>
-      t('Сұйық қалдықтарды соруға арналған арнайы көлік'),
+    VehicleType.taxi => t('Жолаушы тасымалы'),
+    VehicleType.gazelle => t('Әмбебап жүк тасымалы'),
+    VehicleType.furgon => t('Жабық жүк тасымалы'),
+    VehicleType.minivan => t('Жолаушы және шағын жүк'),
+    VehicleType.kamaz => t('Ауыр жүк'),
+    VehicleType.fura => t('Ұзақ қашықтық'),
+    VehicleType.manipulator => t('Кран-манипулятор: тиеу және тасымалдау'),
+    VehicleType.crane => t('Автокран: жүк көтеру'),
+    VehicleType.loader => t('Тиегіш: тиеу, құрылыс жұмыстары'),
+    VehicleType.excavator => t('Қазу, жер жұмыстары'),
+    VehicleType.avtovyshka => t('Биіктікте жұмыс'),
+    VehicleType.tractor => t('Әмбебап трактор (3в1)'),
+    VehicleType.assenizator => t('Сұйық қалдықтарды сору'),
   };
 }
 
@@ -147,16 +155,37 @@ String statusLabel(String s) => switch (s) {
 // ---------- Profile ----------
 class Profile {
   final String id;
-  final String role; // client | executor | moderator
+
+  /// БЕЛСЕНДІ рөл: client | executor | moderator. Қос рөлде (0046) бұл —
+  /// қазір қай режимде отырғаны; [hasClientRole]/[hasExecutorRole] қандай
+  /// рөлдер ашылғанын көрсетеді.
+  final String role;
   final String fullName;
   final String phone;
   final String? avatarUrl;
+
+  /// БЕЛСЕНДІ рөлдің рейтингі (сервер айна ретінде ұстайды).
   final double rating;
   final int ratingCount;
   final int trips;
   final int trustScore;
   final DateTime? blockedAt;
   final String? blockReason;
+
+  // ---- қос рөл (0046) ----
+  final bool hasClientRole;
+  final bool hasExecutorRole;
+  final double clientRating;
+  final int clientRatingCount;
+  final int clientTrips;
+  final double executorRating;
+  final int executorRatingCount;
+  final int executorTrips;
+
+  /// 0046 миграциясы қолданылған ба (рөлге бөлінген бағандар келді ме).
+  /// Қолданылмаған болса [ratingAs] ескі жалғыз рейтингті қайтарады — ескі
+  /// backend-пен қосымша «жаңа» деп бос рейтинг көрсетіп қалмайды.
+  final bool _dualRole;
 
   Profile.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
@@ -169,9 +198,55 @@ class Profile {
       trips = _i(m['trips']),
       trustScore = m['trust_score'] == null ? 100 : _i(m['trust_score']),
       blockedAt = _dt(m['blocked_at']),
-      blockReason = m['block_reason'] as String?;
+      blockReason = m['block_reason'] as String?,
+      // Миграция әлі қолданылмаған болса — ағымдағы рөлден шығарамыз
+      // (қосымша ескі backend-пен де сынбай жұмыс істейді).
+      hasClientRole =
+          m['has_client_role'] as bool? ?? (m['role'] as String?) != 'executor',
+      hasExecutorRole =
+          m['has_executor_role'] as bool? ?? (m['role'] as String?) == 'executor',
+      clientRating = _d(m['client_rating']),
+      clientRatingCount = _i(m['client_rating_count']),
+      clientTrips = _i(m['client_trips']),
+      executorRating = _d(m['executor_rating']),
+      executorRatingCount = _i(m['executor_rating_count']),
+      executorTrips = _i(m['executor_trips']),
+      _dualRole = m.containsKey('client_rating');
 
   bool get isBlocked => blockedAt != null;
+  bool get isExecutor => role == 'executor';
+  bool get isModerator => role == 'moderator';
+
+  /// БАСҚА адамның рейтингін НАҚТЫ РӨЛ бойынша алу.
+  ///
+  /// Бұл маңызды: `rating` — сол адамның ҚАЗІР белсенді рөліндегі бағасы.
+  /// Ал экранда контекст басқа болуы мүмкін: орындаушы лентада КЛИЕНТТІҢ
+  /// бағасын көреді, клиент заказ бетінде ОРЫНДАУШЫНЫҢ бағасын көреді.
+  /// Егер клиент сол уақытта орындаушы режиміне ауысып кетсе, `rating`
+  /// орындаушылық бағаны көрсетіп, шатастыратын — сол себепті осы жерде
+  /// әрқашан рөлі айқын аталады.
+  double ratingAs(String role) {
+    if (!_dualRole) return rating; // ескі backend — жалғыз рейтинг
+    return role == 'executor' ? executorRating : clientRating;
+  }
+
+  int ratingCountAs(String role) {
+    if (!_dualRole) return ratingCount;
+    return role == 'executor' ? executorRatingCount : clientRatingCount;
+  }
+
+  /// Аяқталған заказ саны — сол РӨЛ бойынша ([ratingAs] сияқты).
+  int tripsAs(String role) {
+    if (!_dualRole) return trips;
+    return role == 'executor' ? executorTrips : clientTrips;
+  }
+
+  /// Қарсы рөл (ауысу батырмасы үшін). Модераторда — null.
+  String? get otherRole => switch (role) {
+    'client' => 'executor',
+    'executor' => 'client',
+    _ => null,
+  };
 }
 
 // ---------- Order report ----------

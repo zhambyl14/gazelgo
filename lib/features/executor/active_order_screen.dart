@@ -466,11 +466,14 @@ class _ClientCard extends StatelessWidget {
                     Text(p?.fullName ?? '…',
                         style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15.5)),
+                    // Орындаушы КЛИЕНТТІ көреді → клиенттік рейтинг/рейс
+                    // (қос рөл, 0046: ол адамның орындаушылық бағасы бөлек).
                     if (p != null)
                       Row(children: [
-                        RatingStars(p.rating, count: p.ratingCount, size: 12),
-                        if (p.trips > 0)
-                          Text('  · ${p.trips} ${t('рейс')}',
+                        RatingStars(p.ratingAs('client'),
+                            count: p.ratingCountAs('client'), size: 12),
+                        if (p.tripsAs('client') > 0)
+                          Text('  · ${p.tripsAs('client')} ${t('рейс')}',
                               style: const TextStyle(
                                   fontSize: 11.5, color: Gz.textSecondary)),
                       ]),

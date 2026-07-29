@@ -22,6 +22,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _form = GlobalKey<FormState>();
   bool _obscure = true;
 
+  /// «Кіру» батырмасы дайын ба: нөмір толық әрі құпиясөз кемінде 6 таңба.
+  /// Дайын емес күйде батырма СҰР болып тұрады (сары = басуға болады) —
+  /// қосымшадағы барлық негізгі әрекетке ортақ ереже.
+  bool get _canSubmit =>
+      Phone.isValid(_phone.text) && _password.text.length >= 6;
+
   @override
   void dispose() {
     _phone.dispose();
@@ -38,8 +44,44 @@ class _LoginScreenState extends State<LoginScreen> {
       // ал толтырылған жоба заказ болса ClientShell оны жалғастырады.
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
+      if (!mounted) return;
+      // Қосымшаны АЛҒАШ ашқан адам көбіне бірден осы бетте нөмірі мен
+      // ойлаған құпиясөзін жазып «Кіру» басады да, «нөмір не құпиясөз
+      // қате» деген қызыл қатеге тіреледі — шын мәнінде оның аккаунты
+      // МҮЛДЕМ ЖОҚ. Сол себепті: нөмір тіркелмеген болса — қате көрсетудің
+      // орнына ТІРКЕЛУГЕ бағыттаймыз.
+      if (_isBadCredentials(e)) {
+        final registered = await Repo.phoneRegistered(_phone.text);
+        if (registered == false && mounted) {
+          await _offerRegistration();
+          return;
+        }
+      }
       if (mounted) showSnack(context, errText(e), error: true);
     }
+  }
+
+  bool _isBadCredentials(Object e) {
+    final s = e.toString();
+    return s.contains('Invalid login credentials') ||
+        s.contains('invalid_credentials');
+  }
+
+  /// «Бұл нөмір әлі тіркелмеген» — тіркелу бетіне нұсқайтын диалог.
+  Future<void> _offerRegistration() async {
+    final go = await confirmDialog(
+      context,
+      title: t('Бұл нөмір әлі тіркелмеген'),
+      message: t('Алдымен тіркелу қажет — бір минут алады: аты-жөніңіз, '
+          'құпиясөз және Telegram арқылы нөмірді растау.'),
+      cancelLabel: t('Артқа'),
+      confirmLabel: t('Тіркелу'),
+      icon: Icons.person_add_alt_1_outlined,
+    );
+    if (!go || !mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+    );
   }
 
   @override
@@ -95,6 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
                       ],
+                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: t('Телефон (+7 ...)'),
                         prefixIcon: const Icon(Icons.phone_outlined),
@@ -106,6 +149,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _password,
                       obscureText: _obscure,
+                      onChanged: (_) => setState(() {}),
+                      onFieldSubmitted: (_) => _canSubmit ? _login() : null,
                       decoration: InputDecoration(
                         hintText: t('Құпиясөз'),
                         prefixIcon: const Icon(Icons.lock_outline),
@@ -135,28 +180,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    BusyButton(label: t('Кіру'), onPressed: _login),
-                    const SizedBox(height: 12),
-                    TextButton(
+                    BusyButton(
+                      label: t('Кіру'),
+                      enabled: _canSubmit,
+                      onPressed: _login,
+                    ),
+                    const SizedBox(height: 14),
+                    // «Тіркелу» әдейі АЙҚЫН батырма (бұрын жіңішке сілтеме
+                    // еді): қосымшаны алғаш ашқандар оны байқамай, кіру
+                    // өрістерін толтырып, қызыл қатеге тірелетін.
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            t('Аккаунт жоқ па?'),
+                            style: const TextStyle(
+                              color: Gz.textSecondary,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const RegisterScreen(),
                         ),
                       ),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '${t('Аккаунт жоқ па?')}  ',
-                              style: const TextStyle(
-                                color: Gz.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            TextSpan(text: t('Тіркелу')),
-                          ],
-                        ),
-                      ),
+                      icon: const Icon(Icons.person_add_alt_1_outlined,
+                          size: 20),
+                      label: BtnLabel(t('Тіркелу')),
                     ),
                   ],
                 ),

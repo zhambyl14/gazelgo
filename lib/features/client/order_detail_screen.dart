@@ -526,12 +526,14 @@ class _ExecutorBrief extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 14.5)),
+                  // Клиент ОРЫНДАУШЫНЫ көреді → орындаушылық рейтинг/рейс
+                  // (қос рөл, 0046: адамның клиенттік бағасы бөлек жүреді).
                   Row(
                     children: [
-                      RatingStars(p?.rating ?? 0,
-                          count: p?.ratingCount ?? 0, size: 13),
-                      if ((p?.trips ?? 0) > 0)
-                        Text('  · ${p!.trips} ${t('рейс')}',
+                      RatingStars(p?.ratingAs('executor') ?? 0,
+                          count: p?.ratingCountAs('executor') ?? 0, size: 13),
+                      if ((p?.tripsAs('executor') ?? 0) > 0)
+                        Text('  · ${p!.tripsAs('executor')} ${t('рейс')}',
                             style: const TextStyle(
                                 fontSize: 11.5, color: Gz.textSecondary)),
                     ],
@@ -587,11 +589,13 @@ class _ExecutorCard extends StatelessWidget {
                         Text(p?.fullName ?? t('Орындаушы'),
                             style: const TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 16)),
+                        // Орындаушының РӨЛДІК рейтингі (қос рөл, 0046).
                         Row(children: [
-                          RatingStars(p?.rating ?? 0,
-                              count: p?.ratingCount ?? 0, size: 14),
-                          if ((p?.trips ?? 0) > 0)
-                            Text('  · ${p!.trips} ${t('рейс')}',
+                          RatingStars(p?.ratingAs('executor') ?? 0,
+                              count: p?.ratingCountAs('executor') ?? 0,
+                              size: 14),
+                          if ((p?.tripsAs('executor') ?? 0) > 0)
+                            Text('  · ${p!.tripsAs('executor')} ${t('рейс')}',
                                 style: const TextStyle(
                                     fontSize: 12, color: Gz.textSecondary)),
                         ]),

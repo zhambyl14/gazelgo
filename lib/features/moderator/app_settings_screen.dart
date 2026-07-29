@@ -24,6 +24,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _boardEnabled = false;
   bool _boardSaving = false;
 
+  /// «Такси» бөлімі қосулы ма (0046). ӨШУЛІ болса клиенттің басты бетінде
+  /// «Такси / Жүк·Спецтехника» санаттары МҮЛДЕМ көрінбейді (баяғы қалып),
+  /// орындаушы да такси түрін таңдай алмайды.
+  bool _taxiEnabled = false;
+  bool _taxiSaving = false;
+
   final _tariffPrice = TextEditingController();
   final _kaspiNumber = TextEditingController();
   final _kaspiName = TextEditingController();
@@ -68,6 +74,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final gate = (s['version_gate'] as Map?) ?? {};
       final board = (s['listings'] as Map?) ?? {};
       _boardEnabled = board['enabled'] == true;
+      final taxi = (s['taxi'] as Map?) ?? {};
+      _taxiEnabled = taxi['enabled'] == true;
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
@@ -141,6 +149,31 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
+  /// «Такси» бөлімін қосу/өшіру — бірден сақталады (жалғыз қосқыш).
+  Future<void> _toggleTaxi(bool v) async {
+    setState(() {
+      _taxiEnabled = v;
+      _taxiSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('taxi', {'enabled': v});
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Такси бөлімі ҚОСЫЛДЫ') : t('Такси бөлімі ӨШІРІЛДІ'),
+        );
+      }
+    } catch (e) {
+      // Сәтсіз болса — қосқышты кері қайтарамыз (жалған күй қалмауы үшін).
+      if (mounted) {
+        setState(() => _taxiEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _taxiSaving = false);
+    }
+  }
+
   Future<void> _saveVersionGate() async {
     final android = _int(_minBuildAndroid) ?? 0;
     final ios = _int(_minBuildIos) ?? 0;
@@ -174,78 +207,45 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionTitle(t('Хабарландырулар тақтасы')),
+          // ---- ЖАҢА БӨЛІМ: Такси (0046) ----
+          _sectionTitle(t('Такси бөлімі')),
           Text(
-            t(
-              'Клиент пен орындаушының логотип батырмасындағы «Хабарландырулар» '
-              'бөлімі. ӨШУЛІ болса — тармақ көрініп тұрады, бірақ басқанда '
-              '«әлі қосылмаған» деп шығады, ешкім хабарландыру бере алмайды. '
-              'ҚОСУЛЫ болса — орындаушылар өз қызметтерін, клиенттер өз '
-              'жұмыстарын жариялап, бір-бірімен тікелей хабарласа алады. '
-              'Әр хабарландыру 7 күн тұрады, суреттері де сонша сақталып, '
-              'содан кейін автоматты өшіріледі.',
-            ),
+            t('Қосулы болса — клиентте «Такси (ЖАҢА)» және '
+                '«Жүк · Спецтехника» деген екі санат шығады, орындаушы да '
+                'такси түрін таңдай алады. Өшулі болса — экран баяғы '
+                'қалпында, такси мүлдем көрінбейді.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
-          SectionCard(
-            padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-            child: Row(
-              children: [
-                Icon(
-                  _boardEnabled ? Icons.storefront : Icons.storefront_outlined,
-                  color: _boardEnabled ? Gz.green : Gz.textSecondary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _boardEnabled ? t('Қосулы') : t('Өшулі'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: _boardEnabled ? Gz.green : Gz.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        _boardEnabled
-                            ? t('Қолданушылар хабарландыру бере алады')
-                            : t('Қолданушыларға «әлі қосылмады» деп шығады'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Gz.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_boardSaving)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else
-                  Switch(
-                    value: _boardEnabled,
-                    activeThumbColor: Gz.green,
-                    onChanged: _toggleBoard,
-                  ),
-              ],
-            ),
+          _toggleCard(
+            enabled: _taxiEnabled,
+            saving: _taxiSaving,
+            icon: _taxiEnabled ? Icons.local_taxi : Icons.local_taxi_outlined,
+            onLabel: t('Клиентте «Такси» санаты көрінеді'),
+            offLabel: t('Такси жасырылған (баяғы қалып)'),
+            onChanged: _toggleTaxi,
+          ),
+          const SizedBox(height: 24),
+          _sectionTitle(t('Хабарландырулар тақтасы')),
+          Text(
+            t('Логотип батырмасындағы «Хабарландырулар» бөлімі: орындаушылар '
+                'қызметін, клиенттер жұмысын жариялайды. Әр хабарландыру '
+                '7 күн тұрады, сосын автоматты өшеді.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _boardEnabled,
+            saving: _boardSaving,
+            icon: _boardEnabled ? Icons.storefront : Icons.storefront_outlined,
+            onLabel: t('Қолданушылар хабарландыру бере алады'),
+            offLabel: t('Қолданушыларға «әлі қосылмады» деп шығады'),
+            onChanged: _toggleBoard,
           ),
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),
           Text(
-            t(
-              'Орындаушы 1 ауысымға (12 сағат, 10 заказға дейін) төлейтін баға. '
-              'Бағасы күндіз де, түнде де бірдей.',
-            ),
+            t('Орындаушы 1 ауысымға (12 сағат, 10 заказ) төлейтін баға.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -269,7 +269,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Kaspi деректері')),
           Text(
-            t('Орындаушылар балансты осы деректерге аударады.'),
+            t('Орындаушылар балансты осыған аударады.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -286,10 +286,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     hintText: 'https://pay.kaspi.kz/pay/...',
                     helperMaxLines: 3,
                     helperText: t(
-                      'KaspiQR сілтемесін қойыңыз. Орындаушыда '
-                      '«Kaspi-мен төлеу» түймесі осы сілтемені ашып, Kaspi '
-                      'қосымшасына (сома енгізіп → төлеуге) тікелей апарады. '
-                      'Бос болса — түйме көрсетілмейді.',
+                      'Орындаушыдағы «Kaspi-мен төлеу» түймесі осы сілтемені '
+                      'ашады. Бос болса — түйме көрсетілмейді.',
                     ),
                     prefixIcon: const Icon(Icons.qr_code_2),
                   ),
@@ -330,15 +328,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
-            t(
-              'Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң, сол платформаның '
-              'минималды build нөмірін көтеріңіз — одан төмен нұсқадағылар '
-              'тек «Жаңарту» батырмасын көреді. Android мен iOS ЖЕКЕ: App '
-              'Store шолуы Play-ден баяу, сондықтан iOS санын App Store-да '
-              'жарияланғанша көтермеңіз — әйтпесе iPhone соңғы нұсқада '
-              'отырса да бұғатталады. Build нөмірі — pubspec.yaml-дағы '
-              '"+N" (мыс. 1.0.2+5 → 5). 0 = сол платформада тексеру өшулі.',
-            ),
+            t('Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды build нөмірін '
+                'көтеріңіз — одан төмендегілер тек «Жаңарту» батырмасын '
+                'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
+                'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -394,6 +387,64 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  /// Бір ғана қосқыштан тұратын фича картасы (такси, хабарландырулар…) —
+  /// бірден сақталады, бөлек «Сақтау» батырмасы жоқ.
+  Widget _toggleCard({
+    required bool enabled,
+    required bool saving,
+    required IconData icon,
+    required String onLabel,
+    required String offLabel,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SectionCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+      child: Row(
+        children: [
+          Icon(icon, color: enabled ? Gz.green : Gz.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  enabled ? t('Қосулы') : t('Өшулі'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: enabled ? Gz.green : Gz.textSecondary,
+                  ),
+                ),
+                Text(
+                  enabled ? onLabel : offLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Gz.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (saving)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            Switch(
+              value: enabled,
+              activeThumbColor: Gz.green,
+              onChanged: onChanged,
+            ),
         ],
       ),
     );

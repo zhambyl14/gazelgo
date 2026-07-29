@@ -19,6 +19,11 @@ class Gz {
   static const violet = Color(0xFF7C3AED);
   static const night = Color(0xFF3730A3);
 
+  /// Басылмайтын (disabled) батырманың түстері — «әлі дайын емес» деген
+  /// белгі. Бүкіл қосымшада БІРДЕЙ: шарт орындалғанша сұр, орындалса сары.
+  static const disabledBg = Color(0xFFE9EDF1);
+  static const disabledFg = Color(0xFF9AA7B4);
+
   static const radius = 20.0;
 
   /// Негізгі қаріп (assets/fonts — Rubik, қазақ әліпбиін толық қолдайды).
@@ -69,21 +74,34 @@ class Gz {
           letterSpacing: -0.2,
         ),
       ),
+      // ӨШІРУЛІ (disabled) күй ӘРҚАШАН СҰР болуы керек: `styleFrom` дефолт
+      // бойынша disabled фонды `backgroundColor`-дан шығармайды да, сары
+      // батырма басылмайтын күйде де САРЫ болып тұратын — қолданушы «неге
+      // басылмайды?» деп шатасатын (мыс. тіркелудегі нөмір расталмай тұрып
+      // «Тіркелу»). Енді: расталмаған/толмаған = сұр, дайын = сары.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: yellow,
           foregroundColor: ink,
+          disabledBackgroundColor: disabledBg,
+          disabledForegroundColor: disabledFg,
           minimumSize: const Size.fromHeight(54),
           elevation: 4,
           shadowColor: const Color(0x66FFC400),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           textStyle: const TextStyle(
               fontSize: 16, fontWeight: FontWeight.w700, fontFamily: fontFamily),
+        ).copyWith(
+          // Өшірулі күйде көлеңке де болмауы керек — әйтпесе сұр батырма
+          // «басылатын» болып көрінеді.
+          elevation: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.disabled) ? 0 : 4),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: ink,
+          disabledForegroundColor: disabledFg,
           minimumSize: const Size.fromHeight(54),
           side: const BorderSide(color: border, width: 1.4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -94,6 +112,7 @@ class Gz {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ink,
+          disabledForegroundColor: disabledFg,
           textStyle:
               const TextStyle(fontWeight: FontWeight.w700, fontFamily: fontFamily),
         ),
@@ -278,6 +297,9 @@ String errText(Object e) {
     // --- хабарландырулар тақтасы (0043) ---
     'BOARD_OFF':
         'Хабарландырулар тақтасы әзірге қосылмаған. Кейінірек көріңіз.',
+    // --- қос рөл / такси (0046) ---
+    'TAXI_OFF': 'Такси бөлімі әзірге қосылмаған. Кейінірек көріңіз.',
+    'FORBIDDEN_COLUMN': 'Бұл өрісті өзгертуге рұқсат жоқ.',
     'TOO_MANY_PHOTOS': 'Бір хабарландыруға ең көбі 4 сурет салуға болады.',
     'TOO_MANY_LISTINGS':
         'Белсенді хабарландыру саны шектен асты (5). Жаңасын беру үшін '

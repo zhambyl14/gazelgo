@@ -122,6 +122,19 @@ class Repo {
 
   static Future<void> signOut() => c.auth.signOut();
 
+  /// Кіру сәтсіз болғанда: бұл нөмір мүлдем ТІРКЕЛМЕГЕН бе, әлде тек
+  /// құпиясөз қате ме? (0046). Сервер тек `true/false` қайтарады — басқа
+  /// ешбір дерек ашылмайды. Желі қатесінде `null` — «білмейміз».
+  static Future<bool?> phoneRegistered(String phone) async {
+    final n = Phone.normalize(phone);
+    if (n == null) return null;
+    try {
+      return (await c.rpc('phone_registered', params: {'p_phone': n})) as bool?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// FCM push-токенін сақтайды (0019 миграциясы) — қосымша жабық болса да
   /// жеткізілетін хабарландырулар үшін (мыс. модераторға жаңа өтінім).
   static Future<void> savePushToken(String token, String platform) =>
@@ -264,6 +277,20 @@ class Repo {
     }
   }
 
+  // ================= ҚОС РӨЛ (0046) =================
+  /// Рөлді ауыстыру («Орындаушы болу» / «Клиентке ауысу»). Бұл — рөлді
+  /// АЛМАСТЫРУ емес, ҚОСЫМША рөл алу: екеуі де аккаунтта сақталады, тек
+  /// қайсысы БЕЛСЕНДІ екені өзгереді (inDriver үлгісі). Рейтинг те рөлге
+  /// бөлек: клиенттік баға орындаушы режимінде көрінбейді, керісінше де.
+  ///
+  /// Қайтарады: `needs_application` — орындаушы профилі әлі жоқ, өтінім
+  /// толтыру экраны ашылуы керек.
+  static Future<bool> switchRole(String role) async {
+    final res = await c.rpc('switch_role', params: {'p_role': role});
+    final m = Map<String, dynamic>.from(res as Map);
+    return m['needs_application'] as bool? ?? false;
+  }
+
   static Future<ExecutorProfile?> myExecutorProfile() async {
     final id = uid;
     if (id == null) return null;
@@ -392,6 +419,16 @@ class Repo {
       map[r['key'] as String] = r['value'];
     }
     return map;
+  }
+
+  /// «Такси» бөлімі қосулы ма (0046, модератор баптауы). Желі қатесінде
+  /// `false` — бөлім жай ғана көрінбейді, ешбір экран сынбайды.
+  static Future<bool> taxiEnabled() async {
+    try {
+      return (await c.rpc('taxi_enabled')) as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Мәжбүрлі жаңарту баптауы (0030) — авторизациясыз да шақырылады
@@ -1153,6 +1190,10 @@ final executorStatsProvider =
 /// қосқанда/өшіргенде `ref.invalidate(boardEnabledProvider)` шақырылады.
 final boardEnabledProvider =
     FutureProvider<bool>((ref) => Repo.boardEnabled());
+
+/// «Такси» бөлімі қосулы ма (0046). Модератор Баптаулардан қосқанда/
+/// өшіргенде `ref.invalidate(taxiEnabledProvider)` шақырылады.
+final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.

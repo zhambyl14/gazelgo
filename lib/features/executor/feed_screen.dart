@@ -157,10 +157,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           icon: Icons.bolt,
           color: Gz.yellowDark,
           title: t('Тарифіңіз жоқ'),
-          text: t(
-            'Заказ қабылдау үшін алдымен тариф сатып алыңыз '
-            '(1 ауысым, 10 заказға дейін).',
-          ),
+          text: t('Заказ алу үшін тариф сатып алыңыз (1 ауысым, 10 заказ).'),
           actionLabel: t('Тарифке кіру'),
           onAction: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ExecutorDashboardScreen()),
@@ -171,10 +168,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           icon: Icons.hourglass_top,
           color: Gz.blue,
           title: t('Аккаунтыңыз тексеруде'),
-          text: t(
-            'Модератор құжаттарыңызды тексеруде. Расталған соң тариф '
-            'сатып алып, заказ қабылдай аласыз.',
-          ),
+          text: t('Расталған соң тариф алып, заказ қабылдай аласыз.'),
         );
       case _Gate.rejected:
         _gateDialog(
@@ -200,10 +194,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           title: t('Құжаттарды жаңарту қажет'),
           text: ep?.docsUpdateComment?.isNotEmpty == true
               ? ep!.docsUpdateComment!
-              : t(
-                  'Модератор құжаттарыңызды жаңартуды сұрады. Жаңартып, '
-                  'растауын күтіңіз.',
-                ),
+              : t('Модератор құжаттарды жаңартуды сұрады.'),
           actionLabel: t('Жаңарту'),
           onAction: ep == null
               ? null
@@ -218,21 +209,15 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           icon: Icons.hourglass_top,
           color: Gz.blue,
           title: t('Құжаттар тексеруде'),
-          text: t(
-            'Жаңартылған құжаттарыңыз модератор тексеруінде. Расталған '
-            'соң заказ қабылдай аласыз.',
-          ),
+          text: t('Расталған соң заказ қабылдай аласыз.'),
         );
       case _Gate.wrongCity:
         _gateDialog(
           icon: Icons.location_off_outlined,
           color: Gz.textSecondary,
           title: t('Бұл сіздің қалаңызда емес'),
-          text: t(
-            'Бұл — қала ішіндегі (жергілікті) заказ, тек сол қаладағы '
-            'орындаушылар ала алады. Сіз тек межгород (қалааралық) '
-            'заказдарды ала аласыз.',
-          ),
+          text: t('Қала ішіндегі заказды тек сол қаладағы орындаушы алады. '
+              'Сізге — қалааралық заказдар.'),
         );
     }
   }
@@ -449,9 +434,11 @@ class _ClientMini extends StatelessWidget {
                       fontSize: 13.5,
                     ),
                   ),
+                  // Лентада ОРЫНДАУШЫ клиентті көреді → клиенттік рейтинг
+                  // (адам қазір орындаушы режиміне ауысып кеткен болса да).
                   RatingStars(
-                    p?.rating ?? 0,
-                    count: p?.ratingCount ?? 0,
+                    p?.ratingAs('client') ?? 0,
+                    count: p?.ratingCountAs('client') ?? 0,
                     size: 11,
                   ),
                 ],
@@ -637,7 +624,11 @@ class _SheetClient extends StatelessWidget {
       future: Repo.profileOf(clientId),
       builder: (context, snap) => SectionCard(
         padding: const EdgeInsets.all(12),
-        child: ProfileBrief(profile: snap.data, subtitle: t('Клиент')),
+        child: ProfileBrief(
+          profile: snap.data,
+          subtitle: t('Клиент'),
+          asRole: 'client',
+        ),
       ),
     );
   }

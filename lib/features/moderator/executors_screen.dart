@@ -183,8 +183,11 @@ class _ExecutorTile extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 color: Gz.green)),
                       ),
+                    // Модератор орындаушылар тізімін көреді → орындаушылық
+                    // рейтинг (қос рөл, 0046).
                     if (p != null)
-                      RatingStars(p.rating, count: p.ratingCount, size: 12),
+                      RatingStars(p.ratingAs('executor'),
+                          count: p.ratingCountAs('executor'), size: 12),
                   ],
                 );
               },
@@ -444,8 +447,8 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                               style: const TextStyle(
                                   color: Gz.textSecondary, fontSize: 13)),
                           if (p != null)
-                            RatingStars(p.rating,
-                                count: p.ratingCount, size: 13),
+                            RatingStars(p.ratingAs('executor'),
+                                count: p.ratingCountAs('executor'), size: 13),
                         ],
                       ),
                     ),
@@ -607,8 +610,8 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     builder: (_) => ReviewsScreen(
                       userId: p.id,
                       name: p.fullName,
-                      rating: p.rating,
-                      ratingCount: p.ratingCount,
+                      rating: p.ratingAs('executor'),
+                      ratingCount: p.ratingCountAs('executor'),
                     ),
                   )),
                   icon: const Icon(Icons.star_outline),

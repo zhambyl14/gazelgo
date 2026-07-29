@@ -202,6 +202,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   builder: (context, snap) => _PartyCard(
                     profile: snap.data,
                     subtitle: t('Клиент'),
+                    asRole: 'client',
                     onChanged: () => setState(() {}),
                   ),
                 ),
@@ -212,6 +213,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     builder: (context, snap) => _PartyCard(
                       profile: snap.data,
                       subtitle: t('Орындаушы'),
+                      asRole: 'executor',
                       onChanged: () => setState(() {}),
                     ),
                   ),
@@ -259,9 +261,16 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
 class _PartyCard extends StatelessWidget {
   final Profile? profile;
   final String subtitle;
+
+  /// Рейтингті қай рөл бойынша көрсету (қос рөл, 0046).
+  final String asRole;
   final VoidCallback onChanged;
-  const _PartyCard(
-      {required this.profile, required this.subtitle, required this.onChanged});
+  const _PartyCard({
+    required this.profile,
+    required this.subtitle,
+    required this.asRole,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +284,9 @@ class _PartyCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Expanded(child: ProfileBrief(profile: p, subtitle: subtitle)),
+            Expanded(
+                child: ProfileBrief(
+                    profile: p, subtitle: subtitle, asRole: asRole)),
             if (p != null) ...[
               const SizedBox(width: 8),
               TrustBadge(score: p.trustScore, blocked: p.isBlocked),

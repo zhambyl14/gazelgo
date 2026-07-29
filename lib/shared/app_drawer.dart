@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/lang.dart';
+import '../core/models.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
 import '../features/auth/login_screen.dart';
@@ -71,15 +72,45 @@ class AppDrawer extends ConsumerWidget {
                             fontSize: 15.5,
                           ),
                         ),
-                        Text(
-                          isGuest
-                              ? t('Жүк тасымалы платформасы')
-                              : (isExecutor ? t('Орындаушы') : t('Клиент')),
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            color: Gz.textSecondary,
+                        // Белсенді рөл + СОЛ РӨЛДЕГІ рейтинг (қос рөлде
+                        // клиенттік пен орындаушылық баға бөлек жүреді).
+                        if (isGuest)
+                          const Text(
+                            'Tasu',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Gz.textSecondary,
+                            ),
+                          )
+                        else
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Gz.yellow.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  isExecutor ? t('Орындаушы') : t('Клиент'),
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Gz.ink,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              RatingStars(
+                                profile?.rating ?? 0,
+                                count: profile?.ratingCount ?? 0,
+                                size: 11,
+                              ),
+                            ],
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -182,6 +213,16 @@ class AppDrawer extends ConsumerWidget {
                       ],
                     ),
                   ),
+
+                  // ---- РӨЛ АУЫСТЫРУ (0046) — тілдің ТУРА АСТЫНДА ----
+                  // Модератордың рөлі ауыспайды, гест алдымен кіруі керек.
+                  if (!isGuest && profile != null && !profile.isModerator) ...[
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                      child: _RoleSwitchCard(profile: profile),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -218,6 +259,156 @@ class AppDrawer extends ConsumerWidget {
         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
       ),
       onTap: onTap,
+    );
+  }
+}
+
+/// «Орындаушы болу» / «Клиентке ауысу» картасы (0046) — тіл ауыстырғыштың
+/// астында тұрады.
+///
+/// Бұл — рөлді АЛМАСТЫРУ емес, ҚОСЫМША рөл алу (inDriver үлгісі): аккаунт
+/// екі рөлді де ұстайды, тек қайсысы белсенді екені ауысады. Ауысқаннан
+/// кейін қосымша толығымен сол рөлдің қосымшасы болады — экрандары да,
+/// уведомлениелері де. Рейтинг әр рөлде БӨЛЕК жүреді.
+class _RoleSwitchCard extends ConsumerStatefulWidget {
+  final Profile profile;
+  const _RoleSwitchCard({required this.profile});
+
+  @override
+  ConsumerState<_RoleSwitchCard> createState() => _RoleSwitchCardState();
+}
+
+class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
+  bool _busy = false;
+
+  bool get _toExecutor => widget.profile.role != 'executor';
+
+  /// Орындаушы ӨТІНІМІ бұрын толтырылған ба — жазуы соған қарай өзгереді
+  /// («Орындаушы болу» бірінші рет, кейін «Орындаушыға ауысу»).
+  ///
+  /// Шешуші белгі — `has_executor_role` флагы ЕМЕС, нақты өтінім
+  /// (`executor_profiles` жазбасы): флаг рөлге бір рет ауысқанда қойылады,
+  /// ал адам өтінімді толтырмай қайтып кетуі мүмкін — сол кезде «Орындаушы
+  /// болу» деген жазу дұрысырақ. Клиент өз өтінімін оқи алады (RLS).
+  bool get _firstTime =>
+      _toExecutor && ref.watch(myExecutorProfileProvider).value == null;
+
+  String get _title => _toExecutor
+      ? (_firstTime ? t('Орындаушы болу') : t('Орындаушыға ауысу'))
+      : t('Клиентке ауысу');
+
+  String get _subtitle => _toExecutor
+      ? (_firstTime
+            ? t('Көлігіңізбен ақша табыңыз')
+            : t('Заказ лентасына оралу'))
+      : t('Көлік шақырып, жүк жіберу');
+
+  Future<void> _switch() async {
+    final target = _toExecutor ? 'executor' : 'client';
+    final ok = await confirmDialog(
+      context,
+      title: _title,
+      message: _toExecutor
+          ? (_firstTime
+                ? t('Аккаунтыңыз сақталады — үстіне орындаушы рөлі қосылады. '
+                      'Көлік деректері мен құжаттарды толтырып, өтінім '
+                      'жібересіз.\n\nОрындаушы рейтингі бөлек басталады.')
+                : t('Орындаушы режиміне ауысасыз: заказ лентасы, баланс, '
+                      'орындаушы уведомлениелері.\n\nРейтингіңіз де '
+                      'орындаушылық болады.'))
+          : t('Клиент режиміне ауысасыз: көлік шақыру, тапсырыстарыңыз, '
+                'клиент уведомлениелері.\n\nОрындаушы деректеріңіз '
+                'жоғалмайды — кез келген уақытта қайта ауыса аласыз. '
+                'Бірақ белсенді тарифіңіздің уақыты жүре береді.'),
+      cancelLabel: t('Болдырмау'),
+      confirmLabel: _toExecutor ? t('Ауысу') : t('Клиентке ауысу'),
+      icon: _toExecutor ? Icons.local_shipping_outlined : Icons.person_outline,
+    );
+    if (!ok || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await Repo.switchRole(target);
+      // Рөл ауысты — профильді де, орындаушы профилін де қайта сұраймыз:
+      // `_RoleRouter` жаңа рөлге сай экранды өзі ашады (өтінім толтырылмаған
+      // болса — «Өтінім» экраны).
+      ref.invalidate(myProfileProvider);
+      ref.invalidate(myExecutorProfileProvider);
+      if (!mounted) return;
+      // Sidebar мен үстіне ашылған беттерді жабамыз — түбірде жаңа рөлдің
+      // басты беті тұрады.
+      Navigator.of(context).popUntil((r) => r.isFirst);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showSnack(context, errText(e), error: true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: _busy ? null : _switch,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Gz.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Gz.border, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Gz.ink,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _toExecutor
+                    ? Icons.local_shipping_outlined
+                    : Icons.person_outline,
+                size: 18,
+                color: Gz.yellow,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    _subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(Icons.swap_horiz, color: Gz.textSecondary),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -280,10 +471,8 @@ class _BoardCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               isExecutor
-                  ? t('Клиенттердің жұмыстарын көріңіз әрі өз қызметіңізді '
-                      'жариялаңыз.')
-                  : t('Орындаушылардың қызметтерін көріңіз әрі өз жұмысыңызды '
-                      'жариялаңыз.'),
+                  ? t('Жұмыстарды қараңыз, қызметіңізді жариялаңыз')
+                  : t('Қызметтерді қараңыз, жұмысыңызды жариялаңыз'),
               style: const TextStyle(
                 fontSize: 12,
                 height: 1.4,

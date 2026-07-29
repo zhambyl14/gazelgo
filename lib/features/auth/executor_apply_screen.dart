@@ -130,6 +130,33 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     if (picked != null && mounted) setState(() => _city = picked);
   }
 
+  /// Өтінім жіберуге дайын емес болса — НЕ жетпейтіні (батырманың астында).
+  /// Дайын болса null. `_submit` ішіндегі тексерулер орнында қалады: форма
+  /// валидациясы (маркасы/жылы/нөмір) сол жерде хабарланады.
+  String? get _missing {
+    if (!_selfie.isSet) return t('Профиль селфиін түсіріңіз');
+    if (_city == null || _city!.trim().isEmpty) return t('Қалаңызды таңдаңыз');
+    if (!_license.isSet || !_licenseSelfie.isSet) {
+      return t('Права мен онымен селфи керек');
+    }
+    if (!_isForeign && (!_idDoc.isSet || !_idSelfie.isSet)) {
+      return t('Жеке куәлік пен онымен селфи керек');
+    }
+    if (_isForeign && (!_passport.isSet || !_passportSelfie.isSet)) {
+      return t('Паспорт пен онымен селфи керек');
+    }
+    if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
+      return t('Техпаспорт пен онымен фото керек');
+    }
+    if (!_vehFront.isSet ||
+        !_vehBack.isSet ||
+        !_vehRight.isSet ||
+        !_vehLeft.isSet) {
+      return t('Көліктің 4 фотосы керек');
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (!_selfie.isSet) {
@@ -316,16 +343,39 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     );
   }
 
+  /// Қос рөл (0046): клиент рөлі бар адам «Орындаушы болу» арқылы осында
+  /// келсе, өтінімді толтырмай ТҰЙЫҚТА ҚАЛМАУЫ керек — бір басумен клиент
+  /// режиміне қайтады (аккаунттан шығудың қажеті жоқ).
+  Future<void> _backToClient() async {
+    try {
+      await Repo.switchRole('client');
+      ref.invalidate(myProfileProvider);
+      ref.invalidate(myExecutorProfileProvider);
+      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final resubmit = widget.existing != null;
+    // Клиент рөлі ашық болса — «шығу» орнына «клиентке қайту» ұсынамыз.
+    final canReturnToClient =
+        !resubmit && (ref.watch(myProfileProvider).value?.hasClientRole ?? false);
     return Scaffold(
       appBar: AppBar(
         title: Text(resubmit
             ? t('Өтінімді қайта жіберу')
-            : t('Тапсырыс орындаушы өтінімі')),
+            : t('Орындаушы өтінімі')),
         actions: [
-          if (!resubmit)
+          if (canReturnToClient)
+            IconButton(
+              tooltip: t('Клиентке қайту'),
+              onPressed: _backToClient,
+              icon: const Icon(Icons.person_outline),
+            )
+          else if (!resubmit)
             IconButton(
               tooltip: t('Шығу'),
               onPressed: () => confirmSignOut(context),
@@ -446,12 +496,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 6),
                 Text(
-                  t('Тек осы түрге берілген заказдарды көресіз — дұрыс таңдаңыз.'),
+                  t('Тек осы түрдегі заказдарды көресіз'),
                   style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
                 ),
                 const SizedBox(height: 10),
+                // «Такси» түрі тізімге модератор сол бөлімді ҚОСҚАНДА ғана
+                // қосылады (0046) — әйтпесе таксист заказ көрмей отыратын.
                 VehicleTypeCarousel(
                   selected: _vehicleType,
+                  types: (ref.watch(taxiEnabledProvider).value ?? false)
+                      ? VehicleType.values
+                      : kCargoVehicleTypes,
                   onChanged: (v) => setState(() => _vehicleType = v),
                 ),
                 const SizedBox(height: 20),
@@ -587,18 +642,28 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 _docTile(t('Сол жағынан'), _vehLeft,
                     hint: t('Көлікке қарап тұрсаңыз — сол бүйірі')),
                 const SizedBox(height: 24),
+                // Барлық құжат жүктелмейінше батырма СҰР күйде тұрады
+                // (жүктелсе — сары), астында НЕ жетпейтіні жазылады:
+                // бұрын батырма сары болып, басқанда ғана қызыл қате
+                // шығатын да, қолданушы қай құжат қалғанын іздеп отыратын.
                 BusyButton(
                   label: resubmit ? t('Қайта жіберу') : t('Өтінім жіберу'),
+                  enabled: _missing == null,
                   onPressed: _submit,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  t('Өтінімді модератор 24 сағат ішінде қарайды.\n'
-                      'Өтінім жіберу арқылы 18 жасқа толғаныңызды және құжат '
-                      'деректерінің модерация мақсатында өңделуіне келісіміңізді '
-                      'растайсыз.'),
+                  _missing ??
+                      t('Модератор 24 сағат ішінде қарайды. Жіберу арқылы '
+                          '18 жасқа толғаныңызды және құжаттарыңыздың '
+                          'модерацияда өңделуіне келісіміңізді растайсыз.'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  style: TextStyle(
+                    color: _missing == null ? Gz.textSecondary : Gz.red,
+                    fontWeight:
+                        _missing == null ? FontWeight.w400 : FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
                 ),
               ],
             ),

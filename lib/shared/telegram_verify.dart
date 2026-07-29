@@ -170,9 +170,8 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    t('Құрылғыда Telegram жоқ. Нөмірді растау Telegram арқылы '
-                        'жүреді (SMS-сіз, тегін). Telegram-ды орнатып, «Қайта '
-                        'тексеру» түймесін басыңыз.'),
+                    t('Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
+                        'түймесін басыңыз.'),
                     style: const TextStyle(
                         color: Color(0xFF8A5200), fontSize: 12.5, height: 1.4),
                   ),
@@ -219,11 +218,8 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               Expanded(
                 child: Text(
                   waiting
-                      ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз. '
-                          'Ашылмаса — төмендегі түймені қайта басыңыз. '
-                          'Растауды күтудеміз…')
-                      : t('Нөміріңіз Telegram арқылы расталады (SMS жоқ, тегін). '
-                          'Түймені басып, ботта нөміріңізді бөлісіңіз.'),
+                      ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз')
+                      : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
                   style: const TextStyle(
                       color: Color(0xFF1C5A91), fontSize: 12.5, height: 1.4),
                 ),
@@ -273,9 +269,8 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               const Divider(height: 1, color: Color(0xFF9DCBF5)),
               const SizedBox(height: 10),
               Text(
-                t('Сілтеме ашылмаса (Telegram веб-те бұғатталған желілерде '
-                    'болады): Telegram қолданбасын қолмен ашып, төмендегі '
-                    'ботты іздеп, кодты жіберіңіз.'),
+                t('Сілтеме ашылмаса: Telegram-ды қолмен ашып, ботты іздеңіз '
+                    'де, кодты жіберіңіз.'),
                 style: const TextStyle(
                     color: Color(0xFF1C5A91), fontSize: 12, height: 1.4),
               ),

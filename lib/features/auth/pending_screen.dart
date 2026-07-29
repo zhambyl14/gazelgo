@@ -36,7 +36,7 @@ class PendingScreen extends ConsumerWidget {
           Icons.hourglass_top,
           Gz.blue,
           t('Өтінім қаралуда'),
-          t('Модератор құжаттарыңызды тексеруде. Әдетте бұл 24 сағатқа дейін уақыт алады.')
+          t('Модератор құжаттарыңызды тексеруде — әдетте 24 сағатқа дейін.')
         ),
     };
 
@@ -103,6 +103,31 @@ class PendingScreen extends ConsumerWidget {
                         ref.invalidate(myExecutorProfileProvider),
                     icon: const Icon(Icons.refresh),
                     label: Text(t('Күйін тексеру')),
+                  ),
+                ),
+              // Қос рөл (0046): орындаушы рөлі бұғатталса да, клиент рөлі
+              // ашық болса — қосымшада ТҰЙЫҚТА ҚАЛМАЙДЫ, клиент болып
+              // жұмысын жалғастырады (аккаунт деңгейіндегі бұғаттау бөлек).
+              if (ref.watch(myProfileProvider).value?.hasClientRole ?? false)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: SizedBox(
+                    width: 260,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          await Repo.switchRole('client');
+                          ref.invalidate(myProfileProvider);
+                          ref.invalidate(myExecutorProfileProvider);
+                        } catch (e) {
+                          if (context.mounted) {
+                            showSnack(context, errText(e), error: true);
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.person_outline),
+                      label: BtnLabel(t('Клиентке ауысу')),
+                    ),
                   ),
                 ),
             ],

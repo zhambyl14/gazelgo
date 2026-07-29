@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -58,8 +59,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _comment = TextEditingController();
   final _price = TextEditingController();
 
+  /// «Заказ туралы толығырақ» өрісі — экран ашылған бойда ОСЫҒАН фокус
+  /// беріледі: клиенттер бұл жолды байқамай, бос қалдырып жіберетін.
+  final _cargoFocus = FocusNode();
+  final _cargoKey = GlobalKey();
+  final _scroll = ScrollController();
+
   late VehicleType _vehicle = widget.vehicleType; // қажет көлік түрі
   bool _legalOk = false;
+
+  /// Заңдылық белгісі АВТОМАТТЫ қойылды ма (алғашқы бірнеше заказдан кейін).
+  bool _legalAuto = false;
   late final TapGestureRecognizer _legalListTap = TapGestureRecognizer()
     ..onTap = () => Navigator.of(
       context,
@@ -83,6 +93,27 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸.
   int get _minPrice => _intercity ? 1000 : 100;
 
+  int? get _priceValue => int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
+
+  /// Жарияларға дайын емес болса — НЕ жетпейтіні (батырманың астында бір
+  /// қатармен көрсетіледі). Дайын болса null.
+  ///
+  /// Батырма өзі СҰР күйде тұрады: бұрын сары батырманы басқанда ғана
+  /// «мынау жетпейді» деген қызыл snackbar шығатын — енді неге басылмайтыны
+  /// алдын ала көрініп тұрады.
+  String? get _missing {
+    if (_route == null) return t('Маршрут есептелуде…');
+    if (_cargo.text.trim().isEmpty) return t('Заказ туралы жазыңыз');
+    final p = _priceValue;
+    if (p == null || p < _minPrice) {
+      return '${t('Бағаңыз кемінде')} ${fmtT(_minPrice)}';
+    }
+    if (!_legalOk) return t('Заңдылық белгісін қойыңыз');
+    return null;
+  }
+
+  bool get _canSubmit => _missing == null;
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +128,43 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _photos.addAll(d.photos);
     }
     _loadRoute();
+    _restoreLegalPreference();
+    // Экран ашылған соң «Заказ туралы толығырақ» өрісіне фокус береміз
+    // (маршрут транзициясы бітсін деп сәл кідіреміз).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusCargo());
+  }
+
+  /// Алғашқы [Prefs.kLegalAutoAfter] заказда клиент заңдылық белгісін
+  /// ҚОЛМЕН қояды — содан кейін ол автоматты қойылып тұрады (белгіні алып
+  /// тастауға болады). Мақсаты: әр заказда бір артық түрту болмасын.
+  Future<void> _restoreLegalPreference() async {
+    if (_legalOk) return;
+    final n = await Prefs.legalConfirms();
+    if (!mounted || n < Prefs.kLegalAutoAfter) return;
+    setState(() {
+      _legalOk = true;
+      _legalAuto = true;
+    });
+  }
+
+  /// Жүк сипаттамасы өрісін көрінетін жерге шығарып, пернетақтаны ашамыз.
+  Future<void> _focusCargo() async {
+    // Slide-up транзициясы аяқталмай тұрып ensureVisible дұрыс есептемейді.
+    await Future.delayed(const Duration(milliseconds: 420));
+    if (!mounted) return;
+    // Жоба заказ жалғасып жатса (гесттен кейінгі автожариялау) не өріс
+    // толтырылған болса — араласпаймыз.
+    if (widget.autoSubmit || _cargo.text.trim().isNotEmpty) return;
+    final ctx = _cargoKey.currentContext;
+    if (ctx != null && ctx.mounted) {
+      await Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.12,
+      );
+    }
+    if (mounted) _cargoFocus.requestFocus();
   }
 
   Future<void> _editFrom() async {
@@ -134,6 +202,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     _cargo.dispose();
     _comment.dispose();
     _price.dispose();
+    _cargoFocus.dispose();
+    _scroll.dispose();
     _legalListTap.dispose();
     super.dispose();
   }
@@ -204,17 +274,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return;
     }
     if (!_legalOk) {
-      showSnack(
-        context,
-        t(
-          'Жүктің заңды екеніне растау белгісін қойыңыз (тыйым салынған заттар тізімі — Келісімде)',
-        ),
-        error: true,
-      );
+      showSnack(context, t('Жүктің заңды екеніне белгі қойыңыз'), error: true);
       return;
     }
     // §2/§3: барлық заказ — клиент бағасын өзі қояды (bidding).
-    final clientPrice = int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
+    final clientPrice = _priceValue;
     if (clientPrice == null || clientPrice < _minPrice) {
       showSnack(
         context,
@@ -277,6 +341,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       // алдымен «қайдан», сосын «қайда» — соңғысы тізімде бірінші тұрады.
       unawaited(AddressBook.pushRecent(_from));
       unawaited(AddressBook.pushRecent(_to));
+      // Заңдылық белгісін ҚОЛМЕН қойған заказды санаймыз: 3-еуінен кейін
+      // белгі келесі заказдарда автоматты қойылып тұрады.
+      if (!_legalAuto) unawaited(Prefs.bumpLegalConfirms());
       if (!mounted) return;
       Navigator.of(context).pop(true);
       Navigator.of(
@@ -333,6 +400,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
+                    controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -362,9 +430,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 Expanded(
                                   child: Text(
                                     _intercity
-                                        ? '${t('Сіз қалалар аралық (межгород) заказ бересіз:')} '
+                                        ? '${t('Қалааралық')}: '
                                               '${_from.city} → ${_to.city}'
-                                        : t('Қала ішіндегі тасымал'),
+                                        : t('Қала ішінде'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12.5,
@@ -445,25 +513,54 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             fontSize: 15,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          t('Заказды тек осы түрдегі орындаушылар көреді.'),
-                          style: const TextStyle(
-                            color: Gz.textSecondary,
-                            fontSize: 12,
+                        const SizedBox(height: 8),
+                        // Такси заказында карусель мағынасыз (санатта жалғыз
+                        // түр) — таңдалғанын ғана көрсетеміз. Жүк/спецтехника
+                        // болса — бұрынғыдай тізім (таксиден басқасы).
+                        if (_vehicle == VehicleType.taxi)
+                          _SelectedVehicleRow(vehicle: _vehicle)
+                        else
+                          VehicleTypeCarousel(
+                            selected: _vehicle,
+                            onChanged: (v) => setState(() => _vehicle = v),
                           ),
+                        const SizedBox(height: 18),
+                        // ---- НЕГІЗГІ ӨРІС: заказ сипаттамасы ----
+                        // Экран ашылған бойда фокус ОСЫҒАН беріледі
+                        // (`_focusCargo`): клиенттер бұл жолды толтыруды
+                        // ұмытып, бос заказ жіберуге тырысатын.
+                        Row(
+                          key: _cargoKey,
+                          children: [
+                            Text(
+                              t('Заказ туралы'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              '*',
+                              style: TextStyle(
+                                color: Gz.red,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
-                        VehicleTypeCarousel(
-                          selected: _vehicle,
-                          onChanged: (v) => setState(() => _vehicle = v),
-                        ),
-                        const SizedBox(height: 16),
                         TextField(
                           controller: _cargo,
+                          focusNode: _cargoFocus,
+                          textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.sentences,
+                          onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
-                            labelText: t('Заказ туралы толығырақ'),
-                            hintText: t('мыс: диван, тоңазытқыш, көшу'),
+                            hintText: _vehicle == VehicleType.taxi
+                                ? t('мыс: 2 жолаушы, багаж бар')
+                                : t('мыс: диван, тоңазытқыш, көшу'),
                             prefixIcon: const Icon(Icons.inventory_2_outlined),
                           ),
                         ),
@@ -471,10 +568,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         TextField(
                           controller: _comment,
                           maxLines: 2,
+                          textCapitalization: TextCapitalization.sentences,
                           decoration: InputDecoration(
-                            hintText: t(
-                              'Қосымша түсініктеме (қабат, лифт, көмек керек пе…)',
-                            ),
+                            hintText: t('Қосымша: қабат, лифт, көмек…'),
                             prefixIcon: const Icon(Icons.notes),
                           ),
                         ),
@@ -484,7 +580,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                t('Жүк фотосы (міндетті емес, макс 5)'),
+                                t('Фото (міндетті емес)'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 14,
@@ -584,11 +680,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _intercity
-                              ? '${t('Қалааралық заказ — бағаны өзіңіз қоясыз (кемінде')} '
-                                    '${fmtT(_minPrice)}). ${t('Газелисттер келіседі не өз бағасын ұсынады.')}'
-                              : '${t('Қала ішіндегі заказ — бағаны өзіңіз қоясыз (кемінде')} '
-                                    '${fmtT(_minPrice)}). ${t('Газелисттер келіседі не өз бағасын ұсынады.')}',
+                          t('Орындаушылар келіседі не өз бағасын ұсынады'),
                           style: const TextStyle(
                             color: Gz.textSecondary,
                             fontSize: 12.5,
@@ -628,75 +720,66 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => setState(() => _legalOk = !_legalOk),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        // Заңдылық белгісі — ЖАСЫЛ ҚҰСБЕЛГІ (бұрын қара
+                        // шаршы Checkbox еді, «қойылмаған» болып көрінетін).
+                        // Алғашқы 3 заказдан кейін автоматты қойылады.
+                        ConfirmCheck(
+                          value: _legalOk,
+                          auto: _legalAuto,
+                          onChanged: (v) => setState(() {
+                            _legalOk = v;
+                            // Қолмен алып тастаса — «автоматты» белгісі кетеді
+                            // (қайта қойса ол қолмен қойылған болып саналады).
+                            _legalAuto = false;
+                          }),
+                          label: Text.rich(
+                            TextSpan(
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                height: 1.4,
+                                color: Gz.textSecondary,
+                              ),
                               children: [
-                                SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: Checkbox(
-                                    value: _legalOk,
-                                    activeColor: Gz.ink,
-                                    onChanged: (v) =>
-                                        setState(() => _legalOk = v ?? false),
-                                  ),
+                                TextSpan(
+                                  text: t('Жүгім заңды, тыйым салынған зат жоқ'),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        height: 1.4,
-                                        color: Gz.textSecondary,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text:
-                                              '${t('Жүгімнің заңды екеніне және тыйым '
-                                              'салынған заттар')} ',
-                                        ),
-                                        TextSpan(
-                                          text: t('тізіміне'),
-                                          recognizer: _legalListTap,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: Gz.ink,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text:
-                                              ' ${t('кірмейтініне кепілдік беремін.')}',
-                                        ),
-                                      ],
-                                    ),
+                                const TextSpan(text: '  ·  '),
+                                TextSpan(
+                                  text: t('Тізім'),
+                                  recognizer: _legalListTap,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Gz.ink,
+                                    decoration: TextDecoration.underline,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+                        // Шарттар толмайынша батырма СҰР (сары = дайын), ал
+                        // астында НЕ жетпейтіні тұрады — қолданушы басып
+                        // көріп, қызыл қатеге тірелмейді.
                         BusyButton(
                           label: t('Заказ жариялау'),
+                          enabled: _canSubmit,
                           onPressed: _submit,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          t(
-                            'Төлем клиент пен орындаушы арасында қолма-қол/аударыммен шешіледі.',
-                          ),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Gz.textSecondary,
-                            fontSize: 12,
+                        Center(
+                          child: Text(
+                            _missing ??
+                                t('Төлем — қолма-қол не аударыммен, тікелей '
+                                    'орындаушыға'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _canSubmit ? Gz.textSecondary : Gz.red,
+                              fontWeight: _canSubmit
+                                  ? FontWeight.w400
+                                  : FontWeight.w700,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -707,6 +790,51 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Таңдалған көлік түрін көрсететін жол — санатта жалғыз түр болғанда
+/// (мыс. «Такси») карусель орнына шығады.
+class _SelectedVehicleRow extends StatelessWidget {
+  final VehicleType vehicle;
+  const _SelectedVehicleRow({required this.vehicle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Gz.ink,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Gz.yellow, width: 1.6),
+      ),
+      child: Row(
+        children: [
+          vehicleIcon(vehicle, size: 24),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                  ),
+                ),
+                Text(
+                  vehicle.description,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.check_circle, color: Gz.yellow, size: 20),
+        ],
       ),
     );
   }

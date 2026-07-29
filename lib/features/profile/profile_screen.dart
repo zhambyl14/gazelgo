@@ -51,10 +51,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context,
       title: t('Аккаунтты өшіру'),
       message: t(
-        'Аккаунтыңыз және онымен байланысты барлық деректер (заказ '
-        'тарихы, пікірлер, баланс, құжаттар) БІРЖОЛА жойылады. Бұл '
-        'әрекетті кері қайтару МҮМКІН ЕМЕС.\n\nБелсенді заказыңыз болса, '
-        'алдымен оны аяқтаңыз.',
+        'Барлық деректер (заказ тарихы, пікірлер, баланс, құжаттар) '
+        'БІРЖОЛА жойылады — кері қайтару мүмкін емес.',
       ),
       cancelLabel: t('Болдырмау'),
       confirmLabel: t('Жалғастыру'),
@@ -196,15 +194,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               fontSize: 13.5,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
+                          // Қос рөлде (0046) рейтинг РӨЛГЕ БӨЛЕК жүреді —
+                          // сол себепті қай рөлдің бағасы көрсетіліп
+                          // тұрғанын айқын жазамыз.
                           Row(
                             children: [
+                              if (!p.isModerator)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  margin: const EdgeInsets.only(right: 7),
+                                  decoration: BoxDecoration(
+                                    color: Gz.yellow.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    p.isExecutor
+                                        ? t('Орындаушы')
+                                        : t('Клиент'),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Gz.ink,
+                                    ),
+                                  ),
+                                ),
                               RatingStars(
                                 p.rating,
                                 count: p.ratingCount,
-                                size: 14,
+                                size: 13,
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 8),
                               const Icon(
                                 Icons.local_shipping,
                                 size: 13,
@@ -212,7 +235,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                '${p.trips} ${t('рейс')}',
+                                '${p.trips}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Gz.textSecondary,
@@ -339,9 +362,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       t('Менің мекенжайларым'),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    subtitle: Text(
-                      t('Үй, жұмыс — бір рет сақтап, жылдам таңдау'),
-                    ),
+                    subtitle: Text(t('Үй, жұмыс — бір рет сақтаңыз')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -363,9 +384,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     t('Пікірлер'),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
+                  // Рөлге бөлек рейтинг: «Орындаушы ретінде 4.8 · 12 пікір».
                   subtitle: Text(
                     p.ratingCount == 0
-                        ? t('Әзірге пікір жоқ')
+                        ? (p.isModerator
+                              ? t('Әзірге пікір жоқ')
+                              : '${p.isExecutor ? t('Орындаушы') : t('Клиент')} '
+                                    '${t('ретінде әзірге пікір жоқ')}')
                         : '${p.rating.toStringAsFixed(1)} · ${p.ratingCount} ${t('пікір')}',
                   ),
                   trailing: const Icon(Icons.chevron_right),

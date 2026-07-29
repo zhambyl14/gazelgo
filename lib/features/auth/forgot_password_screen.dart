@@ -90,7 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     const SizedBox(height: 10),
                     Text(
                       t('Нөміріңізді Telegram арқылы растап, жаңа құпиясөз '
-                      'орнатыңыз. SMS қажет емес.'),
+                          'орнатыңыз — SMS қажет емес.'),
                       style: const TextStyle(
                           color: Gz.textSecondary, fontSize: 14.5, height: 1.5),
                     ),
@@ -106,6 +106,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       TextFormField(
                         controller: _password,
                         obscureText: _obscure,
+                        onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           hintText: t('Жаңа құпиясөз (кемінде 6 таңба)'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -125,6 +126,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       TextFormField(
                         controller: _password2,
                         obscureText: _obscure,
+                        onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           hintText: t('Жаңа құпиясөзді қайталаңыз'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -134,8 +136,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             : null,
                       ),
                       const SizedBox(height: 16),
+                      // Екі құпиясөз сәйкес келмейінше батырма СҰР күйде
+                      // (қосымшадағы ортақ ереже).
                       BusyButton(
-                          label: t('Құпиясөзді жаңарту'), onPressed: _submit),
+                          label: t('Құпиясөзді жаңарту'),
+                          enabled: _password.text.length >= 6 &&
+                              _password.text == _password2.text,
+                          onPressed: _submit),
                     ],
                     const SizedBox(height: 12),
                     OutlinedButton(

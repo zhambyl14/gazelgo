@@ -61,6 +61,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return true;
   }
 
+  /// 2-қадам дайын ба (батырманың сары/сұр күйі осыған қарайды).
+  bool get _step2Ready =>
+      _password.text.length >= 6 && _password.text == _password2.text && _agree;
+
   bool _validateStep2() {
     if (_password.text.length < 6) {
       showSnack(context, t('Кемінде 6 таңба'), error: true);
@@ -178,17 +182,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         const SizedBox(height: 10),
         Row(children: [
-          _roleCard('client', Icons.person_outline, 'Тапсырыс беруші',
-              'Жүк тасымалдатамын'),
+          _roleCard('client', Icons.person_outline, 'Клиент',
+              'Көлік шақырамын'),
           const SizedBox(width: 10),
-          _roleCard('executor', Icons.local_shipping_outlined,
-              'Тапсырыс орындаушы', 'Заказ орындаймын'),
+          _roleCard('executor', Icons.local_shipping_outlined, 'Орындаушы',
+              'Көлігіммен жұмыс істеймін'),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
+        // Қос рөл (0046): таңдау «мәңгілік» емес екенін бірден айтамыз —
+        // адамдар осы қадамда ұзақ ойланып қалмауы үшін.
+        Row(
+          children: [
+            const Icon(Icons.swap_horiz, size: 15, color: Gz.textSecondary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                t('Екінші рөлді кейін де қосасыз'),
+                style: const TextStyle(
+                    fontSize: 12, color: Gz.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
         TextFormField(
           controller: _name,
           textCapitalization: TextCapitalization.words,
           autofocus: true,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: t('Аты-жөніңіз'),
             prefixIcon: const Icon(Icons.badge_outlined),
@@ -196,7 +217,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onFieldSubmitted: (_) => _next(),
         ),
         const SizedBox(height: 20),
-        FilledButton(onPressed: _next, child: Text(t('Келесі'))),
+        // Аты жазылмайынша батырма СҰР — қосымшадағы ортақ ереже.
+        FilledButton(
+          onPressed: _name.text.trim().length < 2 ? null : _next,
+          child: BtnLabel(t('Келесі')),
+        ),
       ],
     );
   }
@@ -214,6 +239,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _password,
           obscureText: _obscure,
           autofocus: true,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: t('Құпиясөз (кемінде 6 таңба)'),
             prefixIcon: const Icon(Icons.lock_outline),
@@ -228,77 +254,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextFormField(
           controller: _password2,
           obscureText: _obscure,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: t('Құпиясөзді қайталаңыз'),
             prefixIcon: const Icon(Icons.lock_outline),
           ),
           onFieldSubmitted: (_) => _next(),
         ),
-        const SizedBox(height: 16),
-        // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім
-        InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => setState(() => _agree = !_agree),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 12),
+        // ҚР 94-V Заңы: дербес деректерді жинауға айқын келісім.
+        // Белгі — жасыл құсбелгі (бұрынғы қара шаршы Checkbox орнына).
+        ConfirmCheck(
+          value: _agree,
+          onChanged: (v) => setState(() => _agree = v),
+          label: Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                  fontSize: 12.5, height: 1.45, color: Gz.textSecondary),
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Checkbox(
-                      value: _agree,
-                      activeColor: Gz.ink,
-                      checkColor: Colors.white,
-                      side: const BorderSide(color: Gz.border, width: 1.6),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      onChanged: (v) => setState(() => _agree = v ?? false),
-                    ),
-                  ),
+                TextSpan(
+                  text: t('Пайдаланушы келісімі'),
+                  recognizer: _termsTap,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Gz.ink,
+                      decoration: TextDecoration.underline),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          height: 1.45,
-                          color: Gz.textSecondary),
-                      children: [
-                        TextSpan(text: t('Мен ')),
-                        TextSpan(
-                          text: t('Пайдаланушы келісімімен'),
-                          recognizer: _termsTap,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Gz.ink,
-                              decoration: TextDecoration.underline),
-                        ),
-                        TextSpan(text: t(' және ')),
-                        TextSpan(
-                          text: t('Құпиялылық саясатымен'),
-                          recognizer: _privacyTap,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Gz.ink,
-                              decoration: TextDecoration.underline),
-                        ),
-                        TextSpan(
-                            text: t(
-                                ' таныстым, дербес деректерімді өңдеуге келісемін.')),
-                      ],
-                    ),
-                  ),
+                TextSpan(text: t(' және ')),
+                TextSpan(
+                  text: t('Құпиялылық саясаты'),
+                  recognizer: _privacyTap,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Gz.ink,
+                      decoration: TextDecoration.underline),
                 ),
+                TextSpan(text: t(' — таныстым, келісемін')),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         Row(children: [
           Expanded(
             child: OutlinedButton(
@@ -308,7 +304,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
-            child: FilledButton(onPressed: _next, child: BtnLabel(t('Келесі'))),
+            child: FilledButton(
+              onPressed: _step2Ready ? _next : null,
+              child: BtnLabel(t('Келесі')),
+            ),
           ),
         ]),
       ],
@@ -331,22 +330,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }),
         ),
         const SizedBox(height: 20),
-        // Нөмір Telegram арқылы РАСТАЛМАЙ тұрып «Тіркелу» батырмасы сұр әрі
-        // басылмайтын күйде тұрады — назар алдымен жоғарыдағы растауға
-        // аударылады (қолданушылар шатаспас үшін).
+        // Нөмір Telegram арқылы РАСТАЛМАЙ тұрып «Тіркелу» батырмасы СҰР әрі
+        // басылмайтын күйде тұрады (расталса — сары): назар алдымен
+        // жоғарыдағы растауға аударылады.
         BusyButton(
           label: t('Тіркелу'),
           enabled: _verifiedPhone != null && _tgToken != null,
           onPressed: _register,
         ),
-        if (_verifiedPhone == null) ...[
-          const SizedBox(height: 8),
-          Text(
-            t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-          ),
-        ],
         if (_role == 'executor') ...[
           const SizedBox(height: 12),
           Container(
@@ -365,9 +356,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    t('Тапсырыс орындаушы тіркелген соң көлік '
-                        'деректері мен құжаттарды толтырады — '
-                        'өтінімді модератор тексереді.'),
+                    t('Тіркелген соң көлік деректері мен құжаттарды '
+                        'толтырасыз — модератор тексереді.'),
                     style: const TextStyle(
                         color: Color(0xFF8A6D00), fontSize: 12, height: 1.45),
                   ),

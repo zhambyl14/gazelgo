@@ -121,6 +121,17 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
     if (mounted) setState(() => _photos.add(bytes));
   }
 
+  /// Жариялауға дайын емес болса — НЕ жетпейтіні (батырманың астында бір
+  /// қатармен), дайын болса null. `_submit` ішіндегі тексерулер орнында
+  /// қалады — олар сервер қатесін де ұстайды.
+  String? get _missing {
+    if (_city == null || _city!.isEmpty) return t('Қаланы таңдаңыз');
+    if (_body.text.trim().length < 10) {
+      return t('Сипаттаманы толығырақ жазыңыз (кемінде 10 таңба)');
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     final city = _city;
     if (city == null || city.isEmpty) {
@@ -258,8 +269,14 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
 
             _label(t('Көлік түрі')),
             const SizedBox(height: 8),
+            // «Такси» түрі модератор сол бөлімді қосқанда ғана тізімде
+            // болады (0046) — әйтпесе таксист/клиент такси хабарландыруын
+            // жариялап, оны ешкім көрмей қалатын.
             VehicleTypeCarousel(
               selected: _vehicle,
+              types: (ref.watch(taxiEnabledProvider).value ?? false)
+                  ? VehicleType.values
+                  : kCargoVehicleTypes,
               onChanged: (v) => setState(() => _vehicle = v),
             ),
             const SizedBox(height: 18),
@@ -325,6 +342,8 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
               maxLines: 5,
               maxLength: 600,
               textCapitalization: TextCapitalization.sentences,
+              // «Жариялау» батырмасының сары/сұр күйі осы өріске байланысты.
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: t('Не ұсынасыз / не керек — қысқаша жазыңыз'),
               ),
@@ -505,17 +524,26 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             ],
             const SizedBox(height: 22),
 
+            // Қала таңдалмай / сипаттама жазылмай тұрып батырма СҰР күйде
+            // (қосымшадағы ортақ ереже), астында не жетпейтіні тұрады.
             BusyButton(
               label: _isRepost ? t('Қайта жариялау') : t('Жариялау'),
+              enabled: _missing == null,
               onPressed: _submit,
             ),
             const SizedBox(height: 10),
             Text(
-              '${t('Хабарландыру')} $kListingDays ${t('күн лентада тұрады, '
-                  'содан соң архивке кетеді. Архивтен қалаған кезде қайта '
-                  'жариялай аласыз.')}',
+              _missing ??
+                  '${t('Хабарландыру')} $kListingDays ${t('күн лентада '
+                      'тұрады, сосын архивке кетеді — кейін қайта жариялай '
+                      'аласыз.')}',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(
+                color: _missing == null ? Gz.textSecondary : Gz.red,
+                fontWeight:
+                    _missing == null ? FontWeight.w400 : FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

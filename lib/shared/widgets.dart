@@ -111,6 +111,78 @@ class _BusyButtonState extends State<BusyButton> {
   }
 }
 
+/// Растау белгісі — Material [Checkbox] орнына. Дефолт Checkbox таңдалғанда
+/// ҚАРА ШАРШЫ болып көрінетін (әсіресе Android-та), қолданушылар оны
+/// «галочка қойылмады» деп ойлайтын. Мұнда белгі — АЙҚЫН ЖАСЫЛ ДӨҢГЕЛЕК
+/// ішіндегі ақ құсбелгі, ал бос күйі — жай ғана сұр контур.
+class ConfirmCheck extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Widget label;
+
+  /// Белгі автоматты қойылған болса — «есте сақталды» деген жұмсақ белгі.
+  final bool auto;
+
+  const ConfirmCheck({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.label,
+    this.auto = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: value ? Gz.green : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: value ? Gz.green : Gz.border,
+                  width: 1.8,
+                ),
+              ),
+              child: Icon(
+                Icons.check_rounded,
+                size: 17,
+                color: value ? Colors.white : Colors.transparent,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  label,
+                  if (value && auto) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      t('Автоматты қойылды — қаласаңыз алып тастаңыз'),
+                      style: const TextStyle(
+                          fontSize: 11, color: Gz.textSecondary),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SectionCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
@@ -225,12 +297,24 @@ class InitialsAvatar extends StatelessWidget {
 }
 
 /// Аты + рейтинг + поездка саны бар қысқа профиль жолы.
+///
+/// [asRole] — рейтингті ҚАЙ РӨЛ бойынша көрсету ('client' | 'executor').
+/// Қос рөлде (0046) бір адамның екі бағасы бар: экрандағы контекст қай
+/// рөлге қатысты болса — соны береміз (мыс. заказ бетінде клиентті
+/// «клиент» ретінде көрсетеміз, ол қазір орындаушы режимінде отырса да).
+/// null болса — сол адамның ағымдағы белсенді рөліндегі бағасы.
 class ProfileBrief extends StatelessWidget {
   final Profile? profile;
   final double radius;
   final String? subtitle;
-  const ProfileBrief(
-      {super.key, required this.profile, this.radius = 20, this.subtitle});
+  final String? asRole;
+  const ProfileBrief({
+    super.key,
+    required this.profile,
+    this.radius = 20,
+    this.subtitle,
+    this.asRole,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +334,14 @@ class ProfileBrief extends StatelessWidget {
                       fontWeight: FontWeight.w800, fontSize: 14.5)),
               Row(
                 children: [
-                  RatingStars(p?.rating ?? 0, count: p?.ratingCount ?? 0, size: 12),
+                  RatingStars(
+                      asRole == null
+                          ? (p?.rating ?? 0)
+                          : (p?.ratingAs(asRole!) ?? 0),
+                      count: asRole == null
+                          ? (p?.ratingCount ?? 0)
+                          : (p?.ratingCountAs(asRole!) ?? 0),
+                      size: 12),
                   if ((p?.trips ?? 0) > 0) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.local_shipping,

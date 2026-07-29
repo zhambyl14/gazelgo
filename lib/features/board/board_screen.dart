@@ -174,6 +174,7 @@ class _BoardTabsState extends ConsumerState<_BoardTabs>
             isExecutor: isExecutor,
             onApply: _applyFilter,
             onRefresh: _reloadFeed,
+            taxiOn: ref.watch(taxiEnabledProvider).value ?? false,
           ),
           _MineTab(
             future: _mine,
@@ -199,6 +200,10 @@ class _FeedTab extends StatelessWidget {
   final void Function(String? city, VehicleType? vehicle) onApply;
   final VoidCallback onRefresh;
 
+  /// «Такси» бөлімі қосулы ма (0046) — сүзгі тізіміне такси сол кезде ғана
+  /// кіреді (өшулі болса ол түрдегі хабарландыру мүлдем болмайды).
+  final bool taxiOn;
+
   const _FeedTab({
     required this.future,
     required this.city,
@@ -206,6 +211,7 @@ class _FeedTab extends StatelessWidget {
     required this.isExecutor,
     required this.onApply,
     required this.onRefresh,
+    required this.taxiOn,
   });
 
   int get _activeCount => (city == null ? 0 : 1) + (vehicle == null ? 0 : 1);
@@ -218,7 +224,8 @@ class _FeedTab extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (_) => _FilterSheet(city: city, vehicle: vehicle),
+      builder: (_) =>
+          _FilterSheet(city: city, vehicle: vehicle, taxiOn: taxiOn),
     );
     if (res != null) onApply(res.city, res.vehicle);
   }
@@ -463,7 +470,12 @@ class _BoardFilter {
 class _FilterSheet extends StatefulWidget {
   final String? city;
   final VehicleType? vehicle;
-  const _FilterSheet({required this.city, required this.vehicle});
+  final bool taxiOn;
+  const _FilterSheet({
+    required this.city,
+    required this.vehicle,
+    required this.taxiOn,
+  });
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();
@@ -601,7 +613,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                   children: [
                     _chip(t('Барлығы'), _vehicle == null,
                         () => setState(() => _vehicle = null)),
-                    for (final v in VehicleType.values)
+                    // Такси өшулі болса — тізімде де болмайды (0046).
+                    for (final v in (widget.taxiOn
+                        ? VehicleType.values
+                        : kCargoVehicleTypes))
                       _chip(v.label, _vehicle == v,
                           () => setState(() => _vehicle = v)),
                   ],

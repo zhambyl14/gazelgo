@@ -15,6 +15,7 @@ import '../../shared/app_drawer.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
 import '../../shared/vehicle_picker.dart';
+import '../../shared/widgets.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
@@ -54,7 +55,19 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   PickedAddress? _from;
   bool _resolvingFrom = true;
   PickedAddress? _to;
-  VehicleType _vehicle = VehicleType.gazelle;
+
+  /// Санат (0046): «Такси» бөлімі модератор жағынан ҚОСУЛЫ болғанда ғана
+  /// таңдау көрінеді. Өшулі болса экран баяғыдай — бір ғана көлік каруселі.
+  VehicleCategory _category = VehicleCategory.cargo;
+
+  /// Жүк/спецтехника санатындағы соңғы таңдау — таксиге ауысып, қайта
+  /// оралғанда жоғалмауы үшін бөлек сақталады.
+  VehicleType _cargoVehicle = VehicleType.gazelle;
+
+  /// Заказға кететін НАҚТЫ көлік түрі.
+  VehicleType get _vehicle => _category == VehicleCategory.taxi
+      ? VehicleType.taxi
+      : _cargoVehicle;
 
   @override
   void initState() {
@@ -195,27 +208,16 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
         .inFilter('status', kActiveOrderStatuses);
     final count = (active as List).length;
     if (count > 0 && mounted) {
-      final go = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t('Белсенді заказ бар')),
-          content: Text(
-            '${t('Сізде')} $count ${t('белсенді заказ бар. Оны «Тапсырыстар» бетінен қадағалай аласыз.')}\n\n'
-            '${t('Жаңа заказ бересіз бе?')}',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Жоқ')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Иә, жаңа заказ')),
-            ),
-          ],
-        ),
+      final go = await confirmDialog(
+        context,
+        title: t('Белсенді заказ бар'),
+        message: '$count ${t('белсенді заказыңыз бар — оны «Тапсырыстар» '
+            'бетінен қадағалаңыз. Жаңа заказ бересіз бе?')}',
+        cancelLabel: t('Жоқ'),
+        confirmLabel: t('Жаңа заказ'),
+        icon: Icons.local_shipping_outlined,
       );
-      if (go != true) return;
+      if (!go) return;
     }
     if (!mounted) return;
 
@@ -229,6 +231,18 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureBottomInset());
+    // «Такси» бөлімі қосулы ма (0046). Желі жоқта/жүктелгенше — false, яғни
+    // экран баяғы қалпында (жалғыз карусель) болады.
+    final taxiOn = ref.watch(taxiEnabledProvider).value ?? false;
+    // Модератор бөлімді жаңа ғана ӨШІРСЕ, таксиде тұрған клиент тұйықта
+    // қалмауы керек — жүк санатына қайтарамыз.
+    if (!taxiOn && _category == VehicleCategory.taxi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _category == VehicleCategory.taxi) {
+          setState(() => _category = VehicleCategory.cargo);
+        }
+      });
+    }
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(isGuest: widget.isGuest),
@@ -311,7 +325,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         clipBehavior: Clip.antiAlias,
                         color: Gz.surface,
                         child: InkWell(
-                          onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                          onTap: () {
+                            // Модератор «Такси»/«Хабарландырулар» бөлімін
+                            // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
+                            // қайта ашуды талап етпей, күйін сұрап аламыз.
+                            ref.invalidate(taxiEnabledProvider);
+                            _scaffoldKey.currentState?.openDrawer();
+                          },
                           child: Image.asset(
                             'assets/icon/icon.png',
                             width: 46,
@@ -415,8 +435,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         color: Gz.yellow,
                                         borderRadius: BorderRadius.circular(11),
                                       ),
-                                      child: const Icon(
-                                        Icons.local_shipping,
+                                      child: Icon(
+                                        _category == VehicleCategory.taxi
+                                            ? Icons.local_taxi
+                                            : Icons.local_shipping,
                                         size: 19,
                                         color: Gz.ink,
                                       ),
@@ -436,9 +458,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           ),
                                           if (!_panelCollapsed)
                                             Text(
-                                              t(
-                                                'Картаны жылжытып, орныңызды белгілеңіз',
-                                              ),
+                                              t('Картадан орныңызды белгілеңіз'),
                                               style: const TextStyle(
                                                 color: Gz.textSecondary,
                                                 fontSize: 11.5,
@@ -473,13 +493,50 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         CrossAxisAlignment.stretch,
                                     children: [
                                       const SizedBox(height: 10),
+                                      // ---- САНАТ (такси қосулы болғанда) ----
+                                      // Модератор «Такси» бөлімін қосса ғана
+                                      // екі иконка шығады; өшулі болса бұл
+                                      // блок мүлдем салынбайды.
+                                      if (taxiOn) ...[
+                                        VehicleCategoryTabs(
+                                          selected: _category,
+                                          onChanged: (c) =>
+                                              setState(() => _category = c),
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
                                       // көлік түрін таңдау — заказ тек сол
-                                      // түрдегі орындаушыларға көрінеді
-                                      VehicleTypeCarousel(
-                                        selected: _vehicle,
-                                        onChanged: (v) =>
-                                            setState(() => _vehicle = v),
-                                      ),
+                                      // түрдегі орындаушыларға көрінеді.
+                                      // Такси санатында түр біреу — карусель
+                                      // орнына қысқа түсініктеме тұрады.
+                                      if (_category == VehicleCategory.taxi)
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.info_outline,
+                                              size: 15,
+                                              color: Gz.textSecondary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                VehicleType.taxi.description,
+                                                style: const TextStyle(
+                                                  color: Gz.textSecondary,
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      else
+                                        VehicleTypeCarousel(
+                                          selected: _cargoVehicle,
+                                          onChanged: (v) => setState(
+                                            () => _cargoVehicle = v,
+                                          ),
+                                        ),
                                       const SizedBox(height: 10),
                                       // Қайдан — картамен байланысты, бірақ
                                       // түртіп сәл өзгертуге болады
