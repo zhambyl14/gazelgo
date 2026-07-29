@@ -351,7 +351,9 @@ class _ListingSheetState extends State<_ListingSheet> {
             FilledButton.icon(
               onPressed: () => _call(phone),
               icon: const Icon(Icons.call, size: 20),
-              label: Text('${t('Қоңырау шалу')} · $phone'),
+              // Жазуға нөмір де кіреді («Позвонить · +7 700 123 45 67»):
+              // иконкамен бірге тар экранға сыймай екінші жолға түсетін.
+              label: BtnLabel('${t('Қоңырау шалу')} · $phone'),
             ),
             const SizedBox(height: 6),
             Text(
@@ -418,13 +420,13 @@ class _ListingSheetState extends State<_ListingSheet> {
             OutlinedButton.icon(
               onPressed: () => _archive(l),
               icon: const Icon(Icons.archive_outlined, size: 20),
-              label: Text(t('Лентадан алып тастау')),
+              label: BtnLabel(t('Лентадан алып тастау')),
             )
           else
             FilledButton.icon(
               onPressed: () => _repost(l),
               icon: const Icon(Icons.refresh, size: 20),
-              label: Text(t('Қайта жариялау')),
+              label: BtnLabel(t('Қайта жариялау')),
             ),
           const SizedBox(height: 8),
           TextButton.icon(

@@ -375,24 +375,32 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
               ),
             ),
             const SizedBox(width: 12),
+            // Sidebar тар (≈300px) әрі иконка мен trailing белгі орын
+            // алады: орысша жазулар («Стать исполнителем») сыймай екінші
+            // жолға түсетін. BtnLabel — сыймаса кішірейтеді, ЕШҚАШАН
+            // екінші жолға түспейді.
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: BtnLabel(
+                      _title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                  Text(
-                    _subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: Gz.textSecondary,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: BtnLabel(
+                      _subtitle,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Gz.textSecondary,
+                      ),
                     ),
                   ),
                 ],

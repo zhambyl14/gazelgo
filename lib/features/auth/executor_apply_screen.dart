@@ -284,6 +284,42 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     }
   }
 
+  /// Азаматтық таңдау чипі — ЕКЕУІ ӘРҚАШАН БІРДЕЙ БИІКТІКТЕ (48px) және
+  /// мәтіні бір жолда. Material [ChoiceChip] мазмұнға қарай биіктігін
+  /// өзгертетін де, бір чип екі жолға түскенде екеуі әртүрлі болып, қатар
+  /// қиқы-жиқы көрінетін.
+  Widget _citizenChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 48,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? Gz.yellow : Gz.bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? Gz.yellowDark : Gz.border,
+            width: 1.4,
+          ),
+        ),
+        child: BtnLabel(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: selected ? Gz.ink : Gz.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _docTile(String title, _PickedDoc doc, {String? hint}) {
     return SectionCard(
       padding: const EdgeInsets.all(12),
@@ -571,33 +607,25 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     style: const
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 8),
+                // Тақырып «Азаматтық» болғандықтан чиптерде ҚЫСҚА атау
+                // жеткілікті: бұрын «Басқа ел азаматымын» (орысша «Я
+                // гражданин другой страны») жарты экрандық чипке сыймай,
+                // ЕКІНШІ ЖОЛҒА түсіп, чиптер әртүрлі биіктікте тұратын.
                 Row(
                   children: [
                     Expanded(
-                      child: ChoiceChip(
-                        label: Text(t('ҚР азаматымын')),
+                      child: _citizenChip(
+                        label: t('Қазақстан'),
                         selected: !_isForeign,
-                        showCheckmark: false,
-                        selectedColor: Gz.yellow,
-                        labelStyle: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: !_isForeign ? Gz.ink : Gz.textSecondary,
-                        ),
-                        onSelected: (_) => setState(() => _isForeign = false),
+                        onTap: () => setState(() => _isForeign = false),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: ChoiceChip(
-                        label: Text(t('Басқа ел азаматымын')),
+                      child: _citizenChip(
+                        label: t('Басқа ел'),
                         selected: _isForeign,
-                        showCheckmark: false,
-                        selectedColor: Gz.yellow,
-                        labelStyle: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: _isForeign ? Gz.ink : Gz.textSecondary,
-                        ),
-                        onSelected: (_) => setState(() => _isForeign = true),
+                        onTap: () => setState(() => _isForeign = true),
                       ),
                     ),
                   ],

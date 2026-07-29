@@ -408,6 +408,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         children: [
           Icon(icon, color: enabled ? Gz.green : Gz.textSecondary),
           const SizedBox(width: 12),
+          // Қосқыш пен иконка орын алады: түсініктеме жолы сыймай екінші
+          // жолға түскенде картаның биіктігі «секіріп» тұратын — BtnLabel
+          // сыймаса кішірейтеді де, қатар әрқашан бір биіктікте қалады.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,11 +423,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     color: enabled ? Gz.green : Gz.textSecondary,
                   ),
                 ),
-                Text(
-                  enabled ? onLabel : offLabel,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Gz.textSecondary,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: BtnLabel(
+                    enabled ? onLabel : offLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Gz.textSecondary,
+                    ),
                   ),
                 ),
               ],

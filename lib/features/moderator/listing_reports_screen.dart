@@ -378,7 +378,7 @@ class _ReportCardState extends State<_ReportCard> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _busy ? null : () => _resolve('keep'),
-                    child: Text(
+                    child: BtnLabel(
                       t('Негізсіз'),
                       style: const TextStyle(fontSize: 12.5),
                     ),
@@ -392,10 +392,9 @@ class _ReportCardState extends State<_ReportCard> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: _busy ? null : () => _resolve('delete'),
-                    child: Text(
+                    // Бұрын «…» болып ҚИЫЛАТЫН — енді сыймаса кішірейеді.
+                    child: BtnLabel(
                       t('Хабарландыруды өшіру'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12.5),
                     ),
                   ),

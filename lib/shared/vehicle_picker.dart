@@ -223,6 +223,17 @@ class VehicleCategoryTabs extends StatelessWidget {
     );
   }
 
+  /// Санат плиткасы. Иконка мен жазу ТІК орналасқан — сол себепті жазуға
+  /// плиткының БҮКІЛ ені беріледі: «Грузовые · Спецтехника» деген ұзын
+  /// орысша атау да бір жолда, оқылатын өлшемде тұрады. Көлденең қатарда
+  /// (иконка + жазу) ол атау шамадан тыс кішірейіп кететін.
+  ///
+  /// Биіктігі ЕКЕУІНДЕ де қатаң бірдей — бір плитка екінші жолға түсіп,
+  /// көршісінен биік болып қалу мүмкіндігі мүлдем жоқ. Өлшемі көлік
+  /// каруселінің карточкасымен БІРДЕЙ (72px): панельде екі блок бір
+  /// визуалды ырғақта тұрады әрі карта орны бекер жоғалмайды.
+  static const tileHeight = 72.0;
+
   Widget _tile({
     required bool active,
     required String emoji,
@@ -234,8 +245,8 @@ class VehicleCategoryTabs extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        height: 66,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: tileHeight,
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
         decoration: BoxDecoration(
           color: active ? Gz.ink : Gz.bg,
           borderRadius: BorderRadius.circular(14),
@@ -249,30 +260,31 @@ class VehicleCategoryTabs extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(emoji, style: const TextStyle(fontSize: 22, height: 1)),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: active ? Colors.white : Gz.ink,
-                        ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 23, height: 1)),
+                const SizedBox(height: 6),
+                // Тұрақты биіктікті box + FittedBox: жүйе шрифті
+                // үлкейтілсе де жазу рамкадан аспайды, қиылмайды.
+                SizedBox(
+                  width: double.infinity,
+                  height: 16,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: active ? Colors.white : Gz.ink,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
             if (badge != null)
               Positioned(

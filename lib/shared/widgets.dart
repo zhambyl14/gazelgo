@@ -589,10 +589,18 @@ class InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Атау бағаны ТҰРАҚТЫ ЕНДІ: ұзын орысша атаулар («Государственный
+          // номер») бұрын екі жолға түсіп, мәні (оң жақ баған) жоғарыда
+          // жалғыз қалып, жол қиқы-жиқы көрінетін. BtnLabel сыймаса
+          // кішірейтеді — атау да, мәні де бір қатарда тегіс тұрады.
           SizedBox(
-            width: 130,
-            child: Text(label,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5)),
+            width: 132,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: BtnLabel(label,
+                  style:
+                      const TextStyle(color: Gz.textSecondary, fontSize: 13.5)),
+            ),
           ),
           Expanded(
             child: Text(value,
@@ -908,17 +916,22 @@ Future<bool> confirmDialog(
                 style: const TextStyle(
                     color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
             const SizedBox(height: 22),
+            // Екі батырма қатарда — әрқайсысына экранның ЖАРТЫСЫ ғана
+            // тиеді (тар телефонда ≈125px). Орысша жазулар («Стать
+            // клиентом», «Продолжить») сол енге сыймай ЕКІНШІ ЖОЛҒА түсіп,
+            // батырмалар әртүрлі биіктікте тұратын. [BtnLabel] сыймаса
+            // кішірейтеді — қатар әрқашан тегіс.
             Row(
               children: [
                 Expanded(
                   child: emphasizeCancel
                       ? FilledButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(cancelText),
+                          child: BtnLabel(cancelText),
                         )
                       : OutlinedButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(cancelText),
+                          child: BtnLabel(cancelText),
                         ),
                 ),
                 const SizedBox(width: 10),
@@ -931,7 +944,7 @@ Future<bool> confirmDialog(
                                   color: confirmColor.withValues(alpha: 0.4),
                                   width: 1.4)),
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(confirmLabel),
+                          child: BtnLabel(confirmLabel),
                         )
                       : FilledButton(
                           style: FilledButton.styleFrom(
@@ -940,7 +953,7 @@ Future<bool> confirmDialog(
                               shadowColor:
                                   confirmColor.withValues(alpha: 0.35)),
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(confirmLabel),
+                          child: BtnLabel(confirmLabel),
                         ),
                 ),
               ],

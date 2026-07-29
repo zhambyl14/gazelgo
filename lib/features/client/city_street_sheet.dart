@@ -7,6 +7,7 @@ import '../../core/geo.dart';
 import '../../core/kz_cities.dart';
 import '../../core/lang.dart';
 import '../../core/theme.dart';
+import '../../shared/widgets.dart';
 import 'address_picker.dart';
 import 'my_addresses_screen.dart';
 import 'saved_addresses.dart';
@@ -766,10 +767,11 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                     ),
                   ),
                   icon: const Icon(Icons.add_location_alt, size: 20),
-                  label: Text(
+                  // Жазуға қолданушы жазған мәтін кіреді — ұзындығы белгісіз.
+                  // Бұрын «…» болып ҚИЫЛАТЫН (адрестің өзі көрінбей қалатын),
+                  // енді сыймаса кішірейеді.
+                  label: BtnLabel(
                     '${t('Осы адресті қолдану:')} «${_search.text.trim()}»',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

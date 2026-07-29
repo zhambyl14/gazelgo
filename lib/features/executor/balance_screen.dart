@@ -202,7 +202,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                         ),
                       ),
                       icon: const Icon(Icons.account_balance_wallet),
-                      label: Text(t('Kaspi-мен төлеу')),
+                      label: BtnLabel(t('Kaspi-мен төлеу')),
                     ),
                   ),
                 ],
@@ -218,7 +218,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                               : Icons.check_circle,
                           color: _receipt == null ? null : Gz.green,
                         ),
-                        label: Text(
+                        label: BtnLabel(
                           t(_receipt == null ? 'Чек тіркеу' : 'Чек тіркелді'),
                         ),
                       ),

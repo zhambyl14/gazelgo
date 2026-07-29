@@ -157,16 +157,27 @@ class _ExecutorTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      '${ep.vehicleTitle} · ${ep.vehiclePlate}'
-                      '${ep.city != null ? ' · ${ep.city}' : ''}',
-                      style: const TextStyle(
-                          color: Gz.textSecondary, fontSize: 12),
+                    // Екі жол да ДИНАМИКАЛЫҚ (көлік атауы, нөмір, қала,
+                    // сомалар) — ұзындығы алдын ала белгісіз. Тізім
+                    // карточкалары бірдей биіктікте тұруы үшін екеуі де
+                    // бір жолда: сыймаса кішірейеді.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: BtnLabel(
+                        '${ep.vehicleTitle} · ${ep.vehiclePlate}'
+                        '${ep.city != null ? ' · ${ep.city}' : ''}',
+                        style: const TextStyle(
+                            color: Gz.textSecondary, fontSize: 12),
+                      ),
                     ),
-                    Text(
-                      '${t('Баланс')}: ${fmtT(ep.balance)} · ${t('Табыс')}: ${fmtT(ep.totalEarned)}',
-                      style: const TextStyle(
-                          fontSize: 12.5, fontWeight: FontWeight.w600),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: BtnLabel(
+                        '${t('Баланс')}: ${fmtT(ep.balance)} · '
+                        '${t('Табыс')}: ${fmtT(ep.totalEarned)}',
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w600),
+                      ),
                     ),
                     if (ep.busyOrderId != null)
                       Container(
