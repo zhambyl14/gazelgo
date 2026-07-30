@@ -1,7 +1,7 @@
 name: tasu
 description: "Tasu — жүк тасымалы және спецтехника платформасы (клиент, орындаушы, модератор)."
 publish_to: 'none'
-version: 1.0.4+15
+version: 1.0.4+16
 environment:
   sdk: ^3.11.5
 
@@ -30,7 +30,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.4
 
 flutter_launcher_icons:
   android: true
@@ -42,6 +41,23 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFC400"
   adaptive_icon_foreground: "assets/icon/icon_fg.png"
 
+# Splash БАПТАУЫ — пакеттің өзі ӘДЕЙІ dev_dependencies-те ЖОҚ.
+#
+# СЕБЕБІ: `flutter_native_splash` — тек бір реттік ГЕНЕРАТОР. Ол Android
+# drawable-дарын (`launch_background`, `android12splash`), `styles.xml`-ді
+# және iOS LaunchImage-ін жасайды; олардың бәрі репозиторийде сақтаулы,
+# ал қосымша кодында пакет мүлдем импортталмайды.
+#
+# Ал dev_dependency болып тұрғанда Flutter оны RELEASE build-та Gradle
+# classpath-ынан алып тастайды, бірақ `GeneratedPluginRegistrant.java`
+# ішінде тіркеуін қалдырады да, appbundle жиналмай қалады:
+#   error: package net.jonhanson.flutter_native_splash does not exist
+#
+# SPLASH-ты ӨЗГЕРТУ КЕРЕК БОЛСА:
+#   1) dart pub add -d flutter_native_splash
+#   2) dart run flutter_native_splash:create   (төмендегі баптау қолданылады)
+#   3) dart pub remove flutter_native_splash   ← міндетті, әйтпесе release
+#      build жоғарыдағы қатемен құлайды
 flutter_native_splash:
   # Ақ фон — қосымша ашылғанда Flutter-дегі _Splash экранымен (Gz.surface = ақ)
   # дәл сәйкес келеді, сондықтан native splash → логотип+слоган үзіліссіз ауысады.
