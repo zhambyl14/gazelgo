@@ -9,6 +9,8 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
+import '../../shared/status_check.dart';
+import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
 import 'balance_screen.dart';
 import 'dashboard_screen.dart';
@@ -162,7 +164,7 @@ class _LineControlBar extends ConsumerWidget {
               ? e.moderationComment!
               : t('Деректерді түзетіп, қайта жіберіңіз.'),
           actionLabel: t('Қайта толтыру'),
-          onAction: () => Navigator.of(context).push(
+          onAction: () async => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ExecutorApplyScreen(existing: e)),
           ),
         );
@@ -171,84 +173,27 @@ class _LineControlBar extends ConsumerWidget {
       return _StatusCard(
         icon: Icons.hourglass_top,
         color: Gz.blue,
-        title: t('Аккаунтыңыз тексеруде'),
-        subtitle: t(
-          'Модератор құжаттарыңызды тексеруде. Расталған соң тариф '
-          'сатып алып, заказ қабылдай аласыз.',
-        ),
+        title: t('Өтінім тексеруде'),
+        subtitle: t('Модератор құжаттарыңызды қарауда — әдетте 24 сағатқа '
+            'дейін. Расталған соң хабарлама келеді, содан кейін тариф алып '
+            'заказ қабылдайсыз.'),
         actionLabel: t('Күйін тексеру'),
-        onAction: () => ref.invalidate(myExecutorProfileProvider),
+        onAction: () => checkExecutorStatus(context, ref),
       );
     }
 
     final hasTariff = s != null && s.hasTariff;
 
-    // Тариф жоқ — тариф сатып алуға шақыру картасы
+    // Тариф жоқ — тариф сатып алуға шақыру картасы (ТІК орналасу:
+    // мәтінге толық ен тиеді, батырма астында толық жазуымен тұрады).
     if (!hasTariff) {
-      return InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openTariffs(context),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: Gz.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Gz.border),
-            boxShadow: Gz.cardShadow,
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Gz.yellow.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.bolt, color: Gz.yellowDark, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t('Тарифіңіз жоқ'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
-                      ),
-                    ),
-                    Text(
-                      t('Заказ қабылдау үшін тариф сатып алыңыз'),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Gz.textSecondary,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () => _openTariffs(context),
-                child: Text(t('Кіру')),
-              ),
-            ],
-          ),
-        ),
+      return _StatusCard(
+        icon: Icons.bolt,
+        color: Gz.yellowDark,
+        title: t('Тарифіңіз жоқ'),
+        subtitle: t('Заказ қабылдау үшін тариф сатып алыңыз'),
+        actionLabel: t('Тарифке кіру'),
+        onAction: () async => _openTariffs(context),
       );
     }
 
@@ -329,7 +274,12 @@ class _StatusCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String? actionLabel;
-  final VoidCallback? onAction;
+
+  /// Async болуы МАҢЫЗДЫ: «Күйін тексеру» басылғанда spinner көрінеді де,
+  /// нәтижесі snackbar-мен айтылады. Бұрын түйме үнсіз ғана деректі қайта
+  /// сұрайтын — қолданушыға ЕШТЕҢЕ өзгермеген болып көрініп, «не тексеріп
+  /// жатыр, жауабы қайда?» деп шатасатын.
+  final Future<void> Function()? onAction;
   const _StatusCard({
     required this.icon,
     required this.color,
@@ -341,65 +291,65 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ТІК орналасу (иконка+мәтін жоғарыда, батырма толық енімен астында).
+    // Бұрын үшеуі БІР ҚАТАРДА тұратын: батырма («Проверить статус») өз
+    // енін алып, мәтінге тек 100px қалатын да, тақырып та, түсініктеме де
+    // «Ваш а…», «Модератор прове ряет ва…» болып қиылып, оқылмайтын еді.
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Gz.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.4)),
         boxShadow: Gz.cardShadow,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                Text(
-                  subtitle,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 12.5,
-                  ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Gz.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(width: 8),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              onPressed: onAction,
-              child: Text(actionLabel!),
-            ),
+            const SizedBox(height: 12),
+            // BusyButton — басылғанда spinner көрсетеді (әрекет шынымен
+            // жүріп жатқаны көрініп тұрады).
+            BusyButton(label: actionLabel!, onPressed: onAction!),
           ],
         ],
       ),

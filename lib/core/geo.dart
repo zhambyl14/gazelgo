@@ -226,11 +226,24 @@ class Geo {
       '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
 
   /// Маршрут: OSRM демо-сервері, болмаса хаверсин × 1.3.
-  static Future<GeoRoute> route(LatLng from, LatLng to) async {
+  static Future<GeoRoute> route(LatLng from, LatLng to) =>
+      routeVia([from, to]);
+
+  /// Маршрут БІРНЕШЕ нүкте арқылы (аралық аялдамалармен, 0047).
+  /// OSRM нүктелерді `;` арқылы қабылдайды әрі оларды БЕРІЛГЕН РЕТПЕН
+  /// жүреді (қайта реттемейді) — клиент қосқан адрес тәртібі сақталады.
+  ///
+  /// [points] кемінде 2 нүкте болуы шарт; біреу ғана болса нөлдік маршрут
+  /// қайтады (қосымша сынбауы үшін).
+  static Future<GeoRoute> routeVia(List<LatLng> points) async {
+    if (points.length < 2) {
+      return GeoRoute(distanceKm: 0, durationMin: 0, points: points);
+    }
     try {
+      final coordsPath =
+          points.map((p) => '${p.longitude},${p.latitude}').join(';');
       final uri = Uri.parse(
-          'https://router.project-osrm.org/route/v1/driving/'
-          '${from.longitude},${from.latitude};${to.longitude},${to.latitude}'
+          'https://router.project-osrm.org/route/v1/driving/$coordsPath'
           '?overview=full&geometries=geojson');
       final res = await http.get(uri, headers: _ua)
           .timeout(const Duration(seconds: 10));
@@ -254,11 +267,17 @@ class Geo {
     } catch (_) {
       // fallback төменде
     }
-    final km = haversineKm(from, to) * 1.3;
+    // OSRM қолжетімсіз болса — түзу сызық бойынша шамалау (әр аялдама
+    // арасындағы бөлікті ҚОСЫП есептейміз, 1.3 — жол қиралығына түзету).
+    var km = 0.0;
+    for (var i = 0; i + 1 < points.length; i++) {
+      km += haversineKm(points[i], points[i + 1]);
+    }
+    km *= 1.3;
     return GeoRoute(
       distanceKm: km,
       durationMin: km / 40 * 60,
-      points: [from, to],
+      points: List.of(points),
     );
   }
 

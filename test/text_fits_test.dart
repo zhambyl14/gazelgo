@@ -59,14 +59,21 @@ void main() {
         onChanged: (_) {},
       ),
     ));
-    // «Такси» қысқа, «Грузовые · Спецтехника» әлдеқайда ұзын — соған
-    // қарамастан екі плитка да дәл бірдей биіктікте болуы керек.
     final heights = tester
         .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
         .map((w) => tester.getSize(find.byWidget(w)).height)
         .toList();
     expect(heights, hasLength(2));
     expect(heights.toSet(), {VehicleCategoryTabs.tileHeight});
+
+    // ЕҢ МАҢЫЗДЫСЫ: екі жазудың ШРИФТІ БІРДЕЙ болуы керек. FittedBox
+    // біреуін кішірейтіп, екіншісін толық қалдырса — қатар қиқы-жиқы
+    // көрінеді. Сол себепті жазулар қысқа: екеуі де толық сыяды.
+    final sizes = ['Такси', 'Спецтехника']
+        .map((s) => tester.getSize(find.text(s)).height)
+        .toSet();
+    expect(sizes, hasLength(1),
+        reason: 'плиткалардың шрифт өлшемі әртүрлі болмауы керек');
   });
 
   testWidgets('InfoRow: ұзын атау жолды биіктетпейді', (tester) async {
@@ -93,13 +100,14 @@ void main() {
         onChanged: (_) {},
       ),
     ));
-    // Каруселдегі барлық көрінетін карточка дәл бірдей (72px) болуы керек —
-    // «Ассенизатор»/«Манипулятор» сияқты ұзын атаулар да оны бұзбайды.
+    // Каруселдегі барлық көрінетін карточка дәл бірдей биіктікте болуы
+    // керек — «Ассенизатор»/«Манипулятор» сияқты ұзын атаулар да оны
+    // бұзбайды.
     final heights = tester
         .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
         .map((w) => tester.getSize(find.byWidget(w)).height)
         .toSet();
-    expect(heights, {72.0});
+    expect(heights, {VehicleTypeCarousel.cardHeight});
   });
 
   testWidgets('ConfirmCheck: белгі дөңгелегі мәтінге қарамай 26×26',

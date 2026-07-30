@@ -349,6 +349,75 @@ class ExecutorProfile {
   ].where((e) => e.trim().isNotEmpty).join(' ');
 }
 
+// ---------- Аралық аялдама (0047) ----------
+/// Заказдың АРАЛЫҚ нүктесі: алу (from) мен ақырғы жеткізу (to) арасында.
+///
+/// Клиент бір заказбен бірнеше жерге жеткізе алады («адрес қосу»).
+/// Схемада `from_*` — әрқашан БІРІНШІ, `to_*` — әрқашан СОҢҒЫ нүкте, ал
+/// осылар оның арасындағылар. Сол себепті ескі код үшін маршрут
+/// бұрынғыдай «A → B» болып қалады.
+class OrderStop {
+  final String address;
+  final double lat;
+  final double lng;
+  final String? city;
+
+  const OrderStop({
+    required this.address,
+    required this.lat,
+    required this.lng,
+    this.city,
+  });
+
+  factory OrderStop.fromMap(Map<String, dynamic> m) => OrderStop(
+    address: m['address'] as String? ?? '',
+    lat: _d(m['lat']),
+    lng: _d(m['lng']),
+    city: m['city'] as String?,
+  );
+
+  Map<String, dynamic> toMap() => {
+    'address': address,
+    'lat': lat,
+    'lng': lng,
+    'city': city,
+  };
+
+  /// Дисплейге: қала белгілі болса «Қала, көше».
+  String get display => _cityAddr(city, address);
+
+  static List<OrderStop> listFrom(dynamic v) {
+    if (v is! List) return const [];
+    return v
+        .whereType<Map>()
+        .map((m) => OrderStop.fromMap(Map<String, dynamic>.from(m)))
+        .toList(growable: false);
+  }
+}
+
+/// Тізімдегі БІР-БІРІНЕН ӨЗГЕ қалаларды қайтарады (null/бос елеусіз).
+///
+/// [Geo.sameCity] арқылы салыстырады — «Тараз», «Тараз қаласы», «Тараз
+/// қалалық әкімшілігі» БІР қала болып саналады, сол себепті қарапайым
+/// `Set` жарамайды. Маршрут қалааралық па екенін анықтауға қолданылады.
+List<String> distinctCities(Iterable<String?> raw) {
+  final out = <String>[];
+  for (final c in raw) {
+    if (c == null || c.trim().isEmpty) continue;
+    if (out.any((seen) => Geo.sameCity(seen, c))) continue;
+    out.add(c);
+  }
+  return out;
+}
+
+/// Клиент қоса алатын АРАЛЫҚ аялдамалардың макс саны. Маршрутта барлығы
+/// `1 + kMaxExtraStops + 1` нүкте болады (алу + аралықтар + жеткізу).
+///
+/// МАҢЫЗДЫ: бұл санды өзгертсеңіз, серверде де (`clean_order_stops`
+/// ішіндегі `k_max_stops` және `orders_stops_check` шектеуі) өзгертіңіз —
+/// әйтпесе сервер артық аялдаманы `TOO_MANY_STOPS` деп қайтарады.
+const int kMaxExtraStops = 2;
+
 // ---------- Order ----------
 class Order {
   final String id;
@@ -371,6 +440,9 @@ class Order {
   final DateTime? createdAt, acceptedAt, completedAt;
   final String? cancelReason;
   final String? cancelledBy;
+
+  /// Аралық аялдамалар (0047) — бос болса кәдімгі «A → B» заказ.
+  final List<OrderStop> stops;
 
   Order.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
@@ -399,18 +471,36 @@ class Order {
       acceptedAt = _dt(m['accepted_at']),
       completedAt = _dt(m['completed_at']),
       cancelReason = m['cancel_reason'] as String?,
-      cancelledBy = m['cancelled_by'] as String?;
+      cancelledBy = m['cancelled_by'] as String?,
+      stops = OrderStop.listFrom(m['stops']);
 
   bool get isActive => kActiveOrderStatuses.contains(status);
   bool get isVip => tariff == 'vip';
   int? get displayPrice => finalPrice ?? systemPrice ?? clientPrice;
 
-  /// Қалалар аралық (межгород) заказ ба — қала аттары белгілі болса ғана есептеледі.
-  bool get intercity =>
-      fromCity != null && toCity != null && !Geo.sameCity(fromCity, toCity);
+  /// Қалалар аралық (межгород) заказ ба. Аралық аялдамалар (0047) да
+  /// ескеріледі: аялдама басқа қалада болса заказ да қалааралық болып
+  /// саналады (серверде `create_order` дәл осылай есептейді).
+  ///
+  /// Салыстыру [Geo.sameCity] арқылы — ол әкімшілік жұрнақтарды («Тараз
+  /// қаласы» / «Тараз қалалық әкімшілігі») бір қала деп таниды, сол
+  /// себепті жай Set қолданылмайды.
+  bool get intercity => distinctCities([
+    fromCity,
+    ...stops.map((s) => s.city),
+    toCity,
+  ]).length > 1;
 
   String get fromDisplay => _cityAddr(fromCity, fromAddress);
   String get toDisplay => _cityAddr(toCity, toAddress);
+
+  /// Маршруттың БАРЛЫҚ нүктесі көрсетуге дайын күйде: алу → аялдамалар →
+  /// жеткізу. Экрандар осыны айналдырып, тізім/карта салады.
+  List<String> get routeDisplay =>
+      [fromDisplay, ...stops.map((s) => s.display), toDisplay];
+
+  /// Аралық аялдамасы бар ма (UI «+N аялдама» деп белгілеу үшін).
+  bool get hasStops => stops.isNotEmpty;
 }
 
 // ---------- Offer ----------

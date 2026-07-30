@@ -47,6 +47,11 @@ class VehicleTypeCarousel extends StatefulWidget {
   final VehicleType selected;
   final ValueChanged<VehicleType> onChanged;
   final List<VehicleType>? types;
+
+  /// Карточка биіктігі — картаның орнын бекер жемеу үшін ЫҚШАМ (клиенттің
+  /// басты бетінде панель картаны ысырады, әр пиксель маңызды).
+  static const cardHeight = 62.0;
+
   const VehicleTypeCarousel({
     super.key,
     required this.selected,
@@ -59,9 +64,9 @@ class VehicleTypeCarousel extends StatefulWidget {
 }
 
 class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
-  static const _cardW = 82.0;
-  static const _cardH = 72.0;
-  static const _gap = 8.0;
+  static const _cardW = 74.0;
+  static const _cardH = VehicleTypeCarousel.cardHeight;
+  static const _gap = 7.0;
 
   /// Таңдалған түр тізімде болмаса (мыс. орындаушы такси таңдап қойған, ал
   /// модератор кейін такси бөлімін өшірген) — оны басына қосамыз: таңдау
@@ -93,23 +98,35 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
       children: [
         _carousel(),
         // Таңдалған көлік түрінің қысқа түсініктемесі (мыс. «Ауыр жүк»).
+        // ТҰРАҚТЫ БИІКТІК (16px, бір жол): түсініктеме ұзын түрге ауысқанда
+        // панель «секіріп» биіктемейді, демек карта да жылжып кетпейді.
         if (desc.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.info_outline, size: 15, color: Gz.textSecondary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  desc,
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 16,
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline,
+                    size: 14, color: Gz.textSecondary),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      desc,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: Gz.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ],
@@ -136,7 +153,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               duration: const Duration(milliseconds: 150),
               width: _cardW,
               height: _cardH,
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               decoration: BoxDecoration(
                 color: sel ? Gz.ink : Gz.bg,
                 borderRadius: BorderRadius.circular(12),
@@ -148,14 +165,14 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  vehicleIcon(v, size: 27, color: fg),
-                  const SizedBox(height: 6),
+                  vehicleIcon(v, size: 25, color: fg),
+                  const SizedBox(height: 4),
                   // FittedBox: атау рамкаға сыймаса — кішірейеді (қиылмайды,
                   // екінші жолға түспейді). Тұрақты өлшемді box (ені + биіктігі)
                   // жүйе шрифті масштабы үлкейгенде де асып кетуді болдырмайды.
                   SizedBox(
                     width: double.infinity,
-                    height: 14,
+                    height: 13,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -163,7 +180,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                         maxLines: 1,
                         softWrap: false,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w800,
                           color: fg,
                         ),
@@ -181,9 +198,9 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
 }
 
 /// Клиенттің қызмет САНАТЫ (0046) — «Такси» бөлімі қосулы кезде ғана
-/// көрінеді. Екі үлкен плитка:
+/// көрінеді. Екі ықшам плитка:
 ///   • Такси — оң жақ төбесінде «ЖАҢА» белгісі бар;
-///   • Жүк · Спецтехника — басқанда астында бұрынғы көлік каруселі ашылады.
+///   • Спецтехника — басқанда астында көлік түрлерінің каруселі ашылады.
 /// Модератор такси бөлімін өшірсе бұл виджет мүлдем салынбайды, экран
 /// баяғыдай (жалғыз карусель) болып қалады.
 enum VehicleCategory { taxi, cargo }
@@ -191,6 +208,12 @@ enum VehicleCategory { taxi, cargo }
 class VehicleCategoryTabs extends StatelessWidget {
   final VehicleCategory selected;
   final ValueChanged<VehicleCategory> onChanged;
+
+  /// Плитканың биіктігі — ЫҚШАМ (52): бұл блок клиенттің басты бетінде
+  /// картаның орнын жейді, сол себепті мүмкіндігінше аласа. Екеуінде де
+  /// ҚАТАҢ бірдей, демек бір плитка көршісінен биік болып қалмайды.
+  static const tileHeight = 52.0;
+
   const VehicleCategoryTabs({
     super.key,
     required this.selected,
@@ -215,7 +238,12 @@ class VehicleCategoryTabs extends StatelessWidget {
           child: _tile(
             active: selected == VehicleCategory.cargo,
             emoji: '🚚',
-            label: t('Жүк · Спецтехника'),
+            // ҚЫСҚА атау ӘДЕЙІ: «Жүк · Спецтехника» деген ұзын жазу
+            // орысшада плиткаға сыймай, FittedBox оны кішірейтетін де,
+            // көршісіндегі «Такси» толық өлшемде тұрып, ЕКІ ПЛИТКАНЫҢ
+            // ШРИФТІ ӘРТҮРЛІ болып көрінетін. Қысқа атаумен екеуі де
+            // толық өлшемінде сыяды → шрифт бірдей.
+            label: t('Спецтехника'),
             onTap: () => onChanged(VehicleCategory.cargo),
           ),
         ),
@@ -223,17 +251,8 @@ class VehicleCategoryTabs extends StatelessWidget {
     );
   }
 
-  /// Санат плиткасы. Иконка мен жазу ТІК орналасқан — сол себепті жазуға
-  /// плиткының БҮКІЛ ені беріледі: «Грузовые · Спецтехника» деген ұзын
-  /// орысша атау да бір жолда, оқылатын өлшемде тұрады. Көлденең қатарда
-  /// (иконка + жазу) ол атау шамадан тыс кішірейіп кететін.
-  ///
-  /// Биіктігі ЕКЕУІНДЕ де қатаң бірдей — бір плитка екінші жолға түсіп,
-  /// көршісінен биік болып қалу мүмкіндігі мүлдем жоқ. Өлшемі көлік
-  /// каруселінің карточкасымен БІРДЕЙ (72px): панельде екі блок бір
-  /// визуалды ырғақта тұрады әрі карта орны бекер жоғалмайды.
-  static const tileHeight = 72.0;
-
+  /// Санат плиткасы: иконка мен жазу БІР ҚАТАРДА (аласа болуы үшін).
+  /// Атаулар қысқа болғандықтан екеуі де толық өлшемінде сыяды.
   Widget _tile({
     required bool active,
     required String emoji,
@@ -246,7 +265,7 @@ class VehicleCategoryTabs extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: tileHeight,
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
+        padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
           color: active ? Gz.ink : Gz.bg,
           borderRadius: BorderRadius.circular(14),
@@ -260,39 +279,43 @@ class VehicleCategoryTabs extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 23, height: 1)),
-                const SizedBox(height: 6),
-                // Тұрақты биіктікті box + FittedBox: жүйе шрифті
-                // үлкейтілсе де жазу рамкадан аспайды, қиылмайды.
-                SizedBox(
-                  width: double.infinity,
-                  height: 16,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: active ? Colors.white : Gz.ink,
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 19, height: 1)),
+                  const SizedBox(width: 7),
+                  // Тұрақты биіктікті box + FittedBox: жүйе шрифті
+                  // үлкейтілсе де жазу рамкадан аспайды, қиылмайды.
+                  Flexible(
+                    child: SizedBox(
+                      height: 16,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: active ? Colors.white : Gz.ink,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             if (badge != null)
               Positioned(
-                top: -9,
+                top: -8,
                 right: -4,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                   decoration: BoxDecoration(
                     color: Gz.yellow,
                     borderRadius: BorderRadius.circular(20),
@@ -301,7 +324,7 @@ class VehicleCategoryTabs extends StatelessWidget {
                   child: Text(
                     badge,
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 8.5,
                       height: 1.2,
                       fontWeight: FontWeight.w900,
                       color: Gz.ink,

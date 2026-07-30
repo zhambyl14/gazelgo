@@ -183,6 +183,67 @@ class ConfirmCheck extends StatelessWidget {
   }
 }
 
+/// Маршрут мекенжайының бір жолы (қайдан / аялдама / қайда).
+///
+/// Клиенттің басты бетіндегі панельде де, заказ құру экранында да ортақ:
+/// иконка + мәтін + оң жақтағы әрекет. Мәтін БІР ЖОЛДА қалады (адрес ұзын
+/// болса «…» — толық нұсқасын түртіп ашады), сол себепті аялдама қосылғанда
+/// панельдің биіктігі болжамды өседі, «секіріп» кетпейді.
+class AddressRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String text;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  /// Мәтін әлі таңдалмаған (placeholder) — солғын көрсетіледі.
+  final bool dim;
+
+  const AddressRow({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+    this.trailing,
+    this.onTap,
+    this.dim = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: Gz.bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: iconColor),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: dim ? FontWeight.w500 : FontWeight.w700,
+                  color: dim ? Gz.textSecondary : Gz.ink,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            ?trailing,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SectionCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
@@ -409,11 +470,22 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// A → B адрес бағаны.
+/// A → … → B адрес бағаны.
+///
+/// [stops] — АРАЛЫҚ аялдамалар (0047): «Қайдан» мен «Қайда» арасында
+/// күлгін нүктелермен көрсетіледі. Орындаушы маршруттың барлық нүктесін
+/// БІРДЕН көруі керек — әйтпесе заказды алып, кейін «айтылмаған екінші
+/// адрес» шыға келетін.
 class RouteLine extends StatelessWidget {
   final String from;
   final String to;
-  const RouteLine({super.key, required this.from, required this.to});
+  final List<String> stops;
+  const RouteLine({
+    super.key,
+    required this.from,
+    required this.to,
+    this.stops = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -449,14 +521,23 @@ class RouteLine extends StatelessWidget {
             ),
           ],
         );
+    Widget connector() => Padding(
+          padding: const EdgeInsets.only(left: 8.5),
+          child: Container(width: 2, height: 14, color: Gz.border),
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         row(originRing(), t('Қайдан'), from),
-        Padding(
-          padding: const EdgeInsets.only(left: 8.5),
-          child: Container(width: 2, height: 14, color: Gz.border),
-        ),
+        for (var i = 0; i < stops.length; i++) ...[
+          connector(),
+          row(
+            const Icon(Icons.adjust, size: 17, color: Gz.violet),
+            '${t('Аялдама')} ${i + 1}',
+            stops[i],
+          ),
+        ],
+        connector(),
         row(const Icon(Icons.location_on, size: 18, color: Gz.red), t('Қайда'), to),
       ],
     );
@@ -505,12 +586,18 @@ class OrderCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              RouteLine(from: order.fromDisplay, to: order.toDisplay),
+              RouteLine(
+                from: order.fromDisplay,
+                to: order.toDisplay,
+                stops: order.stops.map((s) => s.display).toList(),
+              ),
               if (showMap) ...[
                 const SizedBox(height: 8),
                 RouteMap(
                   from: LatLng(order.fromLat, order.fromLng),
                   to: LatLng(order.toLat, order.toLng),
+                  stops:
+                      order.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
                   height: 104,
                 ),
               ],
@@ -522,6 +609,14 @@ class OrderCard extends StatelessWidget {
                   _tag(Icons.local_shipping, order.vehicleType.label,
                       leading: vehicleIcon(order.vehicleType,
                           size: 14, color: Gz.textSecondary)),
+                  // Аралық аялдама бар заказ (0047) — орындаушы оны БІРДЕН
+                  // көруі керек: маршрут ұзағырақ, жұмыс та көбірек.
+                  if (order.hasStops)
+                    _tag(
+                      Icons.adjust,
+                      '+${order.stops.length} ${t('аялдама')}',
+                      color: Gz.violet,
+                    ),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -874,6 +969,22 @@ class GazelGoHero extends StatelessWidget {
 /// [emphasizeCancel] — қайтарылмайтын әрекеттің СОҢҒЫ растауында қауіпті
 /// түймені басым (қызыл, толтырылған) емес, қайта «бас тарту» түймесін басым
 /// қылу үшін (мыс. аккаунтты өшірудің 2-қадамы).
+/// Диалогтағы екі батырмаға ортақ стиль: көлденең padding КІШІ (мәтінге
+/// орын қалуы үшін) әрі шрифт 15 — сонда орысша жазулар да толық өлшемінде
+/// бір жолда сыяды (FittedBox қосылмайды → екеуінің шрифті бірдей).
+final ButtonStyle _dialogBtnStyle = ButtonStyle(
+  padding: const WidgetStatePropertyAll(
+    EdgeInsets.symmetric(horizontal: 6),
+  ),
+  textStyle: const WidgetStatePropertyAll(
+    TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      fontFamily: Gz.fontFamily,
+    ),
+  ),
+);
+
 Future<bool> confirmDialog(
   BuildContext context, {
   required String title,
@@ -916,20 +1027,28 @@ Future<bool> confirmDialog(
                 style: const TextStyle(
                     color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
             const SizedBox(height: 22),
-            // Екі батырма қатарда — әрқайсысына экранның ЖАРТЫСЫ ғана
-            // тиеді (тар телефонда ≈125px). Орысша жазулар («Стать
-            // клиентом», «Продолжить») сол енге сыймай ЕКІНШІ ЖОЛҒА түсіп,
-            // батырмалар әртүрлі биіктікте тұратын. [BtnLabel] сыймаса
-            // кішірейтеді — қатар әрқашан тегіс.
+            // Екі батырма қатарда — әрқайсысына диалог енінің ЖАРТЫСЫ ғана
+            // тиеді (тар телефонда ≈125px). Material-дың әдепкі көлденең
+            // padding-і (24+24) сол еннен 48px «жеп», мәтінге ~77px қана
+            // қалдыратын: «Да, покупаю» / «Стать клиентом» сыймай ЕКІНШІ
+            // ЖОЛҒА түсетін. Енді:
+            //   • padding 6-ға дейін кішірейді → мәтінге ~113px;
+            //   • шрифт 15 (16 емес) — бәрі толық өлшемінде сыяды;
+            //   • [BtnLabel] қорғаныш ретінде қалады.
+            // МАҢЫЗДЫ: жазулар сыйып тұрғанда FittedBox МҮЛДЕМ қосылмайды,
+            // сол себепті екі батырманың ШРИФТІ БІРДЕЙ болады (біреуі
+            // кішірейіп, екіншісі үлкен болып тұрмайды).
             Row(
               children: [
                 Expanded(
                   child: emphasizeCancel
                       ? FilledButton(
+                          style: _dialogBtnStyle,
                           onPressed: () => Navigator.pop(ctx, false),
                           child: BtnLabel(cancelText),
                         )
                       : OutlinedButton(
+                          style: _dialogBtnStyle,
                           onPressed: () => Navigator.pop(ctx, false),
                           child: BtnLabel(cancelText),
                         ),
@@ -938,20 +1057,25 @@ Future<bool> confirmDialog(
                 Expanded(
                   child: emphasizeCancel
                       ? OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                              foregroundColor: confirmColor,
-                              side: BorderSide(
-                                  color: confirmColor.withValues(alpha: 0.4),
-                                  width: 1.4)),
+                          style: _dialogBtnStyle.copyWith(
+                            foregroundColor:
+                                WidgetStatePropertyAll(confirmColor),
+                            side: WidgetStatePropertyAll(BorderSide(
+                                color: confirmColor.withValues(alpha: 0.4),
+                                width: 1.4)),
+                          ),
                           onPressed: () => Navigator.pop(ctx, true),
                           child: BtnLabel(confirmLabel),
                         )
                       : FilledButton(
-                          style: FilledButton.styleFrom(
-                              backgroundColor: confirmColor,
-                              foregroundColor: Colors.white,
-                              shadowColor:
-                                  confirmColor.withValues(alpha: 0.35)),
+                          style: _dialogBtnStyle.copyWith(
+                            backgroundColor:
+                                WidgetStatePropertyAll(confirmColor),
+                            foregroundColor:
+                                const WidgetStatePropertyAll(Colors.white),
+                            shadowColor: WidgetStatePropertyAll(
+                                confirmColor.withValues(alpha: 0.35)),
+                          ),
                           onPressed: () => Navigator.pop(ctx, true),
                           child: BtnLabel(confirmLabel),
                         ),

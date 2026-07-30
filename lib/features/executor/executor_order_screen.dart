@@ -45,6 +45,7 @@ class ExecutorOrderScreen extends StatelessWidget {
                 RouteMap(
                   from: LatLng(o.fromLat, o.fromLng),
                   to: LatLng(o.toLat, o.toLng),
+                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
                   height: 160,
                 ),
                 const SizedBox(height: 10),
@@ -53,7 +54,11 @@ class ExecutorOrderScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      RouteLine(from: o.fromDisplay, to: o.toDisplay),
+                      RouteLine(
+                        from: o.fromDisplay,
+                        to: o.toDisplay,
+                        stops: o.stops.map((s) => s.display).toList(),
+                      ),
                       const Divider(height: 20),
                       InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)

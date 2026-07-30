@@ -477,9 +477,14 @@ class Repo {
     List<String> photos = const [],
     String? fromCity,
     String? toCity,
+    /// Аралық аялдамалар (0047) — алу мен ақырғы жеткізу АРАСЫНДАҒЫ
+    /// нүктелер, клиент қосқан РЕТПЕН. Сервер тексеріп, тазалап сақтайды
+    /// (`clean_order_stops`): шектен асса `TOO_MANY_STOPS`.
+    List<OrderStop> stops = const [],
   }) async {
     final res = await c.rpc('create_order', params: {
       'p_type': 'bidding',
+      'p_stops': stops.map((s) => s.toMap()).toList(),
       'p_from_address': fromAddress,
       'p_from_lat': fromLat,
       'p_from_lng': fromLng,

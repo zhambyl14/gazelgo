@@ -333,6 +333,12 @@ class _FeedCard extends StatelessWidget {
                       color: Gz.textSecondary,
                     ),
                   ),
+                  // Аралық аялдама бар заказ (0047) — лентада БІРДЕН көрінеді.
+                  if (order.hasStops)
+                    _tag(
+                      Icons.adjust,
+                      '+${order.stops.length} ${t('аялдама')}',
+                    ),
                   if (order.fromCity != null && order.toCity != null)
                     _tag(
                       order.intercity
@@ -546,6 +552,7 @@ class _OrderSheet extends StatelessWidget {
           RouteMap(
             from: LatLng(o.fromLat, o.fromLng),
             to: LatLng(o.toLat, o.toLng),
+            stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
             height: 150,
           ),
           const SizedBox(height: 10),
@@ -554,7 +561,11 @@ class _OrderSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RouteLine(from: o.fromDisplay, to: o.toDisplay),
+                RouteLine(
+                        from: o.fromDisplay,
+                        to: o.toDisplay,
+                        stops: o.stops.map((s) => s.display).toList(),
+                      ),
                 const Divider(height: 20),
                 InfoRow(t('Жүк'), o.cargoDesc),
                 if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),

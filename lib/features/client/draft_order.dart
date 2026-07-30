@@ -13,6 +13,9 @@ import 'address_picker.dart';
 class DraftOrder {
   final PickedAddress from;
   final PickedAddress to;
+
+  /// Аралық аялдамалар (0047) — гест қосқан мекенжайлар да жоғалмауы керек.
+  final List<PickedAddress> stops;
   final VehicleType vehicle;
   final String cargo;
   final String comment;
@@ -20,15 +23,21 @@ class DraftOrder {
   final List<Uint8List> photos;
   final bool legalOk;
 
+  /// Такси заказындағы жолаушы саны — гест таңдағаны сақталады (әйтпесе
+  /// кіргеннен кейін әдепкі мәнмен жарияланып кететін).
+  final int passengers;
+
   DraftOrder({
     required this.from,
     required this.to,
+    this.stops = const [],
     required this.vehicle,
     required this.cargo,
     required this.comment,
     required this.priceText,
     required this.photos,
     required this.legalOk,
+    this.passengers = 2,
   });
 }
 

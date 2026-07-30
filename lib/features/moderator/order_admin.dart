@@ -185,7 +185,11 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      RouteLine(from: o.fromDisplay, to: o.toDisplay),
+                      RouteLine(
+                        from: o.fromDisplay,
+                        to: o.toDisplay,
+                        stops: o.stops.map((s) => s.display).toList(),
+                      ),
                       const Divider(height: 20),
                       InfoRow(t('Жүк'), o.cargoDesc),
                       InfoRow(t('Көлік'), o.vehicleType.label),

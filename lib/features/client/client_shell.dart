@@ -47,6 +47,8 @@ class _ClientShellState extends ConsumerState<ClientShell> {
               builder: (_) => CreateOrderScreen(
                 from: draft.from,
                 to: draft.to,
+                // Гест қосқан аралық аялдамалар да жалғасады (0047).
+                stops: draft.stops,
                 vehicleType: draft.vehicle,
                 draft: draft,
                 autoSubmit: true,

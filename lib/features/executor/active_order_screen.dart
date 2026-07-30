@@ -153,12 +153,16 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                 RouteMap(
                   from: LatLng(o.fromLat, o.fromLng),
                   to: LatLng(o.toLat, o.toLng),
+                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
                   height: 170,
                 ),
                 const SizedBox(height: 10),
                 _NavToggle(
                   onA: () => _navigate(o.fromLat, o.fromLng),
                   onB: () => _navigate(o.toLat, o.toLng),
+                  onStops: [
+                    for (final s in o.stops) () => _navigate(s.lat, s.lng),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 SectionCard(
@@ -166,7 +170,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      RouteLine(from: o.fromDisplay, to: o.toDisplay),
+                      RouteLine(
+                        from: o.fromDisplay,
+                        to: o.toDisplay,
+                        stops: o.stops.map((s) => s.display).toList(),
+                      ),
                       const Divider(height: 20),
                       InfoRow(t('Жүк'), o.cargoDesc),
                       if (o.comment.isNotEmpty)
@@ -346,10 +354,23 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 class _NavToggle extends StatelessWidget {
   final VoidCallback onA;
   final VoidCallback onB;
-  const _NavToggle({required this.onA, required this.onB});
+
+  /// Аралық аялдамаларға навигация (0047) — маршрутта аялдама болса
+  /// орындаушы оған да жол сала алуы КЕРЕК, әйтпесе екінші мекенжайға
+  /// қалай баратынын өзі іздеп отыратын.
+  final List<VoidCallback> onStops;
+
+  const _NavToggle({
+    required this.onA,
+    required this.onB,
+    this.onStops = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Аялдама саны өскенде батырмалар тарылып, жазулары қиылмауы үшін
+    // жазу да ықшам («A», «1», «2», «B») — иконка мағынасын береді.
+    final compact = onStops.isNotEmpty;
     return Container(
       height: 52,
       clipBehavior: Clip.antiAlias,
@@ -365,15 +386,25 @@ class _NavToggle extends StatelessWidget {
             child: _NavHalf(
                 icon: Icons.trip_origin,
                 color: Gz.green,
-                label: t('A навигация'),
+                label: compact ? 'A' : t('A навигация'),
                 onTap: onA),
           ),
+          for (var i = 0; i < onStops.length; i++) ...[
+            Container(width: 1.4, color: Gz.border),
+            Expanded(
+              child: _NavHalf(
+                  icon: Icons.adjust,
+                  color: Gz.violet,
+                  label: '${i + 1}',
+                  onTap: onStops[i]),
+            ),
+          ],
           Container(width: 1.4, color: Gz.border),
           Expanded(
             child: _NavHalf(
                 icon: Icons.location_on,
                 color: Gz.red,
-                label: t('B навигация'),
+                label: compact ? 'B' : t('B навигация'),
                 onTap: onB),
           ),
         ],

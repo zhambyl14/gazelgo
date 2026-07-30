@@ -56,6 +56,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   bool _resolvingFrom = true;
   PickedAddress? _to;
 
+  /// Аралық аялдамалар (0047) — «қайдан» мен «қайда» АРАСЫНДА, клиент
+  /// қосқан ретпен. Макс [kMaxExtraStops].
+  final List<PickedAddress> _stops = [];
+
   /// Санат (0046): «Такси» бөлімі модератор жағынан ҚОСУЛЫ болғанда ғана
   /// таңдау көрінеді. Өшулі болса экран баяғыдай — бір ғана көлік каруселі.
   VehicleCategory _category = VehicleCategory.cargo;
@@ -156,6 +160,29 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     if (res != null) setState(() => _to = res);
   }
 
+  /// Аралық аялдама қосу/өзгерту (0047). [index] — `_stops` ішіндегі орын;
+  /// null болса ЖАҢА аялдама тізімнің соңына қосылады.
+  ///
+  /// Аялдамалар ӘРҚАШАН «қайдан» мен «қайда» АРАСЫНДА тұрады, сол себепті
+  /// маршрут реті: _from → _stops[0] → … → _to.
+  Future<void> _pickStop({int? index}) async {
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Аялдама мекенжайы'),
+      initial: index == null ? null : _stops[index],
+    );
+    if (res == null || !mounted) return;
+    setState(() {
+      if (index == null) {
+        _stops.add(res);
+      } else {
+        _stops[index] = res;
+      }
+    });
+  }
+
+  void _removeStop(int index) => setState(() => _stops.removeAt(index));
+
   void _onPanelDragUpdate(DragUpdateDetails d) => _dragAccum += d.delta.dy;
 
   void _onPanelDragEnd(DragEndDetails d) {
@@ -192,6 +219,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
           CreateOrderScreen(
             from: _from!,
             to: _to!,
+            stops: List.of(_stops),
             vehicleType: _vehicle,
             isGuest: true,
           ),
@@ -223,7 +251,12 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
     await Navigator.of(context).push(
       slideUpRoute(
-        CreateOrderScreen(from: _from!, to: _to!, vehicleType: _vehicle),
+        CreateOrderScreen(
+          from: _from!,
+          to: _to!,
+          stops: List.of(_stops),
+          vehicleType: _vehicle,
+        ),
       ),
     );
   }
@@ -538,118 +571,109 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           ),
                                         ),
                                       const SizedBox(height: 10),
-                                      // Қайдан — картамен байланысты, бірақ
-                                      // түртіп сәл өзгертуге болады
-                                      InkWell(
+                                      // ---- МАРШРУТ: қайдан → аялдамалар → қайда ----
+                                      // «Қайдан» картамен байланысты, бірақ
+                                      // түртіп сәл өзгертуге болады.
+                                      AddressRow(
+                                        icon: Icons.trip_origin,
+                                        iconColor: Gz.green,
+                                        text: _resolvingFrom
+                                            ? t('Анықталуда…')
+                                            : (_from?.address ??
+                                                  t('Картаны жылжытыңыз')),
                                         onTap: _resolvingFrom
                                             ? null
                                             : _editFrom,
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 11,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Gz.bg,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.trip_origin,
-                                                size: 18,
-                                                color: Gz.green,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  _resolvingFrom
-                                                      ? t('Анықталуда…')
-                                                      : (_from?.address ??
-                                                            t(
-                                                              'Картаны жылжытыңыз',
-                                                            )),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Gz.ink,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ),
-                                              if (_resolvingFrom)
-                                                const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                )
-                                              else
-                                                const Icon(
-                                                  Icons.edit_outlined,
-                                                  size: 16,
-                                                  color: Gz.textSecondary,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      InkWell(
-                                        onTap: _pickTo,
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 11,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Gz.bg,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.location_on,
-                                                size: 18,
-                                                color: Gz.red,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  _to?.address ??
-                                                      t('Қайда жеткіземіз?'),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontWeight: _to == null
-                                                        ? FontWeight.w500
-                                                        : FontWeight.w700,
-                                                    color: _to == null
-                                                        ? Gz.textSecondary
-                                                        : Gz.ink,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ),
-                                              const Icon(
-                                                Icons.chevron_right,
+                                        trailing: _resolvingFrom
+                                            ? const SizedBox(
+                                                width: 14,
+                                                height: 14,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.edit_outlined,
+                                                size: 16,
                                                 color: Gz.textSecondary,
                                               ),
-                                            ],
+                                      ),
+                                      // Аралық аялдамалар (0047) — қосылған
+                                      // ретімен, әрқайсысын түртіп өзгертуге
+                                      // не ✕ арқылы алып тастауға болады.
+                                      for (var i = 0; i < _stops.length; i++)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 6),
+                                          child: AddressRow(
+                                            icon: Icons.adjust,
+                                            iconColor: Gz.violet,
+                                            text: _stops[i].address,
+                                            onTap: () => _pickStop(index: i),
+                                            trailing: IconButton(
+                                              onPressed: () => _removeStop(i),
+                                              icon: const Icon(Icons.close),
+                                              iconSize: 16,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              padding: EdgeInsets.zero,
+                                              constraints:
+                                                  const BoxConstraints(
+                                                    minWidth: 28,
+                                                    minHeight: 28,
+                                                  ),
+                                              color: Gz.textSecondary,
+                                              tooltip: t('Алып тастау'),
+                                            ),
                                           ),
                                         ),
+                                      const SizedBox(height: 6),
+                                      AddressRow(
+                                        icon: Icons.location_on,
+                                        iconColor: Gz.red,
+                                        text: _to?.address ??
+                                            t('Қайда жеткіземіз?'),
+                                        dim: _to == null,
+                                        onTap: _pickTo,
+                                        trailing: const Icon(
+                                          Icons.chevron_right,
+                                          color: Gz.textSecondary,
+                                        ),
                                       ),
+                                      // «+ Мекенжай қосу» — жеткізу нүктесі
+                                      // белгіленген соң ғана (аялдама әрқашан
+                                      // ЕКЕУІНІҢ АРАСЫНДА тұрады) әрі шектен
+                                      // аспағанда.
+                                      if (_to != null &&
+                                          _stops.length < kMaxExtraStops)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: TextButton.icon(
+                                            onPressed: () => _pickStop(),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                  ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.add_circle_outline,
+                                              size: 17,
+                                            ),
+                                            label: BtnLabel(
+                                              t('Мекенжай қосу'),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       const SizedBox(height: 12),
                                       FilledButton(
                                         onPressed:

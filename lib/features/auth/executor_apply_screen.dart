@@ -404,12 +404,28 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         title: Text(resubmit
             ? t('Өтінімді қайта жіберу')
             : t('Орындаушы өтінімі')),
+        // Тек ИКОНКА түсініксіз болатын: клиент рөлінен келген адам
+        // «шыққым келсе қайсысын басам?» деп тұрып қалатын. Енді АЙҚЫН
+        // ЖАЗУЫ бар түйме — не болатыны бірден оқылады.
         actions: [
           if (canReturnToClient)
-            IconButton(
-              tooltip: t('Клиентке қайту'),
-              onPressed: _backToClient,
-              icon: const Icon(Icons.person_outline),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: _backToClient,
+                style: TextButton.styleFrom(
+                  foregroundColor: Gz.ink,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.arrow_back_ios_new, size: 14),
+                label: BtnLabel(
+                  t('Клиентке'),
+                  style: const TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w800),
+                ),
+              ),
             )
           else if (!resubmit)
             IconButton(
@@ -427,6 +443,52 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Клиент рөлінен «Орындаушы болу» арқылы келген адамға —
+                // не үшін осы бетте тұрғаны және ҚАЙТУ ЖОЛЫ бірден айқын
+                // тұрсын (жоғарыдағы иконканы бәрі байқамайды).
+                if (canReturnToClient) ...[
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      color: Gz.yellow.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(Gz.radius),
+                      border: Border.all(color: Gz.yellow),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline,
+                                size: 18, color: Gz.yellowDark),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                t('Орындаушы болу үшін осы өтінімді '
+                                    'толтырыңыз. Асығыс болмасаңыз — кейін '
+                                    'де толтыруға болады, деректеріңіз '
+                                    'жоғалмайды.'),
+                                style: const TextStyle(
+                                    fontSize: 12.5, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _backToClient,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          icon: const Icon(Icons.person_outline, size: 18),
+                          label: BtnLabel(t('Клиент режиміне қайту')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (widget.existing?.docsUpdateRequested == true) ...[
                   Container(
                     padding: const EdgeInsets.all(14),

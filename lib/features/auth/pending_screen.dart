@@ -5,6 +5,7 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/status_check.dart';
 import '../../shared/widgets.dart';
 import 'executor_apply_screen.dart';
 
@@ -98,11 +99,12 @@ class PendingScreen extends ConsumerWidget {
               if (profile.status == 'pending')
                 SizedBox(
                   width: 260,
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        ref.invalidate(myExecutorProfileProvider),
-                    icon: const Icon(Icons.refresh),
-                    label: Text(t('Күйін тексеру')),
+                  // Нәтижесі snackbar-мен айтылады (үнсіз қалмайды).
+                  child: BusyButton(
+                    label: t('Күйін тексеру'),
+                    outlined: true,
+                    icon: Icons.refresh,
+                    onPressed: () => checkExecutorStatus(context, ref),
                   ),
                 ),
               // Қос рөл (0046): орындаушы рөлі бұғатталса да, клиент рөлі

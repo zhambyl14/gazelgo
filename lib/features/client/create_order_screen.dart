@@ -28,6 +28,9 @@ import 'saved_addresses.dart';
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final PickedAddress from;
   final PickedAddress to;
+
+  /// Аралық аялдамалар (0047) — «қайдан» мен «қайда» АРАСЫНДА, ретімен.
+  final List<PickedAddress> stops;
   final VehicleType vehicleType;
 
   /// Гест режимі: «Заказ жариялау» жарияламай, деректі сақтап, кіру экранына
@@ -44,6 +47,7 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
     super.key,
     required this.from,
     required this.to,
+    this.stops = const [],
     this.vehicleType = VehicleType.gazelle,
     this.isGuest = false,
     this.draft,
@@ -81,14 +85,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   late PickedAddress _from = widget.from;
   late PickedAddress _to = widget.to;
+  late final List<PickedAddress> _stops = List.of(widget.stops);
 
-  /// Қайдан/қайда қалалары әртүрлі болса — межгород.
+  /// Такси заказы ма — форма мүлдем басқаша: жүк сипаттамасы да, фото да,
+  /// заңдылық белгісі де қажет емес, орнына ЖОЛАУШЫ САНЫ сұралады.
+  bool get _isTaxi => _vehicle == VehicleType.taxi;
+
+  /// Такси заказындағы жолаушы саны (сервер `cargo_desc`-ті бос қалдырмауды
+  /// талап етеді, сол себепті осыдан мәтін құрылады).
+  int _passengers = 2;
+
+  /// Маршруттың барлық нүктесі: алу → аялдамалар → жеткізу.
+  List<PickedAddress> get _points => [_from, ..._stops, _to];
+
+  /// Маршруттағы қалалар әртүрлі болса — межгород. АРАЛЫҚ АЯЛДАМАЛАР да
+  /// ескеріледі (0047): аялдама басқа қалада болса заказ қалааралық болады
+  /// әрі минимум баға да соған сай көтеріледі — серверде `create_order`
+  /// дәл осылай есептейді, сол себепті екеуі айырылып қалмайды.
+  ///
   /// (Әкімшілік жұрнақтарын алып тастап салыстырады: «Тараз қаласы» мен
   /// «Тараз қалалық әкімшілігі» бір қала болып есептеледі.)
   bool get _intercity =>
-      _from.city != null &&
-      _to.city != null &&
-      !Geo.sameCity(_from.city, _to.city);
+      distinctCities(_points.map((p) => p.city)).length > 1;
 
   /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸.
   int get _minPrice => _intercity ? 1000 : 100;
@@ -103,12 +121,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   /// алдын ала көрініп тұрады.
   String? get _missing {
     if (_route == null) return t('Маршрут есептелуде…');
-    if (_cargo.text.trim().isEmpty) return t('Заказ туралы жазыңыз');
+    // Таксиде жүк сипаттамасы жоқ (жолаушы саны автоматты толтырылады),
+    // заңдылық белгісі де қажет емес — ол ЖҮККЕ қатысты.
+    if (!_isTaxi && _cargo.text.trim().isEmpty) {
+      return t('Заказ туралы жазыңыз');
+    }
     final p = _priceValue;
     if (p == null || p < _minPrice) {
       return '${t('Бағаңыз кемінде')} ${fmtT(_minPrice)}';
     }
-    if (!_legalOk) return t('Заңдылық белгісін қойыңыз');
+    if (!_isTaxi && !_legalOk) return t('Заңдылық белгісін қойыңыз');
     return null;
   }
 
@@ -125,13 +147,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _price.text = d.priceText;
       _vehicle = d.vehicle;
       _legalOk = d.legalOk;
+      _passengers = d.passengers;
       _photos.addAll(d.photos);
     }
     _loadRoute();
     _restoreLegalPreference();
-    // Экран ашылған соң «Заказ туралы толығырақ» өрісіне фокус береміз
-    // (маршрут транзициясы бітсін деп сәл кідіреміз).
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusCargo());
+    // Экран ашылған соң «Заказ туралы» өрісіне фокус береміз (маршрут
+    // транзициясы бітсін деп сәл кідіреміз). Таксиде ол өріс жоқ.
+    if (!_isTaxi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusCargo());
+    }
   }
 
   /// Алғашқы [Prefs.kLegalAutoAfter] заказда клиент заңдылық белгісін
@@ -182,6 +207,45 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
   }
 
+  /// Аралық аялдаманы өзгерту не алып тастау (0047). Екеуінде де маршрут
+  /// қайта есептеледі: қашықтық пен межгород күйі өзгеруі мүмкін.
+  Future<void> _editStop(int index) async {
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Аялдама мекенжайы'),
+      initial: _stops[index],
+    );
+    if (res != null && mounted) {
+      setState(() {
+        _stops[index] = res;
+        _route = null;
+      });
+      _loadRoute();
+    }
+  }
+
+  Future<void> _addStop() async {
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Аялдама мекенжайы'),
+    );
+    if (res != null && mounted) {
+      setState(() {
+        _stops.add(res);
+        _route = null;
+      });
+      _loadRoute();
+    }
+  }
+
+  void _removeStop(int index) {
+    setState(() {
+      _stops.removeAt(index);
+      _route = null;
+    });
+    _loadRoute();
+  }
+
   Future<void> _editTo() async {
     final res = await CityStreetSheet.show(
       context,
@@ -209,7 +273,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Future<void> _loadRoute() async {
-    final r = await Geo.route(_from.point, _to.point);
+    // Маршрут БАРЛЫҚ нүкте арқылы есептеледі (аралық аялдамалармен) —
+    // қашықтық та, көрсетілетін сызық та солай, әйтпесе клиент қосымша
+    // аялдама үшін төлемейтін болып қалатын.
+    final points = _points.map((p) => p.point).toList();
+    final r = await Geo.routeVia(points);
     if (!mounted) return;
     setState(() => _route = r);
     // Кіргеннен кейінгі автоматты жариялау — маршрут дайын болғанда бір рет.
@@ -261,11 +329,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       showSnack(context, t('Маршрут әлі есептелуде…'), error: true);
       return;
     }
-    if (_cargo.text.trim().isEmpty) {
+    // Таксиде жүк сипаттамасы сұралмайды — оның орнына жолаушы саны
+    // (сервер `cargo_desc`-ті бос қалдырмауды талап етеді).
+    final cargoText = _isTaxi
+        ? '${_passengers > 4 ? '4+' : _passengers} ${t('жолаушы')}'
+        : _cargo.text;
+    if (cargoText.trim().isEmpty) {
       showSnack(context, t('Не таситыныңызды жазыңыз'), error: true);
       return;
     }
-    if (!Geo.inKazakhstan(_from.point) || !Geo.inKazakhstan(_to.point)) {
+    // Қазақстан шекарасы — БАРЛЫҚ нүкте бойынша (аялдамалар да).
+    if (_points.any((p) => !Geo.inKazakhstan(p.point))) {
       showSnack(
         context,
         t('Заказ тек Қазақстан ішінде болуы керек'),
@@ -273,7 +347,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       );
       return;
     }
-    if (!_legalOk) {
+    if (!_isTaxi && !_legalOk) {
       showSnack(context, t('Жүктің заңды екеніне белгі қойыңыз'), error: true);
       return;
     }
@@ -296,12 +370,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ref.read(draftOrderProvider.notifier).state = DraftOrder(
         from: _from,
         to: _to,
+        stops: List.of(_stops),
         vehicle: _vehicle,
         cargo: _cargo.text,
         comment: _comment.text,
         priceText: _price.text,
         photos: List.of(_photos),
         legalOk: _legalOk,
+        passengers: _passengers,
       );
       await Navigator.of(
         context,
@@ -330,20 +406,31 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         toLat: _to.point.latitude,
         toLng: _to.point.longitude,
         distanceKm: double.parse(route.distanceKm.toStringAsFixed(2)),
-        cargo: _cargo.text,
+        cargo: cargoText,
         comment: _comment.text,
         clientPrice: clientPrice,
         photos: photoPaths,
         fromCity: _from.city,
         toCity: _to.city,
+        // Аралық аялдамалар (0047) — қосылған РЕТПЕН.
+        stops: _stops
+            .map((s) => OrderStop(
+                  address: s.address,
+                  lat: s.point.latitude,
+                  lng: s.point.longitude,
+                  city: s.city,
+                ))
+            .toList(),
       );
       // Заказ берілген мекенжайларды тарихқа қосамыз («Соңғы» тізімі үшін):
-      // алдымен «қайдан», сосын «қайда» — соңғысы тізімде бірінші тұрады.
-      unawaited(AddressBook.pushRecent(_from));
-      unawaited(AddressBook.pushRecent(_to));
+      // маршрут ретімен — соңғысы тізімде бірінші тұрады.
+      for (final p in _points) {
+        unawaited(AddressBook.pushRecent(p));
+      }
       // Заңдылық белгісін ҚОЛМЕН қойған заказды санаймыз: 3-еуінен кейін
-      // белгі келесі заказдарда автоматты қойылып тұрады.
-      if (!_legalAuto) unawaited(Prefs.bumpLegalConfirms());
+      // белгі келесі заказдарда автоматты қойылып тұрады. Таксиде ол белгі
+      // мүлдем сұралмайды, сол себепті санамаймыз.
+      if (!_isTaxi && !_legalAuto) unawaited(Prefs.bumpLegalConfirms());
       if (!mounted) return;
       Navigator.of(context).pop(true);
       Navigator.of(
@@ -383,8 +470,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          t('Заказ құру'),
+                        child: BtnLabel(
+                          _isTaxi ? t('Такси шақыру') : t('Заказ құру'),
                           style: const TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w900,
@@ -446,6 +533,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         RouteMap(
                           from: _from.point,
                           to: _to.point,
+                          stops: _stops.map((s) => s.point).toList(),
                           routePoints: route?.points ?? const [],
                           height: 170,
                         ),
@@ -454,7 +542,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           padding: const EdgeInsets.all(14),
                           child: Column(
                             children: [
-                              // Адрестерді осында өзгертуге болады
+                              // ---- Маршрут: барлық мекенжай осында ----
+                              // Әрқайсысын түртіп өзгертуге болады, аралық
+                              // аялдаманы ✕ арқылы алып тастауға да.
                               _EditableAddr(
                                 icon: Icons.trip_origin,
                                 color: Gz.green,
@@ -462,6 +552,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 value: _from.address,
                                 onTap: _editFrom,
                               ),
+                              for (var i = 0; i < _stops.length; i++) ...[
+                                const SizedBox(height: 6),
+                                _EditableAddr(
+                                  icon: Icons.adjust,
+                                  color: Gz.violet,
+                                  label:
+                                      '${t('Аялдама')} ${i + 1}',
+                                  value: _stops[i].address,
+                                  onTap: () => _editStop(i),
+                                  onRemove: () => _removeStop(i),
+                                ),
+                              ],
                               const SizedBox(height: 6),
                               _EditableAddr(
                                 icon: Icons.location_on,
@@ -470,6 +572,32 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 value: _to.address,
                                 onTap: _editTo,
                               ),
+                              if (_stops.length < kMaxExtraStops)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: _addStop,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.add_circle_outline,
+                                      size: 17,
+                                    ),
+                                    label: BtnLabel(
+                                      t('Мекенжай қосу'),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (route != null) ...[
                                 const Divider(height: 20),
                                 Row(
@@ -525,76 +653,118 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             onChanged: (v) => setState(() => _vehicle = v),
                           ),
                         const SizedBox(height: 18),
-                        // ---- НЕГІЗГІ ӨРІС: заказ сипаттамасы ----
-                        // Экран ашылған бойда фокус ОСЫҒАН беріледі
-                        // (`_focusCargo`): клиенттер бұл жолды толтыруды
-                        // ұмытып, бос заказ жіберуге тырысатын.
-                        Row(
-                          key: _cargoKey,
-                          children: [
-                            Text(
-                              t('Заказ туралы'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
+                        // ================= ТАКСИ ФОРМАСЫ =================
+                        // Таксиде жүк сипаттамасы да, фото да, заңдылық
+                        // белгісі де МАҒЫНАСЫЗ (олар ЖҮККЕ қатысты) —
+                        // оның орнына тек ЖОЛАУШЫ САНЫ сұралады.
+                        if (_isTaxi) ...[
+                          Text(
+                            t('Жолаушы саны'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
                             ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              '*',
-                              style: TextStyle(
-                                color: Gz.red,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
-                              ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              for (final n in [1, 2, 3, 4])
+                                Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      right: n == 4 ? 0 : 8,
+                                    ),
+                                    child: _CountChip(
+                                      label: n == 4 ? '4+' : '$n',
+                                      selected: _passengers == n,
+                                      onTap: () =>
+                                          setState(() => _passengers = n),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _comment,
+                            maxLines: 2,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              hintText: t('Қосымша: подъезд, багаж…'),
+                              prefixIcon: const Icon(Icons.notes),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _cargo,
-                          focusNode: _cargoFocus,
-                          textInputAction: TextInputAction.next,
-                          textCapitalization: TextCapitalization.sentences,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: _vehicle == VehicleType.taxi
-                                ? t('мыс: 2 жолаушы, багаж бар')
-                                : t('мыс: диван, тоңазытқыш, көшу'),
-                            prefixIcon: const Icon(Icons.inventory_2_outlined),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _comment,
-                          maxLines: 2,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: InputDecoration(
-                            hintText: t('Қосымша: қабат, лифт, көмек…'),
-                            prefixIcon: const Icon(Icons.notes),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        // Жүк фотолары
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                t('Фото (міндетті емес)'),
+                        ] else ...[
+                          // ---- НЕГІЗГІ ӨРІС: заказ сипаттамасы ----
+                          // Экран ашылған бойда фокус ОСЫҒАН беріледі
+                          // (`_focusCargo`): клиенттер бұл жолды толтыруды
+                          // ұмытып, бос заказ жіберуге тырысатын.
+                          Row(
+                            key: _cargoKey,
+                            children: [
+                              Text(
+                                t('Заказ туралы'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                                  fontSize: 15,
                                 ),
                               ),
+                              const SizedBox(width: 5),
+                              const Text(
+                                '*',
+                                style: TextStyle(
+                                  color: Gz.red,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _cargo,
+                            focusNode: _cargoFocus,
+                            textInputAction: TextInputAction.next,
+                            textCapitalization: TextCapitalization.sentences,
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: t('мыс: диван, тоңазытқыш, көшу'),
+                              prefixIcon:
+                                  const Icon(Icons.inventory_2_outlined),
                             ),
-                            TextButton.icon(
-                              onPressed: _addPhoto,
-                              icon: const Icon(Icons.add_a_photo, size: 18),
-                              label: Text(t('Қосу')),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _comment,
+                            maxLines: 2,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              hintText: t('Қосымша: қабат, лифт, көмек…'),
+                              prefixIcon: const Icon(Icons.notes),
                             ),
-                          ],
-                        ),
-                        if (_photos.isNotEmpty)
+                          ),
+                          const SizedBox(height: 14),
+                          // Жүк фотолары
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  t('Фото (міндетті емес)'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _addPhoto,
+                                icon: const Icon(Icons.add_a_photo, size: 18),
+                                label: Text(t('Қосу')),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (!_isTaxi && _photos.isNotEmpty)
                           SizedBox(
                             height: 84,
                             child: ListView.separated(
@@ -723,40 +893,44 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         // Заңдылық белгісі — ЖАСЫЛ ҚҰСБЕЛГІ (бұрын қара
                         // шаршы Checkbox еді, «қойылмаған» болып көрінетін).
                         // Алғашқы 3 заказдан кейін автоматты қойылады.
-                        ConfirmCheck(
-                          value: _legalOk,
-                          auto: _legalAuto,
-                          onChanged: (v) => setState(() {
-                            _legalOk = v;
-                            // Қолмен алып тастаса — «автоматты» белгісі кетеді
-                            // (қайта қойса ол қолмен қойылған болып саналады).
-                            _legalAuto = false;
-                          }),
-                          label: Text.rich(
-                            TextSpan(
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                height: 1.4,
-                                color: Gz.textSecondary,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: t('Жүгім заңды, тыйым салынған зат жоқ'),
+                        // ТАКСИДЕ мүлдем көрінбейді: ол ЖҮККЕ қатысты.
+                        if (!_isTaxi)
+                          ConfirmCheck(
+                            value: _legalOk,
+                            auto: _legalAuto,
+                            onChanged: (v) => setState(() {
+                              _legalOk = v;
+                              // Қолмен алып тастаса — «автоматты» белгісі
+                              // кетеді (қайта қойса қолмен саналады).
+                              _legalAuto = false;
+                            }),
+                            label: Text.rich(
+                              TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.4,
+                                  color: Gz.textSecondary,
                                 ),
-                                const TextSpan(text: '  ·  '),
-                                TextSpan(
-                                  text: t('Тізім'),
-                                  recognizer: _legalListTap,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: Gz.ink,
-                                    decoration: TextDecoration.underline,
+                                children: [
+                                  TextSpan(
+                                    text: t(
+                                      'Жүгім заңды, тыйым салынған зат жоқ',
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const TextSpan(text: '  ·  '),
+                                  TextSpan(
+                                    text: t('Тізім'),
+                                    recognizer: _legalListTap,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Gz.ink,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
                         const SizedBox(height: 10),
                         // Шарттар толмайынша батырма СҰР (сары = дайын), ал
                         // астында НЕ жетпейтіні тұрады — қолданушы басып
@@ -788,6 +962,47 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Сан таңдау чипі (такси заказындағы жолаушы саны). Барлығы бірдей
+/// биіктікте (44) әрі бір-бірімен тең енде — қатар әрқашан тегіс.
+class _CountChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _CountChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Gz.ink : Gz.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? Gz.yellow : Gz.border,
+            width: selected ? 1.8 : 1.2,
+          ),
+        ),
+        child: BtnLabel(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: selected ? Colors.white : Gz.ink,
           ),
         ),
       ),
@@ -841,18 +1056,21 @@ class _SelectedVehicleRow extends StatelessWidget {
 }
 
 /// Басуға болатын адрес жолы (заказ құру экранында өзгерту үшін).
+/// [onRemove] берілсе — оң жақта ✕ шығады (аралық аялдаманы алып тастау).
 class _EditableAddr extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String label;
   final String value;
   final VoidCallback onTap;
+  final VoidCallback? onRemove;
   const _EditableAddr({
     required this.icon,
     required this.color,
     required this.label,
     required this.value,
     required this.onTap,
+    this.onRemove,
   });
 
   @override
@@ -890,6 +1108,21 @@ class _EditableAddr extends StatelessWidget {
               ),
             ),
             const Icon(Icons.edit, size: 16, color: Gz.textSecondary),
+            // Аралық аялдамаға ғана — алып тастау (0047).
+            if (onRemove != null)
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.close),
+                iconSize: 16,
+                color: Gz.textSecondary,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 30,
+                  minHeight: 30,
+                ),
+                tooltip: t('Алып тастау'),
+              ),
           ],
         ),
       ),

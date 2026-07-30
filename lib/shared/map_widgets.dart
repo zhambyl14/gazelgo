@@ -42,6 +42,10 @@ Marker originMarker(LatLng p) => Marker(
 class RouteMap extends StatelessWidget {
   final LatLng from;
   final LatLng to;
+
+  /// АРАЛЫҚ аялдамалар (0047) — картада күлгін нүктелермен белгіленеді әрі
+  /// камера оларды да қамтиды (әйтпесе аялдама кадрдан шығып қалатын).
+  final List<LatLng> stops;
   final List<LatLng> routePoints;
   final double height;
 
@@ -49,13 +53,15 @@ class RouteMap extends StatelessWidget {
     super.key,
     required this.from,
     required this.to,
+    this.stops = const [],
     this.routePoints = const [],
     this.height = 200,
   });
 
   @override
   Widget build(BuildContext context) {
-    final points = routePoints.isEmpty ? [from, to] : routePoints;
+    final all = [from, ...stops, to];
+    final points = routePoints.isEmpty ? all : routePoints;
     return ClipRRect(
       borderRadius: BorderRadius.circular(Gz.radius),
       child: SizedBox(
@@ -64,7 +70,8 @@ class RouteMap extends StatelessWidget {
           child: FlutterMap(
             options: MapOptions(
               initialCameraFit: CameraFit.bounds(
-                bounds: LatLngBounds.fromPoints([from, to]),
+                // БАРЛЫҚ нүкте бойынша — аялдамамен қоса.
+                bounds: LatLngBounds.fromPoints(all),
                 padding: const EdgeInsets.all(40),
               ),
               interactionOptions:
@@ -77,6 +84,7 @@ class RouteMap extends StatelessWidget {
               ]),
               MarkerLayer(markers: [
                 originMarker(from),
+                for (final s in stops) pointMarker(s, color: Gz.violet),
                 pointMarker(to, color: Gz.red),
               ]),
             ],
