@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/env.dart';
 import 'core/lang.dart';
+import 'core/models.dart';
 import 'core/notify.dart';
 import 'core/push.dart';
 import 'core/repo.dart';
@@ -24,6 +25,7 @@ import 'features/executor/executor_shell.dart';
 import 'features/moderator/applications_screen.dart';
 import 'features/moderator/moderator_shell.dart';
 import 'features/moderator/support_admin_screen.dart';
+import 'features/moderator/topups_screen.dart';
 import 'features/support/support_screen.dart';
 import 'shared/portrait_frame.dart';
 import 'shared/update_gate.dart';
@@ -47,6 +49,7 @@ final navigatorKey = GlobalKey<NavigatorState>();
 ///   support_reply    → клиент/орындаушы: қолдау қызметі
 ///   support_message  → модератор: қолдау чаттары
 ///   new_application  → модератор: жаңа өтінімдер
+///   new_topup        → модератор: баланс толтыру өтінімдері (0049)
 void _navigateFromData(Map<String, dynamic> data) {
   final type = data['type'] as String?;
   final orderId = data['order_id'] as String?;
@@ -75,6 +78,8 @@ void _navigateFromData(Map<String, dynamic> data) {
     screen = const SupportAdminScreen();
   } else if (type == 'new_application') {
     screen = const ApplicationsScreen();
+  } else if (type == 'new_topup') {
+    screen = const TopupsScreen();
   } else if (hasOrder) {
     // Тип белгісіз, бірақ заказ id-і бар — қауіпсіз әдепкі: заказ беті.
     screen = OrderDetailScreen(orderId: orderId);
@@ -303,8 +308,34 @@ class _ExecutorRouter extends ConsumerWidget {
   }
 }
 
-class _Splash extends StatelessWidget {
+/// Көлік түрі иконкалары (assets/vehicles/*.png) бума ішінде бумаланған
+/// болса да, Flutter оларды бірінші РЕТ виджетте көрінгенде ғана оқып
+/// декодтайды — сол сәтте бір кадр бос орын/жыпылықтау көрінуі мүмкін
+/// (мыс. көлік каруселінде тез айналдырғанда). Splash экраны — авторизация
+/// жүктеліп жатқан кез келген уақытта көрінетін ЖАЛҒЫЗ орын, сол себепті
+/// осында алдын ала precacheImage жасаймыз: пайдаланушы каруседьге жеткенде
+/// иконкалар қолданбаның жад-кэшінде дайын тұрады.
+bool _vehicleIconsPrecached = false;
+
+class _Splash extends StatefulWidget {
   const _Splash();
+
+  @override
+  State<_Splash> createState() => _SplashState();
+}
+
+class _SplashState extends State<_Splash> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_vehicleIconsPrecached) {
+      _vehicleIconsPrecached = true;
+      for (final v in VehicleType.values) {
+        final png = v.pngAsset;
+        if (png != null) unawaited(precacheImage(AssetImage(png), context));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

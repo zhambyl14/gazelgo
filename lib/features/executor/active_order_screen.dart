@@ -146,7 +146,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                           style: const TextStyle(
                               fontSize: 24, fontWeight: FontWeight.w900)),
                     ),
-                    StatusChip(o.status),
+                    StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -232,8 +232,13 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            t('Клиенттің «Тиеу басталды» деп растауын күтіңіз. '
-                                'Растаған соң «Жолға шықтық» батырмасы шығады.'),
+                            o.vehicleType == VehicleType.taxi
+                                ? t('Клиенттің «Отырғызу басталды» деп '
+                                    'растауын күтіңіз. Растаған соң «Жолға '
+                                    'шықтық» батырмасы шығады.')
+                                : t('Клиенттің «Тиеу басталды» деп растауын '
+                                    'күтіңіз. Растаған соң «Жолға шықтық» '
+                                    'батырмасы шығады.'),
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600, fontSize: 13),
                           ),

@@ -97,7 +97,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5)),
                     ),
-                    StatusChip(o.status),
+                    StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -174,12 +174,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // Орындаушы «Келдім» дегенде — клиент тиеуді растайды (0027).
           // Расталмайынша орындаушы «Жолға шықтық» дей алмайды.
           if (o.status == 'arrived') ...[
-            _ConfirmLoadingCard(orderId: o.id),
+            _ConfirmLoadingCard(orderId: o.id, vehicleType: o.vehicleType),
             const SizedBox(height: 10),
           ],
-          _Timeline(status: o.status),
+          _Timeline(status: o.status, vehicleType: o.vehicleType),
           const SizedBox(height: 10),
           SupportOrderButton(orderId: o.id),
+          const SizedBox(height: 10),
+          ReportSuspiciousButton(orderId: o.id),
         ];
       case 'completed':
         return [
@@ -221,13 +223,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 }
 
 /// Орындаушы келгенін клиент растайды: «Тиеу басталды» → status=loading.
-/// Осыдан кейін ғана орындаушы «Жолға шықтық» дей алады (0027).
+/// Осыдан кейін ғана орындаушы «Жолға шықтық» дей алады (0027). Такси
+/// заказында (жолаушы тасымалы) «тиеу» орнына «отыру» сөздігі қолданылады —
+/// жолаушы жүк емес.
 class _ConfirmLoadingCard extends StatelessWidget {
   final String orderId;
-  const _ConfirmLoadingCard({required this.orderId});
+  final VehicleType vehicleType;
+  const _ConfirmLoadingCard({required this.orderId, required this.vehicleType});
 
   @override
   Widget build(BuildContext context) {
+    final isTaxi = vehicleType == VehicleType.taxi;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -240,7 +246,8 @@ class _ConfirmLoadingCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.local_shipping, color: Gz.green),
+              Icon(isTaxi ? Icons.person : Icons.local_shipping,
+                  color: Gz.green),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(t('Орындаушы жеткен жоқ па?'),
@@ -251,13 +258,16 @@ class _ConfirmLoadingCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            t('Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
-                'орындаушы жолға шыға алмайды.'),
+            isTaxi
+                ? t('Орындаушы келіп, сіз отырсаңыз — растаңыз. Растамайынша '
+                    'орындаушы жолға шыға алмайды.')
+                : t('Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
+                    'орындаушы жолға шыға алмайды.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 12),
           BusyButton(
-            label: t('Тиеу басталды'),
+            label: t(isTaxi ? 'Отырғызу басталды' : 'Тиеу басталды'),
             icon: Icons.check_circle,
             color: Gz.green,
             onPressed: () async {
@@ -635,7 +645,8 @@ class _ExecutorCard extends StatelessWidget {
 // ===================== БАРЫС (timeline) =====================
 class _Timeline extends StatelessWidget {
   final String status;
-  const _Timeline({required this.status});
+  final VehicleType vehicleType;
+  const _Timeline({required this.status, required this.vehicleType});
 
   static const _steps = [
     ('accepted', 'Орындаушы жолда'),
@@ -647,7 +658,11 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = [for (final s in _steps) (s.$1, t(s.$2))];
+    final isTaxi = vehicleType == VehicleType.taxi;
+    final steps = [
+      for (final s in _steps)
+        (s.$1, t(s.$1 == 'loading' && isTaxi ? 'Отырғызу' : s.$2))
+    ];
     final idx = steps.indexWhere((s) => s.$1 == status);
     return SectionCard(
       child: Column(

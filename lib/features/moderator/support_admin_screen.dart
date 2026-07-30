@@ -190,7 +190,8 @@ class _OrderContextBar extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        '${fmtT(o.displayPrice)} · ${statusLabel(o.status)}',
+                        '${fmtT(o.displayPrice)} · '
+                            '${statusLabel(o.status, vehicleType: o.vehicleType)}',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),

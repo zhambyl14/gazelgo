@@ -154,11 +154,16 @@ const kActiveOrderStatuses = [
   'in_transit',
 ];
 
-String statusLabel(String s) => switch (s) {
+/// [vehicleType] тек 'loading' статусын нақтылау үшін қажет: такси
+/// (жолаушы тасымалы) заказында «Тиеу» орнына «Отырғызу» дұрысырақ —
+/// жолаушы жүк емес. Қалған түрлерге (жеткізу, спецтехника) әсер етпейді.
+String statusLabel(String s, {VehicleType? vehicleType}) => switch (s) {
   'searching' => t('Іздеуде'),
   'accepted' => t('Қабылданды · жолда'),
   'arrived' => t('Орындаушы келді'),
-  'loading' => t('Тиеу жүріп жатыр'),
+  'loading' => vehicleType == VehicleType.taxi
+      ? t('Отырғызу жүріп жатыр')
+      : t('Тиеу жүріп жатыр'),
   'in_transit' => t('Тасымалдауда'),
   'completed' => t('Аяқталды'),
   'cancelled' => t('Бас тартылды'),

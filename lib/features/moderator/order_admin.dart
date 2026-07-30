@@ -76,7 +76,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     return '${t('Тексеру қажет болуы мүмкін:')} ${parts.join(' ')}';
   }
 
-  static const _statuses = [
+  static const _statusesBase = [
     ('searching', 'Іздеуге қайтару (қайта ұсыну)'),
     ('accepted', 'Қабылданды'),
     ('arrived', 'Келді'),
@@ -85,6 +85,16 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     ('completed', 'Аяқталды'),
     ('cancelled', 'Тоқтатылды'),
   ];
+
+  /// Такси заказында (жолаушы тасымалы) «Тиеу» орнына «Отырғызу» — жолаушы
+  /// жүк емес.
+  List<(String, String)> get _statuses => [
+        for (final s in _statusesBase)
+          if (s.$1 == 'loading' && _order?.vehicleType == VehicleType.taxi)
+            (s.$1, 'Отырғызу')
+          else
+            s,
+      ];
 
   Future<void> _setStatus(String status) async {
     final label = t(_statuses.firstWhere((s) => s.$1 == status).$2);
@@ -148,7 +158,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                           style: const TextStyle(
                               fontSize: 22, fontWeight: FontWeight.w900)),
                     ),
-                    StatusChip(o.status),
+                    StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
                 ),
                 if (_fraudWarning != null) ...[

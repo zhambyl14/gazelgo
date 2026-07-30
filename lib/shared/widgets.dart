@@ -391,7 +391,8 @@ class SectionCard extends StatelessWidget {
 
 class StatusChip extends StatelessWidget {
   final String status;
-  const StatusChip(this.status, {super.key});
+  final VehicleType? vehicleType;
+  const StatusChip(this.status, {super.key, this.vehicleType});
 
   Color get _color => switch (status) {
         'searching' => Gz.blue,
@@ -409,7 +410,7 @@ class StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        statusLabel(status),
+        statusLabel(status, vehicleType: vehicleType),
         style: TextStyle(
             color: _color, fontWeight: FontWeight.w700, fontSize: 12.5),
       ),
@@ -709,7 +710,8 @@ class OrderCard extends StatelessWidget {
                           letterSpacing: -0.3),
                     ),
                   ),
-                  trailing ?? StatusChip(order.status),
+                  trailing ??
+                      StatusChip(order.status, vehicleType: order.vehicleType),
                 ],
               ),
               const SizedBox(height: 8),
@@ -1239,10 +1241,11 @@ Future<void> confirmSignOut(BuildContext context) async {
   await Repo.signOut();
 }
 
-/// «Күдікті жүк туралы хабарлау» — заказ экрандарында (клиент те,
+/// «Күдікті жағдай туралы хабарлау» — заказ экрандарында (клиент те,
 /// орындаушы да). Хабарлама модератордың қолдау чатына дереу түседі
 /// (report_order RPC). Заказды бас тартумен шатастырмау керек — бұл тек
-/// ескерту, заказдың күйіне әсер етпейді.
+/// ескерту, заказдың күйіне әсер етпейді. Мәтін ӘДЕЙІ жүкке қатысты емес —
+/// такси (жолаушы тасымалы) заказдарында да дәл осы батырма қолданылады.
 class ReportSuspiciousButton extends StatelessWidget {
   final String orderId;
   const ReportSuspiciousButton({super.key, required this.orderId});
@@ -1252,7 +1255,7 @@ class ReportSuspiciousButton extends StatelessWidget {
     final send = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(t('Күдікті жүк туралы хабарлау')),
+        title: Text(t('Күдікті жағдай туралы хабарлау')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1303,9 +1306,9 @@ class ReportSuspiciousButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ListTile(
         leading: const Icon(Icons.report_outlined, color: Gz.red),
-        title: Text(t('Күдікті жүк туралы хабарлау'),
+        title: Text(t('Күдікті жағдай туралы хабарлау'),
             style: const TextStyle(fontWeight: FontWeight.w700, color: Gz.red)),
-        subtitle: Text(t('Заңсыз/қауіпті жүкке күдіктенсеңіз')),
+        subtitle: Text(t('Заңсыз/қауіпті жағдайға күдіктенсеңіз')),
         onTap: () => _report(context),
       ),
     );

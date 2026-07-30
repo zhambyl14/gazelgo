@@ -750,7 +750,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        statusLabel(o.status),
+                        statusLabel(o.status, vehicleType: o.vehicleType),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
