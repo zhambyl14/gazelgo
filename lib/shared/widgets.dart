@@ -183,6 +183,138 @@ class ConfirmCheck extends StatelessWidget {
   }
 }
 
+/// Маршрут нүктесінің БЕЛГІСІ — бүкіл қосымшада бірдей «тіл»:
+///   • алу нүктесі  → жасыл сақина (GPS нүктесі: «осы жерден аламыз»);
+///   • аралық аялдама → КҮЛГІН дөңгелектегі НӨМІР (1, 2 …);
+///   • ақырғы нүкте  → ФИНИШ ТУЫ (шахмат жалауша).
+///
+/// Осылайша қолданушы бір қарағанда «қайдан → 1 → 2 → финиш» деп оқиды:
+/// бұрын аралық аялдама да, соңғы нүкте де жай ғана «пин» болатын да,
+/// қайсысы соңғы екені білінбейтін.
+class RoutePointMark extends StatelessWidget {
+  /// null болса — АЛУ нүктесі. 1-ден басталатын сан болса — аралық аялдама.
+  final int? number;
+
+  /// true болса — маршруттың АҚЫРҒЫ нүктесі (финиш туы).
+  final bool finish;
+  final double size;
+
+  const RoutePointMark({
+    super.key,
+    this.number,
+    this.finish = false,
+    this.size = 18,
+  });
+
+  /// Алу нүктесі.
+  const RoutePointMark.origin({super.key, this.size = 18})
+      : number = null,
+        finish = false;
+
+  /// Ақырғы нүкте (финиш).
+  const RoutePointMark.finish({super.key, this.size = 18})
+      : number = null,
+        finish = true;
+
+  /// Аралық аялдама — 1-ден басталатын нөмірмен.
+  const RoutePointMark.stop(this.number, {super.key, this.size = 18})
+      : finish = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (finish) {
+      // Шахмат жалауша — «маршрут осында бітеді» дегеннің әмбебап белгісі.
+      return Icon(Icons.sports_score, size: size + 3, color: Gz.red);
+    }
+    if (number != null) {
+      return Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+          color: Gz.violet,
+          shape: BoxShape.circle,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '$number',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: size * 0.62,
+              height: 1,
+            ),
+          ),
+        ),
+      );
+    }
+    // Алу нүктесі — ішінде ақ орталығы бар жасыл сақина.
+    return Container(
+      width: size - 3,
+      height: size - 3,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: Gz.green, width: (size - 3) * 0.26),
+      ),
+    );
+  }
+}
+
+/// «Мекенжай қосу» батырмасы — ЫҚШАМ ПИЛЮЛЯ.
+///
+/// Бұрын жалаң `TextButton.icon` («+ Мекенжай қосу») тұратын: жиекі жоқ
+/// болғандықтан батырма екені білінбейтін де, адрес жолдарының астында
+/// «қалып қалған мәтін» болып көрінетін. Енді:
+///   • нақты жиегі бар пилюля — басуға болатыны бірден оқылады;
+///   • иконка `add_location_alt` — «мекенжай» екені мағынасынан көрінеді
+///     (жалаң «+» неге қосылатынын айтпайтын);
+///   • мазмұнға сай ені (`MainAxisSize.min`), сол жақта тұрады.
+class AddAddressButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String? label;
+  const AddAddressButton({super.key, required this.onPressed, this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: Gz.yellow.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(11),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(11),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: Gz.yellow, width: 1.3),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.add_location_alt_outlined,
+                    size: 17, color: Gz.ink),
+                const SizedBox(width: 6),
+                BtnLabel(
+                  label ?? t('Мекенжай қосу'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Gz.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Маршрут мекенжайының бір жолы (қайдан / аялдама / қайда).
 ///
 /// Клиенттің басты бетіндегі панельде де, заказ құру экранында да ортақ:
@@ -190,8 +322,8 @@ class ConfirmCheck extends StatelessWidget {
 /// болса «…» — толық нұсқасын түртіп ашады), сол себепті аялдама қосылғанда
 /// панельдің биіктігі болжамды өседі, «секіріп» кетпейді.
 class AddressRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
+  /// Сол жақтағы белгі — әдетте [RoutePointMark] (алу / нөмір / финиш).
+  final Widget mark;
   final String text;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -201,8 +333,7 @@ class AddressRow extends StatelessWidget {
 
   const AddressRow({
     super.key,
-    required this.icon,
-    required this.iconColor,
+    required this.mark,
     required this.text,
     this.trailing,
     this.onTap,
@@ -222,7 +353,7 @@ class AddressRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: iconColor),
+            SizedBox(width: 20, child: Center(child: mark)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -489,20 +620,10 @@ class RouteLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A нүктесі — жасыл сақина (домалақ емес), B — қызыл пин
-    Widget originRing() => Container(
-          width: 15,
-          height: 15,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Gz.green, width: 3.5),
-            color: Colors.white,
-          ),
-        );
     Widget row(Widget lead, String label, String text) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 18, child: Center(child: lead)),
+            SizedBox(width: 20, child: Center(child: lead)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -522,23 +643,29 @@ class RouteLine extends StatelessWidget {
           ],
         );
     Widget connector() => Padding(
-          padding: const EdgeInsets.only(left: 8.5),
+          padding: const EdgeInsets.only(left: 9.5),
           child: Container(width: 2, height: 14, color: Gz.border),
         );
+    // Аялдамалар НӨМІРЛЕНЕДІ (1, 2 …), ақырғы нүкте — ФИНИШ ТУЫ. Осылайша
+    // маршрут «қайдан → 1 → 2 → финиш» болып оқылады.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        row(originRing(), t('Қайдан'), from),
+        row(const RoutePointMark.origin(), t('Қайдан'), from),
         for (var i = 0; i < stops.length; i++) ...[
           connector(),
           row(
-            const Icon(Icons.adjust, size: 17, color: Gz.violet),
+            RoutePointMark.stop(i + 1),
             '${t('Аялдама')} ${i + 1}',
             stops[i],
           ),
         ],
         connector(),
-        row(const Icon(Icons.location_on, size: 18, color: Gz.red), t('Қайда'), to),
+        row(
+          const RoutePointMark.finish(),
+          stops.isEmpty ? t('Қайда') : t('Соңғы нүкте'),
+          to,
+        ),
       ],
     );
   }

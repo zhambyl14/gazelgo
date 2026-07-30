@@ -27,12 +27,15 @@ double _d(dynamic v) {
 // ---------- Vehicle type (көлік түрі) ----------
 /// Заказ бен орындаушы осы түр бойынша сәйкестендіріледі: клиент газельге
 /// заказ берсе — оны тек газелист көреді (indriver-дегі көлік таңдау сияқты).
-/// [taxi] — 0046-да қосылған ЖАҢА түр: жолаушы тасымалы. Ол ӘРҚАШАН
-/// бірінші тұрады (тізімнің басы), бірақ модератор «Такси» бөлімін
-/// қоспайынша клиентке де, орындаушыға да КӨРІНБЕЙДІ — сол себепті
-/// қалған көлік түрлері [kCargoVehicleTypes] тізімімен бөлек беріледі.
+///
+/// [taxi] мен [delivery] — «Такси» САНАТЫНЫҢ түрлері ([kTaxiVehicleTypes]):
+///   • taxi     — жолаушы тасымалы (форма: жолаушы саны);
+///   • delivery — жеңіл көлікпен ұсақ жүк жеткізу (форма: не жеткізу керек).
+/// Екеуі де модератор «Такси» бөлімін қоспайынша клиентке де, орындаушыға
+/// да КӨРІНБЕЙДІ. Қалғандары — [kCargoVehicleTypes] («Спецтехника»).
 enum VehicleType {
   taxi,
+  delivery,
   gazelle,
   furgon,
   minivan,
@@ -47,14 +50,22 @@ enum VehicleType {
   assenizator,
 }
 
-/// Жүк көлігі мен арнайы техника (таксиден басқасының бәрі) — «Грузовые /
-/// спецтехника» санатының тізімі әрі такси өшулі кездегі әдепкі тізім.
+/// «Такси» санатының түрлері — такси (жолаушы) және доставка (ұсақ жүк).
+/// Модератор «Такси» бөлімін қосқанда ғана көрінеді.
+const List<VehicleType> kTaxiVehicleTypes = [
+  VehicleType.taxi,
+  VehicleType.delivery,
+];
+
+/// Жүк көлігі мен арнайы техника («Спецтехника» санаты) — такси
+/// санатына кірмейтіндердің бәрі әрі такси өшулі кездегі әдепкі тізім.
 final List<VehicleType> kCargoVehicleTypes = VehicleType.values
-    .where((v) => v != VehicleType.taxi)
+    .where((v) => !kTaxiVehicleTypes.contains(v))
     .toList(growable: false);
 
 VehicleType vehicleTypeFrom(String? s) => switch (s) {
   'taxi' => VehicleType.taxi,
+  'delivery' => VehicleType.delivery,
   'furgon' => VehicleType.furgon,
   'minivan' => VehicleType.minivan,
   'kamaz' => VehicleType.kamaz,
@@ -73,6 +84,7 @@ extension VehicleTypeX on VehicleType {
   String get db => name;
   String get label => switch (this) {
     VehicleType.taxi => t('Такси'),
+    VehicleType.delivery => t('Доставка'),
     VehicleType.gazelle => t('Газель'),
     VehicleType.furgon => t('Фургон'),
     VehicleType.minivan => t('Мини вэн'),
@@ -106,6 +118,7 @@ extension VehicleTypeX on VehicleType {
   /// PNG иконкасы жоқ түрлерге арналған эмодзи (gazelle/furgon/tractor).
   String get emoji => switch (this) {
     VehicleType.taxi => '🚕',
+    VehicleType.delivery => '📦',
     VehicleType.gazelle => '🚚',
     VehicleType.furgon => '🚐',
     VehicleType.tractor => '🚜',
@@ -116,6 +129,7 @@ extension VehicleTypeX on VehicleType {
   /// UI бұл жолды көрсетпейді. Каруселде таңдалған түрдің астында шығады.
   String get description => switch (this) {
     VehicleType.taxi => t('Жолаушы тасымалы'),
+    VehicleType.delivery => t('Жеңіл көлікпен ұсақ жүк жеткізу'),
     VehicleType.gazelle => t('Әмбебап жүк тасымалы'),
     VehicleType.furgon => t('Жабық жүк тасымалы'),
     VehicleType.minivan => t('Жолаушы және шағын жүк'),

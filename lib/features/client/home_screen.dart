@@ -21,6 +21,7 @@ import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'order_detail_screen.dart';
+import 'stops_sheet.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
   /// Гест режимі (кірмеген қолданушы): картамен заказды толық толтыра алады,
@@ -64,13 +65,17 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   /// таңдау көрінеді. Өшулі болса экран баяғыдай — бір ғана көлік каруселі.
   VehicleCategory _category = VehicleCategory.cargo;
 
-  /// Жүк/спецтехника санатындағы соңғы таңдау — таксиге ауысып, қайта
+  /// Спецтехника санатындағы соңғы таңдау — таксиге ауысып, қайта
   /// оралғанда жоғалмауы үшін бөлек сақталады.
   VehicleType _cargoVehicle = VehicleType.gazelle;
 
+  /// Такси санатындағы соңғы таңдау: такси (жолаушы) не доставка (ұсақ жүк).
+  /// Ол да бөлек сақталады — санаттар арасында ауысқанда таңдау жоғалмайды.
+  VehicleType _taxiVehicle = VehicleType.taxi;
+
   /// Заказға кететін НАҚТЫ көлік түрі.
   VehicleType get _vehicle => _category == VehicleCategory.taxi
-      ? VehicleType.taxi
+      ? _taxiVehicle
       : _cargoVehicle;
 
   @override
@@ -160,28 +165,37 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     if (res != null) setState(() => _to = res);
   }
 
-  /// Аралық аялдама қосу/өзгерту (0047). [index] — `_stops` ішіндегі орын;
-  /// null болса ЖАҢА аялдама тізімнің соңына қосылады.
-  ///
-  /// Аялдамалар ӘРҚАШАН «қайдан» мен «қайда» АРАСЫНДА тұрады, сол себепті
-  /// маршрут реті: _from → _stops[0] → … → _to.
-  Future<void> _pickStop({int? index}) async {
-    final res = await CityStreetSheet.show(
-      context,
-      title: t('Аялдама мекенжайы'),
-      initial: index == null ? null : _stops[index],
-    );
-    if (res == null || !mounted) return;
+  /// ЖЕТКІЗУ нүктелері: [...аралық аялдамалар, финиш]. `_to` — әрқашан
+  /// соңғысы, сол себепті екеуін бір тізім қылып қараймыз.
+  List<PickedAddress> get _destinations => [..._stops, ?_to];
+
+  /// Жеткізу нүктелерінің жаңа тізімін қабылдау: соңғысы — финиш (`_to`),
+  /// алдындағылары — аралық аялдамалар (`_stops`).
+  void _applyDestinations(List<PickedAddress> dest) {
+    if (dest.isEmpty) return;
     setState(() {
-      if (index == null) {
-        _stops.add(res);
-      } else {
-        _stops[index] = res;
-      }
+      _to = dest.last;
+      _stops
+        ..clear()
+        ..addAll(dest.take(dest.length - 1));
     });
   }
 
-  void _removeStop(int index) => setState(() => _stops.removeAt(index));
+  /// Жаңа аралық аялдама қосу. Ол ӘРҚАШАН «қайдан» мен фиништің АРАСЫНДА
+  /// тұрады, сол себепті жаңа мекенжай ФИНИШ болады да, бұрынғы финиш
+  /// аралық аялдамаға айналады — Яндекс/inDriver-дегідей «жол бойымен
+  /// қосу» логикасы (клиент әдетте соңына тағы бір жер қосады).
+  Future<void> _addDestination() async {
+    final res = await CityStreetSheet.show(context, title: t('Мекенжай қосу'));
+    if (res == null || !mounted) return;
+    _applyDestinations([..._destinations, res]);
+  }
+
+  /// Мекенжайлар парағы: ретін ауыстыру, өшіру, қосу (фото 2 үлгісі).
+  Future<void> _openStopsSheet() async {
+    final res = await StopsSheet.show(context, destinations: _destinations);
+    if (res != null && mounted) _applyDestinations(res);
+  }
 
   void _onPanelDragUpdate(DragUpdateDetails d) => _dragAccum += d.delta.dy;
 
@@ -538,30 +552,19 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         ),
                                         const SizedBox(height: 10),
                                       ],
-                                      // көлік түрін таңдау — заказ тек сол
+                                      // Көлік түрін таңдау — заказ тек сол
                                       // түрдегі орындаушыларға көрінеді.
-                                      // Такси санатында түр біреу — карусель
-                                      // орнына қысқа түсініктеме тұрады.
+                                      // ЕКІ САНАТТА ДА карусель: «Такси»
+                                      // басылса — «Такси» мен «Доставка»,
+                                      // «Спецтехника» басылса — газель,
+                                      // фургон, КамАЗ… (бірдей тәртіп).
                                       if (_category == VehicleCategory.taxi)
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.info_outline,
-                                              size: 15,
-                                              color: Gz.textSecondary,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                VehicleType.taxi.description,
-                                                style: const TextStyle(
-                                                  color: Gz.textSecondary,
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        VehicleTypeCarousel(
+                                          selected: _taxiVehicle,
+                                          types: kTaxiVehicleTypes,
+                                          onChanged: (v) => setState(
+                                            () => _taxiVehicle = v,
+                                          ),
                                         )
                                       else
                                         VehicleTypeCarousel(
@@ -571,12 +574,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           ),
                                         ),
                                       const SizedBox(height: 10),
-                                      // ---- МАРШРУТ: қайдан → аялдамалар → қайда ----
+                                      // ---- МАРШРУТ ----
                                       // «Қайдан» картамен байланысты, бірақ
                                       // түртіп сәл өзгертуге болады.
                                       AddressRow(
-                                        icon: Icons.trip_origin,
-                                        iconColor: Gz.green,
+                                        mark: const RoutePointMark.origin(),
                                         text: _resolvingFrom
                                             ? t('Анықталуда…')
                                             : (_from?.address ??
@@ -599,81 +601,67 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                                 color: Gz.textSecondary,
                                               ),
                                       ),
-                                      // Аралық аялдамалар (0047) — қосылған
-                                      // ретімен, әрқайсысын түртіп өзгертуге
-                                      // не ✕ арқылы алып тастауға болады.
-                                      for (var i = 0; i < _stops.length; i++)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 6),
-                                          child: AddressRow(
-                                            icon: Icons.adjust,
-                                            iconColor: Gz.violet,
-                                            text: _stops[i].address,
-                                            onTap: () => _pickStop(index: i),
-                                            trailing: IconButton(
-                                              onPressed: () => _removeStop(i),
-                                              icon: const Icon(Icons.close),
-                                              iconSize: 16,
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                              padding: EdgeInsets.zero,
-                                              constraints:
-                                                  const BoxConstraints(
-                                                    minWidth: 28,
-                                                    minHeight: 28,
-                                                  ),
-                                              color: Gz.textSecondary,
-                                              tooltip: t('Алып тастау'),
-                                            ),
-                                          ),
-                                        ),
                                       const SizedBox(height: 6),
-                                      AddressRow(
-                                        icon: Icons.location_on,
-                                        iconColor: Gz.red,
-                                        text: _to?.address ??
-                                            t('Қайда жеткіземіз?'),
-                                        dim: _to == null,
-                                        onTap: _pickTo,
-                                        trailing: const Icon(
-                                          Icons.chevron_right,
-                                          color: Gz.textSecondary,
-                                        ),
-                                      ),
-                                      // «+ Мекенжай қосу» — жеткізу нүктесі
-                                      // белгіленген соң ғана (аялдама әрқашан
-                                      // ЕКЕУІНІҢ АРАСЫНДА тұрады) әрі шектен
-                                      // аспағанда.
-                                      if (_to != null &&
-                                          _stops.length < kMaxExtraStops)
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: TextButton.icon(
-                                            onPressed: () => _pickStop(),
-                                            style: TextButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                  ),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
+                                      // Жеткізу нүктелері. БІРНЕШЕУ болса —
+                                      // панель биіктемеуі үшін БІР ЖОЛҒА
+                                      // жиналады («A → B»), түртсе басқару
+                                      // парағы ашылады (ретін ауыстыру,
+                                      // өшіру, қосу).
+                                      if (_stops.isEmpty)
+                                        AddressRow(
+                                          mark: const RoutePointMark.finish(),
+                                          text: _to?.address ??
+                                              t('Қайда жеткіземіз?'),
+                                          dim: _to == null,
+                                          onTap: _pickTo,
+                                          trailing: const Icon(
+                                            Icons.chevron_right,
+                                            color: Gz.textSecondary,
+                                          ),
+                                        )
+                                      else
+                                        AddressRow(
+                                          mark: const Icon(
+                                            Icons.sports_score,
+                                            size: 20,
+                                            color: Gz.red,
+                                          ),
+                                          text: _destinations
+                                              .map((d) => d.address)
+                                              .join('  →  '),
+                                          onTap: _openStopsSheet,
+                                          trailing: Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 7,
+                                                  vertical: 2,
+                                                ),
+                                            decoration: BoxDecoration(
+                                              color: Gz.violet
+                                                  .withValues(alpha: 0.14),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
                                             ),
-                                            icon: const Icon(
-                                              Icons.add_circle_outline,
-                                              size: 17,
-                                            ),
-                                            label: BtnLabel(
-                                              t('Мекенжай қосу'),
+                                            child: Text(
+                                              '${_destinations.length}',
                                               style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w900,
+                                                color: Gz.violet,
                                               ),
                                             ),
                                           ),
                                         ),
+                                      // «Мекенжай қосу» — жеткізу нүктесі
+                                      // белгіленген соң ғана әрі шектен
+                                      // аспағанда.
+                                      if (_to != null &&
+                                          _stops.length < kMaxExtraStops) ...[
+                                        const SizedBox(height: 8),
+                                        AddAddressButton(
+                                          onPressed: _addDestination,
+                                        ),
+                                      ],
                                       const SizedBox(height: 12),
                                       FilledButton(
                                         onPressed:

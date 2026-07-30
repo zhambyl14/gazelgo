@@ -87,9 +87,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   late PickedAddress _to = widget.to;
   late final List<PickedAddress> _stops = List.of(widget.stops);
 
-  /// Такси заказы ма — форма мүлдем басқаша: жүк сипаттамасы да, фото да,
-  /// заңдылық белгісі де қажет емес, орнына ЖОЛАУШЫ САНЫ сұралады.
+  /// ТАКСИ заказы ма (жолаушы тасымалы) — форма мүлдем басқаша: жүк
+  /// сипаттамасы да, фото да, заңдылық белгісі де қажет емес, орнына
+  /// ЖОЛАУШЫ САНЫ сұралады.
+  ///
+  /// МАҢЫЗДЫ: «Доставка» ({@link VehicleType.delivery}) такси САНАТЫНДА
+  /// болғанымен, ол ЖҮК жеткізу — сол себепті формасы кәдімгі жүк заказы
+  /// сияқты (не жеткізу керек + фото). Тек осы `_isTaxi` таксиге тән.
   bool get _isTaxi => _vehicle == VehicleType.taxi;
+
+  /// Доставка заказы ма — жүк формасы, бірақ жеңіл көлікпен.
+  bool get _isDelivery => _vehicle == VehicleType.delivery;
 
   /// Такси заказындағы жолаушы саны (сервер `cargo_desc`-ті бос қалдырмауды
   /// талап етеді, сол себепті осыдан мәтін құрылады).
@@ -212,7 +220,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Future<void> _editStop(int index) async {
     final res = await CityStreetSheet.show(
       context,
-      title: t('Аялдама мекенжайы'),
+      title: t('Мекенжайды өзгерту'),
       initial: _stops[index],
     );
     if (res != null && mounted) {
@@ -224,14 +232,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
   }
 
+  /// Жаңа мекенжай қосу. Ол маршруттың СОҢҒЫ нүктесі болады, бұрынғы соңғы
+  /// нүкте аралық аялдамаға айналады — клиент әдетте «жол бойымен тағы бір
+  /// жер» қосады. Басты беттегі логика да ДӘЛ СОЛАЙ (екі экранда бірдей).
   Future<void> _addStop() async {
     final res = await CityStreetSheet.show(
       context,
-      title: t('Аялдама мекенжайы'),
+      title: t('Мекенжай қосу'),
     );
     if (res != null && mounted) {
       setState(() {
-        _stops.add(res);
+        _stops.add(_to);
+        _to = res;
         _route = null;
       });
       _loadRoute();
@@ -471,7 +483,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     children: [
                       Expanded(
                         child: BtnLabel(
-                          _isTaxi ? t('Такси шақыру') : t('Заказ құру'),
+                          _isTaxi
+                              ? t('Такси шақыру')
+                              : (_isDelivery
+                                    ? t('Доставка тапсыру')
+                                    : t('Заказ құру')),
                           style: const TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w900,
@@ -543,11 +559,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           child: Column(
                             children: [
                               // ---- Маршрут: барлық мекенжай осында ----
-                              // Әрқайсысын түртіп өзгертуге болады, аралық
-                              // аялдаманы ✕ арқылы алып тастауға да.
+                              // Жеткізу нүктелері НӨМІРЛЕНЕДІ (1, 2 …),
+                              // соңғысы — ФИНИШ: сол себепті клиент қайсысы
+                              // бірінші, қайсысы соңғы екенін бірден оқиды.
+                              // Әрқайсысын түртіп өзгертуге, аралығын ✕
+                              // арқылы алып тастауға болады.
                               _EditableAddr(
-                                icon: Icons.trip_origin,
-                                color: Gz.green,
+                                mark: const RoutePointMark.origin(),
                                 label: t('Қайдан'),
                                 value: _from.address,
                                 onTap: _editFrom,
@@ -555,10 +573,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               for (var i = 0; i < _stops.length; i++) ...[
                                 const SizedBox(height: 6),
                                 _EditableAddr(
-                                  icon: Icons.adjust,
-                                  color: Gz.violet,
-                                  label:
-                                      '${t('Аялдама')} ${i + 1}',
+                                  mark: RoutePointMark.stop(i + 1),
+                                  label: t('Қайда'),
                                   value: _stops[i].address,
                                   onTap: () => _editStop(i),
                                   onRemove: () => _removeStop(i),
@@ -566,38 +582,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               ],
                               const SizedBox(height: 6),
                               _EditableAddr(
-                                icon: Icons.location_on,
-                                color: Gz.red,
-                                label: t('Қайда'),
+                                mark: const RoutePointMark.finish(),
+                                label: _stops.isEmpty
+                                    ? t('Қайда')
+                                    : t('Соңғы нүкте'),
                                 value: _to.address,
                                 onTap: _editTo,
                               ),
-                              if (_stops.length < kMaxExtraStops)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton.icon(
-                                    onPressed: _addStop,
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    icon: const Icon(
-                                      Icons.add_circle_outline,
-                                      size: 17,
-                                    ),
-                                    label: BtnLabel(
-                                      t('Мекенжай қосу'),
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              if (_stops.length < kMaxExtraStops) ...[
+                                const SizedBox(height: 10),
+                                AddAddressButton(onPressed: _addStop),
+                              ],
                               if (route != null) ...[
                                 const Divider(height: 20),
                                 Row(
@@ -642,16 +637,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        // Такси заказында карусель мағынасыз (санатта жалғыз
-                        // түр) — таңдалғанын ғана көрсетеміз. Жүк/спецтехника
-                        // болса — бұрынғыдай тізім (таксиден басқасы).
-                        if (_vehicle == VehicleType.taxi)
-                          _SelectedVehicleRow(vehicle: _vehicle)
-                        else
-                          VehicleTypeCarousel(
-                            selected: _vehicle,
-                            onChanged: (v) => setState(() => _vehicle = v),
-                          ),
+                        // Карусель ӨЗ САНАТЫНЫҢ түрлерін ғана көрсетеді:
+                        // такси/доставка заказында — сол екеуі, жүк
+                        // заказында — жүк көліктері. Әйтпесе доставка
+                        // заказында жүк каруселі шығып, клиент кездейсоқ
+                        // «Газель» таңдап, форма да ауысып кететін.
+                        VehicleTypeCarousel(
+                          selected: _vehicle,
+                          types: kTaxiVehicleTypes.contains(_vehicle)
+                              ? kTaxiVehicleTypes
+                              : kCargoVehicleTypes,
+                          onChanged: (v) => setState(() => _vehicle = v),
+                        ),
                         const SizedBox(height: 18),
                         // ================= ТАКСИ ФОРМАСЫ =================
                         // Таксиде жүк сипаттамасы да, фото да, заңдылық
@@ -699,11 +696,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           // Экран ашылған бойда фокус ОСЫҒАН беріледі
                           // (`_focusCargo`): клиенттер бұл жолды толтыруды
                           // ұмытып, бос заказ жіберуге тырысатын.
+                          //
+                          // ДОСТАВКА да осы тармақта (жүк жеткізіледі), тек
+                          // жазулары доставкаға сай — жеңіл көлікпен ұсақ
+                          // зат тасымалдайды, «диван/көшу» деген мысал
+                          // орынсыз болатын.
                           Row(
                             key: _cargoKey,
                             children: [
                               Text(
-                                t('Заказ туралы'),
+                                _isDelivery
+                                    ? t('Не жеткізу керек?')
+                                    : t('Заказ туралы'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
@@ -728,7 +732,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             textCapitalization: TextCapitalization.sentences,
                             onChanged: (_) => setState(() {}),
                             decoration: InputDecoration(
-                              hintText: t('мыс: диван, тоңазытқыш, көшу'),
+                              hintText: _isDelivery
+                                  ? t('мыс: құжат, дәрі, кішкене қап')
+                                  : t('мыс: диван, тоңазытқыш, көшу'),
                               prefixIcon:
                                   const Icon(Icons.inventory_2_outlined),
                             ),
@@ -739,7 +745,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             maxLines: 2,
                             textCapitalization: TextCapitalization.sentences,
                             decoration: InputDecoration(
-                              hintText: t('Қосымша: қабат, лифт, көмек…'),
+                              hintText: _isDelivery
+                                  ? t('Қосымша: подъезд, қабат, кімге беру…')
+                                  : t('Қосымша: қабат, лифт, көмек…'),
                               prefixIcon: const Icon(Icons.notes),
                             ),
                           ),
@@ -1010,63 +1018,17 @@ class _CountChip extends StatelessWidget {
   }
 }
 
-/// Таңдалған көлік түрін көрсететін жол — санатта жалғыз түр болғанда
-/// (мыс. «Такси») карусель орнына шығады.
-class _SelectedVehicleRow extends StatelessWidget {
-  final VehicleType vehicle;
-  const _SelectedVehicleRow({required this.vehicle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Gz.ink,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Gz.yellow, width: 1.6),
-      ),
-      child: Row(
-        children: [
-          vehicleIcon(vehicle, size: 24),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vehicle.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                  ),
-                ),
-                Text(
-                  vehicle.description,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.check_circle, color: Gz.yellow, size: 20),
-        ],
-      ),
-    );
-  }
-}
-
 /// Басуға болатын адрес жолы (заказ құру экранында өзгерту үшін).
 /// [onRemove] берілсе — оң жақта ✕ шығады (аралық аялдаманы алып тастау).
 class _EditableAddr extends StatelessWidget {
-  final IconData icon;
-  final Color color;
+  /// Сол жақтағы белгі — [RoutePointMark] (алу / нөмір / финиш).
+  final Widget mark;
   final String label;
   final String value;
   final VoidCallback onTap;
   final VoidCallback? onRemove;
   const _EditableAddr({
-    required this.icon,
-    required this.color,
+    required this.mark,
     required this.label,
     required this.value,
     required this.onTap,
@@ -1082,7 +1044,7 @@ class _EditableAddr extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: color),
+            SizedBox(width: 20, child: Center(child: mark)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
