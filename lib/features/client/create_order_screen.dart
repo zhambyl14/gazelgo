@@ -74,10 +74,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   /// Заңдылық белгісі АВТОМАТТЫ қойылды ма (алғашқы бірнеше заказдан кейін).
   bool _legalAuto = false;
+  /// «Тізім» — тыйым салынған заттардың НАҚТЫ тізіміне апарады: құжат
+  /// ашылған бойда сол бөлімге автоматты скролл жасалып, ол қысқа уақыт
+  /// белгіленеді. Бұрын жай ғана келісімнің басы ашылатын да, қолданушы
+  /// тізімді 5-бөлімнен өзі іздеуге мәжбүр болатын.
   late final TapGestureRecognizer _legalListTap = TapGestureRecognizer()
-    ..onTap = () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const LegalScreen(initialTab: 0)));
+    ..onTap = () => Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LegalScreen(
+          initialTab: 0,
+          scrollToSection: kProhibitedCargoSection,
+        ),
+      ),
+    );
   GeoRoute? _route;
   final List<Uint8List> _photos = [];
   final _picker = ImagePicker();

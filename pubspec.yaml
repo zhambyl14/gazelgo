@@ -1,7 +1,7 @@
 name: tasu
 description: "Tasu — жүк тасымалы және спецтехника платформасы (клиент, орындаушы, модератор)."
 publish_to: 'none'
-version: 1.0.4+14
+version: 1.0.4+15
 environment:
   sdk: ^3.11.5
 

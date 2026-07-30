@@ -447,12 +447,25 @@ class _BoardCard extends StatelessWidget {
               children: [
                 const Icon(Icons.storefront, size: 21, color: Gz.ink),
                 const SizedBox(width: 8),
+                // Жүйе шрифті үлкейтілген телефондарда «Хабарландырулар»
+                // рамкаға сыймай ЕКІ ЖОЛҒА бөлініп кететін («Хабарландырула»
+                // + «р»). FittedBox сыймаған жағдайда жазуды кішірейтеді,
+                // сол себепті ол ӘРҚАШАН бір жолда тұрады.
                 Expanded(
-                  child: Text(
-                    t('Хабарландырулар'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14.5,
+                  child: SizedBox(
+                    height: 19,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        t('Хабарландырулар'),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
