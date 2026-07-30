@@ -10,6 +10,7 @@ import 'overview_screen.dart';
 import 'reports_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
+import 'vehicle_types_screen.dart';
 
 /// Модератор панелі: линия, өтінімдер, толтырулар, орындаушылар, қолдау.
 class ModeratorShell extends StatelessWidget {
@@ -18,7 +19,7 @@ class ModeratorShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 8,
+      length: 9,
       child: Scaffold(
         appBar: AppBar(
           title: Row(
@@ -43,6 +44,7 @@ class ModeratorShell extends StatelessWidget {
             Tab(text: t('Орындаушылар')),
             Tab(text: t('Қолдау')),
             Tab(text: t('Хабарламалар')),
+            Tab(text: t('Көліктер')),
             Tab(text: t('Баптаулар')),
           ]),
         ),
@@ -55,6 +57,7 @@ class ModeratorShell extends StatelessWidget {
             ExecutorsScreen(),
             SupportAdminScreen(),
             ReportsScreen(),
+            VehicleTypesScreen(),
             AppSettingsScreen(),
           ],
         ),

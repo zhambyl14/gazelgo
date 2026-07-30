@@ -3,6 +3,12 @@ library;
 
 import 'geo.dart';
 import 'lang.dart';
+import 'vehicle_catalog.dart';
+
+/// Көлік түрлері 0050-ден бастап БӨЛЕК файлда (модератор басқаратын
+/// динамикалық каталог). Ескі `import 'models.dart'` жазған экрандардың
+/// бәрі баяғыдай жұмыс істеуі үшін осы жерден қайта экспортталады.
+export 'vehicle_catalog.dart';
 
 DateTime? _dt(dynamic v) =>
     v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
@@ -22,127 +28,6 @@ double _d(dynamic v) {
   if (v == null) return 0;
   if (v is num) return v.toDouble();
   return num.tryParse(v.toString())?.toDouble() ?? 0;
-}
-
-// ---------- Vehicle type (көлік түрі) ----------
-/// Заказ бен орындаушы осы түр бойынша сәйкестендіріледі: клиент газельге
-/// заказ берсе — оны тек газелист көреді (indriver-дегі көлік таңдау сияқты).
-///
-/// [taxi] мен [delivery] — «Такси» САНАТЫНЫҢ түрлері ([kTaxiVehicleTypes]):
-///   • taxi     — жолаушы тасымалы (форма: жолаушы саны);
-///   • delivery — жеңіл көлікпен ұсақ жүк жеткізу (форма: не жеткізу керек).
-/// Екеуі де модератор «Такси» бөлімін қоспайынша клиентке де, орындаушыға
-/// да КӨРІНБЕЙДІ. Қалғандары — [kCargoVehicleTypes] («Спецтехника»).
-enum VehicleType {
-  taxi,
-  delivery,
-  gazelle,
-  furgon,
-  minivan,
-  kamaz,
-  fura,
-  manipulator,
-  crane,
-  loader,
-  excavator,
-  avtovyshka,
-  tractor,
-  assenizator,
-}
-
-/// «Такси» санатының түрлері — такси (жолаушы) және доставка (ұсақ жүк).
-/// Модератор «Такси» бөлімін қосқанда ғана көрінеді.
-const List<VehicleType> kTaxiVehicleTypes = [
-  VehicleType.taxi,
-  VehicleType.delivery,
-];
-
-/// Жүк көлігі мен арнайы техника («Спецтехника» санаты) — такси
-/// санатына кірмейтіндердің бәрі әрі такси өшулі кездегі әдепкі тізім.
-final List<VehicleType> kCargoVehicleTypes = VehicleType.values
-    .where((v) => !kTaxiVehicleTypes.contains(v))
-    .toList(growable: false);
-
-VehicleType vehicleTypeFrom(String? s) => switch (s) {
-  'taxi' => VehicleType.taxi,
-  'delivery' => VehicleType.delivery,
-  'furgon' => VehicleType.furgon,
-  'minivan' => VehicleType.minivan,
-  'kamaz' => VehicleType.kamaz,
-  'fura' => VehicleType.fura,
-  'manipulator' => VehicleType.manipulator,
-  'crane' => VehicleType.crane,
-  'loader' => VehicleType.loader,
-  'excavator' => VehicleType.excavator,
-  'avtovyshka' => VehicleType.avtovyshka,
-  'tractor' => VehicleType.tractor,
-  'assenizator' => VehicleType.assenizator,
-  _ => VehicleType.gazelle,
-};
-
-extension VehicleTypeX on VehicleType {
-  String get db => name;
-  String get label => switch (this) {
-    VehicleType.taxi => t('Такси'),
-    VehicleType.delivery => t('Доставка'),
-    VehicleType.gazelle => t('Газель'),
-    VehicleType.furgon => t('Фургон'),
-    VehicleType.minivan => t('Мини вэн'),
-    VehicleType.kamaz => t('КамАЗ'),
-    VehicleType.fura => t('Фура'),
-    VehicleType.manipulator => t('Манипулятор'),
-    VehicleType.crane => t('Кран'),
-    VehicleType.loader => t('Погрузчик'),
-    VehicleType.excavator => t('Экскаватор'),
-    VehicleType.avtovyshka => t('Автовышка'),
-    VehicleType.tractor => t('Трактор 3в1'),
-    VehicleType.assenizator => t('Ассенизатор'),
-  };
-
-  /// Түрлі-түсті PNG иконкасы бар түрлер (`assets/vehicles/<name>.png`) —
-  /// қалғандары ([emoji] арқылы) эмодзимен көрсетіледі. UI жағында
-  /// [vehicleIcon] екеуін бір өлшемге сәйкестендіріп рендерлейді.
-  String? get pngAsset => switch (this) {
-    VehicleType.kamaz => 'assets/vehicles/kamaz.png',
-    VehicleType.fura => 'assets/vehicles/fura.png',
-    VehicleType.crane => 'assets/vehicles/crane.png',
-    VehicleType.manipulator => 'assets/vehicles/manipulator.png',
-    VehicleType.assenizator => 'assets/vehicles/assenizator.png',
-    VehicleType.excavator => 'assets/vehicles/excavator.png',
-    VehicleType.loader => 'assets/vehicles/loader.png',
-    VehicleType.minivan => 'assets/vehicles/minivan.png',
-    VehicleType.avtovyshka => 'assets/vehicles/avtovyshka.png',
-    _ => null,
-  };
-
-  /// PNG иконкасы жоқ түрлерге арналған эмодзи (gazelle/furgon/tractor).
-  String get emoji => switch (this) {
-    VehicleType.taxi => '🚕',
-    VehicleType.delivery => '📦',
-    VehicleType.gazelle => '🚚',
-    VehicleType.furgon => '🚐',
-    VehicleType.tractor => '🚜',
-    _ => '🚚',
-  };
-
-  /// Көлік түрінің қысқа түсініктемесі (сыйымдылық/жүктеме). Бос жол болса —
-  /// UI бұл жолды көрсетпейді. Каруселде таңдалған түрдің астында шығады.
-  String get description => switch (this) {
-    VehicleType.taxi => t('Жолаушы тасымалы'),
-    VehicleType.delivery => t('Жеңіл көлікпен ұсақ жүк жеткізу'),
-    VehicleType.gazelle => t('Әмбебап жүк тасымалы'),
-    VehicleType.furgon => t('Жабық жүк тасымалы'),
-    VehicleType.minivan => t('Жолаушы және шағын жүк'),
-    VehicleType.kamaz => t('Ауыр жүк'),
-    VehicleType.fura => t('Ұзақ қашықтық'),
-    VehicleType.manipulator => t('Кран-манипулятор: тиеу және тасымалдау'),
-    VehicleType.crane => t('Автокран: жүк көтеру'),
-    VehicleType.loader => t('Тиегіш: тиеу, құрылыс жұмыстары'),
-    VehicleType.excavator => t('Қазу, жер жұмыстары'),
-    VehicleType.avtovyshka => t('Биіктікте жұмыс'),
-    VehicleType.tractor => t('Әмбебап трактор (3в1)'),
-    VehicleType.assenizator => t('Сұйық қалдықтарды сору'),
-  };
 }
 
 // ---------- Order status ----------

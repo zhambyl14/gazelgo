@@ -15,21 +15,43 @@ String vehicleCallLabel(VehicleType v) {
   return ru ? 'Вызвать $name' : '$name шақыру';
 }
 
-/// Көлік түрінің иконкасы: PNG бар түрлерге (kamaz/crane/manipulator/
-/// assenizator/excavator/loader/minivan) — түрлі-түсті сурет, қалғанына
-/// (taxi/gazelle/furgon/tractor) — эмодзи. Екеуі де ДӘЛ БІРДЕЙ [size]×[size]
-/// қораптың ортасында — көрінетін өлшемі бірдей болады. PNG түрлі-түсті
-/// болғандықтан [color] тек эмодзиге әсер етпейді (глиф өз түсін сақтайды) —
-/// параметр басқа шақыру орындарымен үйлесімділік үшін қалдырылған.
+/// Көлік түрінің иконкасы. Үш дереккөз — осы КЕЗЕКПЕН:
+///   1. модератор жүктеген сурет ([VehicleTypeX.iconUrl], 0050) —
+///      кірістірілген суреттен де БАСЫМ, себебі оны модератор әдейі қойған;
+///   2. қосымшамен бірге келген PNG (`assets/vehicles/<code>.png`);
+///   3. эмодзи (суреті жоқ түрлерге: газель, фургон, трактор…).
+/// Үшеуі де ДӘЛ БІРДЕЙ [size]×[size] қораптың ортасында — көрінетін өлшемі
+/// бірдей болады. Сурет түрлі-түсті болғандықтан [color] тек эмодзиге әсер
+/// етпейді — параметр басқа шақыру орындарымен үйлесімділік үшін қалдырылған.
+///
+/// Желі суреті жүктелмей қалса (интернет жоқ, сілтеме бұзылған) — үнсіз
+/// кірістірілген PNG-ге, ол да жоқ болса эмодзиге қайтады: карусель
+/// ЕШҚАШАН бос шаршы көрсетпейді.
 Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) {
+  final url = v.iconUrl;
   final png = v.pngAsset;
+
+  Widget fallback() => png != null
+      ? Image.asset(png, width: size, height: size, fit: BoxFit.contain)
+      : Text(v.emoji, style: TextStyle(fontSize: size * 0.8, height: 1));
+
   return SizedBox(
     width: size,
     height: size,
     child: Center(
-      child: png != null
-          ? Image.asset(png, width: size, height: size, fit: BoxFit.contain)
-          : Text(v.emoji, style: TextStyle(fontSize: size * 0.8, height: 1)),
+      child: url == null
+          ? fallback()
+          : Image.network(
+              url,
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              // Жүктеліп жатқанда да орын БІРДЕЙ болып тұрсын (карточкалар
+              // «секірмеуі» үшін) — сол себепті әдепкі суретті көрсетеміз.
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : fallback(),
+              errorBuilder: (_, _, _) => fallback(),
+            ),
     ),
   );
 }
@@ -92,6 +114,16 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    // Каталог серверден жаңарғанда (модератор түр қосты/өшірді/ретін
+    // ауыстырды) карусель ӨЗІН қайта салады — қосымшаны қайта ашудың
+    // қажеті жоқ (0050).
+    return ValueListenableBuilder<int>(
+      valueListenable: VehicleCatalog.revision,
+      builder: (_, _, _) => _body(),
+    );
+  }
+
+  Widget _body() {
     final desc = widget.selected.description;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

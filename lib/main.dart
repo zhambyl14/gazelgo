@@ -117,6 +117,15 @@ Future<void> main() async {
   }
   await Notify.init();
   await Lang.init();
+  // Көлік түрлерінің каталогы (0050): алдымен ҚҰРЫЛҒЫДАҒЫ кэштен —
+  // жылдам әрі желісіз де жұмыс істейді, сол себепті бірінші кадрда
+  // тізім дұрыс. Серверден жаңарту фонда жүреді: жауап келгенде
+  // `VehicleCatalog.revision` артып, карусельдер өздері қайта салынады
+  // (қосымшаның ашылуын күттірмейміз).
+  await VehicleCatalog.restoreCache();
+  if (Env.isConfigured) {
+    unawaited(VehicleCatalog.load(Repo.vehicleCatalog));
+  }
   // Хабарламаны басқанда навигация: FCM тап (Push.onOpen) және Android
   // foreground локал уведомлениесінің тап-payload-ы (Notify.onSelect) —
   // екеуі де бір навигация логикасына бағытталады.

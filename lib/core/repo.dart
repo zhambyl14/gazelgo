@@ -443,6 +443,75 @@ class Repo {
   static Future<void> modUpdateSetting(String key, Map<String, dynamic> value) =>
       c.rpc('mod_update_setting', params: {'p_key': key, 'p_value': value});
 
+  // ================= КӨЛІК ТҮРЛЕРІНІҢ КАТАЛОГЫ (0050) =================
+  /// Клиент/орындаушы көретін БЕЛСЕНДІ түрлер (такси өшірулі болса —
+  /// такси мен доставкасыз). [VehicleCatalog.load] осыны шақырады.
+  static Future<List<Map<String, dynamic>>> vehicleCatalog() async {
+    final rows = await c.rpc('vehicle_catalog');
+    return [
+      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// Модератордың ТОЛЫҚ тізімі — өшірулі түрлерін де қоса.
+  static Future<List<Map<String, dynamic>>> modVehicleTypes() async {
+    final rows = await c.rpc('mod_vehicle_types');
+    return [
+      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// Түрді қосу не өзгерту. `null` берілген өріс ӨЗГЕРМЕЙДІ (жаңа түрде
+  /// әдепкі мәнін алады) — сол себепті бір ғана өрісті жаңартуға да болады.
+  static Future<Map<String, dynamic>> modSaveVehicleType({
+    required String code,
+    String? labelKk,
+    String? labelRu,
+    String? descKk,
+    String? descRu,
+    String? iconUrl,
+    String? emoji,
+    bool? isTaxi,
+    bool? active,
+  }) async {
+    final res = await c.rpc('mod_save_vehicle_type', params: {
+      'p_code': code,
+      'p_label_kk': labelKk,
+      'p_label_ru': labelRu,
+      'p_desc_kk': descKk,
+      'p_desc_ru': descRu,
+      'p_icon_url': iconUrl,
+      'p_emoji': emoji,
+      'p_is_taxi': isTaxi,
+      'p_active': active,
+    });
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  /// Тізімнің РЕТІН сақтау — кодтар берілген ретпен нөмірленеді.
+  static Future<void> modReorderVehicleTypes(List<String> codes) =>
+      c.rpc('mod_reorder_vehicle_types', params: {'p_codes': codes});
+
+  /// Түрді жою. Қолданыста болса (заказ/орындаушы/хабарландыру) немесе
+  /// қосымшамен бірге келген болса — ЖОЙЫЛМАЙДЫ, тек өшіріледі.
+  /// Қайтарады: `'deleted'` не `'deactivated'`.
+  static Future<String> modDeleteVehicleType(String code) async =>
+      (await c.rpc('mod_delete_vehicle_type', params: {'p_code': code}))
+          as String;
+
+  /// Көлік түрінің иконкасын жүктеу (PNG). Ескі файл ҚАЛДЫРЫЛМАЙДЫ:
+  /// сілтемеде уақыт белгісі бар, сол себепті кэштегі ескі сурет жабысып
+  /// қалмайды. Қайтарады: көпшілікке ашық сілтеме.
+  static Future<String> uploadVehicleIcon(String code, Uint8List png) async {
+    final path = '$code/${DateTime.now().millisecondsSinceEpoch}.png';
+    await c.storage.from('vehicle-icons').uploadBinary(
+          path,
+          png,
+          fileOptions: const FileOptions(upsert: true, contentType: 'image/png'),
+        );
+    return c.storage.from('vehicle-icons').getPublicUrl(path);
+  }
+
   // ================= RPC wrappers =================
   static Future<Map<String, dynamic>> buyTariff(String kind) async =>
       Map<String, dynamic>.from(
