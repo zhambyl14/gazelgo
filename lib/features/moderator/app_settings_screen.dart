@@ -41,6 +41,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   /// көрінеді — қалғаны жоғалып кетпеуі үшін бастапқы мәнді сақтап қоямыз.
   Map<String, dynamic> _botRaw = {};
 
+  /// Қолдау чатының авто-жауап боты қосулы ма (0054). ЖАСЫРЫН жұмыс
+  /// істейді — қосулы болса, пайдаланушыға жазған адам мен бот арасында
+  /// айырмашылық көрінбейді. Әдепкіде ӨШІРУЛІ.
+  bool _supportBotEnabled = false;
+  bool _supportBotSaving = false;
+
   final _tariffPrice = TextEditingController();
   final _botMax = TextEditingController();
   final _botMerchants = TextEditingController();
@@ -96,6 +102,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final bot = (s['topup_bot'] as Map?) ?? {};
       _botRaw = Map<String, dynamic>.from(bot);
       _botEnabled = bot['enabled'] == true;
+      final supportBot = (s['support_bot'] as Map?) ?? {};
+      _supportBotEnabled = supportBot['enabled'] == true;
       _botMax.text = '${bot['auto_approve_max'] ?? 0}';
       _botAgeHours.text = '${bot['max_receipt_age_hours'] ?? 24}';
       _botMerchants.text =
@@ -166,6 +174,37 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _botSaving = false);
+    }
+  }
+
+  // ---------- Қолдау чатының авто-жауап боты (0054) ----------
+  /// Қосу/өшіру — бірден сақталады. Қосулы болса, пайдаланушы жазған
+  /// хабарламаға бот өзі жауап береді (модератордан ажыратылмайды);
+  /// заказ статусына қатысты сұрақ не «оператор» деген сұраныс келсе,
+  /// бот тиіспейді — Telegram-ге модераторға ескерту жіберіледі.
+  Future<void> _toggleSupportBot(bool v) async {
+    setState(() {
+      _supportBotEnabled = v;
+      _supportBotSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting(
+        'support_bot',
+        {'enabled': v, 'max_auto_replies_per_thread': 5},
+      );
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Қолдау боты қосылды') : t('Қолдау боты өшірілді'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _supportBotEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _supportBotSaving = false);
     }
   }
 
@@ -534,6 +573,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 24),
+          // ---- ЖАҢА БӨЛІМ: қолдау чатының авто-жауап боты (0054) ----
+          _sectionTitle(t('Қолдау чатының боты')),
+          Text(
+            t('Қосулы болса, пайдаланушы (клиент/орындаушы) қолдау чатына '
+                'жазғанда бот өзі жауап береді — модератор жазғандай көрінеді, '
+                'бот екені білінбейді. Заказ статусына қатысты сұрақ не '
+                '«оператор» деген сұраныс келсе — бот тиіспейді, Telegram-ге '
+                'ескерту барады, модератор өзі жалғастырады.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _supportBotEnabled,
+            saving: _supportBotSaving,
+            icon: _supportBotEnabled
+                ? Icons.support_agent
+                : Icons.support_agent_outlined,
+            onLabel: t('Бот қолдау чатына жауап беріп тұр'),
+            offLabel: t('Барлық хабарлама тек модераторға келеді'),
+            onChanged: _toggleSupportBot,
           ),
           const SizedBox(height: 24),
           _sectionTitle(t('Мәжбүрлі жаңарту')),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/geo.dart';
@@ -36,6 +37,21 @@ class ExecutorFeedBody extends ConsumerStatefulWidget {
 }
 
 class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
+  /// Орындаушының ағымдағы орны — рұқсат берілсе «жақын заказ»
+  /// сұрыптауын НАҚТЫ қашықтықпен есептейміз. Рұқсат жоқ/өшірулі болса
+  /// `null` қалады, сол кезде маршрут ұзындығына (`distanceKm`) қарай —
+  /// қысқа маршрутты заказдар жақынырақ деп есептейміз.
+  Position? _pos;
+
+  @override
+  void initState() {
+    super.initState();
+    // Тыныш сұрайды — бас тартса да лента жұмыс істей береді (fallback).
+    Geo.currentPosition().then((p) {
+      if (mounted) setState(() => _pos = p);
+    });
+  }
+
   Future<void> _manualRefresh() async {
     ref.invalidate(executorStatsStreamProvider);
     ref.invalidate(executorFeedStreamProvider);
@@ -53,15 +69,45 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       error: (e, st) => EmptyState(icon: Icons.wifi_off, title: errText(e)),
       data: (_) {
         // Лента БАРЛЫҚ орындаушыға көрінеді (тарифсіз/расталмаған да) —
-        // сервер `executor_feed` көлік түрі мен қала фильтрін жасайды,
-        // жаңалары бірінші. Ұсыныс беру құқығы (тариф/мақұлдау) заказды
-        // басқанда `_openOrder` ішінде тексеріледі.
+        // сервер `executor_feed` көлік түрі мен қала фильтрін жасайды
+        // (0053). Ұсыныс беру құқығы (тариф/мақұлдау) заказды басқанда
+        // `_openOrder` ішінде тексеріледі.
+        //
+        // РЕТІ (үш өлшем қосынды балл ретінде, басымдығы: жаңа → жақын →
+        // қымбат): ескі заказ бәрібір алынып қойылған болуы мүмкін,
+        // сондықтан ЖАҢАЛЫҒЫ ең салмақты. Одан кейін ЖАҚЫНДЫҒЫ (GPS
+        // рұқсаты болса — нақты қашықтық, болмаса — маршрут ұзындығы:
+        // қысқа сапарлар «жақынырақ» болып есептеледі). Соңында БАҒАСЫ.
         final eligible = [...feedAsync.value ?? const <Order>[]];
-        eligible.sort((a, b) {
-          final ca = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final cb = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return cb.compareTo(ca);
-        });
+        final maxPrice = eligible.isEmpty
+            ? 1
+            : eligible
+                .map((o) => o.displayPrice ?? 0)
+                .reduce((a, b) => a > b ? a : b)
+                .clamp(1, 1 << 30);
+        double scoreOf(Order o) {
+          final ageMin = o.createdAt == null
+              ? 999.0
+              : DateTime.now().difference(o.createdAt!).inSeconds / 60.0;
+          final freshness = (1 - ageMin / 180).clamp(0.0, 1.0);
+
+          final double proximity;
+          if (_pos != null) {
+            final km = Geo.haversineKm(
+              LatLng(_pos!.latitude, _pos!.longitude),
+              LatLng(o.fromLat, o.fromLng),
+            );
+            proximity = (1 - km / 50).clamp(0.0, 1.0);
+          } else {
+            proximity = (1 - o.distanceKm / 50).clamp(0.0, 1.0);
+          }
+
+          final price = ((o.displayPrice ?? 0) / maxPrice).clamp(0.0, 1.0);
+
+          return freshness * 0.5 + proximity * 0.3 + price * 0.2;
+        }
+
+        eligible.sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
 
         if (eligible.isEmpty) {
           return _refreshable([

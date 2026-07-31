@@ -108,8 +108,14 @@ class _ChatViewState extends State<ChatView> {
     }
   }
 
-  bool _isMine(SupportMessage m) =>
-      widget.asModerator ? m.senderRole == 'moderator' : m.senderRole == 'user';
+  // Бот хабарламасы (0054) модератор көрінісінде ӨЗ жағында (оң жақта)
+  // шығуы керек — сол «қолдау жауап берді» ағынын жалғастырады. Клиент/
+  // орындаушы көрінісінде бот `m.senderRole == 'user'`-ге сәйкес келмейді,
+  // сондықтан автоматты түрде дұрыс (сол жақта, қолдаудан келгендей) шығады
+  // — пайдаланушыға бот екені ешқашан білінбейді.
+  bool _isMine(SupportMessage m) => widget.asModerator
+      ? (m.senderRole == 'moderator' || m.senderRole == 'bot')
+      : m.senderRole == 'user';
 
   @override
   Widget build(BuildContext context) {
@@ -133,8 +139,14 @@ class _ChatViewState extends State<ChatView> {
                       controller: _scroll,
                       padding: const EdgeInsets.all(12),
                       itemCount: msgs.length,
-                      itemBuilder: (_, i) =>
-                          _Bubble(msg: msgs[i], mine: _isMine(msgs[i])),
+                      itemBuilder: (_, i) => _Bubble(
+                        msg: msgs[i],
+                        mine: _isMine(msgs[i]),
+                        // Пайдаланушыға ЕШҚАШАН көрінбейді — тек модератор
+                        // өз экранында бот жауабын ажырата алсын деп.
+                        showBotTag:
+                            widget.asModerator && msgs[i].senderRole == 'bot',
+                      ),
                     );
                   },
                 ),
@@ -203,7 +215,12 @@ class _ChatViewState extends State<ChatView> {
 class _Bubble extends StatelessWidget {
   final SupportMessage msg;
   final bool mine;
-  const _Bubble({required this.msg, required this.mine});
+  final bool showBotTag;
+  const _Bubble({
+    required this.msg,
+    required this.mine,
+    this.showBotTag = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -227,6 +244,18 @@ class _Bubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (showBotTag)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '🤖 AI',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Gz.ink.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
             if (msg.imagePath != null)
               Padding(
                 padding: EdgeInsets.only(bottom: msg.body.isEmpty ? 0 : 6),
