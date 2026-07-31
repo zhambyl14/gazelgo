@@ -124,7 +124,7 @@ async function verify(topupId: string) {
         codes.push("TOO_LARGE");
         bytes = null;
       } else {
-        mime = sniffImage(bytes);
+        mime = sniffFormat(bytes);
         if (!mime) {
           codes.push("NOT_IMAGE");
           bytes = null;
@@ -141,13 +141,18 @@ async function verify(topupId: string) {
 
   if (bytes) {
     const b64 = toBase64(bytes);
+    const isPdf = mime === "application/pdf";
+    // Tesseract тек суретпен жұмыс істейді — PDF үшін оны шақырудың мәні
+    // жоқ (бәрібір қатемен аяқталады, тек лог шуын көбейтеді).
     const [ocrRes, llmRes] = await Promise.allSettled([
-      withTimeout(runOcr(bytes), OCR_TIMEOUT_MS, "OCR"),
+      isPdf
+        ? Promise.reject(new Error("OCR_SKIPPED_PDF"))
+        : withTimeout(runOcr(bytes), OCR_TIMEOUT_MS, "OCR"),
       withTimeout(runGemini(b64, mime), LLM_TIMEOUT_MS, "GEMINI"),
     ]);
 
     if (ocrRes.status === "fulfilled") ocr = ocrRes.value;
-    else console.error("OCR_FAILED", ocrRes.reason);
+    else if (!isPdf) console.error("OCR_FAILED", ocrRes.reason);
 
     if (llmRes.status === "fulfilled") llm = llmRes.value;
     else console.error("GEMINI_FAILED", llmRes.reason);
@@ -201,9 +206,14 @@ async function verify(topupId: string) {
   if (sha) claimKeys.push(`sha:${sha}`);
   if (ex.transaction_ref) claimKeys.push(`ref:${ex.transaction_ref.trim()}`);
 
-  const summary = buildSummary(codes, ex, requested);
+  const summary = buildSummary(codes, ex, requested, "kk");
+  const summaryRu = buildSummary(codes, ex, requested, "ru");
 
   // ---- 6) Базаға жазу (база қайта тексереді әрі растайды) ----
+  // `note`/`note_ru` — орындаушыға push түрінде баратын мәтін (тек verdict
+  // approved/rejected болғанда қолданылады, flagged кезде тиіспейді —
+  // 0052 миграциясындағы `notify_executor_topup_reviewed` осы екеуін
+  // пайдаланушының тіл баптауына қарай таңдайды).
   const { data: subRaw, error: subErr } = await admin.rpc(
     "bot_submit_topup_check",
     {
@@ -230,11 +240,22 @@ async function verify(topupId: string) {
         note: verdict === "approved"
           ? "Бот автоматты растады (чек тексерілді)"
           : summary,
+        note_ru: verdict === "approved"
+          ? "Бот автоматически подтвердил (чек проверен)"
+          : summaryRu,
       },
     },
   );
   if (subErr) throw subErr;
   const sub = subRaw as SubmitResult;
+
+  // База қайта тексеріп, ЖАҢА код қосуы мүмкін (мыс. DUPLICATE_RECEIPT — оны
+  // тек транзакция ішінде, `claim` кілттерін иемденуге тырысқанда ғана
+  // біледі). Сол себепті Telegram хабары үшін қорытынды база қайтарған
+  // `sub.reason_codes`-тен ҚАЙТА құрастырылады — алдыңғы `summary` (әлі
+  // база тексермей тұрғанда есептелген) ЕСКІРГЕН болуы мүмкін.
+  const finalCodes = sub.reason_codes ?? codes;
+  const finalSummary = buildSummary(finalCodes, ex, requested);
 
   // ---- 7) Telegram ----
   await notifyTelegram({
@@ -243,8 +264,8 @@ async function verify(topupId: string) {
     ex,
     requested,
     verdict: sub.verdict,
-    codes: sub.reason_codes ?? codes,
-    summary,
+    codes: finalCodes,
+    summary: finalSummary,
     path,
     newBalance: sub.review?.balance ?? null,
     durationMs: Date.now() - startedAt,
@@ -477,10 +498,11 @@ function parseKaspiText(raw: string): Fields {
   const flat = text.replace(/\s+/g, " ");
   const low = flat.toLowerCase();
 
-  // Сома: «5 000 ₸», «5 000,00 ₸», «5000 T», «5 000 тг»
+  // Сома: «5 000 ₸», «5 000,00 ₸», «5000 T», «5 000 тг».
+  // 〒 (U+3012) — теңге таңбасының баламасы кейбір чек баспаларында.
   let amount: number | null = null;
   const amountRe =
-    /(\d[\d\s.,]{0,15}\d|\d)\s*(?:₸|т[гe]\b|тенге|kzt)/gi;
+    /(\d[\d\s.,]{0,15}\d|\d)\s*(?:₸|〒|т[гe]\b|тенге|kzt)/gi;
   const cands: number[] = [];
   for (const m of flat.matchAll(amountRe)) {
     const n = parseMoney(m[1]);
@@ -515,7 +537,7 @@ function parseKaspiText(raw: string): Fields {
   // Алушы / мерчант
   let recipient: string | null = null;
   const recM = flat.match(
-    /(?:получател\w*|алушы|кімге|кому)\s*[:\-]?\s*([^0-9₸]{3,60}?)(?:\s{2,}|$|\d)/i,
+    /(?:получател\w*|алушы|кімге|кому)\s*[:\-]?\s*([^0-9₸〒]{3,60}?)(?:\s{2,}|$|\d)/i,
   );
   if (recM) recipient = recM[1].trim();
 
@@ -539,7 +561,7 @@ function parseKaspiText(raw: string): Fields {
     document_kind: otherBank ? "other_bank" : (isKaspi ? "kaspi_receipt" : null),
     status_kind: failed ? "failed" : (success ? "success" : null),
     amount_value: amount,
-    currency_raw: /₸|тенге|kzt|тг/i.test(flat) ? "₸" : null,
+    currency_raw: /₸|〒|тенге|kzt|тг/i.test(flat) ? "₸" : null,
     datetime_iso: iso,
     datetime_raw: rawDt,
     recipient_name_raw: recipient,
@@ -562,7 +584,11 @@ function parseKaspiText(raw: string): Fields {
 // ============================================================================
 const EXTRACT_PROMPT = `You are a strict OCR field extractor for payment receipts.
 
-You will receive ONE image. Return ONLY the JSON object described by the schema.
+You will receive ONE file — either an image (screenshot) or a PDF document
+(some banking apps block screenshots for security, so the user exported the
+receipt as a PDF instead via "Share"). Treat both the same way: read the
+receipt content regardless of file type. Return ONLY the JSON object
+described by the schema.
 
 ABSOLUTE RULES:
 1. You extract data. You NEVER make decisions, recommendations, or judgements
@@ -763,11 +789,22 @@ async function notifyTelegram(a: {
     ]],
   };
 
+  // Telegram-дың sendPhoto тек JPEG/PNG/WebP қабылдайды — PDF чекті
+  // sendDocument арқылы жіберу керек, әйтпесе Telegram API қатесі қайтарады.
+  const isPdfReceipt = a.path.toLowerCase().endsWith(".pdf");
+
   for (const chatId of ids) {
     try {
       // parse_mode ӘДЕЙІ жоқ: чектен алынған мәтін ешқашан Markdown/HTML
       // ретінде оқылмауы керек.
-      if (photoUrl) {
+      if (photoUrl && isPdfReceipt) {
+        await tg("sendDocument", {
+          chat_id: chatId,
+          document: photoUrl,
+          caption,
+          ...(markup ? { reply_markup: markup } : {}),
+        });
+      } else if (photoUrl) {
         await tg("sendPhoto", {
           chat_id: chatId,
           photo: photoUrl,
@@ -797,15 +834,25 @@ async function tg(method: string, body: Record<string, unknown>) {
 }
 
 // ============================================================================
-// Себептерді қазақша жазу
+// Себептерді жазу (қазақша / орысша)
 // ============================================================================
-function buildSummary(codes: string[], ex: Fields, requested: number): string {
+// Орындаушы қосымшада қазақша не орысша тілді таңдай алады
+// (lib/core/lang.dart) — push-хабарлама сол тілде келуі керек. Бұған дейін
+// боттың себебі ӘРҚАШАН қазақша жазылатын да, орысша тіл таңдаған
+// орындаушыға да сол қазақша мәтін жіберілетін еді.
+function buildSummary(
+  codes: string[],
+  ex: Fields,
+  requested: number,
+  lang: "kk" | "ru" = "kk",
+): string {
+  const reason = lang === "ru" ? reasonRu : reasonKk;
   const seen = new Set<string>();
   const out: string[] = [];
   for (const c of codes) {
     if (seen.has(c)) continue;
     seen.add(c);
-    out.push("• " + reasonKk(c, ex, requested));
+    out.push("• " + reason(c, ex, requested));
   }
   return out.join("\n");
 }
@@ -819,7 +866,7 @@ function reasonKk(code: string, ex: Fields, requested: number): string {
     case "DOWNLOAD_FAILED":
       return "Чек файлы сақтауда табылмады";
     case "NOT_IMAGE":
-      return "Файл сурет емес";
+      return "Файл форматы танылмады (JPG/PNG/WebP/PDF болуы керек)";
     case "TOO_LARGE":
       return "Сурет тым үлкен (4 МБ-тан асады)";
     case "ENGINE_ERROR":
@@ -896,6 +943,92 @@ function reasonKk(code: string, ex: Fields, requested: number): string {
   }
 }
 
+function reasonRu(code: string, ex: Fields, requested: number): string {
+  switch (code) {
+    case "NO_RECEIPT":
+      return "Чек не прикреплён";
+    case "RECEIPT_PATH_FOREIGN":
+      return "Путь чека принадлежит другому пользователю";
+    case "DOWNLOAD_FAILED":
+      return "Файл чека не найден в хранилище";
+    case "NOT_IMAGE":
+      return "Формат файла не распознан (нужен JPG/PNG/WebP/PDF)";
+    case "TOO_LARGE":
+      return "Изображение слишком большое (более 4 МБ)";
+    case "ENGINE_ERROR":
+      return "Не удалось прочитать чек (оба механизма не сработали)";
+    case "ONLY_ONE_ENGINE":
+      return "Сработал только один механизм — двойная проверка не выполнена";
+    case "ENGINES_DISAGREE":
+      return "OCR и Gemini прочитали по-разному — возможно, изображение изменено";
+    case "AMOUNT_UNCONFIRMED":
+      return "OCR не нашёл сумму — сумма не подтверждена повторно";
+    case "NOT_A_RECEIPT":
+      return "Это не чек об оплате или он нечитаем";
+    case "WRONG_BANK":
+      return "Чек не из Kaspi";
+    case "POOR_LEGIBILITY":
+      return "Плохое качество изображения — не читается";
+    case "LOW_CONFIDENCE":
+      return "Низкая уверенность распознавания";
+    case "STATUS_NOT_SUCCESS":
+      return `Перевод не выполнен (статус: ${ex.status_kind ?? "неизвестен"})`;
+    case "AMOUNT_MISSING":
+      return "В чеке не найдена сумма";
+    case "AMOUNT_MISMATCH":
+      return `Сумма не совпадает: в чеке ${fmtT(ex.amount_value ?? 0)}, в заявке ${fmtT(requested)}`;
+    case "CURRENCY_MISMATCH":
+      return `Валюта не тенге (${clip(ex.currency_raw ?? "", 12)})`;
+    case "AMBIGUOUS_AMOUNT":
+      return "Сумма перевода и сумма списания отличаются, комиссия не указана";
+    case "BELOW_MIN_TOPUP":
+      return "Сумма меньше минимального пополнения";
+    case "TIMESTAMP_MISSING":
+      return "В чеке не найдена дата и время";
+    case "TIMESTAMP_FUTURE":
+      return "Время в чеке ПОЗЖЕ заявки — невозможно";
+    case "TIMESTAMP_TOO_OLD":
+      return `Чек слишком старый (${ex.datetime_raw ?? "дата неизвестна"})`;
+    case "RECIPIENT_UNVERIFIABLE":
+      return "Получателя невозможно проверить (не настроено имя мерчанта или его нет в чеке)";
+    case "RECIPIENT_MISMATCH":
+      return `Получатель не совпадает: в чеке «${clip(ex.merchant_name ?? ex.recipient_name_raw ?? "—", 40)}»`;
+    case "INJECTED_TEXT":
+      return "В изображении обнаружен посторонний текст-инструкция (попытка обмана бота)";
+    case "SCREEN_PHOTO":
+      return "Не скриншот — фотография экрана";
+    case "EXECUTOR_BLOCKED":
+      return "Исполнитель заблокирован";
+    case "EXECUTOR_NOT_APPROVED":
+      return "Исполнитель ещё не подтверждён";
+    case "LOW_TRUST":
+      return "Низкий рейтинг доверия исполнителя";
+    case "NEW_ACCOUNT":
+      return "Аккаунт слишком новый — риск для этой суммы";
+    case "VELOCITY":
+      return "За последний час подтверждено слишком много пополнений";
+    case "OTHER_PENDING":
+      return "У этого исполнителя есть другая заявка в ожидании";
+    case "ABOVE_CEILING":
+      return "Сумма выше лимита авто-подтверждения";
+    case "NO_TXN_REF":
+      return "В чеке не найден номер квитанции";
+    case "DUPLICATE_RECEIPT":
+      return "Этот чек уже был использован РАНЕЕ";
+    case "DUP_DETECTION_UNAVAILABLE":
+      return "Не удалось проверить повторное использование";
+    case "ALREADY_REVIEWED":
+      return "Заявка уже рассмотрена";
+    case "BOT_DISABLED":
+      return "Бот отключён";
+    default:
+      if (code.startsWith("TAMPER_")) {
+        return `Признак подделки: ${code.slice(7).toLowerCase()}`;
+      }
+      return code;
+  }
+}
+
 // ============================================================================
 // Көмекші функциялар
 // ============================================================================
@@ -913,7 +1046,12 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   ]);
 }
 
-function sniffImage(b: Uint8Array): string {
+// Сурет пе, PDF пе — magic bytes арқылы анықтайды. Kaspi кейде скриншот
+// түсіруге тыйым салады (қаржы қауіпсіздігі), сол кезде орындаушы чекті
+// «Поделиться» арқылы PDF ретінде жүктейді — Gemini PDF-ты да оқи алады
+// (document understanding), Tesseract оқи алмайды (ол тек суретпен жұмыс
+// істейді, сондықтан PDF үшін OCR қадамы бөлек өткізіп жіберіледі).
+function sniffFormat(b: Uint8Array): string {
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
   if (
     b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47
@@ -922,6 +1060,9 @@ function sniffImage(b: Uint8Array): string {
     b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 &&
     b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50
   ) return "image/webp";
+  if (
+    b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46
+  ) return "application/pdf";
   return "";
 }
 
@@ -950,7 +1091,10 @@ function parseMoney(s: string): number | null {
 }
 
 function isTenge(s: string): boolean {
-  return /₸|kzt|тенге|теңге|\bтг\b|\bt\b/i.test(s.trim());
+  // ₸ (U+20B8) — теңгенің ресми таңбасы. Бірақ Gemini кейде оған ҰҚСАС,
+  // бірақ БАСҚА Unicode кодты (〒, U+3012 — жапон пошта белгісі) қайтарады,
+  // себебі кейбір қаріптерде/чек баспаларында теңге сол таңбамен көрінеді.
+  return /₸|〒|kzt|тенге|теңге|\bтг\b|\bt\b/i.test(s.trim());
 }
 
 function digits(s: string): string {

@@ -1219,7 +1219,9 @@ class Repo {
           params: {'p_id': id, 'p_action': action});
 
   // ================= STORAGE =================
-  /// Файлды docs бакетіне жүктеп, жолын қайтарады.
+  /// Файлды docs бакетіне жүктеп, жолын қайтарады. Content-type файл
+  /// атының кеңейтіміне қарай анықталады — Kaspi кейде скриншотты
+  /// бұғаттайды, сол кезде орындаушы чекті PDF ретінде жүктейді (0051+).
   static Future<String> uploadDoc(String name, Uint8List bytes) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
@@ -1227,9 +1229,20 @@ class Repo {
     await c.storage.from('docs').uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: _contentTypeFor(name),
+          ),
         );
     return path;
+  }
+
+  static String _contentTypeFor(String name) {
+    final n = name.toLowerCase();
+    if (n.endsWith('.pdf')) return 'application/pdf';
+    if (n.endsWith('.png')) return 'image/png';
+    if (n.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
   }
 
   static Future<String> signedDocUrl(String path) =>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
@@ -506,10 +507,60 @@ class DocImage extends StatelessWidget {
         ),
       );
     }
+    // Kaspi кейде скриншот түсіруге тыйым салады (қаржы қауіпсіздігі) —
+    // сол кезде орындаушы чекті PDF ретінде «Поделиться» арқылы жүктейді.
+    // PDF-ты Image.network аша алмайды, сондықтан бөлек, сыртқы қосымшада
+    // (браузер/PDF көрсеткіш) ашылатын карточка көрсетеміз.
+    final isPdf = path!.toLowerCase().endsWith('.pdf');
+
     return FutureBuilder<String>(
       future: Repo.signedDocUrl(path!),
       builder: (context, snap) {
         final url = snap.data;
+        if (isPdf) {
+          return GestureDetector(
+            onTap: url == null
+                ? null
+                : () => launchUrl(Uri.parse(url),
+                    mode: LaunchMode.externalApplication),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 110,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Gz.bg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: url == null
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.picture_as_pdf,
+                                  color: Gz.red, size: 32),
+                              const SizedBox(height: 4),
+                              Text(t('PDF ашу'),
+                                  style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: Gz.textSecondary)),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          );
+        }
         return GestureDetector(
           onTap: url == null
               ? null

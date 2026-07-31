@@ -422,16 +422,20 @@ begin
     else '{}'::text[] end;
 
   -- ---------- База жағының қайта тексеруі ----------
+  -- ЕСКЕРТУ: массивке элемент қосу `array_append()` арқылы жасалады, `||`
+  -- ОПЕРАТОРЫМЕН ЕМЕС — PostgreSQL кейде `text[] || 'жол'` өрнегін «жолды
+  -- массив литералы ретінде талда» деп қате түсініп, «malformed array
+  -- literal» қатесін шығарады (нақты осы қатеге ұрынған жағдай болды).
   if v_verdict = 'approved' then
     if t.status <> 'pending' then
-      v_verdict := 'flagged'; v_codes := v_codes || 'ALREADY_REVIEWED';
+      v_verdict := 'flagged'; v_codes := array_append(v_codes, 'ALREADY_REVIEWED');
     elsif coalesce((v_cfg->>'enabled')::boolean, false) is not true then
-      v_verdict := 'flagged'; v_codes := v_codes || 'BOT_DISABLED';
+      v_verdict := 'flagged'; v_codes := array_append(v_codes, 'BOT_DISABLED');
     elsif v_max <= 0 or t.amount > v_max then
-      v_verdict := 'flagged'; v_codes := v_codes || 'ABOVE_CEILING';
+      v_verdict := 'flagged'; v_codes := array_append(v_codes, 'ABOVE_CEILING');
     elsif array_length(v_claims, 1) is null then
       -- Қайталауды тексеру мүмкін болмаса — ЕШҚАШАН растамаймыз.
-      v_verdict := 'flagged'; v_codes := v_codes || 'DUP_DETECTION_UNAVAILABLE';
+      v_verdict := 'flagged'; v_codes := array_append(v_codes, 'DUP_DETECTION_UNAVAILABLE');
     end if;
   end if;
 
@@ -457,7 +461,7 @@ begin
       else
         v_verdict := 'flagged';
       end if;
-      v_codes := v_codes || 'DUPLICATE_RECEIPT';
+      v_codes := array_append(v_codes, 'DUPLICATE_RECEIPT');
       -- Осы өтінім үлгерген кілттерді қайтарып аламыз, әйтпесе кейінгі
       -- қолмен растау «қайталанған» болып қалады.
       delete from public.topup_receipt_claims where topup_id = p_topup;
@@ -646,13 +650,20 @@ begin
    where executor_id = new.executor_id and created_at > now() - interval '1 hour';
   if v_recent >= 3 then return new; end if;
 
+  -- `timeout_milliseconds` МІНДЕТТІ түрде ұзартылған: pg_net-тің ӘДЕПКІ
+  -- таймауты — 5000 мс, ал `topup-verify` (сурет жүктеу + Gemini vision
+  -- шақыруы) орта есеппен 5-10 секунд алады. Әдепкі мәнмен pg_net әр
+  -- шақыруды «уақыты бітті» деп журналдайды (`net._http_response`),
+  -- функцияның өзі фонда сәтті аяқталса да — бұл шатастырады әрі, кейбір
+  -- орталарда, шынымен үзіп жіберу қаупін тудырады.
   perform net.http_post(
     url := 'https://xibxaqcrdpgyzohfplda.supabase.co/functions/v1/topup-verify',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-topup-secret', v_secret
     ),
-    body := jsonb_build_object('topup_id', new.id::text)
+    body := jsonb_build_object('topup_id', new.id::text),
+    timeout_milliseconds := 30000
   );
   return new;
 exception when others then
@@ -752,7 +763,8 @@ begin
         'Content-Type', 'application/json',
         'x-topup-secret', v_secret
       ),
-      body := jsonb_build_object('topup_id', r.id::text)
+      body := jsonb_build_object('topup_id', r.id::text),
+      timeout_milliseconds := 30000
     );
   end loop;
 exception when others then

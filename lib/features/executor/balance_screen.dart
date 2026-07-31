@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +23,11 @@ class BalanceScreen extends ConsumerStatefulWidget {
 class _BalanceScreenState extends ConsumerState<BalanceScreen> {
   final _amount = TextEditingController();
   Uint8List? _receipt;
+
+  /// Тіркелген чектің файл аты — кеңейтіміне қарай (`.jpg`/`.pdf`)
+  /// `Repo.uploadDoc` дұрыс content-type жібереді. `null` болса — әдепкі
+  /// `receipt.jpg` (сурет таңдағанда солай болады).
+  String? _receiptName;
   int _refresh = 0;
 
   @override
@@ -38,8 +44,28 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
     );
     if (f != null) {
       final b = await f.readAsBytes();
-      setState(() => _receipt = b);
+      setState(() {
+        _receipt = b;
+        _receiptName = 'receipt.jpg';
+      });
     }
+  }
+
+  /// Kaspi кейде скриншот түсіруге тыйым салады (қаржы қауіпсіздігі талабы)
+  /// — сол кезде орындаушы чекті «Поделиться» арқылы PDF ретінде сақтайды.
+  /// Бот PDF-ты да оқи алады (Gemini vision), сондықтан осы жол да ашық.
+  Future<void> _pickReceiptPdf() async {
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+    final bytes = picked?.files.firstOrNull?.bytes;
+    if (bytes == null) return;
+    setState(() {
+      _receipt = bytes;
+      _receiptName = 'receipt.pdf';
+    });
   }
 
   /// Kaspi QR/төлем сілтемесін сыртқы қосымшада (Kaspi) ашады. Сілтеме өзі
@@ -82,11 +108,12 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
       return;
     }
     try {
-      final path = await Repo.uploadDoc('receipt.jpg', _receipt!);
+      final path = await Repo.uploadDoc(_receiptName ?? 'receipt.jpg', _receipt!);
       await Repo.requestTopup(amount, path);
       _amount.clear();
       setState(() {
         _receipt = null;
+        _receiptName = null;
         _refresh++;
       });
       if (mounted) {
@@ -221,18 +248,51 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _pickReceipt,
                         icon: Icon(
-                          _receipt == null
+                          _receipt == null || _receiptName == 'receipt.pdf'
                               ? Icons.receipt_long
                               : Icons.check_circle,
-                          color: _receipt == null ? null : Gz.green,
+                          color: _receipt != null &&
+                                  _receiptName != 'receipt.pdf'
+                              ? Gz.green
+                              : null,
                         ),
                         label: BtnLabel(
-                          t(_receipt == null ? 'Чек тіркеу' : 'Чек тіркелді'),
+                          t(_receipt != null && _receiptName != 'receipt.pdf'
+                              ? 'Чек тіркелді'
+                              : 'Чек тіркеу'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickReceiptPdf,
+                        icon: Icon(
+                          Icons.picture_as_pdf,
+                          color: _receiptName == 'receipt.pdf'
+                              ? Gz.green
+                              : null,
+                        ),
+                        label: BtnLabel(
+                          t(_receiptName == 'receipt.pdf'
+                              ? 'PDF тіркелді'
+                              : 'PDF тіркеу'),
                         ),
                       ),
                     ),
                   ],
                 ),
+                if (_receiptName == 'receipt.pdf') ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    t(
+                      'Kaspi скриншотты бұғаттаса — чекті «Поделиться» → PDF '
+                      'ретінде осында тіркеңіз',
+                    ),
+                    style: const TextStyle(
+                        color: Gz.textSecondary, fontSize: 11.5),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 BusyButton(
                   label: t('Сұраным жіберу'),

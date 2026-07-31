@@ -35,6 +35,25 @@ const admin = createClient(
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("ok", { status: 200 });
 
+  // Екі МҮЛДЕМ бөлек шақырушы бар:
+  //   1) Telegram-ның өзі (webhook) — `X-Telegram-Bot-Api-Secret-Token`.
+  //   2) Postgres триггері (0052, `notify_telegram_manual_review`) — модератор
+  //      Tasu·Модератор ҚОСЫМШАСЫНАН қолмен растаса/қабылдамаса, Telegram
+  //      чатына аудит хабары жіберу үшін `x-topup-secret` header-імен
+  //      келеді (`topup-verify`-мен бірдей құпия).
+  const internalSecret = req.headers.get("x-topup-secret");
+  if (BOT_SECRET && internalSecret === BOT_SECRET) {
+    try {
+      const body = await req.json();
+      if (body?.action === "manual_review" && body?.topup_id) {
+        await notifyManualReview(String(body.topup_id));
+      }
+    } catch (e) {
+      console.error("TOPUP_BOT_INTERNAL_ERROR", e);
+    }
+    return new Response("ok", { status: 200 });
+  }
+
   // Тек нағыз Telegram жібере алады (setWebhook кезінде орнатылған құпия).
   const secret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
   if (!WEBHOOK_SECRET || secret !== WEBHOOK_SECRET) {
@@ -56,6 +75,73 @@ Deno.serve(async (req: Request) => {
   // Әрқашан 200 — әйтпесе Telegram сол update-ті қайта-қайта жібере береді.
   return new Response("ok", { status: 200 });
 });
+
+// ============================================================================
+// Модератор ҚОСЫМШАДАН қолмен шешім қабылдағанда — Telegram аудиті
+// ============================================================================
+// Бот пен Telegram түймесі арқылы қабылданған шешімдердің ізі Telegram
+// чатының өзінде қалады (хабарлама/callback ретінде). Бірақ модератор
+// қосымшадан («Толтырулар» бетінен) қабылдаса/қабылдамаса, бұған дейін бұл
+// ЕШҚАНДАЙ Telegram жазбасын қалдырмайтын. Енді осы функция сол олқылықты
+// толтырады.
+async function notifyManualReview(topupId: string) {
+  const { data: t } = await admin
+    .from("topup_requests")
+    .select("id, amount, status, note, reviewed_by, executor_id")
+    .eq("id", topupId)
+    .maybeSingle();
+  if (!t) return;
+
+  const { data: chats } = await admin.rpc("bot_chats", { p_secret: BOT_SECRET });
+  const ids = (chats as number[] | null) ?? [];
+  if (ids.length === 0) return;
+
+  const { data: executor } = await admin
+    .from("profiles").select("full_name, phone").eq("id", t.executor_id)
+    .maybeSingle();
+
+  let reviewerName: string | null = null;
+  if (t.reviewed_by) {
+    const { data: reviewer } = await admin
+      .from("profiles").select("full_name").eq("id", t.reviewed_by)
+      .maybeSingle();
+    reviewerName = reviewer?.full_name ?? null;
+  }
+
+  const approved = t.status === "approved";
+  const head = approved
+    ? `🧑‍💼 Модератор қосымшадан РАСТАДЫ · ${fmtT(t.amount)}`
+    : `🧑‍💼 Модератор қосымшадан ҚАБЫЛДАМАДЫ · ${fmtT(t.amount)}`;
+
+  const lines = [head];
+  lines.push(
+    `👤 ${executor?.full_name || "аты жоқ"} · ${executor?.phone || "—"}`,
+  );
+  lines.push(`✍️ ${reviewerName || "белгісіз модератор"}`);
+  if (!approved && t.note) {
+    lines.push("");
+    lines.push(`❗ Себебі: ${t.note}`);
+  }
+
+  const text = lines.join("\n");
+  for (const chatId of ids) {
+    try {
+      // parse_mode ЖОҚ — модератордың өз жазған мәтіні (t.note) кез
+      // келген нәрсе болуы мүмкін, Markdown/HTML ретінде оқылмауы керек.
+      await fetch(`${API}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+      });
+    } catch (e) {
+      console.error("TG_SEND_ERROR", chatId, e);
+    }
+  }
+}
+
+function fmtT(n: number): string {
+  return `${Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₸`;
+}
 
 async function handle(update: TgUpdate) {
   if (update.callback_query) return await onCallback(update.callback_query);
