@@ -20,6 +20,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
 import 'features/client/order_detail_screen.dart';
+import 'features/executor/balance_screen.dart';
 import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
 import 'features/moderator/applications_screen.dart';
@@ -50,6 +51,8 @@ final navigatorKey = GlobalKey<NavigatorState>();
 ///   support_message  → модератор: қолдау чаттары
 ///   new_application  → модератор: жаңа өтінімдер
 ///   new_topup        → модератор: баланс толтыру өтінімдері (0049)
+///   topup_approved   → орындаушы: балансы толды (0051)
+///   topup_rejected   → орындаушы: толтыруы қабылданбады (0051)
 void _navigateFromData(Map<String, dynamic> data) {
   final type = data['type'] as String?;
   final orderId = data['order_id'] as String?;
@@ -80,6 +83,11 @@ void _navigateFromData(Map<String, dynamic> data) {
     screen = const ApplicationsScreen();
   } else if (type == 'new_topup') {
     screen = const TopupsScreen();
+  } else if (type == 'topup_approved' || type == 'topup_rejected') {
+    // Орындаушыға: балансы толды не өтінімі қабылданбады (0051). Бұған дейін
+    // орындаушыға МҮЛДЕ хабар келмейтін — қосымшаны қолмен ашып қарауы керек
+    // болатын.
+    screen = const BalanceScreen();
   } else if (hasOrder) {
     // Тип белгісіз, бірақ заказ id-і бар — қауіпсіз әдепкі: заказ беті.
     screen = OrderDetailScreen(orderId: orderId);

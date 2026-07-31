@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/lang.dart';
@@ -30,7 +31,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _taxiEnabled = false;
   bool _taxiSaving = false;
 
+  /// Чекті тексеретін бот қосулы ма (0051). Өшірулі болса ештеңе өзгермейді —
+  /// толтырулар баяғыдай толық қолмен қаралады.
+  bool _botEnabled = false;
+  bool _botSaving = false;
+
+  /// `topup_bot` баптауының ТОЛЫҚ көшірмесі. `mod_update_setting` мәнді
+  /// БҮТІНДЕЙ АУЫСТЫРАДЫ (merge жасамайды), ал бұл экранда 9 кілттің тек 3-еуі
+  /// көрінеді — қалғаны жоғалып кетпеуі үшін бастапқы мәнді сақтап қоямыз.
+  Map<String, dynamic> _botRaw = {};
+
   final _tariffPrice = TextEditingController();
+  final _botMax = TextEditingController();
+  final _botMerchants = TextEditingController();
+  final _botAgeHours = TextEditingController();
   final _kaspiNumber = TextEditingController();
   final _kaspiName = TextEditingController();
   final _kaspiTopupUrl = TextEditingController();
@@ -50,6 +64,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   @override
   void dispose() {
     _tariffPrice.dispose();
+    _botMax.dispose();
+    _botMerchants.dispose();
+    _botAgeHours.dispose();
     _kaspiNumber.dispose();
     _kaspiName.dispose();
     _kaspiTopupUrl.dispose();
@@ -76,6 +93,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _boardEnabled = board['enabled'] == true;
       final taxi = (s['taxi'] as Map?) ?? {};
       _taxiEnabled = taxi['enabled'] == true;
+      final bot = (s['topup_bot'] as Map?) ?? {};
+      _botRaw = Map<String, dynamic>.from(bot);
+      _botEnabled = bot['enabled'] == true;
+      _botMax.text = '${bot['auto_approve_max'] ?? 0}';
+      _botAgeHours.text = '${bot['max_receipt_age_hours'] ?? 24}';
+      _botMerchants.text =
+          ((bot['merchant_names'] as List?) ?? const []).join(', ');
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
@@ -119,6 +143,96 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       'min_topup': minTopup,
     });
     if (mounted) showSnack(context, t('Сақталды'));
+  }
+
+  // ---------- Чекті тексеретін бот (0051) ----------
+  /// Ботты қосу/өшіру — бірден сақталады. Өшірулі болса ешбір өтінім
+  /// автоматты тексерілмейді де, расталмайды да.
+  Future<void> _toggleBot(bool v) async {
+    setState(() {
+      _botEnabled = v;
+      _botSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('topup_bot', {..._botRaw, 'enabled': v});
+      _botRaw['enabled'] = v;
+      if (mounted) {
+        showSnack(context, v ? t('Бот қосылды') : t('Бот өшірілді'));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _botEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _botSaving = false);
+    }
+  }
+
+  Future<void> _saveBot() async {
+    final max = _int(_botMax) ?? 0;
+    final ageH = _int(_botAgeHours) ?? 24;
+    final merchants = _botMerchants.text
+        .split(RegExp(r'[,\n;]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final next = {
+      ..._botRaw,
+      'enabled': _botEnabled,
+      'auto_approve_max': max < 0 ? 0 : max,
+      'max_receipt_age_hours': ageH < 1 ? 1 : ageH,
+      'merchant_names': merchants,
+    };
+    await Repo.modUpdateSetting('topup_bot', next);
+    _botRaw = next;
+    if (mounted) showSnack(context, t('Сақталды'));
+  }
+
+  /// Kaspi Pay выпискасын жүктеу. Бұл авто-растауды БӨГЕМЕЙДІ — выписка
+  /// әдетте растаудан кейін келеді. Рөлі: расталған толтырулардың нақты
+  /// түскен ақшамен сәйкестігін ТЕКСЕРУ.
+  /// `BusyButton` спиннерді өзі басқарады, сондықтан бөлек «жүктелуде» күйі
+  /// қажет емес.
+  Future<void> _uploadStatement() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+      final file = picked?.files.firstOrNull;
+      final bytes = file?.bytes;
+      if (bytes == null) return;
+
+      final path = await Repo.uploadStatement(file!.name, bytes);
+      final res = await Repo.importKaspiStatement(path);
+      if (!mounted) return;
+
+      if (res['ok'] != true) {
+        showSnack(
+          context,
+          '${t('Выписка оқылмады')}: ${res['hint'] ?? res['error'] ?? ''}',
+          error: true,
+        );
+        return;
+      }
+
+      final missing = (res['missing'] as num?)?.toInt() ?? 0;
+      final checked = (res['checked'] as num?)?.toInt() ?? 0;
+      final inserted = (res['inserted'] as num?)?.toInt() ?? 0;
+      showSnack(
+        context,
+        missing == 0
+            ? '${t('Выписка жүктелді')} · $inserted ${t('жол')} · '
+                '$checked ${t('толтырудың бәрі сәйкес')}'
+            : '⚠️ $checked ${t('толтырудың')} $missing-${t('і выпискада ЖОҚ')}',
+        error: missing > 0,
+      );
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
   }
 
   /// Тақтаны қосу/өшіру — бірден сақталады (бөлек «Сақтау» батырмасы жоқ,
@@ -323,6 +437,101 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 BusyButton(label: t('Сақтау'), onPressed: _savePayment),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // ---- ЖАҢА БӨЛІМ: чекті тексеретін бот (0051) ----
+          _sectionTitle(t('Чек тексеретін бот')),
+          Text(
+            t('Жаңа толтыру өтінімі түскенде бот Kaspi чегін өзі ашып, екі '
+                'тәуелсіз тәсілмен оқиды да, бәрі сәйкес келсе балансты '
+                'автоматты толтырады. Күдікті болса — тиіспейді, Telegram-ға '
+                'себебін жазады, шешімді сіз қабылдайсыз.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _botEnabled,
+            saving: _botSaving,
+            icon: _botEnabled ? Icons.smart_toy : Icons.smart_toy_outlined,
+            onLabel: t('Бот чектерді тексеріп тұр'),
+            offLabel: t('Барлық толтыру тек қолмен қаралады'),
+            onChanged: _toggleBot,
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _botMerchants,
+                  decoration: InputDecoration(
+                    labelText: t('Мерчант аттары (үтірмен)'),
+                    hintText: 'ЖК Tasu, Tasu',
+                    helperMaxLines: 4,
+                    helperText: t(
+                      'Kaspi QR арқылы төлегенде ЧЕКТЕ КӨРІНЕТІН алушының аты. '
+                      'Бос болса бот ештеңені автоматты растамайды. Нақты атын '
+                      'бірінші чек келгенде Telegram хабарынан көресіз.',
+                    ),
+                    prefixIcon: const Icon(Icons.storefront_outlined),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _botMax,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('Авто-растау шегі (₸)'),
+                    helperMaxLines: 3,
+                    helperText: t(
+                      '0 қойсаңыз — бот бәрін тексереді, бірақ ЕШТЕҢЕНІ '
+                      'растамайды (сынау режимі). Одан жоғары сомалар әрқашан '
+                      'сізге келеді.',
+                    ),
+                    prefixIcon: const Icon(Icons.shield_outlined),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _botAgeHours,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('Чектің ең үлкен жасы (сағат)'),
+                    helperMaxLines: 2,
+                    helperText: t(
+                      'Одан ескі чек автоматты расталмайды — ескі чекті қайта '
+                      'жіберуден қорғайды.',
+                    ),
+                    prefixIcon: const Icon(Icons.schedule_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                BusyButton(label: t('Сақтау'), onPressed: _saveBot),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  t('Kaspi выпискасын аптасына бір рет жүктеп тұрсаңыз, бот '
+                      'расталған толтырулардың ақшасы ШЫН ТҮСКЕНІН тексереді. '
+                      'Чек скриншоттан кейін қайтарылып алынса — тек осылай '
+                      'білуге болады.'),
+                  style:
+                      const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 12),
+                BusyButton(
+                  label: t('Kaspi выпискасын жүктеу'),
+                  outlined: true,
+                  icon: Icons.upload_file_outlined,
+                  onPressed: _uploadStatement,
+                ),
               ],
             ),
           ),

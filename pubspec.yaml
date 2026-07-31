@@ -27,6 +27,9 @@ dependencies:
   firebase_messaging: ^16.4.1
   shared_preferences: ^2.3.2
   package_info_plus: ^8.1.2
+  # Модератор Kaspi Pay выпискасын (xlsx/csv) жүктеу үшін (0051):
+  # image_picker тек суретті алады, ал бұл кестелік файл.
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

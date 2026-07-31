@@ -437,6 +437,15 @@ class TopupRequest {
   final String? note;
   final DateTime? createdAt;
 
+  /// Чекті тексеретін боттың шешімі (0051). Мәндері:
+  /// `approved` · `flagged` · `rejected` · `error` ·
+  /// `manual_approved` · `manual_rejected` (Telegram түймесімен).
+  /// 0051 қолданылмаса немесе бот өшірулі болса — `null`.
+  final String? botVerdict;
+
+  /// Бот неге солай шешкенінің қазақша тізімі (белгіленген жағдайда).
+  final String? botSummary;
+
   TopupRequest.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       executorId = m['executor_id'] as String,
@@ -444,7 +453,9 @@ class TopupRequest {
       receiptPath = m['receipt_path'] as String?,
       status = m['status'] as String? ?? 'pending',
       note = m['note'] as String?,
-      createdAt = _dt(m['created_at']);
+      createdAt = _dt(m['created_at']),
+      botVerdict = m['bot_verdict'] as String?,
+      botSummary = m['bot_summary'] as String?;
 }
 
 // ---------- Balance txn ----------

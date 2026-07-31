@@ -70,11 +70,19 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
       );
       return;
     }
+    // Чек МІНДЕТТІ. Бұған дейін чексіз де жіберуге болатын, бірақ ондай
+    // өтінімді бот тексере алмайды (тексеретін ештеңе жоқ) — ол әрқашан
+    // модератордың қолына түсіп, кезекті ұзартады.
+    if (_receipt == null) {
+      showSnack(
+        context,
+        t('Kaspi чегінің скриншотын тіркеңіз'),
+        error: true,
+      );
+      return;
+    }
     try {
-      String? path;
-      if (_receipt != null) {
-        path = await Repo.uploadDoc('receipt.jpg', _receipt!);
-      }
+      final path = await Repo.uploadDoc('receipt.jpg', _receipt!);
       await Repo.requestTopup(amount, path);
       _amount.clear();
       setState(() {

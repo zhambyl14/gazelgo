@@ -1234,6 +1234,48 @@ class Repo {
 
   static Future<String> signedDocUrl(String path) =>
       c.storage.from('docs').createSignedUrl(path, 3600);
+
+  // ============ ТОЛТЫРУ ЧЕГІН ТЕКСЕРЕТІН БОТ (0051) ============
+  /// Kaspi Pay выпискасын `docs` бакетіне жүктейді. Бөлек bucket құрылмайды:
+  /// `docs_insert_own` саясаты бойынша модератор ӨЗ папкасына жаза алады, ал
+  /// edge функция оны service-role кілтімен оқиды.
+  static Future<String> uploadStatement(String name, Uint8List bytes) async {
+    final id = uid;
+    if (id == null) throw Exception('AUTH');
+    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$name';
+    await c.storage.from('docs').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: name.toLowerCase().endsWith('.csv')
+                ? 'text/csv'
+                : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ),
+        );
+    return path;
+  }
+
+  /// Жүктелген выписканы талдап базаға салады және расталған толтыруларды
+  /// сол тізіммен САЛЫСТЫРАДЫ. Қайтаратыны:
+  /// `{parsed, inserted, skipped, checked, missing, missing_rows}`.
+  static Future<Map<String, dynamic>> importKaspiStatement(String path) async {
+    final res = await c.functions.invoke('kaspi-statement', body: {'path': path});
+    final data = res.data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw Exception('STATEMENT_FAILED');
+  }
+
+  /// Соңғы [days] күнде расталған толтырулар — әрқайсысы выпискадан
+  /// табылды ма (`matched`). Тек модератор шақыра алады.
+  static Future<List<Map<String, dynamic>>> topupReconciliation({
+    int days = 30,
+  }) async {
+    final rows = await c.rpc('topup_reconciliation', params: {'p_days': days});
+    return [
+      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
+    ];
+  }
 }
 
 // ================= RIVERPOD PROVIDERS =================

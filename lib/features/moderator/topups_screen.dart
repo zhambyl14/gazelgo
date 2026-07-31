@@ -132,6 +132,10 @@ class _TopupCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          if (req.botVerdict != null) ...[
+            _BotVerdict(verdict: req.botVerdict!, summary: req.botSummary),
+            const SizedBox(height: 10),
+          ],
           if (req.receiptPath != null)
             SizedBox(
                 width: 150,
@@ -210,5 +214,60 @@ class _TopupCard extends StatelessWidget {
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
+  }
+}
+
+/// Чекті тексеретін боттың шешімі (0051 миграциясы).
+///
+/// Бот көзге көрінбей шешім қабылдаса — оған сену қиын. Сондықтан модератор
+/// НЕГЕ солай болғанын әрқашан осы жерден көреді: жасыл — бот өзі растады,
+/// сары — бот күдіктеніп, шешімді адамға қалдырды.
+class _BotVerdict extends StatelessWidget {
+  final String verdict;
+  final String? summary;
+  const _BotVerdict({required this.verdict, this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, label) = switch (verdict) {
+      'approved' => (Gz.green, t('Бот растады')),
+      'manual_approved' => (Gz.green, t('Telegram арқылы расталды')),
+      'flagged' => (Gz.yellowDark, t('Бот белгіледі')),
+      'rejected' => (Gz.red, t('Бот қабылдамады')),
+      'manual_rejected' => (Gz.red, t('Telegram арқылы қабылданбады')),
+      _ => (Gz.textSecondary, t('Бот қатесі')),
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.smart_toy_outlined, size: 15, color: color),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5)),
+            ],
+          ),
+          if (summary?.isNotEmpty == true) ...[
+            const SizedBox(height: 5),
+            Text(summary!,
+                style: const TextStyle(
+                    color: Gz.textSecondary, fontSize: 12, height: 1.35)),
+          ],
+        ],
+      ),
+    );
   }
 }
