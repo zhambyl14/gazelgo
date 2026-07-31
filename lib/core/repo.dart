@@ -819,20 +819,6 @@ class Repo {
   static Future<void> supportClose(String threadId) =>
       c.rpc('support_close', params: {'p_thread': threadId});
 
-  /// AI кеңесшісі (тек модератор): чат тарихын оқып, жауап жобасы мен
-  /// қысқа түсінік ұсынады. ЕШҚАНДАЙ әрекет жасамайды (заказ статусын
-  /// өзгертпейді, ешкімге жіберілмейді) — тек модераторға көрсетіледі,
-  /// модератор өзі оқып/түзетіп жібереді.
-  static Future<Map<String, dynamic>> supportAssistantSuggest(
-    String threadId,
-  ) async {
-    final res = await c.functions
-        .invoke('support-assistant', body: {'thread_id': threadId});
-    final data = res.data;
-    if (data is Map) return Map<String, dynamic>.from(data);
-    throw Exception('SUPPORT_ASSISTANT_FAILED');
-  }
-
   /// Қолдау чатына сурет жүктеу (public 'support' бакеті).
   static Future<String> uploadSupportImage(Uint8List bytes) async {
     final id = uid;

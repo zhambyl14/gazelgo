@@ -24,12 +24,23 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const BOT_SECRET = Deno.env.get("TOPUP_BOT_SECRET") ?? "";
 const TG_TOKEN = Deno.env.get("TOPUP_BOT_TOKEN") ?? "";
 
+// Модератор қосымшасы Flutter Web ретінде де жұмыс істейді — браузердің
+// OPTIONS «preflight» сұрауын қолдамасақ, жауап бұғатталып,
+// «ClientException: Failed to fetch» шығады.
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
 
   // ---- Шақырушы кім? ----
@@ -279,7 +290,7 @@ async function alertTelegram(checked: number, missing: ReconRow[]) {
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 

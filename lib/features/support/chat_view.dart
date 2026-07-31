@@ -17,11 +17,6 @@ class ChatView extends StatefulWidget {
   final Future<String> Function(String body, String? imagePath) onSend;
   final Future<void> Function()? onClose;
 
-  /// Сырттан беруге болады — модератор экраны AI кеңесшісінің жауап
-  /// жобасын осыған жазып, кіру өрісін толтырады (support_admin_screen.dart).
-  /// Берілмесе, ChatView өзі жасайды.
-  final TextEditingController? inputController;
-
   const ChatView({
     super.key,
     required this.threadId,
@@ -29,7 +24,6 @@ class ChatView extends StatefulWidget {
     required this.threadOpen,
     required this.onSend,
     this.onClose,
-    this.inputController,
   });
 
   @override
@@ -37,7 +31,7 @@ class ChatView extends StatefulWidget {
 }
 
 class _ChatViewState extends State<ChatView> {
-  late final TextEditingController _input;
+  final _input = TextEditingController();
   final _scroll = ScrollController();
   String? _threadId;
   bool _sending = false;
@@ -64,15 +58,11 @@ class _ChatViewState extends State<ChatView> {
   void initState() {
     super.initState();
     _threadId = widget.threadId;
-    _input = widget.inputController ?? TextEditingController();
   }
 
   @override
   void dispose() {
-    // Сырттан берілген controller-ді ИЕСІ (parent) өзі dispose етеді —
-    // мұнда екінші рет dispose жасасақ, "used after being disposed" қатесі
-    // шығады.
-    if (widget.inputController == null) _input.dispose();
+    _input.dispose();
     _scroll.dispose();
     super.dispose();
   }
