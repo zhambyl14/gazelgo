@@ -17,6 +17,11 @@ class ChatView extends StatefulWidget {
   final Future<String> Function(String body, String? imagePath) onSend;
   final Future<void> Function()? onClose;
 
+  /// Сырттан беруге болады — модератор экраны AI кеңесшісінің жауап
+  /// жобасын осыған жазып, кіру өрісін толтырады (support_admin_screen.dart).
+  /// Берілмесе, ChatView өзі жасайды.
+  final TextEditingController? inputController;
+
   const ChatView({
     super.key,
     required this.threadId,
@@ -24,6 +29,7 @@ class ChatView extends StatefulWidget {
     required this.threadOpen,
     required this.onSend,
     this.onClose,
+    this.inputController,
   });
 
   @override
@@ -31,20 +37,42 @@ class ChatView extends StatefulWidget {
 }
 
 class _ChatViewState extends State<ChatView> {
-  final _input = TextEditingController();
+  late final TextEditingController _input;
   final _scroll = ScrollController();
   String? _threadId;
   bool _sending = false;
+
+  /// Соңғы құрылымда неше хабарлама көрсетілгені — жаңасы келгенде ғана
+  /// автоматты төменге скролл жасаймыз (пайдаланушы ескі хабарламаны оқып
+  /// жатқанда орнынан жұлмау үшін).
+  int _lastCount = -1;
+
+  void _scrollToBottomIfNeeded(int count) {
+    if (count == _lastCount) return;
+    final grew = count > _lastCount;
+    _lastCount = count;
+    if (!grew && count != 0) return;
+    // Хабарлама тізімі жаңарғаннан КЕЙІН (кадр салынып болған соң) скролл
+    // жасаймыз — әйтпесе maxScrollExtent әлі ескі мән болады.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _threadId = widget.threadId;
+    _input = widget.inputController ?? TextEditingController();
   }
 
   @override
   void dispose() {
-    _input.dispose();
+    // Сырттан берілген controller-ді ИЕСІ (parent) өзі dispose етеді —
+    // мұнда екінші рет dispose жасасақ, "used after being disposed" қатесі
+    // шығады.
+    if (widget.inputController == null) _input.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -95,15 +123,18 @@ class _ChatViewState extends State<ChatView> {
                   builder: (context, snap) {
                     final msgs = snap.data ?? [];
                     if (msgs.isEmpty) return const _IntroPlaceholder();
-                    // reverse:true — жаңа хабарлама астында (кіру өрісінің үстінде)
-                    final ordered = msgs.reversed.toList();
+                    // `msgs` серверден ЕСКІДЕН ЖАҢАҒА ретімен келеді
+                    // (`order('created_at')`, өспелі). Тізімді солай
+                    // қалдырып, соңғы хабарлама табиғи түрде АСТЫҢҒЫ жаққа
+                    // түседі — WhatsApp-тағыдай. Жаңа хабарлама келгенде
+                    // төменге автоматты скролл жасалады.
+                    _scrollToBottomIfNeeded(msgs.length);
                     return ListView.builder(
                       controller: _scroll,
-                      reverse: true,
                       padding: const EdgeInsets.all(12),
-                      itemCount: ordered.length,
+                      itemCount: msgs.length,
                       itemBuilder: (_, i) =>
-                          _Bubble(msg: ordered[i], mine: _isMine(ordered[i])),
+                          _Bubble(msg: msgs[i], mine: _isMine(msgs[i])),
                     );
                   },
                 ),

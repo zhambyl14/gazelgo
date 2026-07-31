@@ -111,17 +111,85 @@ class _ThreadTile extends StatelessWidget {
       };
 }
 
-class _ModeratorChatScreen extends StatelessWidget {
+class _ModeratorChatScreen extends StatefulWidget {
   final SupportThread thread;
   final Profile? user;
   const _ModeratorChatScreen({required this.thread, this.user});
 
   @override
+  State<_ModeratorChatScreen> createState() => _ModeratorChatScreenState();
+}
+
+class _ModeratorChatScreenState extends State<_ModeratorChatScreen> {
+  final _input = TextEditingController();
+  bool _asking = false;
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  /// AI кеңесшісі: чат тарихын оқып, жауап жобасы мен қысқа түсінік
+  /// ұсынады. ЕШҚАНДАЙ әрекет жасамайды — тек кіру өрісін толтырады,
+  /// модератор оқып/түзетіп, өз қолымен жібереді.
+  Future<void> _askAssistant() async {
+    setState(() => _asking = true);
+    try {
+      final res = await Repo.supportAssistantSuggest(widget.thread.id);
+      if (!mounted) return;
+      if (res['ok'] != true) {
+        showSnack(
+          context,
+          res['error'] == 'NO_GEMINI_KEY'
+              ? t('AI кеңесшісі бапталмаған')
+              : t('AI ұсыныс бере алмады'),
+          error: true,
+        );
+        return;
+      }
+      _input.text = (res['reply'] as String?) ?? '';
+      final reasoning = res['reasoning'] as String?;
+      if (reasoning != null && reasoning.isNotEmpty) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(t('AI түсінігі')),
+            content: Text(reasoning),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(t('Түсінікті')),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _asking = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final thread = widget.thread;
+    final user = widget.user;
     return Scaffold(
       appBar: AppBar(
         title: Text(user?.fullName ?? t('Чат')),
         actions: [
+          IconButton(
+            tooltip: t('AI кеңесшісі: жауап жобасын ұсынады'),
+            onPressed: _asking ? null : _askAssistant,
+            icon: _asking
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.smart_toy_outlined),
+          ),
           TextButton.icon(
             onPressed: () async {
               try {
@@ -147,6 +215,7 @@ class _ModeratorChatScreen extends StatelessWidget {
               threadId: thread.id,
               asModerator: true,
               threadOpen: thread.isOpen,
+              inputController: _input,
               onSend: (body, imagePath) async {
                 await Repo.supportReply(thread.id, body, imagePath: imagePath);
                 return thread.id;
