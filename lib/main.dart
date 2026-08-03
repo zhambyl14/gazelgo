@@ -23,10 +23,7 @@ import 'features/client/order_detail_screen.dart';
 import 'features/executor/balance_screen.dart';
 import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
-import 'features/moderator/applications_screen.dart';
 import 'features/moderator/moderator_shell.dart';
-import 'features/moderator/support_admin_screen.dart';
-import 'features/moderator/topups_screen.dart';
 import 'features/support/support_screen.dart';
 import 'shared/portrait_frame.dart';
 import 'shared/update_gate.dart';
@@ -48,11 +45,17 @@ final navigatorKey = GlobalKey<NavigatorState>();
 ///   new_offer        → клиент: ұсыныстар тізімі (заказ беті)
 ///   order_status     → клиент: заказ барысы (заказ беті)
 ///   support_reply    → клиент/орындаушы: қолдау қызметі
-///   support_message  → модератор: қолдау чаттары
-///   new_application  → модератор: жаңа өтінімдер
-///   new_topup        → модератор: баланс толтыру өтінімдері (0049)
+///   support_message  → модератор: қолдау чаттары (қойынды)
+///   new_application  → модератор: жаңа өтінімдер (қойынды)
+///   new_topup        → модератор: баланс толтыру өтінімдері (қойынды, 0049)
 ///   topup_approved   → орындаушы: балансы толды (0051)
 ///   topup_rejected   → орындаушы: толтыруы қабылданбады (0051)
+///
+/// Модератордың үш беті — панельдің ІШІНДЕГІ қойындылар, өз Scaffold-ы жоқ.
+/// Оларды бөлек бет ретінде `push` жасасақ, фоны ҚАРА болып ашылатын; сол
+/// себепті олар үшін жаңа бет ашпай, бар панельдің қойындысын ауыстырамыз
+/// ([ModeratorShell.openTab]). Қалғандарының өз Scaffold-ы бар — әдеттегідей
+/// push жасалады.
 void _navigateFromData(Map<String, dynamic> data) {
   final type = data['type'] as String?;
   final orderId = data['order_id'] as String?;
@@ -78,11 +81,14 @@ void _navigateFromData(Map<String, dynamic> data) {
   } else if (type == 'support_reply') {
     screen = const SupportScreen();
   } else if (type == 'support_message') {
-    screen = const SupportAdminScreen();
+    ModeratorShell.openTab(ModeratorShell.tabSupport);
+    return;
   } else if (type == 'new_application') {
-    screen = const ApplicationsScreen();
+    ModeratorShell.openTab(ModeratorShell.tabApplications);
+    return;
   } else if (type == 'new_topup') {
-    screen = const TopupsScreen();
+    ModeratorShell.openTab(ModeratorShell.tabTopups);
+    return;
   } else if (type == 'topup_approved' || type == 'topup_rejected') {
     // Орындаушыға: балансы толды не өтінімі қабылданбады (0051). Бұған дейін
     // орындаушыға МҮЛДЕ хабар келмейтін — қосымшаны қолмен ашып қарауы керек

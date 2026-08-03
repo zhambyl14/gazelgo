@@ -331,7 +331,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               break;
             }
           }
-          current ??= threads.isNotEmpty ? threads.last : null;
+          // Ашық тред жоқ болса — ЕҢ СОҢҒЫ (жабық) тред. Тізім `last_msg_at`
+          // бойынша кемімелі келеді, сол себепті ол — `first`.
+          current ??= threads.isNotEmpty ? threads.first : null;
 
           return Column(
             children: [
@@ -368,7 +370,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               Expanded(
                 child: ChatView(
                   key: ValueKey(current?.id ?? 'new'),
-                  threadId: current?.isOpen == true ? current!.id : null,
+                  // ЖАБЫҚ тредтің де id-і беріледі — пайдаланушы соңғы
+                  // сөйлесуін оқи алуы керек. Бұрын мұнда `null` тұрғандықтан
+                  // чат жабылған соң қосымшаны қайта ашқанда тарих БОС
+                  // экранға ауысатын; 0058-ден кейін чат 20 минутта өзі
+                  // жабылатындықтан, бұл әдепкі жағдайға айналар еді.
+                  // `threadOpen: false` кезінде ChatView төменде «қайта
+                  // жазсаңыз ашылады» деп ескертеді, ал жаңа хабарлама
+                  // `support_send` арқылы жаңа тред ашады.
+                  threadId: current?.id,
                   asModerator: false,
                   threadOpen: current?.isOpen ?? true,
                   onSend: (body, imagePath) => Repo.supportSend(body,

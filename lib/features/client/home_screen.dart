@@ -549,6 +549,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           selected: _category,
                                           onChanged: (c) =>
                                               setState(() => _category = c),
+                                          // «ЖАҢА» белгісін модератор алып
+                                          // тастай алады (0058).
+                                          showNewBadge: ref
+                                                  .watch(newBadgesProvider)
+                                                  .value
+                                                  ?.taxi ??
+                                              true,
                                         ),
                                         const SizedBox(height: 10),
                                       ],

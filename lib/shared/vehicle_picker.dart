@@ -254,6 +254,10 @@ class VehicleCategoryTabs extends StatelessWidget {
   final VehicleCategory selected;
   final ValueChanged<VehicleCategory> onChanged;
 
+  /// «Такси» плиткасындағы «ЖАҢА» белгісі көрінсін бе (0058). Модератор
+  /// Баптаулардан алып тастай алады — фича ескіргенде «жаңа» болып тұрмасын.
+  final bool showNewBadge;
+
   /// Плитканың биіктігі — ЫҚШАМ (52): бұл блок клиенттің басты бетінде
   /// картаның орнын жейді, сол себепті мүмкіндігінше аласа. Екеуінде де
   /// ҚАТАҢ бірдей, демек бір плитка көршісінен биік болып қалмайды.
@@ -263,6 +267,7 @@ class VehicleCategoryTabs extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onChanged,
+    this.showNewBadge = true,
   });
 
   @override
@@ -274,7 +279,7 @@ class VehicleCategoryTabs extends StatelessWidget {
             active: selected == VehicleCategory.taxi,
             emoji: '🚕',
             label: t('Такси'),
-            badge: t('ЖАҢА'),
+            badge: showNewBadge ? t('ЖАҢА') : null,
             onTap: () => onChanged(VehicleCategory.taxi),
           ),
         ),

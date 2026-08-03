@@ -120,7 +120,7 @@ class _ChatViewState extends State<ChatView> {
                     final msgs = snap.data ?? [];
                     if (msgs.isEmpty) return const _IntroPlaceholder();
                     // `msgs` серверден ЕСКІДЕН ЖАҢАҒА ретімен келеді
-                    // (`order('created_at')`, өспелі). Тізімді солай
+                    // (`order('created_at', ascending: true)`). Тізімді солай
                     // қалдырып, соңғы хабарлама табиғи түрде АСТЫҢҒЫ жаққа
                     // түседі — WhatsApp-тағыдай. Жаңа хабарлама келгенде
                     // төменге автоматты скролл жасалады.

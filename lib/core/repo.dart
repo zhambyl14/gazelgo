@@ -431,6 +431,19 @@ class Repo {
     }
   }
 
+  /// «ЖАҢА» белгілері көрінсін бе (0058, модератор баптауы). Екеуі БІР
+  /// сұраныспен келеді. Желі қатесінде — екеуі де `true`, яғни белгі
+  /// баяғыдай көрінеді (жаңа фичаны байқаусыз жасырып алмаймыз).
+  static Future<NewBadges> newBadges() async {
+    try {
+      final res = await c.rpc('new_badges');
+      final m = Map<String, dynamic>.from(res as Map);
+      return NewBadges(board: m['board'] != false, taxi: m['taxi'] != false);
+    } catch (_) {
+      return const NewBadges(board: true, taxi: true);
+    }
+  }
+
   /// Мәжбүрлі жаңарту баптауы (0030) — авторизациясыз да шақырылады
   /// (кіру экранында тұрған ескі нұсқаны да бұғаттау үшін).
   static Future<Map<String, dynamic>> appVersionGate() async {
@@ -857,7 +870,11 @@ class Repo {
             .from('support_messages')
             .select()
             .eq('thread_id', threadId)
-            .order('created_at');
+            // МАҢЫЗДЫ: postgrest-те `order()`-дің әдепкісі `ascending: false`
+            // (кемімелі). Оны жазбай қалдырсақ, чат ЖАҢАДАН ЕСКІГЕ келіп,
+            // соңғы хабарлама тізімнің ЕҢ ҮСТІНДЕ тұратын. Чат әрқашан
+            // ЕСКІДЕН ЖАҢАҒА болуы керек — жаңасы ең астында (WhatsApp сияқты).
+            .order('created_at', ascending: true);
         return (rows as List)
             .map((m) => SupportMessage.fromMap(Map<String, dynamic>.from(m)))
             .toList();
@@ -871,7 +888,9 @@ class Repo {
           .from('support_threads')
           .select()
           .eq('user_id', id)
-          .order('last_msg_at');
+          // Ең соңғы тред БІРІНШІ (postgrest әдепкісі де осы, бірақ анық
+          // жазамыз — оқығанда шатаспау үшін).
+          .order('last_msg_at', ascending: false);
       return (rows as List)
           .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
           .toList();
@@ -1326,6 +1345,11 @@ final boardEnabledProvider =
 /// «Такси» бөлімі қосулы ма (0046). Модератор Баптаулардан қосқанда/
 /// өшіргенде `ref.invalidate(taxiEnabledProvider)` шақырылады.
 final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
+
+/// «ЖАҢА» белгілері көрінсін бе (0058) — фича ескіргенде модератор
+/// Баптаулардан әрқайсысын бөлек алып тастайды.
+final newBadgesProvider =
+    FutureProvider<NewBadges>((ref) => Repo.newBadges());
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.

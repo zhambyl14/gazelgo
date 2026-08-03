@@ -31,6 +31,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _taxiEnabled = false;
   bool _taxiSaving = false;
 
+  /// «ЖАҢА» белгілері (0058) — фичаның ӨЗІНЕН бөлек. Фича қосулы қалады,
+  /// тек «жаңа» деген жапсырма алынады (уақыт өте ол ескіреді).
+  /// `mod_update_setting` мәнді БҮТІНДЕЙ ауыстыратындықтан, әр қосқыш
+  /// екеуін де (`enabled` + `new_badge`) бірге жазады.
+  bool _boardNewBadge = true;
+  bool _boardBadgeSaving = false;
+  bool _taxiNewBadge = true;
+  bool _taxiBadgeSaving = false;
+
   /// Чекті тексеретін бот қосулы ма (0051). Өшірулі болса ештеңе өзгермейді —
   /// толтырулар баяғыдай толық қолмен қаралады.
   bool _botEnabled = false;
@@ -106,8 +115,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final gate = (s['version_gate'] as Map?) ?? {};
       final board = (s['listings'] as Map?) ?? {};
       _boardEnabled = board['enabled'] == true;
+      // Кілт мүлдем жоқ болса — белгі КӨРІНЕДІ (сервердегі `new_badges()`
+      // де солай әдепкіленеді, екеуі бір-бірімен сәйкес болуы шарт).
+      _boardNewBadge = board['new_badge'] != false;
       final taxi = (s['taxi'] as Map?) ?? {};
       _taxiEnabled = taxi['enabled'] == true;
+      _taxiNewBadge = taxi['new_badge'] != false;
       final bot = (s['topup_bot'] as Map?) ?? {};
       _botRaw = Map<String, dynamic>.from(bot);
       _botEnabled = bot['enabled'] == true;
@@ -309,7 +322,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _boardSaving = true;
     });
     try {
-      await Repo.modUpdateSetting('listings', {'enabled': v});
+      await Repo.modUpdateSetting(
+        'listings',
+        {'enabled': v, 'new_badge': _boardNewBadge},
+      );
       if (mounted) {
         showSnack(
           context,
@@ -336,7 +352,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _taxiSaving = true;
     });
     try {
-      await Repo.modUpdateSetting('taxi', {'enabled': v});
+      await Repo.modUpdateSetting(
+        'taxi',
+        {'enabled': v, 'new_badge': _taxiNewBadge},
+      );
       if (mounted) {
         showSnack(
           context,
@@ -351,6 +370,56 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _taxiSaving = false);
+    }
+  }
+
+  // ---------- «ЖАҢА» жапсырмалары (0058) ----------
+  /// Белгіні қосу/өшіру фичаның ӨЗІНЕ тимейді — тек жапсырма жоғалады.
+  Future<void> _toggleNewBadge(bool v, {required bool board}) async {
+    setState(() {
+      if (board) {
+        _boardNewBadge = v;
+        _boardBadgeSaving = true;
+      } else {
+        _taxiNewBadge = v;
+        _taxiBadgeSaving = true;
+      }
+    });
+    try {
+      await Repo.modUpdateSetting(
+        board ? 'listings' : 'taxi',
+        {
+          'enabled': board ? _boardEnabled : _taxiEnabled,
+          'new_badge': v,
+        },
+      );
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('«ЖАҢА» белгісі қосылды') : t('«ЖАҢА» белгісі алынды'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          if (board) {
+            _boardNewBadge = !v;
+          } else {
+            _taxiNewBadge = !v;
+          }
+        });
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (board) {
+            _boardBadgeSaving = false;
+          } else {
+            _taxiBadgeSaving = false;
+          }
+        });
+      }
     }
   }
 
@@ -394,7 +463,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 'деген екі санат шығады. «Такси» санатының ішінде ЕКІ түр '
                 'бар: Такси (жолаушы) және Доставка (жеңіл көлікпен ұсақ '
                 'жүк). Орындаушы да сол түрлерді таңдай алады. Өшулі болса '
-                '— экран баяғы қалпында, екеуі де мүлдем көрінбейді.'),
+                '— экран баяғы қалпында, екеуі де мүлдем көрінбейді. '
+                'Астыңғы қосқыш — тек сары «ЖАҢА» жапсырмасы: бөлім '
+                'ескіргенде оны бөлімнің өзін өшірмей-ақ алып тастайсыз.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -406,6 +477,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             offLabel: t('Такси жасырылған (баяғы қалып)'),
             onChanged: _toggleTaxi,
           ),
+          if (_taxiEnabled) ...[
+            const SizedBox(height: 8),
+            _toggleCard(
+              enabled: _taxiNewBadge,
+              saving: _taxiBadgeSaving,
+              icon: Icons.fiber_new_outlined,
+              onLabel: t('Плиткада сары «ЖАҢА» жапсырмасы тұр'),
+              offLabel: t('Жапсырмасыз (бөлімнің өзі жұмыс істей береді)'),
+              onChanged: (v) => _toggleNewBadge(v, board: false),
+            ),
+          ],
           const SizedBox(height: 24),
           _sectionTitle(t('Хабарландырулар тақтасы')),
           Text(
@@ -422,6 +504,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             onLabel: t('Қолданушылар хабарландыру бере алады'),
             offLabel: t('Қолданушыларға «әлі қосылмады» деп шығады'),
             onChanged: _toggleBoard,
+          ),
+          const SizedBox(height: 8),
+          _toggleCard(
+            enabled: _boardNewBadge,
+            saving: _boardBadgeSaving,
+            icon: Icons.fiber_new_outlined,
+            onLabel: t('Мәзірдегі картада «Жаңа» жапсырмасы тұр'),
+            offLabel: t('Жапсырмасыз (бөлімнің өзі орнында қалады)'),
+            onChanged: (v) => _toggleNewBadge(v, board: true),
           ),
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),

@@ -745,6 +745,16 @@ class ListingReport {
 }
 
 // ---------- App settings ----------
+/// «ЖАҢА» белгілерінің күйі (0058). Клиенттің басты бетіндегі «Такси»
+/// плиткасы мен sidebar-дағы «Хабарландырулар» картасындағы белгі бұрын
+/// кодта қатып тұрған еді — фича ескіргенде де «жаңа» болып қала беретін.
+/// Енді екеуін де модератор Баптаулардан бөлек өшіре/қоса алады.
+class NewBadges {
+  final bool board;
+  final bool taxi;
+  const NewBadges({required this.board, required this.taxi});
+}
+
 class AppConfig {
   final String kaspiNumber;
   final String kaspiName;

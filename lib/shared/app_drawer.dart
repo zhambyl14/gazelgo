@@ -132,6 +132,8 @@ class AppDrawer extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
                     child: _BoardCard(
                       isExecutor: isExecutor,
+                      showNew:
+                          ref.watch(newBadgesProvider).value?.board ?? true,
                       onTap: () {
                         // Модератор тақтаны жаңа ғана қосқан/өшірген болуы
                         // мүмкін — қосымшаны қайта ашуды талап етпей, әр
@@ -425,8 +427,16 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
 /// прототиптегідей «Жаңа» белгісімен ерекшеленіп тұрады.
 class _BoardCard extends StatelessWidget {
   final bool isExecutor;
+
+  /// «Жаңа» белгісі көрінсін бе (0058). Модератор Баптаулардан алып
+  /// тастай алады — фича ескіргенде «жаңа» болып тұрмасын.
+  final bool showNew;
   final VoidCallback onTap;
-  const _BoardCard({required this.isExecutor, required this.onTap});
+  const _BoardCard({
+    required this.isExecutor,
+    required this.showNew,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -469,24 +479,25 @@ class _BoardCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Gz.ink,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    t('Жаңа'),
-                    style: const TextStyle(
-                      color: Gz.yellow,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                if (showNew)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Gz.ink,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      t('Жаңа'),
+                      style: const TextStyle(
+                        color: Gz.yellow,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 6),
