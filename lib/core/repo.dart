@@ -1308,8 +1308,11 @@ final myExecutorProfileProvider = FutureProvider<ExecutorProfile?>((ref) {
 final appConfigProvider = FutureProvider<AppConfig>((ref) async {
   final s = await Repo.settings();
   final payment = s['payment'];
+  final tariffs = s['tariffs'];
   return AppConfig.fromSettings(
-      payment is Map ? Map<String, dynamic>.from(payment) : null);
+    payment is Map ? Map<String, dynamic>.from(payment) : null,
+    tariffs: tariffs is Map ? Map<String, dynamic>.from(tariffs) : null,
+  );
 });
 
 final executorStatsProvider =

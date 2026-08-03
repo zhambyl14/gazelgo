@@ -755,20 +755,46 @@ class AppConfig {
   /// (QR + сома енгізу → төлеу) тікелей ашады.
   final String kaspiTopupUrl;
 
+  /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген (08:00-ден
+  /// бастап циклмен), `rolling` — сатып алған сәттен бастап.
+  final String durationMode;
+
+  /// Ауысымның ұзақтығы, сағатпен (0055, модератор баптайды).
+  final int durationHours;
+
   AppConfig({
     this.kaspiNumber = '+7 777 000 0000',
     this.kaspiName = 'Tasu',
     this.minTopup = 500,
     this.kaspiTopupUrl = '',
+    this.durationMode = 'fixed',
+    this.durationHours = 12,
   });
 
-  factory AppConfig.fromSettings(Map<String, dynamic>? payment) {
-    if (payment == null) return AppConfig();
+  factory AppConfig.fromSettings(
+    Map<String, dynamic>? payment, {
+    Map<String, dynamic>? tariffs,
+  }) {
     return AppConfig(
-      kaspiNumber: payment['kaspi_number'] as String? ?? '+7 777 000 0000',
-      kaspiName: payment['kaspi_name'] as String? ?? 'Tasu',
-      minTopup: _i(payment['min_topup'] ?? 500),
-      kaspiTopupUrl: payment['kaspi_topup_url'] as String? ?? '',
+      kaspiNumber: payment?['kaspi_number'] as String? ?? '+7 777 000 0000',
+      kaspiName: payment?['kaspi_name'] as String? ?? 'Tasu',
+      minTopup: _i(payment?['min_topup'] ?? 500),
+      kaspiTopupUrl: payment?['kaspi_topup_url'] as String? ?? '',
+      durationMode: tariffs?['duration_mode'] == 'rolling' ? 'rolling' : 'fixed',
+      durationHours: _i(tariffs?['duration_hours'] ?? 12),
     );
   }
+}
+
+/// Ауысымның нақты ұзақтығын модератор баптауына сай, қысқа әрі түсінікті
+/// сипаттайды (орындаушыға «Тариф» экраны мен FAQ-та көрсетіледі, 0055).
+/// Мыс.: «24 сағат: 08:00–08:00» немесе «24 сағат: қосқан сәттен бастап».
+String tariffDurationLabel(AppConfig cfg) {
+  final h = cfg.durationHours;
+  if (cfg.durationMode == 'rolling') {
+    return '$h ${t('сағат: қосқан сәттен бастап')}';
+  }
+  if (h == 24) return '24 ${t('сағат: 08:00–08:00')}';
+  if (h == 12) return '12 ${t('сағат: 08:00–20:00 не 20:00–08:00')}';
+  return '$h ${t('сағат: 08:00-ден бастап')}';
 }

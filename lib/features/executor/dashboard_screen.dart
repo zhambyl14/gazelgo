@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/lang.dart';
+import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -16,6 +17,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
     final ep = ref.watch(myExecutorProfileProvider).value;
+    final cfg = ref.watch(appConfigProvider).value ?? AppConfig();
 
     return Scaffold(
       appBar: AppBar(title: Text(t('Тариф және баланс'))),
@@ -177,10 +179,11 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 4),
               Text(
-                t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
-                    '1 ауысым (ұзақтығын модератор баптайды), сол '
-                    'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
-                    'тариф жабылады, қайтадан сатып аласыз.'),
+                '${t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
+                    '1 ауысым')} (${tariffDurationLabel(cfg)}), '
+                    '${t('сол ауысымда 10 заказға дейін. Ауысым бітсе не 10 '
+                        'заказ алсаңыз — тариф жабылады, қайтадан сатып '
+                        'аласыз.')}',
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 12),

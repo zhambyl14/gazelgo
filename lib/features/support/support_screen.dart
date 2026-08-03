@@ -43,16 +43,35 @@ class SupportScreen extends StatefulWidget {
 class _SupportScreenState extends State<SupportScreen> {
   String? _role; // client | executor | moderator
 
+  /// Тариф ұзақтығы (0055) — «Тариф деген не?» FAQ жауабы модератордың
+  /// нақты баптауын көрсетуі үшін.
+  AppConfig _cfg = AppConfig();
+
   @override
   void initState() {
     super.initState();
     Repo.myProfile().then((p) {
       if (mounted) setState(() => _role = p?.role ?? 'client');
     });
+    Repo.settings().then((s) {
+      final tariffs = s['tariffs'];
+      if (mounted) {
+        setState(() => _cfg = AppConfig.fromSettings(null,
+            tariffs: tariffs is Map ? Map<String, dynamic>.from(tariffs) : null));
+      }
+    }).catchError((_) {});
   }
 
-  List<(String, String)> get _faq =>
-      _role == 'executor' ? _executorFaq : _clientFaq;
+  /// «Тариф = 1 ауысым (N сағат: ...), сол ауысымда 10 заказға дейін...» —
+  /// ұзақтығы модератордың нақты баптауына сай, ЖИНАЛМАЛЫ (const емес).
+  String _tariffFaqAnswer() =>
+      '${t('Тариф = 1 ауысым')} (${tariffDurationLabel(_cfg)}), '
+      '${t('сол ауысымда 10 заказға дейін. Тариф біреу ғана — бағасы '
+          'күндіз де, түнде де бірдей.')}';
+
+  List<(String, String)> get _faq => _role == 'executor'
+      ? [('Тариф деген не?', _tariffFaqAnswer()), ..._executorFaqRest]
+      : _clientFaq;
 
   @override
   Widget build(BuildContext context) {
@@ -182,13 +201,9 @@ class _SupportScreenState extends State<SupportScreen> {
     ),
   ];
 
-  static const _executorFaq = <(String, String)>[
-    (
-      'Тариф деген не?',
-      'Тариф = 1 ауысым (ұзақтығын модератор баптайды), сол ауысымда '
-          '10 заказға дейін. Тариф біреу ғана — бағасы күндіз де, түнде де '
-          'бірдей.'
-    ),
+  /// Тариф сұрағы алынып тасталды — ол енді [_tariffFaqAnswer]-мен
+  /// динамикалық түрде _faq getter-інде ЕҢ АЛДЫҢҒЫ орынға қойылады.
+  static const _executorFaqRest = <(String, String)>[
     (
       'Балансты қалай толтырамын?',
       '«Баланс» экранынан соманы жазып, Kaspi арқылы аударасыз да, чектің '
