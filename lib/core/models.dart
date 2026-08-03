@@ -538,8 +538,8 @@ class SupportMessage {
 }
 
 // ---------- Executor stats (RPC executor_stats) ----------
-/// Тариф = 1 ауысым (ұзақтығын модератор баптайды, 0055), сол ауысымда
-/// макс 10 заказ. Тариф бірыңғай:
+/// Тариф = 1 ауысым (ұзақтығы мен заказ саны модератор баптауымен —
+/// [tariffDurationLabel]/[tariffOrdersLabel], 0055/0056). Тариф бірыңғай:
 /// [ordersLeft] — ағымдағы ауысымда қалған заказ, [until] — ауысымның аяқталу
 /// уақыты, [price] — тариф бағасы (күндіз де, түнде де бірдей). [trialUntil] —
 /// жаңа орындаушының 1 айлық тегін кезеңінің (§7) аяқталуы.
@@ -762,6 +762,9 @@ class AppConfig {
   /// Ауысымның ұзақтығы, сағатпен (0055, модератор баптайды).
   final int durationHours;
 
+  /// Бір ауысымда рұқсат етілген заказ саны (0056, модератор баптайды).
+  final int ordersPerShift;
+
   AppConfig({
     this.kaspiNumber = '+7 777 000 0000',
     this.kaspiName = 'Tasu',
@@ -769,6 +772,7 @@ class AppConfig {
     this.kaspiTopupUrl = '',
     this.durationMode = 'fixed',
     this.durationHours = 12,
+    this.ordersPerShift = 10,
   });
 
   factory AppConfig.fromSettings(
@@ -782,6 +786,7 @@ class AppConfig {
       kaspiTopupUrl: payment?['kaspi_topup_url'] as String? ?? '',
       durationMode: tariffs?['duration_mode'] == 'rolling' ? 'rolling' : 'fixed',
       durationHours: _i(tariffs?['duration_hours'] ?? 12),
+      ordersPerShift: _i(tariffs?['orders_per_shift'] ?? 10),
     );
   }
 }
@@ -798,3 +803,24 @@ String tariffDurationLabel(AppConfig cfg) {
   if (h == 12) return '12 ${t('сағат: 08:00–20:00 не 20:00–08:00')}';
   return '$h ${t('сағат: 08:00-ден бастап')}';
 }
+
+/// «N заказға дейін» — бір ауысымда рұқсат етілген заказ саны (0056,
+/// модератор баптайды). Сан сөз тәртібін өзгертеді (kk: сан бірінші,
+/// ru: «до» санның алдында тұрады), сол себепті `t()` сөздігі арқылы
+/// емес, тілге қарай ТІКЕЛЕЙ құрастырамыз.
+String tariffOrdersLabel(AppConfig cfg) {
+  final n = cfg.ordersPerShift;
+  if (Lang.current.value != AppLang.ru) return '$n заказға дейін';
+  final gen = (n % 10 == 1 && n % 100 != 11) ? 'заказа' : 'заказов';
+  return 'до $n $gen';
+}
+
+/// Тарифтің толық, нақты анықтамасы — модератордың нақты баптауын
+/// (ұзақтығы, заказ саны) көрсетеді. Орындаушыға «Тариф» экраны мен
+/// FAQ-та көрсетіледі (0055/0056).
+String tariffDefinitionText(AppConfig cfg) =>
+    '${t('Тариф — 1 ауысымдық жазылым.')} '
+    '${t('Ұзақтығы')} — ${tariffDurationLabel(cfg)}, '
+    '${t('ауысымда')} — ${tariffOrdersLabel(cfg)}. '
+    '${t('Ауысым аяқталса не лимитке жетсеңіз — тариф жабылады, '
+        'қайтадан сатып аласыз.')}';

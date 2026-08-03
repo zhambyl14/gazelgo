@@ -62,15 +62,8 @@ class _SupportScreenState extends State<SupportScreen> {
     }).catchError((_) {});
   }
 
-  /// «Тариф = 1 ауысым (N сағат: ...), сол ауысымда 10 заказға дейін...» —
-  /// ұзақтығы модератордың нақты баптауына сай, ЖИНАЛМАЛЫ (const емес).
-  String _tariffFaqAnswer() =>
-      '${t('Тариф = 1 ауысым')} (${tariffDurationLabel(_cfg)}), '
-      '${t('сол ауысымда 10 заказға дейін. Тариф біреу ғана — бағасы '
-          'күндіз де, түнде де бірдей.')}';
-
   List<(String, String)> get _faq => _role == 'executor'
-      ? [('Тариф деген не?', _tariffFaqAnswer()), ..._executorFaqRest]
+      ? [('Тариф деген не?', tariffDefinitionText(_cfg)), ..._executorFaqRest]
       : _clientFaq;
 
   @override

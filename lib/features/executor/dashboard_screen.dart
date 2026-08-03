@@ -179,11 +179,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 4),
               Text(
-                '${t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
-                    '1 ауысым')} (${tariffDurationLabel(cfg)}), '
-                    '${t('сол ауысымда 10 заказға дейін. Ауысым бітсе не 10 '
-                        'заказ алсаңыз — тариф жабылады, қайтадан сатып '
-                        'аласыз.')}',
+                tariffDefinitionText(cfg),
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
               ),
               const SizedBox(height: 12),
@@ -192,13 +188,14 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 color: Gz.blue,
                 icon: Icons.local_shipping_outlined,
                 description:
-                    t('1 ауысым · 10 заказға дейін. Клиент бағасын өзі қояды — сіз '
-                        'келісесіз немесе өз бағаңызды ұсынасыз.'),
+                    '1 ${t('ауысым')} · ${tariffOrdersLabel(cfg)}. '
+                    '${t('Клиент бағасын өзі қояды — сіз '
+                        'келісесіз немесе өз бағаңызды ұсынасыз.')}',
                 price: s.price,
                 active: s.hasTariff,
                 ordersLeft: s.ordersLeft,
                 until: s.until,
-                onBuy: () => _buy(context, ref, s.price),
+                onBuy: () => _buy(context, ref, s.price, cfg),
               ),
               const SizedBox(height: 24),
             ],
@@ -208,11 +205,12 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _buy(BuildContext context, WidgetRef ref, int price) async {
+  Future<void> _buy(
+      BuildContext context, WidgetRef ref, int price, AppConfig cfg) async {
     final ok = await confirmDialog(
       context,
       title: t('Тариф'),
-      message: '${t('1 ауысым, 10 заказға дейін:')} ${fmtT(price)}.\n'
+      message: '1 ${t('ауысым')}, ${tariffOrdersLabel(cfg)}: ${fmtT(price)}.\n'
           '${t('Баланстан шешіледі. Жалғастырамыз ба?')}',
       confirmLabel: t('Иә, сатып аламын'),
       confirmColor: Gz.blue,
@@ -224,7 +222,8 @@ class ExecutorDashboardScreen extends ConsumerWidget {
       ref.invalidate(executorStatsStreamProvider);
       ref.invalidate(executorFeedStreamProvider);
       if (context.mounted) {
-        showSnack(context, t('Тариф қосылды — ауысым басталды, 10 заказға дейін! 🚚'));
+        showSnack(context,
+            '${t('Тариф қосылды — ауысым басталды,')} ${tariffOrdersLabel(cfg)}! 🚚');
       }
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -318,8 +317,8 @@ class _TariffCard extends StatelessWidget {
               style:
                   const TextStyle(color: Gz.textSecondary, fontSize: 13)),
           const SizedBox(height: 12),
-          // Белсенді болса — қайта сатуға болмайды (ауысым бітсін не 10 заказ
-          // бітсін). Оның орнына қалған заказ + ауысым соңы көрсетіледі.
+          // Белсенді болса — қайта сатуға болмайды (ауысым бітсін не заказ
+          // лимиті бітсін). Оның орнына қалған заказ + ауысым соңы көрсетіледі.
           if (active)
             Container(
               width: double.infinity,

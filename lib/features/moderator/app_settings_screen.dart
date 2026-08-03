@@ -49,6 +49,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   final _tariffPrice = TextEditingController();
   final _durationHours = TextEditingController();
+  final _ordersPerShift = TextEditingController();
 
   /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
   /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
@@ -77,6 +78,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   void dispose() {
     _tariffPrice.dispose();
     _durationHours.dispose();
+    _ordersPerShift.dispose();
     _botMax.dispose();
     _botMerchants.dispose();
     _botAgeHours.dispose();
@@ -119,6 +121,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _durationMode =
           tariffs['duration_mode'] == 'rolling' ? 'rolling' : 'fixed';
       _durationHours.text = '${tariffs['duration_hours'] ?? 12}';
+      _ordersPerShift.text = '${tariffs['orders_per_shift'] ?? 10}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
       _kaspiTopupUrl.text = '${payment['kaspi_topup_url'] ?? ''}';
@@ -151,11 +154,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           error: true);
       return;
     }
+    final orders = _int(_ordersPerShift);
+    if (orders == null || orders < 1) {
+      showSnack(context, t('Заказ санын дұрыс жазыңыз'), error: true);
+      return;
+    }
     await Repo.modUpdateSetting('tariffs', {
       'simple_day': price,
       'simple_night': price,
       'duration_mode': _durationMode,
       'duration_hours': hours,
+      'orders_per_shift': orders,
     });
     if (mounted) showSnack(context, t('Сақталды'));
   }
@@ -417,8 +426,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),
           Text(
-            t('Орындаушы 1 ауысымға төлейтін баға және ауысымның қанша '
-                'уақытқа созылатыны (10 заказ лимиті өзгеріссіз).'),
+            t('Орындаушы 1 ауысымға төлейтін баға, ауысымның қанша '
+                'уақытқа созылатыны және сол ауысымда қанша заказ алуға '
+                'болатыны.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -482,6 +492,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     labelText: t('Ауысым ұзақтығы (сағат)'),
                     helperText: t('1-24 аралығында. Әдепкі — 12.'),
                     prefixIcon: const Icon(Icons.schedule_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _ordersPerShift,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('Бір ауысымға заказ саны'),
+                    helperText: t('Ауысым осы санға жеткенде жабылады. '
+                        'Әдепкі — 10.'),
+                    prefixIcon: const Icon(Icons.local_shipping_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),

@@ -203,7 +203,8 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           icon: Icons.bolt,
           color: Gz.yellowDark,
           title: t('Тарифіңіз жоқ'),
-          text: t('Заказ алу үшін тариф сатып алыңыз (1 ауысым, 10 заказ).'),
+          text: '${t('Заказ алу үшін тариф сатып алыңыз (1 ауысым,')} '
+              '${tariffOrdersLabel(ref.read(appConfigProvider).value ?? AppConfig())}).',
           actionLabel: t('Тарифке кіру'),
           onAction: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ExecutorDashboardScreen()),
