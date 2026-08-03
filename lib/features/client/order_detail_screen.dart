@@ -389,31 +389,29 @@ class _RaisePriceHint extends StatelessWidget {
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              for (final add in [500, 1000, 2000])
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 40),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12)),
-                    onPressed: () async {
-                      try {
-                        await Repo.updateOrderPrice(order.id, cur + add);
-                        if (context.mounted) {
-                          showSnack(context,
-                              '${t('Жаңа баға:')} ${fmtT(cur + add)}');
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          showSnack(context, errText(e), error: true);
-                        }
+              for (final add in [100, 500, 1000, 2000])
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 12)),
+                  onPressed: () async {
+                    try {
+                      await Repo.updateOrderPrice(order.id, cur + add);
+                      if (context.mounted) {
+                        showSnack(context,
+                            '${t('Жаңа баға:')} ${fmtT(cur + add)}');
                       }
-                    },
-                    child: Text('+${fmtT(add)}'),
-                  ),
+                    } catch (e) {
+                      if (context.mounted) {
+                        showSnack(context, errText(e), error: true);
+                      }
+                    }
+                  },
+                  child: Text('+${fmtT(add)}'),
                 ),
             ],
           ),
