@@ -310,13 +310,25 @@ Widget specIcon(VehicleSpec s, {double size = 34}) {
     child: Center(
       child: s.iconUrl == null
           ? fallback()
-          : Image.network(
-              s.iconUrl!,
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              loadingBuilder: (_, child, p) => p == null ? child : fallback(),
-              errorBuilder: (_, _, _) => fallback(),
+          // Жүктелген PNG 512×512-ге дейін болуы мүмкін (icon_crop.dart) —
+          // мұнда тек [size] пиксельге керек, экран тығыздығына сай
+          // ДЕКОДТАП аламыз (жад үнемдеу, flutter-performance §3).
+          : Builder(
+              builder: (context) {
+                final px =
+                    (size * MediaQuery.devicePixelRatioOf(context)).round();
+                return Image.network(
+                  s.iconUrl!,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.contain,
+                  cacheWidth: px,
+                  cacheHeight: px,
+                  loadingBuilder: (_, child, p) =>
+                      p == null ? child : fallback(),
+                  errorBuilder: (_, _, _) => fallback(),
+                );
+              },
             ),
     ),
   );

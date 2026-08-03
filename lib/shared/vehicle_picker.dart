@@ -41,16 +41,29 @@ Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) {
     child: Center(
       child: url == null
           ? fallback()
-          : Image.network(
-              url,
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              // Жүктеліп жатқанда да орын БІРДЕЙ болып тұрсын (карточкалар
-              // «секірмеуі» үшін) — сол себепті әдепкі суретті көрсетеміз.
-              loadingBuilder: (_, child, progress) =>
-                  progress == null ? child : fallback(),
-              errorBuilder: (_, _, _) => fallback(),
+          // Модератор жүктеген иконка кез келген өлшемде болуы мүмкін
+          // (0050 crop 512×512-ге дейін жібереді) — каруселде [size]
+          // пиксельге ғана керек, сол себепті нақты экран тығыздығына
+          // сай ДЕКОДТАП аламыз (жад үнемдеу, flutter-performance §3).
+          : Builder(
+              builder: (context) {
+                final px =
+                    (size * MediaQuery.devicePixelRatioOf(context)).round();
+                return Image.network(
+                  url,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.contain,
+                  cacheWidth: px,
+                  cacheHeight: px,
+                  // Жүктеліп жатқанда да орын БІРДЕЙ болып тұрсын
+                  // (карточкалар «секірмеуі» үшін) — сол себепті әдепкі
+                  // суретті көрсетеміз.
+                  loadingBuilder: (_, child, progress) =>
+                      progress == null ? child : fallback(),
+                  errorBuilder: (_, _, _) => fallback(),
+                );
+              },
             ),
     ),
   );
