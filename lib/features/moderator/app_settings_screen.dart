@@ -48,6 +48,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _supportBotSaving = false;
 
   final _tariffPrice = TextEditingController();
+  final _durationHours = TextEditingController();
+
+  /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
+  /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
+  /// сатып алған СӘТТЕН бастап +[_durationHours] сағат.
+  String _durationMode = 'fixed';
   final _botMax = TextEditingController();
   final _botMerchants = TextEditingController();
   final _botAgeHours = TextEditingController();
@@ -70,6 +76,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   @override
   void dispose() {
     _tariffPrice.dispose();
+    _durationHours.dispose();
     _botMax.dispose();
     _botMerchants.dispose();
     _botAgeHours.dispose();
@@ -109,6 +116,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _botMerchants.text =
           ((bot['merchant_names'] as List?) ?? const []).join(', ');
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
+      _durationMode =
+          tariffs['duration_mode'] == 'rolling' ? 'rolling' : 'fixed';
+      _durationHours.text = '${tariffs['duration_hours'] ?? 12}';
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
       _kaspiTopupUrl.text = '${payment['kaspi_topup_url'] ?? ''}';
@@ -135,9 +145,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       showSnack(context, t('Бағаны дұрыс жазыңыз'), error: true);
       return;
     }
+    final hours = _int(_durationHours);
+    if (hours == null || hours < 1 || hours > 24) {
+      showSnack(context, t('Ұзақтығын 1-24 сағат аралығында жазыңыз'),
+          error: true);
+      return;
+    }
     await Repo.modUpdateSetting('tariffs', {
       'simple_day': price,
       'simple_night': price,
+      'duration_mode': _durationMode,
+      'duration_hours': hours,
     });
     if (mounted) showSnack(context, t('Сақталды'));
   }
@@ -399,7 +417,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),
           Text(
-            t('Орындаушы 1 ауысымға (12 сағат, 10 заказ) төлейтін баға.'),
+            t('Орындаушы 1 ауысымға төлейтін баға және ауысымның қанша '
+                'уақытқа созылатыны (10 заказ лимиті өзгеріссіз).'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -413,6 +432,56 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   decoration: InputDecoration(
                     labelText: t('Тариф бағасы (₸)'),
                     prefixIcon: const Icon(Icons.payments_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t('Ауысым түрі'),
+                  style:
+                      const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                RadioGroup<String>(
+                  groupValue: _durationMode,
+                  onChanged: (v) => setState(() => _durationMode = v!),
+                  child: Column(
+                    children: [
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'fixed',
+                        dense: true,
+                        title: Text(t('Белгілі уақыт аралығында'),
+                            style: const TextStyle(fontSize: 13.5)),
+                        subtitle: Text(
+                          t('Сағат 08:00-ден бастап циклмен қайталанады '
+                              '(мыс. 12 сағат болса — 08:00–20:00 және '
+                              '20:00–08:00).'),
+                          style: const TextStyle(fontSize: 11.5),
+                        ),
+                      ),
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'rolling',
+                        dense: true,
+                        title: Text(t('Қосқан сәттен бастап'),
+                            style: const TextStyle(fontSize: 13.5)),
+                        subtitle: Text(
+                          t('Орындаушы тарифті қосқан уақыттан бастап '
+                              'есептеледі (сағатқа қарамайды).'),
+                          style: const TextStyle(fontSize: 11.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _durationHours,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('Ауысым ұзақтығы (сағат)'),
+                    helperText: t('1-24 аралығында. Әдепкі — 12.'),
+                    prefixIcon: const Icon(Icons.schedule_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),

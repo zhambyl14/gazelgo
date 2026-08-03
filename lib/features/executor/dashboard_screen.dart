@@ -178,7 +178,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 t('Тариф біреу ғана — бағасы күндіз де, түнде де бірдей. '
-                    '1 ауысым (12 сағат: 08:00–20:00 не 20:00–08:00), сол '
+                    '1 ауысым (ұзақтығын модератор баптайды), сол '
                     'ауысымда 10 заказға дейін. Ауысым бітсе не 10 заказ алсаңыз — '
                     'тариф жабылады, қайтадан сатып аласыз.'),
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
@@ -209,7 +209,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     final ok = await confirmDialog(
       context,
       title: t('Тариф'),
-      message: '${t('1 ауысым (12 сағат), 10 заказға дейін:')} ${fmtT(price)}.\n'
+      message: '${t('1 ауысым, 10 заказға дейін:')} ${fmtT(price)}.\n'
           '${t('Баланстан шешіледі. Жалғастырамыз ба?')}',
       confirmLabel: t('Иә, сатып аламын'),
       confirmColor: Gz.blue,
