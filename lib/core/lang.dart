@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'i18n/ru_auth.dart';
 import 'i18n/ru_board.dart';
+import 'i18n/ru_bonus.dart';
 import 'i18n/ru_client.dart';
 import 'i18n/ru_dual_role.dart';
 import 'i18n/ru_executor.dart';
@@ -55,6 +56,8 @@ final Map<String, String> _kkToRu = {
   // Қос рөл + такси + қысқартылған мәтіндер (0046) — ЕҢ СОҢҒЫ, сол
   // себепті жаңартылған жолдардың аудармасы басым болады.
   ...ruDualRole,
+  // Бонус бағдарламасы, sidebar нұсқауы, жаңа профиль (0059).
+  ...ruBonus,
 };
 
 /// Қазақша мәтінді ағымдағы тілге аудару. Тек RU тілінде сөздіктен

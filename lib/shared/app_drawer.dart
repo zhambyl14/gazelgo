@@ -9,6 +9,7 @@ import '../features/auth/login_screen.dart';
 import '../features/board/board_screen.dart';
 import '../features/client/my_addresses_screen.dart';
 import '../features/executor/balance_screen.dart';
+import '../features/executor/bonus_widgets.dart';
 import '../features/executor/earnings_screen.dart';
 import '../features/legal/legal_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -176,6 +177,19 @@ class AppDrawer extends ConsumerWidget {
                         t('Табыс'),
                         () => _open(context, const EarningsScreen()),
                       ),
+                      // Бонус бағдарламасы (0059) — модератор ӨШІРІП қойса
+                      // тармақ мүлдем көрінбейді (бос бет ашылмайды).
+                      if (ref
+                              .watch(executorBonusStreamProvider)
+                              .value
+                              ?.visible ??
+                          false)
+                        _item(
+                          context,
+                          Icons.card_giftcard_outlined,
+                          t('Бонустар'),
+                          () => _open(context, const BonusHistoryScreen()),
+                        ),
                     ] else
                       _item(
                         context,

@@ -49,6 +49,32 @@ class Prefs {
     await p.setInt(_kLegalConfirms, n + 1);
   }
 
+  static const _kDrawerHint = 'drawer_hint_seen';
+
+  /// Бүйір панель (sidebar) туралы НҰСҚАУ қанша рет көрсетілді.
+  /// Адамдар сол жақ шеттен тартып панель ашуға болатынын білмей
+  /// қалатын — сол себепті алғашқы [kDrawerHintTimes] ашылуда қысқа
+  /// қалқыма нұсқау шығады, сосын мәңгіге тоқтайды.
+  static const kDrawerHintTimes = 4;
+
+  static Future<int> drawerHintSeen() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt(_kDrawerHint) ?? 0;
+  }
+
+  static Future<void> bumpDrawerHint() async {
+    final p = await SharedPreferences.getInstance();
+    final n = p.getInt(_kDrawerHint) ?? 0;
+    if (n >= kDrawerHintTimes) return;
+    await p.setInt(_kDrawerHint, n + 1);
+  }
+
+  /// «Түсіндім» деп өзі жапса — енді мүлдем көрсетпейміз.
+  static Future<void> dismissDrawerHint() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setInt(_kDrawerHint, kDrawerHintTimes);
+  }
+
   static const _kLastLat = 'client_last_lat';
   static const _kLastLng = 'client_last_lng';
 

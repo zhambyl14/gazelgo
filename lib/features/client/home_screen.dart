@@ -12,6 +12,7 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
+import '../../shared/drawer_hint.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
 import '../../shared/vehicle_picker.dart';
@@ -364,28 +365,18 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   // Логотип — ЕНДІ БАТЫРМА: sol жақтан sidebar ашады
                   // (профиль, тапсырыстар, хабарландырулар тақтасы — бәрі
                   // сонда). Оң жақтағы бөлек профиль батырмасы жойылды.
+                  // Бұрышында «мәзір» белгісі бар және өлшемі ұлғайтылған —
+                  // адамдар оны түйме екенін байқамай қалатын.
                   child: Row(
                     children: [
-                      Material(
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(13),
-                        clipBehavior: Clip.antiAlias,
-                        color: Gz.surface,
-                        child: InkWell(
-                          onTap: () {
-                            // Модератор «Такси»/«Хабарландырулар» бөлімін
-                            // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
-                            // қайта ашуды талап етпей, күйін сұрап аламыз.
-                            ref.invalidate(taxiEnabledProvider);
-                            _scaffoldKey.currentState?.openDrawer();
-                          },
-                          child: Image.asset(
-                            'assets/icon/icon.png',
-                            width: 46,
-                            height: 46,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      LogoMenuButton(
+                        onTap: () {
+                          // Модератор «Такси»/«Хабарландырулар» бөлімін
+                          // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
+                          // қайта ашуды талап етпей, күйін сұрап аламыз.
+                          ref.invalidate(taxiEnabledProvider);
+                          _scaffoldKey.currentState?.openDrawer();
+                        },
                       ),
                       const Spacer(),
                     ],
@@ -701,6 +692,12 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               ],
             ),
           ),
+          // Sidebar-ды ТАБУҒА көмектесетін екі элемент (0059): сол шеттегі
+          // тұрақты тұтқа (түртсе де, оңға тартса да ашылады) және алғашқы
+          // ашылуларда шығатын қысқа нұсқау. Екеуі де картаның үстінде,
+          // панельдің сыртында тұр — мазмұнды жаппайды.
+          const SafeArea(child: DrawerEdgeHandle()),
+          const SafeArea(child: DrawerHintOverlay(top: 78)),
         ],
       ),
     );

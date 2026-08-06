@@ -12,6 +12,7 @@ import '../../shared/map_widgets.dart';
 import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
+import 'bonus_widgets.dart';
 import 'dashboard_screen.dart';
 import 'executor_order_screen.dart';
 
@@ -111,7 +112,11 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
 
         if (eligible.isEmpty) {
           return _refreshable([
-            const SizedBox(height: 120),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: BonusStrip(),
+            ),
+            const SizedBox(height: 100),
             EmptyState(
               icon: Icons.hourglass_empty,
               title: t('Әзірге заказ жоқ'),
@@ -126,12 +131,16 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(12),
-            itemCount: eligible.length,
-            separatorBuilder: (_, i) => const SizedBox(height: 8),
-            itemBuilder: (_, i) => _FeedCard(
-              order: eligible[i],
-              onTap: () => _openOrder(eligible[i]),
-            ),
+            // 0-элемент — бонус жолағы (0059). Бағдарлама өшірулі болса ол
+            // `SizedBox.shrink` қайтарады, сол себепті лента баяғы қалпында.
+            itemCount: eligible.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, i) => i == 0
+                ? const BonusStrip()
+                : _FeedCard(
+                    order: eligible[i - 1],
+                    onTap: () => _openOrder(eligible[i - 1]),
+                  ),
           ),
         );
       },

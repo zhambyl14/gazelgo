@@ -9,6 +9,7 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
+import '../../shared/drawer_hint.dart';
 import '../../shared/status_check.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
@@ -31,58 +32,57 @@ class ExecutorHomeScreen extends ConsumerWidget {
       drawer: const AppDrawer(),
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            // жоғарғы жолақ: лого (sidebar батырмасы) + баланс
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
-              child: Row(
-                children: [
-                  // Логотип — sidebar ашатын батырма: профиль, баланс, табыс,
-                  // хабарландырулар тақтасы — бәрі сонда (бөлек «Профиль»
-                  // табы жойылды).
-                  Builder(
-                    builder: (ctx) => Material(
-                      elevation: 2,
-                      borderRadius: BorderRadius.circular(13),
-                      clipBehavior: Clip.antiAlias,
-                      color: Gz.surface,
-                      child: InkWell(
-                        onTap: () => Scaffold.of(ctx).openDrawer(),
-                        child: Image.asset(
-                          'assets/icon/icon.png',
-                          width: 46,
-                          height: 46,
-                          fit: BoxFit.cover,
+            Column(
+              children: [
+                // жоғарғы жолақ: лого (sidebar батырмасы) + баланс
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                  child: Row(
+                    children: [
+                      // Логотип — sidebar ашатын батырма: профиль, баланс,
+                      // табыс, хабарландырулар тақтасы — бәрі сонда (бөлек
+                      // «Профиль» табы жойылды). Бұрышында «мәзір» белгісі
+                      // тұр — түйме екені бірден көрінеді.
+                      Builder(
+                        builder: (ctx) => LogoMenuButton(
+                          onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),
-                    ),
+                      const Spacer(),
+                      _BalancePill(
+                        balance: s?.balance,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BalanceScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  _BalancePill(
-                    balance: s?.balance,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const BalanceScreen()),
-                    ),
+                ),
+                // тариф / аккаунт күйі басқару жолағы
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: _LineControlBar(stats: s, ep: ep),
+                ),
+                // модератордың құжат жаңарту хабары (басты бетте де)
+                if (ep != null &&
+                    (ep.docsUpdateRequested || ep.docsReviewPending))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: ExecutorDocsBanner(ep: ep),
                   ),
-                ],
-              ),
+                // GPS қаласы тіркелген қаладан өзгеше болса — ауыстыруды ұсынады
+                if (ep != null) _CitySwitchBanner(ep: ep),
+                // заказдар лентасы (негізгі мазмұн)
+                const Expanded(child: ExecutorFeedBody()),
+              ],
             ),
-            // тариф / аккаунт күйі басқару жолағы
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: _LineControlBar(stats: s, ep: ep),
-            ),
-            // модератордың құжат жаңарту хабары (басты бетте де)
-            if (ep != null && (ep.docsUpdateRequested || ep.docsReviewPending))
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                child: ExecutorDocsBanner(ep: ep),
-              ),
-            // GPS қаласы тіркелген қаладан өзгеше болса — ауыстыруды ұсынады
-            if (ep != null) _CitySwitchBanner(ep: ep),
-            // заказдар лентасы (негізгі мазмұн)
-            const Expanded(child: ExecutorFeedBody()),
+            // Sidebar-ды табуға көмектесетін тұтқа мен алғашқы нұсқау (0059).
+            const DrawerEdgeHandle(),
+            const DrawerHintOverlay(top: 84),
           ],
         ),
       ),
@@ -197,6 +197,16 @@ class _LineControlBar extends ConsumerWidget {
       );
     }
 
+    // Ауысымға берілетін заказ саны — модератор баптауы (0056). Бұрын
+    // мұнда «/10» ҚАТЫП тұрған еді: модератор лимитті 20 қойса, орындаушы
+    // «20/10» деген мағынасыз жазуды көретін. Енді нақты баптаудан алынады
+    // (жүктелмей тұрса — қалған саннан кем болмайтын мән).
+    final perShift = ref.watch(appConfigProvider).value?.ordersPerShift;
+    final total = (perShift == null || perShift < s.ordersLeft)
+        ? s.ordersLeft
+        : perShift;
+    final used = (total - s.ordersLeft).clamp(0, total);
+
     // Тариф белсенді — толық ені бар «Тариф пен баланс» түймесі + астында
     // жаңа заказ уведомлениесін қосу/өшіру тумблері.
     return Column(
@@ -215,37 +225,67 @@ class _LineControlBar extends ConsumerWidget {
                 border: Border.all(color: Gz.green.withValues(alpha: 0.4)),
                 boxShadow: Gz.cardShadow,
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle, color: Gz.green, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t('Тариф пен баланс'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: Gz.green,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t('Тариф пен баланс'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            Text(
+                              '${t('Белсенді')} · ${_tariffLabel(s, total)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Gz.green,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '${t('Белсенді')} · ${_tariffLabel(s)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Gz.green,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Gz.textSecondary,
+                      ),
+                    ],
                   ),
-                  const Icon(Icons.chevron_right, color: Gz.textSecondary),
+                  // Ауысым лимитінің прогресі — «қанша заказ қалды» деген
+                  // сұрақ санды оқымай-ақ көзге түседі. Лимит бітсе тариф
+                  // жабылады, сол себепті таусылуға жақындағанда түсі
+                  // ескертетін сарыға ауысады.
+                  if (total > 0) ...[
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: (used / total).clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: Gz.green.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation(
+                          s.ordersLeft <= 2 ? Gz.yellowDark : Gz.green,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -257,11 +297,10 @@ class _LineControlBar extends ConsumerWidget {
     );
   }
 
-  String _tariffLabel(ExecutorStats s) {
-    final parts = <String>[];
-    if (s.ordersLeft > 0) parts.add('${t('Тариф')} ${s.ordersLeft}/10');
-    if (parts.isEmpty) return t('Тариф жоқ');
-    return parts.join(' · ');
+  /// «Ауысымда 7/10 заказ» — модератор қойған лимитке қатысты нақты сан.
+  String _tariffLabel(ExecutorStats s, int total) {
+    if (s.ordersLeft <= 0) return t('Тариф жоқ');
+    return '${t('Ауысымда')} ${s.ordersLeft}/$total ${t('заказ')}';
   }
 }
 

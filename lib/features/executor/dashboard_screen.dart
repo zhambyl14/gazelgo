@@ -194,6 +194,13 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                 price: s.price,
                 active: s.hasTariff,
                 ordersLeft: s.ordersLeft,
+                // Лимит модератор баптауынан (0056). Егер қалған саны
+                // лимиттен көп болса (модератор жаңа ғана азайтқан, ескі
+                // ауысым әлі жүріп жатыр) — бөлгіш қалған саннан кем
+                // болмайды, әйтпесе «12 / 10» деген жалған сан шығар еді.
+                perShift: cfg.ordersPerShift < s.ordersLeft
+                    ? s.ordersLeft
+                    : cfg.ordersPerShift,
                 until: s.until,
                 onBuy: () => _buy(context, ref, s.price, cfg),
               ),
@@ -239,6 +246,9 @@ class _TariffCard extends StatelessWidget {
   final int price;
   final bool active;
   final int ordersLeft;
+
+  /// Модератор қойған ауысым лимиті (0056) — «қалған / барлығы» бөлгіші.
+  final int perShift;
   final DateTime? until;
   final VoidCallback onBuy;
 
@@ -250,6 +260,7 @@ class _TariffCard extends StatelessWidget {
     required this.price,
     required this.active,
     required this.ordersLeft,
+    required this.perShift,
     required this.until,
     required this.onBuy,
   });
@@ -337,7 +348,10 @@ class _TariffCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${t('Қалған заказ:')} $ordersLeft / 10',
+                        // Бөлгіш «10» бұрын ҚАТЫП тұрған еді — модератор
+                        // ауысым лимитін өзгертсе (0056) сан жалған
+                        // көрінетін. Енді нақты баптаудан келеді.
+                        Text('${t('Қалған заказ:')} $ordersLeft / $perShift',
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13.5,

@@ -1308,6 +1308,38 @@ class Repo {
       for (final r in rows as List) Map<String, dynamic>.from(r as Map),
     ];
   }
+
+  // ================= БОНУС БАҒДАРЛАМАСЫ (0059) =================
+  /// Орындаушының бонус прогресі. Бағдарлама өшірулі болса да, желі
+  /// қатесінде де — «өшірулі» күй қайтады, сол себепті лента ешқашан
+  /// сынбайды (жолақ жай ғана көрінбейді).
+  static Future<BonusInfo> executorBonus() async {
+    try {
+      final res = await c.rpc('executor_bonus');
+      return BonusInfo.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (_) {
+      return const BonusInfo.off();
+    }
+  }
+
+  /// Бонус прогресі — тікелей жаңарып отыратын стрим (лентадағы жолақ
+  /// заказ аяқталған сайын өзі жаңарады). Статистикадан сирегірек —
+  /// бонус әр 15 секундта тексерілсе де жеткілікті.
+  static Stream<BonusInfo> executorBonusStream() =>
+      _poll(executorBonus, every: const Duration(seconds: 15));
+
+  /// Орындаушының бонус тарихы (соңғы 100 жазба).
+  static Future<List<BonusAward>> myBonusAwards() async {
+    final rows = await c.rpc('my_bonus_awards');
+    return [
+      for (final r in rows as List)
+        BonusAward.fromMap(Map<String, dynamic>.from(r as Map)),
+    ];
+  }
+
+  /// Модератордың бонус есебі: барлығы / осы айда берілген + топ-5.
+  static Future<Map<String, dynamic>> modBonusStats() async =>
+      Map<String, dynamic>.from(await c.rpc('mod_bonus_stats') as Map);
 }
 
 // ================= RIVERPOD PROVIDERS =================
@@ -1356,6 +1388,13 @@ final newBadgesProvider =
 final executorStatsStreamProvider =
     StreamProvider.autoDispose<ExecutorStats>(
         (ref) => Repo.executorStatsStream());
+
+/// Бонус прогресі (0059). `autoDispose` — тыңдаушы қалмаса polling тоқтайды.
+/// Бағдарлама өшірулі болса стрим «off» күйін қайтарады да, ешбір экран
+/// қосымша сұраныс жасамайды.
+final executorBonusStreamProvider =
+    StreamProvider.autoDispose<BonusInfo>(
+        (ref) => Repo.executorBonusStream());
 
 /// Орындаушы лентасы (§5/§6). Riverpod стримді КЭШТЕЙДІ — сондықтан статистика
 /// әр 4 сек жаңарғанда бет қайта құрылса да, лента стримі қайта жазылмайды

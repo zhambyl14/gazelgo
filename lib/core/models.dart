@@ -825,6 +825,164 @@ String tariffOrdersLabel(AppConfig cfg) {
   return 'до $n $gen';
 }
 
+// ---------- Бонус бағдарламасы (0059) ----------
+/// Модератор баптайтын бонус бағдарламасының КҮЙІ (`app_settings.bonus`).
+/// Бұл — модератор экранының моделі; орындаушының өз прогресі [BonusInfo].
+class BonusConfig {
+  final bool enabled;
+
+  /// Бонусқа қажет заказ саны.
+  final int target;
+
+  /// Бонус сомасы (₸) — ТЕК балансқа түседі.
+  final int amount;
+
+  /// Санақ қай кезеңде нөлденеді: `day` · `week` · `month`.
+  final String period;
+
+  /// Кезең ішінде әр [target] сайын қайталана ма.
+  final bool repeat;
+
+  const BonusConfig({
+    this.enabled = false,
+    this.target = 20,
+    this.amount = 2000,
+    this.period = 'week',
+    this.repeat = true,
+  });
+
+  factory BonusConfig.fromMap(Map<String, dynamic>? m) => BonusConfig(
+    enabled: m?['enabled'] == true,
+    target: _i(m?['target'] ?? 20),
+    amount: _i(m?['amount'] ?? 2000),
+    period: bonusPeriodValid(m?['period'] as String?),
+    repeat: m?['repeat'] != false,
+  );
+
+  Map<String, dynamic> toMap() => {
+    'enabled': enabled,
+    'target': target,
+    'amount': amount,
+    'period': period,
+    'repeat': repeat,
+  };
+}
+
+/// Белгісіз/бос мәнді әрқашан `week`-ке түсіреді (сервер де солай істейді).
+String bonusPeriodValid(String? v) =>
+    (v == 'day' || v == 'month') ? v! : 'week';
+
+/// Кезеңнің атауы («апта сайын» деген мағынада, ағымдағы тілде).
+String bonusPeriodLabel(String period) => switch (period) {
+  'day' => t('күн сайын'),
+  'month' => t('ай сайын'),
+  _ => t('апта сайын'),
+};
+
+/// Кезеңнің атауы («осы аптада» деген мағынада).
+String bonusPeriodNow(String period) => switch (period) {
+  'day' => t('бүгін'),
+  'month' => t('осы айда'),
+  _ => t('осы аптада'),
+};
+
+/// Орындаушының бонус ПРОГРЕСІ (RPC `executor_bonus`).
+///
+/// [enabled] false болса — бағдарлама өшірулі, ешбір UI көрсетілмейді
+/// (желі қатесінде де осы күй қайтады, сол себепті ештеңе сынбайды).
+class BonusInfo {
+  final bool enabled;
+  final int target;
+  final int amount;
+  final String period;
+  final bool repeat;
+
+  /// Кезеңде аяқталған заказдың ЖАЛПЫ саны.
+  final int done;
+
+  /// Ағымдағы циклде аяқталғаны (0..[target]).
+  final int inCycle;
+
+  /// Келесі бонусқа қалған заказ саны.
+  final int left;
+
+  /// Қайталанбайтын режимде кезеңдегі бонус алынып қойған ба.
+  final bool finished;
+
+  /// Кезеңде алынған бонус саны және сомасы.
+  final int awardedCount;
+  final int earned;
+
+  /// Барлық уақытта алынған бонус сомасы.
+  final int earnedTotal;
+
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
+
+  const BonusInfo.off()
+    : enabled = false,
+      target = 0,
+      amount = 0,
+      period = 'week',
+      repeat = true,
+      done = 0,
+      inCycle = 0,
+      left = 0,
+      finished = false,
+      awardedCount = 0,
+      earned = 0,
+      earnedTotal = 0,
+      periodStart = null,
+      periodEnd = null;
+
+  BonusInfo.fromMap(Map<String, dynamic> m)
+    : enabled = m['enabled'] == true,
+      target = _i(m['target']),
+      amount = _i(m['amount']),
+      period = bonusPeriodValid(m['period'] as String?),
+      repeat = m['repeat'] != false,
+      done = _i(m['done']),
+      inCycle = _i(m['in_cycle']),
+      left = _i(m['left']),
+      finished = m['finished'] == true,
+      awardedCount = _i(m['awarded_count']),
+      earned = _i(m['earned']),
+      earnedTotal = _i(m['earned_total']),
+      periodStart = _dt(m['period_start']),
+      periodEnd = _dt(m['period_end']);
+
+  /// Прогресс жолағының толуы (0..1). Мақсат белгісіз болса — 0.
+  double get progress {
+    if (!enabled || target < 1) return 0;
+    if (finished) return 1;
+    return (inCycle / target).clamp(0.0, 1.0);
+  }
+
+  /// Көрсетуге тұрарлық па (өшірулі болса лентада орын алмайды).
+  bool get visible => enabled && target > 0 && amount > 0;
+}
+
+/// Берілген бонустың бір жазбасы (RPC `my_bonus_awards`).
+class BonusAward {
+  final String id;
+  final int amount;
+  final int target;
+  final int seq;
+  final String period;
+  final DateTime? createdAt;
+
+  BonusAward.fromMap(Map<String, dynamic> m)
+    : id = m['id'] as String,
+      amount = _i(m['amount']),
+      target = _i(m['target']),
+      seq = _i(m['seq']),
+      period = bonusPeriodValid(m['period'] as String?),
+      createdAt = _dt(m['created_at']);
+
+  /// «40 заказ» — осы бонус берілген сәттегі жалпы заказ саны.
+  int get ordersAtAward => target * (seq < 1 ? 1 : seq);
+}
+
 /// Тарифтің толық, нақты анықтамасы — модератордың нақты баптауын
 /// (ұзақтығы, заказ саны) көрсетеді. Орындаушыға «Тариф» экраны мен
 /// FAQ-та көрсетіледі (0055/0056).

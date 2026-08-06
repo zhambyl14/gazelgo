@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tasu/core/i18n/ru_bonus.dart';
 import 'package:tasu/core/i18n/ru_dual_role.dart';
 
 /// Аударма сөздігі КОДПЕН СӘЙКЕС ПЕ — детерминирленген тексеру.
@@ -25,7 +26,9 @@ void main() {
     return text;
   }
 
-  test('ruDualRole кілттерінің бәрі кодта бар', () {
+  // Кодтың бүкіл мәтіні (i18n сөздіктерінің өзінен басқа) — бір рет
+  // оқылады да, барлық сөздікке ортақ қолданылады.
+  late final String code = () {
     final buf = StringBuffer();
     for (final entity in Directory('lib').listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
@@ -35,26 +38,38 @@ void main() {
       }
       buf.writeln(joined(entity.readAsStringSync()));
     }
-    final code = buf.toString();
+    return buf.toString();
+  }();
 
-    final missing = <String>[];
-    for (final key in ruDualRole.keys) {
-      // Кілттің кодтағы литерал түрі: `\n` escape болып жазылады.
-      final literal = key.replaceAll('\n', r'\n');
-      if (!code.contains("'$literal'")) missing.add(key);
-    }
+  /// Сөздіктің ӘР КІЛТІ кодта нақты `t('...')` литералы болып тұр ма.
+  ///
+  /// БАРЛЫҚ сөздік тексерілмейді — тек жаңа әрі таза күйде ұсталатындары.
+  /// Ескі сөздіктерде (ru_client, ru_executor…) уақыт өте ескірген кілттер
+  /// жиналған, оларды бірден тазалау бұл тестің мақсаты емес.
+  void checkDict(String name, Map<String, String> dict) {
+    test('$name кілттерінің бәрі кодта бар', () {
+      final missing = <String>[];
+      for (final key in dict.keys) {
+        // Кілттің кодтағы литерал түрі: `\n` escape болып жазылады.
+        final literal = key.replaceAll('\n', r'\n');
+        if (!code.contains("'$literal'")) missing.add(key);
+      }
+      expect(
+        missing,
+        isEmpty,
+        reason: 'Бұл кілттер кодтағы t() шақыруымен сәйкес келмейді '
+            '(аудармасы қолданылмайды):\n${missing.join('\n---\n')}',
+      );
+    });
 
-    expect(
-      missing,
-      isEmpty,
-      reason: 'Бұл кілттер кодтағы t() шақыруымен сәйкес келмейді '
-          '(аудармасы қолданылмайды):\n${missing.join('\n---\n')}',
-    );
-  });
+    test('$name ішінде бос аударма жоқ', () {
+      final empty =
+          dict.entries.where((e) => e.value.trim().isEmpty).map((e) => e.key);
+      expect(empty, isEmpty);
+    });
+  }
 
-  test('ruDualRole ішінде бос аударма жоқ', () {
-    final empty =
-        ruDualRole.entries.where((e) => e.value.trim().isEmpty).map((e) => e.key);
-    expect(empty, isEmpty);
-  });
+  checkDict('ruDualRole', ruDualRole);
+  // Бонус бағдарламасы / sidebar нұсқауы / жаңа профиль (0059).
+  checkDict('ruBonus', ruBonus);
 }

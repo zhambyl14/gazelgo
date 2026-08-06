@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/lang.dart';
+import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -60,6 +61,19 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _durationHours = TextEditingController();
   final _ordersPerShift = TextEditingController();
 
+  // ---------- Бонус бағдарламасы (0059) ----------
+  /// Орындаушы кезеңде N заказ аяқтаса — балансына бонус түседі.
+  /// Қосқыш бірден сақталады, ал сандар «Сақтау» түймесімен.
+  BonusConfig _bonus = const BonusConfig();
+  bool _bonusSaving = false;
+  final _bonusTarget = TextEditingController();
+  final _bonusAmount = TextEditingController();
+  String _bonusPeriod = 'week';
+  bool _bonusRepeat = true;
+
+  /// Модератордың бонус есебі (қанша берілді, кімге) — тек көрсетуге.
+  Map<String, dynamic>? _bonusStats;
+
   /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
   /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
   /// сатып алған СӘТТЕН бастап +[_durationHours] сағат.
@@ -88,6 +102,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _tariffPrice.dispose();
     _durationHours.dispose();
     _ordersPerShift.dispose();
+    _bonusTarget.dispose();
+    _bonusAmount.dispose();
     _botMax.dispose();
     _botMerchants.dispose();
     _botAgeHours.dispose();
@@ -135,6 +151,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           tariffs['duration_mode'] == 'rolling' ? 'rolling' : 'fixed';
       _durationHours.text = '${tariffs['duration_hours'] ?? 12}';
       _ordersPerShift.text = '${tariffs['orders_per_shift'] ?? 10}';
+      // ---- бонус бағдарламасы (0059) ----
+      final bonusRaw = s['bonus'];
+      _bonus = BonusConfig.fromMap(
+        bonusRaw is Map ? Map<String, dynamic>.from(bonusRaw) : null,
+      );
+      _bonusTarget.text = '${_bonus.target}';
+      _bonusAmount.text = '${_bonus.amount}';
+      _bonusPeriod = _bonus.period;
+      _bonusRepeat = _bonus.repeat;
+      // Есеп жеке жүктеледі — қатесі баптау экранын бұғаттамауы керек.
+      _loadBonusStats();
       _kaspiNumber.text = '${payment['kaspi_number'] ?? ''}';
       _kaspiName.text = '${payment['kaspi_name'] ?? ''}';
       _kaspiTopupUrl.text = '${payment['kaspi_topup_url'] ?? ''}';
@@ -180,6 +207,83 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       'orders_per_shift': orders,
     });
     if (mounted) showSnack(context, t('Сақталды'));
+  }
+
+  // ---------- Бонус бағдарламасы (0059) ----------
+  /// Есеп жеке жүктеледі: желі қатесі болса баптау экраны бәрібір ашылады
+  /// (есеп жай ғана көрінбейді).
+  Future<void> _loadBonusStats() async {
+    try {
+      final st = await Repo.modBonusStats();
+      if (mounted) setState(() => _bonusStats = st);
+    } catch (_) {
+      /* есеп — қосымша мәлімет, қатесі елеусіз */
+    }
+  }
+
+  /// Қосу/өшіру — бірден сақталады. Өшірулі болса орындаушыда бонус
+  /// жолағы МҮЛДЕМ көрінбейді және ешбір бонус берілмейді.
+  Future<void> _toggleBonus(bool v) async {
+    final next = BonusConfig(
+      enabled: v,
+      target: _bonus.target,
+      amount: _bonus.amount,
+      period: _bonus.period,
+      repeat: _bonus.repeat,
+    );
+    setState(() {
+      _bonus = next;
+      _bonusSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('bonus', next.toMap());
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Бонус бағдарламасы қосылды') : t('Бонус бағдарламасы өшірілді'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _bonus = BonusConfig(
+            enabled: !v,
+            target: next.target,
+            amount: next.amount,
+            period: next.period,
+            repeat: next.repeat,
+          ),
+        );
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _bonusSaving = false);
+    }
+  }
+
+  Future<void> _saveBonus() async {
+    final target = _int(_bonusTarget);
+    if (target == null || target < 1) {
+      showSnack(context, t('Заказ санын дұрыс жазыңыз'), error: true);
+      return;
+    }
+    final amount = _int(_bonusAmount);
+    if (amount == null || amount < 1) {
+      showSnack(context, t('Бонус сомасын дұрыс жазыңыз'), error: true);
+      return;
+    }
+    final next = BonusConfig(
+      enabled: _bonus.enabled,
+      target: target,
+      amount: amount,
+      period: _bonusPeriod,
+      repeat: _bonusRepeat,
+    );
+    await Repo.modUpdateSetting('bonus', next.toMap());
+    if (mounted) {
+      setState(() => _bonus = next);
+      showSnack(context, t('Сақталды'));
+    }
   }
 
   Future<void> _savePayment() async {
@@ -589,18 +693,145 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 TextField(
                   controller: _ordersPerShift,
                   keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    labelText: t('Бір ауысымға заказ саны'),
-                    helperText: t('Ауысым осы санға жеткенде жабылады. '
-                        'Әдепкі — 10.'),
+                    labelText: t('Бір ауысымға заказ саны (лимит)'),
+                    helperMaxLines: 3,
+                    helperText: t('Орындаушы осы санша заказ алған соң тариф '
+                        'жабылады — жаңасын сатып алуы керек. Әдепкі — 10.'),
                     prefixIcon: const Icon(Icons.local_shipping_outlined),
                   ),
+                ),
+                const SizedBox(height: 12),
+                // Баптау НАҚТЫ нені білдіретінін орындаушы көретін
+                // сөзбен көрсетеді — сақтамай тұрып та тексеруге болады.
+                _previewBox(
+                  Icons.visibility_outlined,
+                  t('Орындаушы былай көреді'),
+                  '${t('Тариф')} · ${_previewDuration()} · '
+                      '${_previewOrders()}',
                 ),
                 const SizedBox(height: 12),
                 BusyButton(label: t('Сақтау'), onPressed: _saveTariff),
               ],
             ),
           ),
+          const SizedBox(height: 24),
+          // ---- ЖАҢА БӨЛІМ: белсенділік бонусы (0059) ----
+          _sectionTitle(t('Белсенділік бонусы')),
+          Text(
+            t('Орындаушы белгілі кезеңде көп заказ аяқтаса — БАЛАНСЫНА бонус '
+                'сомасы автоматты түседі. Прогресс («бонусқа N заказ қалды») '
+                'заказдар лентасының жоғарысында тұрады. Бонус тек балансқа '
+                'түседі — қолма-қол шешіп алынбайды, тариф сатып алуға '
+                'жұмсалады.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _bonus.enabled,
+            saving: _bonusSaving,
+            icon: _bonus.enabled
+                ? Icons.card_giftcard
+                : Icons.card_giftcard_outlined,
+            onLabel: t('Бонус бағдарламасы жұмыс істеп тұр'),
+            offLabel: t('Бонус берілмейді (лентада да көрінбейді)'),
+            onChanged: _toggleBonus,
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _bonusTarget,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: t('Бонусқа қажет заказ саны'),
+                    helperText: t('Осынша заказ АЯҚТАЛҒАНДА бонус беріледі.'),
+                    prefixIcon: const Icon(Icons.flag_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _bonusAmount,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: t('Бонус сомасы (₸)'),
+                    helperText: t('Орындаушының балансына қосылады.'),
+                    prefixIcon: const Icon(Icons.card_giftcard_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t('Санақ қашан нөлденеді'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                RadioGroup<String>(
+                  groupValue: _bonusPeriod,
+                  onChanged: (v) => setState(() => _bonusPeriod = v!),
+                  child: Column(
+                    children: [
+                      _periodTile(
+                        'day',
+                        t('Күн сайын'),
+                        t('Заказ санағы әр түн ортасында нөлден басталады.'),
+                      ),
+                      _periodTile(
+                        'week',
+                        t('Апта сайын'),
+                        t('Санақ әр дүйсенбіде жаңарады (әдепкі).'),
+                      ),
+                      _periodTile(
+                        'month',
+                        t('Ай сайын'),
+                        t('Санақ әр айдың 1-інде жаңарады.'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  value: _bonusRepeat,
+                  onChanged: (v) => setState(() => _bonusRepeat = v),
+                  title: Text(
+                    t('Кезең ішінде қайталансын'),
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _bonusRepeat
+                        ? t('Әр лимит сайын жаңа бонус беріледі (мыс. 20, 40, '
+                              '60 заказ).')
+                        : t('Бір кезеңде бір-ақ рет беріледі.'),
+                    style: const TextStyle(fontSize: 11.5),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _previewBox(
+                  Icons.card_giftcard_outlined,
+                  t('Орындаушы былай көреді'),
+                  _previewBonus(),
+                ),
+                const SizedBox(height: 12),
+                BusyButton(label: t('Сақтау'), onPressed: _saveBonus),
+              ],
+            ),
+          ),
+          if (_bonusStats != null) ...[
+            const SizedBox(height: 10),
+            _bonusStatsCard(),
+          ],
           const SizedBox(height: 24),
           _sectionTitle(t('Kaspi деректері')),
           Text(
@@ -915,4 +1146,206 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
     ),
   );
+
+  // ================= БАПТАУДЫҢ АЛДЫН АЛА КӨРІНІСІ =================
+  /// Модератор енгізген сан НАҚТЫ нені білдіретінін орындаушының өз
+  /// сөзімен көрсетеді. Сақтамай тұрып та жаңарып отырады — «12 сағат»
+  /// деген не, «10 заказ» қашан бітеді деп ойланудың қажеті жоқ.
+  Widget _previewBox(IconData icon, String title, String body) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+    decoration: BoxDecoration(
+      color: Gz.bg,
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: Gz.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 15, color: Gz.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: Gz.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          body,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            height: 1.4,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// Ауысым ұзақтығының сөзбен жазылуы — орындаушыдағы мәтіннің дәл өзі.
+  String _previewDuration() {
+    final h = _int(_durationHours);
+    if (h == null || h < 1 || h > 24) return t('ұзақтығы дұрыс емес');
+    return tariffDurationLabel(
+      AppConfig(durationMode: _durationMode, durationHours: h),
+    );
+  }
+
+  String _previewOrders() {
+    final n = _int(_ordersPerShift);
+    if (n == null || n < 1) return t('заказ саны дұрыс емес');
+    return tariffOrdersLabel(AppConfig(ordersPerShift: n));
+  }
+
+  String _previewBonus() {
+    final target = _int(_bonusTarget);
+    final amount = _int(_bonusAmount);
+    if (target == null || target < 1 || amount == null || amount < 1) {
+      return t('Сандарды дұрыс жазыңыз');
+    }
+    final repeatNote = _bonusRepeat
+        ? t('Әр лимит сайын қайталанады.')
+        : t('Кезеңде бір рет.');
+    return '${bonusPeriodNow(_bonusPeriod)} $target ${t('заказ аяқтасаңыз')} — '
+        '${fmtT(amount)} ${t('балансқа')}. $repeatNote';
+  }
+
+  /// Кезең таңдауының бір жолы.
+  Widget _periodTile(String value, String title, String subtitle) =>
+      RadioListTile<String>(
+        contentPadding: EdgeInsets.zero,
+        value: value,
+        dense: true,
+        title: Text(title, style: const TextStyle(fontSize: 13.5)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11.5)),
+      );
+
+  /// Бонусқа қанша ақша кеткенінің қысқаша есебі + топ-5 орындаушы.
+  Widget _bonusStatsCard() {
+    final st = _bonusStats!;
+    final top = (st['top'] as List?) ?? const [];
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.insights_outlined,
+                size: 18,
+                color: Gz.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                t('Бонус есебі'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _statMini(
+                  t('Осы айда'),
+                  fmtT(st['amount_month'] as num?),
+                  '${st['awards_month'] ?? 0} ${t('бонус')}',
+                  Gz.violet,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statMini(
+                  t('Барлық уақытта'),
+                  fmtT(st['amount_total'] as num?),
+                  '${st['awards_total'] ?? 0} ${t('бонус')}',
+                  Gz.ink,
+                ),
+              ),
+            ],
+          ),
+          if (top.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              t('Ең көп бонус алғандар'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Gz.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final r in top.whereType<Map>())
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${r['full_name'] ?? ''}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    Text(
+                      '${r['awards'] ?? 0}× · ${fmtT(r['total'] as num?)}',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statMini(String label, String value, String hint, Color color) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Gz.bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+            ),
+            const SizedBox(height: 3),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              hint,
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11),
+            ),
+          ],
+        ),
+      );
 }
