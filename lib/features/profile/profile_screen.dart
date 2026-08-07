@@ -1087,6 +1087,15 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                       fontWeight: FontWeight.w800, fontSize: 14.5)),
             ],
           ),
+          const SizedBox(height: 4),
+          Text(
+            p.isExecutor
+                ? t('Досыңыз тіркеліп кодыңызды енгізсе — балансыңызға '
+                    'бонус қосылады')
+                : t('Досыңыз тіркеліп кодыңызды енгізсе — шақыру санағыңыз '
+                    'өседі'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+          ),
           const SizedBox(height: 6),
           if (p.referralCode != null) ...[
             Row(
@@ -1107,26 +1116,36 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                        horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
                       color: Gz.bg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Gz.border),
                     ),
-                    child: Text(
-                      p.referralCode!,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          letterSpacing: 1.5),
+                    // FittedBox — тар экранда/түймеден орын тарылса, код
+                    // әрбір әріптен жол ауыстырып кетпейді (Expanded ені
+                    // тым кішірейгенде Text character-wrap жасайды), тек
+                    // қажет болса кішірейеді.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        p.referralCode!,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            letterSpacing: 1.5),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
+                IconButton.filled(
                   onPressed: () => _shareCode(p.referralCode!),
+                  tooltip: t('Бөлісу'),
                   icon: const Icon(Icons.ios_share, size: 18),
-                  label: Text(t('Бөлісу')),
                 ),
               ],
             ),

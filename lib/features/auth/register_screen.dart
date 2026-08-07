@@ -31,6 +31,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscure = true;
   bool _agree = false;
 
+  /// Жаттыққа шақыру коды (0061) — міндетті емес, тіркелгеннен КЕЙІН
+  /// авторизацияланған сессиямен `redeemReferralCode` шақырылады
+  /// (signup edge function-ды қиындатпау үшін бөлек қадам).
+  final _referralCode = TextEditingController();
+  bool _referralEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Repo.referralEnabled().then((v) {
+      if (mounted) setState(() => _referralEnabled = v);
+    });
+  }
+
   // Telegram верификация күйі (TelegramVerify виджеті толтырады)
   String? _tgToken; // ағымдағы сессия токені
   String? _verifiedPhone; // расталған нөмір (7XXXXXXXXXX)
@@ -47,6 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _name.dispose();
     _password.dispose();
     _password2.dispose();
+    _referralCode.dispose();
     _termsTap.dispose();
     _privacyTap.dispose();
     super.dispose();
@@ -113,6 +128,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: _role,
         tgToken: _tgToken!,
       );
+      // Жаттыққа шақыру коды (0061) — аккаунт енді авторизацияланған,
+      // сол сессиямен шақырамыз. Best-effort: код қате/бос болса тіркелу
+      // өзі СӘТТІ болып қала береді, тек шақыру есептелмейді.
+      final code = _referralCode.text.trim();
+      if (code.isNotEmpty) {
+        try {
+          await Repo.redeemReferralCode(code);
+        } catch (_) {}
+      }
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -329,6 +353,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _verifiedPhone = phone;
           }),
         ),
+        if (_referralEnabled) ...[
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _referralCode,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              hintText: t('Шақыру коды (міндетті емес)'),
+              prefixIcon: const Icon(Icons.card_giftcard_outlined),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         // Нөмір Telegram арқылы РАСТАЛМАЙ тұрып «Тіркелу» батырмасы СҰР әрі
         // басылмайтын күйде тұрады (расталса — сары): назар алдымен

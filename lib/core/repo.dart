@@ -716,10 +716,22 @@ class Repo {
         return res == null ? null : Map<String, dynamic>.from(res as Map);
       }, every: const Duration(seconds: 12));
 
-  /// Жаттыққа шақыру кодын енгізу (тек ұпай/санақ — балансқа тимейді).
-  /// Тіркелген соң БІР РЕТ шақырылады.
+  /// Жаттыққа шақыру кодын енгізу. Шақырушы орындаушы болса балансына
+  /// нақты бонус түседі (0061), клиент болса тек санақ өседі. Тіркелген
+  /// соң (не тіркелу экранында) БІР РЕТ шақырылады.
   static Future<void> redeemReferralCode(String code) =>
       c.rpc('redeem_referral_code', params: {'p_code': code});
+
+  /// Жаттыққа шақыру фичасы қосулы ма (0061) — АВТОРИЗАЦИЯСЫЗ да
+  /// шақырылады (тіркелу экраны әлі кірмеген қолданушыда). Желі қатесінде
+  /// `false` — өріс жай ғана жасырылады.
+  static Future<bool> referralEnabled() async {
+    try {
+      return (await c.rpc('referral_enabled')) as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ---- moderator ----
   static Future<void> modSetExecutorStatus(

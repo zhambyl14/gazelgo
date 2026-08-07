@@ -77,8 +77,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   // ---------- Клиент фичалары (0060) ----------
   bool _repeatOrderEnabled = true;
   bool _repeatOrderSaving = false;
-  bool _pricingHintEnabled = true;
-  bool _pricingHintSaving = false;
   bool _scheduledOrdersEnabled = false;
   bool _scheduledOrdersSaving = false;
   final _schedMinHours = TextEditingController();
@@ -89,6 +87,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _shareTripSaving = false;
   bool _referralEnabled = false;
   bool _referralSaving = false;
+  Map<String, dynamic> _referralRaw = {};
+  final _referralBonusAmount = TextEditingController();
 
   /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
   /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
@@ -134,6 +134,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _updateMessage.dispose();
     _schedMinHours.dispose();
     _schedMaxDays.dispose();
+    _referralBonusAmount.dispose();
     super.dispose();
   }
 
@@ -194,8 +195,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       // ---- клиент фичалары (0060) ----
       final repeatOrder = (s['repeat_order'] as Map?) ?? {};
       _repeatOrderEnabled = repeatOrder['enabled'] != false;
-      final pricingHint = (s['pricing_hint'] as Map?) ?? {};
-      _pricingHintEnabled = pricingHint['enabled'] != false;
       final sched = (s['scheduled_orders'] as Map?) ?? {};
       _scheduledOrdersEnabled = sched['enabled'] == true;
       _schedMinHours.text = '${sched['min_hours_ahead'] ?? 2}';
@@ -205,7 +204,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final share = (s['share_trip'] as Map?) ?? {};
       _shareTripEnabled = share['enabled'] == true;
       final referral = (s['referral'] as Map?) ?? {};
+      _referralRaw = Map<String, dynamic>.from(referral);
       _referralEnabled = referral['enabled'] == true;
+      _referralBonusAmount.text = '${referral['executor_bonus_amount'] ?? 200}';
     } catch (e) {
       _error = errText(e);
     } finally {
@@ -608,12 +609,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         setSaving: (v) => _repeatOrderSaving = v,
       );
 
-  Future<void> _togglePricingHint(bool v) => _toggleSimple(
-        'pricing_hint', v,
-        apply: (v) => _pricingHintEnabled = v,
-        setSaving: (v) => _pricingHintSaving = v,
-      );
-
   Future<void> _toggleLiveTracking(bool v) => _toggleSimple(
         'live_tracking', v,
         apply: (v) => _liveTrackingEnabled = v,
@@ -626,11 +621,40 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         setSaving: (v) => _shareTripSaving = v,
       );
 
-  Future<void> _toggleReferral(bool v) => _toggleSimple(
-        'referral', v,
-        apply: (v) => _referralEnabled = v,
-        setSaving: (v) => _referralSaving = v,
-      );
+  /// Қосу/өшіру — `executor_bonus_amount`-ты жоғалтпау үшін генерик
+  /// `_toggleSimple`-ды қолданбаймыз (ол тек `{'enabled': v}` жібереді,
+  /// `mod_update_setting` мәнді толық ауыстырады).
+  Future<void> _toggleReferral(bool v) async {
+    setState(() {
+      _referralEnabled = v;
+      _referralSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('referral', {..._referralRaw, 'enabled': v});
+      _referralRaw['enabled'] = v;
+      if (mounted) showSnack(context, v ? t('Қосылды') : t('Өшірілді'));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _referralEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _referralSaving = false);
+    }
+  }
+
+  Future<void> _saveReferralBonus() async {
+    final amount = _int(_referralBonusAmount);
+    if (amount == null || amount < 0) {
+      showSnack(context, t('Соманы дұрыс жазыңыз'), error: true);
+      return;
+    }
+    final next = {..._referralRaw, 'enabled': _referralEnabled,
+        'executor_bonus_amount': amount};
+    await Repo.modUpdateSetting('referral', next);
+    _referralRaw = next;
+    if (mounted) showSnack(context, t('Сақталды'));
+  }
 
   /// Алдын ала тапсырыс (0060) — қосу/өшіру бірден, ал сағат/күн шегі
   /// «Сақтау» батырмасымен.
@@ -1158,23 +1182,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          _sectionTitle(t('Ұсынылған баға көрсеткіші')),
-          Text(
-            t('Заказ құрғанда қашықтыққа қарай есептелген 3 баға нұсқасы '
-                '(аз/орташа/жоғары) көрсетіледі.'),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-          ),
-          const SizedBox(height: 10),
-          _toggleCard(
-            enabled: _pricingHintEnabled,
-            saving: _pricingHintSaving,
-            icon: Icons.price_change_outlined,
-            onLabel: t('Баға нұсқалары көрінеді'),
-            offLabel: t('Клиент бағаны өзі ғана жазады'),
-            onChanged: _togglePricingHint,
-          ),
-          const SizedBox(height: 24),
-
           _sectionTitle(t('Алдын ала тапсырыс')),
           Text(
             t('Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
@@ -1258,8 +1265,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Жаттыққа шақыру бонусы')),
           Text(
-            t('Пайдаланушылар бір-бірін өз кодымен шақырады. Тек ұпай/санақ '
-                '— балансқа не ақшаға ешбір әсері жоқ.'),
+            t('Пайдаланушылар бір-бірін өз кодымен шақырады (тіркелу '
+                'экранында да, профильде де енгізуге болады). Шақырушы '
+                'ОРЫНДАУШЫ болса — балансына нақты бонус түседі. Шақырушы '
+                'клиент болса — тек «N адам шақырдыңыз» санағы өседі '
+                '(клиентте баланс жоқ).'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1267,10 +1277,36 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             enabled: _referralEnabled,
             saving: _referralSaving,
             icon: Icons.card_giftcard,
-            onLabel: t('Профильде шақыру коды көрінеді'),
+            onLabel: t('Шақыру коды қосулы'),
             offLabel: t('Шақыру функциясы жасырылған'),
             onChanged: _toggleReferral,
           ),
+          if (_referralEnabled) ...[
+            const SizedBox(height: 10),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _referralBonusAmount,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: t('Орындаушыға бонус сомасы (₸)'),
+                      helperText: t(
+                          'Шақырған адамы орындаушы болса, досы тіркеліп '
+                          'кодты енгізген сәтте балансына қосылады. '
+                          '0 қойсаңыз — бонус берілмейді, тек санақ жүреді.'),
+                      helperMaxLines: 3,
+                      prefixIcon: const Icon(Icons.payments_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  BusyButton(
+                      label: t('Сақтау'), onPressed: _saveReferralBonus),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
 
           _sectionTitle(t('Мәжбүрлі жаңарту')),

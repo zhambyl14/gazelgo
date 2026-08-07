@@ -62,7 +62,9 @@ insert into public.app_settings (key, value) values
   )),
   ('live_tracking', jsonb_build_object('enabled', false)),
   ('share_trip', jsonb_build_object('enabled', false)),
-  ('referral', jsonb_build_object('enabled', false))
+  ('referral', jsonb_build_object(
+    'enabled', false, 'executor_bonus_amount', 200
+  ))
 on conflict (key) do nothing;
 
 -- ============================================================
