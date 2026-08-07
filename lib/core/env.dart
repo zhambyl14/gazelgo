@@ -27,4 +27,14 @@ class Env {
   /// бөліседі. Ботты BotFather-де құрып, вебхукын `telegram-webhook` edge
   /// функциясына қосу керек (supabase/APPLY.md → «Telegram верификация»).
   static const telegramBot = 'tasuappbot';
+
+  /// Веб нұсқасының көпшілікке ашық домені (Vercel) — «Сапарды бөлісу»
+  /// сілтемесі (0060) осыған негізделеді: мобиль қосымша өз веб доменін
+  /// білмейтіндіктен, осы жерде тұрақты жазылады. ӨЗ Vercel доменіңізге
+  /// ауыстырыңыз (Vercel жобасының Deployments бетінде көрінеді), әйтпесе
+  /// бөлісу сілтемесі жұмыс істемейді.
+  static const webBaseUrl = String.fromEnvironment(
+    'WEB_BASE_URL',
+    defaultValue: 'https://tasu.vercel.app',
+  );
 }

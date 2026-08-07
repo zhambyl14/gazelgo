@@ -563,6 +563,10 @@ class Repo {
     /// нүктелер, клиент қосқан РЕТПЕН. Сервер тексеріп, тазалап сақтайды
     /// (`clean_order_stops`): шектен асса `TOO_MANY_STOPS`.
     List<OrderStop> stops = const [],
+    /// Алдын ала тапсырыс (0060) — заказ дәл осы уақытта ғана орындаушыға
+    /// көрінеді. `null` — әдеттегідей «дәл қазір». Фича баптауда өшулі
+    /// болса сервер бұны елеусіз қалдырады (қате шықпайды).
+    DateTime? scheduledAt,
   }) async {
     final res = await c.rpc('create_order', params: {
       'p_type': 'bidding',
@@ -582,6 +586,7 @@ class Repo {
       'p_from_city': fromCity,
       'p_to_city': toCity,
       'p_vehicle_type': vehicleType.db,
+      'p_scheduled_at': scheduledAt?.toIso8601String(),
     });
     return (res as Map)['id'] as String;
   }
@@ -676,6 +681,45 @@ class Repo {
         'p_amount': amount,
         'p_receipt_path': receiptPath,
       });
+
+  // ================= КЛИЕНТ ФИЧАЛАРЫ (0060) =================
+
+  /// Заказды бөлісу сілтемесінің токені (тұрақты — бірінші шақырғанда
+  /// серверде жасалады, кейін сол қалпы қайтарылады).
+  static Future<String> getOrderShareToken(String orderId) async =>
+      (await c.rpc('get_order_share_token', params: {'p_order_id': orderId}))
+          as String;
+
+  /// Токен арқылы АВТОРИЗАЦИЯСЫЗ заказ күйін қарау (сапарды бөлісу беті).
+  /// `{'error': 'DISABLED'|'NOT_FOUND'}` қайтаруы мүмкін — экран өзі
+  /// тексереді.
+  static Future<Map<String, dynamic>> trackOrder(String token) async =>
+      Map<String, dynamic>.from(
+          await c.rpc('track_order', params: {'p_token': token}) as Map);
+
+  /// Орындаушы ағымдағы GPS нүктесін жібереді (белсенді заказы болса
+  /// серверде сол заказға байланады). Тыныш сәтсіздікке шыдайды — GPS
+  /// уақытша жоқ болса белсенді заказ экраны сынбауы керек.
+  static Future<void> updateExecutorLocation(double lat, double lng) async {
+    try {
+      await c.rpc('update_executor_location',
+          params: {'p_lat': lat, 'p_lng': lng});
+    } catch (_) {}
+  }
+
+  /// Клиент өз заказының орындаушысының орнын polling арқылы қадағалайды.
+  static Stream<Map<String, dynamic>?> orderExecutorLocationStream(
+          String orderId) =>
+      _poll(() async {
+        final res = await c.rpc('get_order_executor_location',
+            params: {'p_order_id': orderId});
+        return res == null ? null : Map<String, dynamic>.from(res as Map);
+      }, every: const Duration(seconds: 12));
+
+  /// Жаттыққа шақыру кодын енгізу (тек ұпай/санақ — балансқа тимейді).
+  /// Тіркелген соң БІР РЕТ шақырылады.
+  static Future<void> redeemReferralCode(String code) =>
+      c.rpc('redeem_referral_code', params: {'p_code': code});
 
   // ---- moderator ----
   static Future<void> modSetExecutorStatus(
@@ -1382,6 +1426,14 @@ final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
 /// Баптаулардан әрқайсысын бөлек алып тастайды.
 final newBadgesProvider =
     FutureProvider<NewBadges>((ref) => Repo.newBadges());
+
+/// Толық app_settings карта (0060) — жаңа клиент фичаларының (алдын ала
+/// тапсырыс, тірі трекинг, бөлісу, реферал, қайталау) `enabled`
+/// жалаушаларын оқу үшін. `app_settings` RLS-і кез келген authenticated
+/// пайдаланушыға оқуға ашық (Kaspi/тариф баптаулары да солай оқылады),
+/// сол себепті бөлек RPC қажет емес — тікелей кесте оқылады.
+final appSettingsProvider =
+    FutureProvider<Map<String, dynamic>>((ref) => Repo.settings());
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.

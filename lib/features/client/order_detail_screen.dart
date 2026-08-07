@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show Marker;
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/env.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
@@ -24,6 +27,51 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _photosCleaned = false;
   bool _reviewShown = false;
+
+  /// Жаңа клиент фичалары (0060) қосулы ма — модератор баптауынан бір рет
+  /// оқылады (ауыстырса, экранды қайта ашқанда көрінеді).
+  bool _liveTrackingEnabled = false;
+  bool _shareTripEnabled = false;
+  bool _repeatOrderEnabled = true;
+
+  static const _liveStatuses = ['accepted', 'arrived', 'loading', 'in_transit'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeatureFlags();
+  }
+
+  Future<void> _loadFeatureFlags() async {
+    try {
+      final s = await Repo.settings();
+      final live = s['live_tracking'];
+      final share = s['share_trip'];
+      final repeat = s['repeat_order'];
+      if (!mounted) return;
+      setState(() {
+        _liveTrackingEnabled = live is Map && live['enabled'] == true;
+        _shareTripEnabled = share is Map && share['enabled'] == true;
+        // Кілт жоқ болса ӘДЕПКІ ҚОСУЛЫ (0060 миграциясында солай жазылған).
+        _repeatOrderEnabled = repeat is! Map || repeat['enabled'] != false;
+      });
+    } catch (_) {
+      // Желі қатесінде — екеуі де өшулі қалады, экран сынбайды.
+    }
+  }
+
+  Future<void> _shareTrip(Order o) async {
+    try {
+      final token = await Repo.getOrderShareToken(o.id);
+      final url = '${Env.webBaseUrl}/track/$token';
+      await SharePlus.instance.share(ShareParams(
+        text:
+            '${t('Менің тапсырысымның барысын осы сілтемеден қадағалауға болады')}: $url',
+      ));
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
 
   /// Заказ аяқталғанда бағалау терезесін бір рет қалқымалы етіп ашамыз.
   void _maybeShowReview(Order o) {
@@ -123,16 +171,46 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5)),
                     ),
+                    if (_shareTripEnabled &&
+                        !['cancelled', 'expired'].contains(o.status))
+                      IconButton(
+                        tooltip: t('Бөлісу'),
+                        icon: const Icon(Icons.ios_share),
+                        onPressed: () => _shareTrip(o),
+                      ),
                     StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
                 ),
                 const SizedBox(height: 12),
-                RouteMap(
-                  from: LatLng(o.fromLat, o.fromLng),
-                  to: LatLng(o.toLat, o.toLng),
-                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                  height: 160,
-                ),
+                if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
+                  StreamBuilder<Map<String, dynamic>?>(
+                    stream: Repo.orderExecutorLocationStream(o.id),
+                    builder: (context, locSnap) {
+                      final loc = locSnap.data;
+                      final extra = <Marker>[
+                        if (loc != null && loc['lat'] != null)
+                          executorLiveMarker(LatLng(
+                            (loc['lat'] as num).toDouble(),
+                            (loc['lng'] as num).toDouble(),
+                          )),
+                      ];
+                      return RouteMap(
+                        from: LatLng(o.fromLat, o.fromLng),
+                        to: LatLng(o.toLat, o.toLng),
+                        stops:
+                            o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                        height: 160,
+                        extraMarkers: extra,
+                      );
+                    },
+                  )
+                else
+                  RouteMap(
+                    from: LatLng(o.fromLat, o.fromLng),
+                    to: LatLng(o.toLat, o.toLng),
+                    stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                    height: 160,
+                  ),
                 const SizedBox(height: 10),
                 SectionCard(
                   padding: const EdgeInsets.all(14),
@@ -189,7 +267,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   List<Widget> _statusSection(Order o) {
     switch (o.status) {
       case 'searching':
-        return [_OffersSection(order: o)];
+        return [
+          if (o.isScheduledPending) ...[
+            _ScheduledBadge(scheduledAt: o.scheduledAt!),
+            const SizedBox(height: 10),
+          ],
+          _OffersSection(order: o),
+        ];
       case 'accepted':
       case 'arrived':
       case 'loading':
@@ -217,7 +301,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           const SizedBox(height: 10),
           ReviewPrompt(orderId: o.id, title: t('Орындаушыны бағалаңыз')),
           const SizedBox(height: 10),
-          _ReorderButton(onPressed: () => _reorder(o)),
+          if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
         ];
       case 'cancelled':
         return [
@@ -235,7 +319,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ]),
           ),
           const SizedBox(height: 10),
-          _ReorderButton(onPressed: () => _reorder(o)),
+          if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
         ];
       default:
         return [
@@ -248,7 +332,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ]),
           ),
           const SizedBox(height: 10),
-          _ReorderButton(onPressed: () => _reorder(o)),
+          if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
         ];
     }
   }
@@ -272,6 +356,54 @@ class _ReorderButton extends StatelessWidget {
       ),
       icon: const Icon(Icons.replay_rounded),
       label: Text(t('Тағы да тапсырыс беру')),
+    );
+  }
+}
+
+/// Алдын ала тапсырыс (0060) — белгіленген уақыты әлі келмегенде
+/// «Іздеуде» орнына көрсетіледі: орындаушыларға ол уақытқа дейін көрінбейді.
+class _ScheduledBadge extends StatelessWidget {
+  final DateTime scheduledAt;
+  const _ScheduledBadge({required this.scheduledAt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Gz.violet.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.violet.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule_outlined, color: Gz.violet),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t('Жоспарланған тапсырыс'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(
+                  t('Орындаушыларға көрінбейді'),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  fmtDate(scheduledAt),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                      color: Gz.violet),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -407,13 +539,66 @@ class _OffersSection extends StatelessWidget {
 }
 
 /// «Бағаны сәл көтеріңіз» кеңесі + жылдам көтеру.
-class _RaisePriceHint extends StatelessWidget {
+///
+/// Дайын қадамдар КІШІ (100–500) — клиентке 1000/2000 деген секірістер тым
+/// үлкен. Оның үстіне клиент өз қалауынша, 100-ден қадаммен, кез келген
+/// сомаға көтере алады. Бір рет көтерген соң кеңес БІРАЗ УАҚЫТҚА жасырылады
+/// (жаңа ұсыныс күтуге мүмкіндік беру үшін) — тек `order.createdAt`-қа
+/// қарасақ, баға көтерілсе де «ескі» деп қала беретін, сол себепті жасыру
+/// мерзімін осы виджеттің ӨЗІ (жергілікті `_snoozedUntil`) есептейді.
+class _RaisePriceHint extends StatefulWidget {
   final Order order;
   const _RaisePriceHint({required this.order});
 
   @override
+  State<_RaisePriceHint> createState() => _RaisePriceHintState();
+}
+
+class _RaisePriceHintState extends State<_RaisePriceHint> {
+  static const _presets = [100, 200, 300, 500];
+  static const _snoozeDuration = Duration(minutes: 15);
+
+  DateTime? _snoozedUntil;
+  final _customCtrl = TextEditingController(text: '100');
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _customCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _snoozed =>
+      _snoozedUntil != null && DateTime.now().isBefore(_snoozedUntil!);
+
+  void _stepCustom(int delta) {
+    final v = (int.tryParse(_customCtrl.text.trim()) ?? 100) + delta;
+    setState(() => _customCtrl.text = '${v < 100 ? 100 : v}');
+  }
+
+  Future<void> _raise(int add) async {
+    final cur = widget.order.clientPrice ?? 0;
+    setState(() => _busy = true);
+    try {
+      await Repo.updateOrderPrice(widget.order.id, cur + add);
+      if (mounted) {
+        setState(() => _snoozedUntil = DateTime.now().add(_snoozeDuration));
+        showSnack(context, '${t('Жаңа баға:')} ${fmtT(cur + add)}');
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cur = order.clientPrice ?? 0;
+    // Тек виджетті «алып тастамай» тұрамыз — StreamBuilder бірнеше секунд
+    // сайын қайта саламын дегендіктен, снуз мерзімі біткенде өзі қайта
+    // пайда болады (бөлек Timer қажет емес).
+    if (_snoozed) return const SizedBox.shrink();
+    final custom = int.tryParse(_customCtrl.text.trim()) ?? 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -447,29 +632,89 @@ class _RaisePriceHint extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final add in [100, 500, 1000, 2000])
+              for (final add in _presets)
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 40),
                       padding: const EdgeInsets.symmetric(horizontal: 12)),
-                  onPressed: () async {
-                    try {
-                      await Repo.updateOrderPrice(order.id, cur + add);
-                      if (context.mounted) {
-                        showSnack(context,
-                            '${t('Жаңа баға:')} ${fmtT(cur + add)}');
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        showSnack(context, errText(e), error: true);
-                      }
-                    }
-                  },
+                  onPressed: _busy ? null : () => _raise(add),
                   child: Text('+${fmtT(add)}'),
                 ),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(
+            t('Немесе өзіңіз көтеріңіз'),
+            style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                color: Gz.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _StepBtn(
+                icon: Icons.remove_rounded,
+                onTap: _busy ? null : () => _stepCustom(-100),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _customCtrl,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 15),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    suffixText: '₸',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _StepBtn(
+                icon: Icons.add_rounded,
+                onTap: _busy ? null : () => _stepCustom(100),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: (_busy || custom < 100) ? null : () => _raise(custom),
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14)),
+                child: Text(t('Қолдану')),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Баптау степперіндегі дөңгелек +/- батырмасы.
+class _StepBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _StepBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Gz.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Gz.yellowDark.withValues(alpha: 0.4)),
+        ),
+        child: Icon(icon, size: 20, color: Gz.yellowDark),
       ),
     );
   }

@@ -92,6 +92,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _picker = ImagePicker();
   bool _autoSubmitted = false;
 
+  /// Алдын ала тапсырыс (0060) — таңдалса, заказ дәл осы уақытта ғана
+  /// орындаушыға көрінеді. `null` — әдеттегідей «дәл қазір».
+  DateTime? _scheduledAt;
+
   late PickedAddress _from = widget.from;
   late PickedAddress _to = widget.to;
   late final List<PickedAddress> _stops = List.of(widget.stops);
@@ -365,6 +369,88 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     setState(() => _photos.add(bytes));
   }
 
+  /// Алдын ала тапсырыс уақытын таңдау (0060) — күн, сосын уақыт.
+  /// [minHours]/[maxDays] модератор баптауынан келеді.
+  Future<void> _pickScheduledAt(int minHours, int maxDays) async {
+    final now = DateTime.now();
+    final earliest = now.add(Duration(hours: minHours));
+    final last = now.add(Duration(days: maxDays));
+    final initial = _scheduledAt != null && _scheduledAt!.isAfter(earliest)
+        ? _scheduledAt!
+        : earliest;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(earliest) ? earliest : initial,
+      firstDate: earliest,
+      lastDate: last,
+      helpText: t('Қай күнге?'),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: t('Қай уақытқа?'),
+    );
+    if (time == null || !mounted) return;
+    var picked =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (picked.isBefore(earliest)) picked = earliest;
+    setState(() => _scheduledAt = picked);
+  }
+
+  /// Алдын ала тапсырыс бөлімі (0060): «Қазір» / «Жоспарлы» чиптері,
+  /// таңдалса — уақыт көрсетіледі әрі өзгертуге/тазалауға болады.
+  Widget _scheduleSection(int minHours, int maxDays) {
+    final picked = _scheduledAt;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Gz.bg,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.schedule_outlined, size: 18, color: Gz.textSecondary),
+              const SizedBox(width: 6),
+              Text(t('Қашан керек?'),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: Text(t('Дәл қазір')),
+                selected: picked == null,
+                onSelected: (_) => setState(() => _scheduledAt = null),
+              ),
+              ChoiceChip(
+                label: Text(picked == null
+                    ? t('Алдын ала жоспарлау')
+                    : fmtDate(picked)),
+                selected: picked != null,
+                onSelected: (_) => _pickScheduledAt(minHours, maxDays),
+              ),
+            ],
+          ),
+          if (picked != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              t('Заказ дәл сол уақытқа дейін орындаушыларға көрінбейді.'),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final route = _route;
     if (route == null) {
@@ -463,6 +549,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   city: s.city,
                 ))
             .toList(),
+        scheduledAt: _scheduledAt,
       );
       // Заказ берілген мекенжайларды тарихқа қосамыз («Соңғы» тізімі үшін):
       // маршрут ретімен — соңғысы тізімде бірінші тұрады.
@@ -486,6 +573,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final route = _route;
+    final settingsMap = ref.watch(appSettingsProvider).value;
+    final schedCfg = settingsMap?['scheduled_orders'];
+    final schedEnabled =
+        !widget.isGuest && schedCfg is Map && schedCfg['enabled'] == true;
+    final schedMinHours =
+        schedCfg is Map ? ((schedCfg['min_hours_ahead'] as num?)?.toInt() ?? 2) : 2;
+    final schedMaxDays =
+        schedCfg is Map ? ((schedCfg['max_days_ahead'] as num?)?.toInt() ?? 14) : 14;
+    final pricingHintCfg = settingsMap?['pricing_hint'];
+    // Кілт мүлдем жоқ болса (settings жүктелмеген/әлі бос) — ӘДЕПКІ ҚОСУЛЫ,
+    // мигр 0060-та солай жазылған, желі әлі жеткізбесе де фича жоғалмасын.
+    final pricingHintEnabled =
+        pricingHintCfg is! Map || pricingHintCfg['enabled'] != false;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -897,7 +997,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         // Баға ұсынысы (InDrive/Yandex Go-дағыдай): қашықтыққа
                         // қарай шамамен есептелген 3 нұсқа. Маршрут әлі
                         // есептелмесе (route == null) көрсетілмейді.
-                        if (route != null) ...[
+                        if (route != null && pricingHintEnabled) ...[
                           const SizedBox(height: 10),
                           _PriceSuggestions(
                             values: _priceSuggestions(route.distanceKm),
@@ -938,6 +1038,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             ),
                           ),
                         ),
+                        if (schedEnabled) ...[
+                          const SizedBox(height: 14),
+                          _scheduleSection(schedMinHours, schedMaxDays),
+                        ],
                         const SizedBox(height: 12),
                         // Заңдылық белгісі — ЖАСЫЛ ҚҰСБЕЛГІ (бұрын қара
                         // шаршы Checkbox еді, «қойылмаған» болып көрінетін).

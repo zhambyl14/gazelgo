@@ -74,6 +74,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   /// Модератордың бонус есебі (қанша берілді, кімге) — тек көрсетуге.
   Map<String, dynamic>? _bonusStats;
 
+  // ---------- Клиент фичалары (0060) ----------
+  bool _repeatOrderEnabled = true;
+  bool _repeatOrderSaving = false;
+  bool _pricingHintEnabled = true;
+  bool _pricingHintSaving = false;
+  bool _scheduledOrdersEnabled = false;
+  bool _scheduledOrdersSaving = false;
+  final _schedMinHours = TextEditingController();
+  final _schedMaxDays = TextEditingController();
+  bool _liveTrackingEnabled = false;
+  bool _liveTrackingSaving = false;
+  bool _shareTripEnabled = false;
+  bool _shareTripSaving = false;
+  bool _referralEnabled = false;
+  bool _referralSaving = false;
+
   /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
   /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
   /// сатып алған СӘТТЕН бастап +[_durationHours] сағат.
@@ -116,6 +132,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _androidUrl.dispose();
     _iosUrl.dispose();
     _updateMessage.dispose();
+    _schedMinHours.dispose();
+    _schedMaxDays.dispose();
     super.dispose();
   }
 
@@ -173,6 +191,21 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _androidUrl.text = '${gate['android_url'] ?? ''}';
       _iosUrl.text = '${gate['ios_url'] ?? ''}';
       _updateMessage.text = '${gate['message'] ?? ''}';
+      // ---- клиент фичалары (0060) ----
+      final repeatOrder = (s['repeat_order'] as Map?) ?? {};
+      _repeatOrderEnabled = repeatOrder['enabled'] != false;
+      final pricingHint = (s['pricing_hint'] as Map?) ?? {};
+      _pricingHintEnabled = pricingHint['enabled'] != false;
+      final sched = (s['scheduled_orders'] as Map?) ?? {};
+      _scheduledOrdersEnabled = sched['enabled'] == true;
+      _schedMinHours.text = '${sched['min_hours_ahead'] ?? 2}';
+      _schedMaxDays.text = '${sched['max_days_ahead'] ?? 14}';
+      final live = (s['live_tracking'] as Map?) ?? {};
+      _liveTrackingEnabled = live['enabled'] == true;
+      final share = (s['share_trip'] as Map?) ?? {};
+      _shareTripEnabled = share['enabled'] == true;
+      final referral = (s['referral'] as Map?) ?? {};
+      _referralEnabled = referral['enabled'] == true;
     } catch (e) {
       _error = errText(e);
     } finally {
@@ -540,6 +573,104 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       'android_url': _androidUrl.text.trim(),
       'ios_url': _iosUrl.text.trim(),
       'message': _updateMessage.text.trim(),
+    });
+    if (mounted) showSnack(context, t('Сақталды'));
+  }
+
+  // ---------- Клиент фичалары (0060) — жалғыз қосқыштар бірден сақталады ----------
+  Future<void> _toggleSimple(
+    String key,
+    bool value, {
+    required ValueChanged<bool> apply,
+    required ValueChanged<bool> setSaving,
+  }) async {
+    final prev = value; // қате болса кері қайтару үшін
+    setState(() {
+      apply(value);
+      setSaving(true);
+    });
+    try {
+      await Repo.modUpdateSetting(key, {'enabled': value});
+      if (mounted) showSnack(context, value ? t('Қосылды') : t('Өшірілді'));
+    } catch (e) {
+      if (mounted) {
+        setState(() => apply(!prev));
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => setSaving(false));
+    }
+  }
+
+  Future<void> _toggleRepeatOrder(bool v) => _toggleSimple(
+        'repeat_order', v,
+        apply: (v) => _repeatOrderEnabled = v,
+        setSaving: (v) => _repeatOrderSaving = v,
+      );
+
+  Future<void> _togglePricingHint(bool v) => _toggleSimple(
+        'pricing_hint', v,
+        apply: (v) => _pricingHintEnabled = v,
+        setSaving: (v) => _pricingHintSaving = v,
+      );
+
+  Future<void> _toggleLiveTracking(bool v) => _toggleSimple(
+        'live_tracking', v,
+        apply: (v) => _liveTrackingEnabled = v,
+        setSaving: (v) => _liveTrackingSaving = v,
+      );
+
+  Future<void> _toggleShareTrip(bool v) => _toggleSimple(
+        'share_trip', v,
+        apply: (v) => _shareTripEnabled = v,
+        setSaving: (v) => _shareTripSaving = v,
+      );
+
+  Future<void> _toggleReferral(bool v) => _toggleSimple(
+        'referral', v,
+        apply: (v) => _referralEnabled = v,
+        setSaving: (v) => _referralSaving = v,
+      );
+
+  /// Алдын ала тапсырыс (0060) — қосу/өшіру бірден, ал сағат/күн шегі
+  /// «Сақтау» батырмасымен.
+  Future<void> _toggleScheduledOrders(bool v) async {
+    setState(() {
+      _scheduledOrdersEnabled = v;
+      _scheduledOrdersSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('scheduled_orders', {
+        'enabled': v,
+        'min_hours_ahead': _int(_schedMinHours) ?? 2,
+        'max_days_ahead': _int(_schedMaxDays) ?? 14,
+      });
+      if (mounted) showSnack(context, v ? t('Қосылды') : t('Өшірілді'));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _scheduledOrdersEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _scheduledOrdersSaving = false);
+    }
+  }
+
+  Future<void> _saveScheduledOrders() async {
+    final minH = _int(_schedMinHours);
+    if (minH == null || minH < 0) {
+      showSnack(context, t('Сағатты дұрыс жазыңыз'), error: true);
+      return;
+    }
+    final maxD = _int(_schedMaxDays);
+    if (maxD == null || maxD < 1) {
+      showSnack(context, t('Күнді дұрыс жазыңыз'), error: true);
+      return;
+    }
+    await Repo.modUpdateSetting('scheduled_orders', {
+      'enabled': _scheduledOrdersEnabled,
+      'min_hours_ahead': minH,
+      'max_days_ahead': maxD,
     });
     if (mounted) showSnack(context, t('Сақталды'));
   }
@@ -1009,6 +1140,139 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             onChanged: _toggleSupportBot,
           ),
           const SizedBox(height: 24),
+          // ---- ЖАҢА БӨЛІМ: клиентке пайдалы фичалар (0060) ----
+          _sectionTitle(t('Тапсырысты қайталау')),
+          Text(
+            t('Клиент аяқталған/тоқтатылған заказды бір батырмамен қайта '
+                'ашады (маршрут пен көлік түрі дайын тұрады).'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _repeatOrderEnabled,
+            saving: _repeatOrderSaving,
+            icon: Icons.replay_rounded,
+            onLabel: t('Клиент «Тағы да тапсырыс беру» түймесін көреді'),
+            offLabel: t('Түйме жасырылған'),
+            onChanged: _toggleRepeatOrder,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Ұсынылған баға көрсеткіші')),
+          Text(
+            t('Заказ құрғанда қашықтыққа қарай есептелген 3 баға нұсқасы '
+                '(аз/орташа/жоғары) көрсетіледі.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _pricingHintEnabled,
+            saving: _pricingHintSaving,
+            icon: Icons.price_change_outlined,
+            onLabel: t('Баға нұсқалары көрінеді'),
+            offLabel: t('Клиент бағаны өзі ғана жазады'),
+            onChanged: _togglePricingHint,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Алдын ала тапсырыс')),
+          Text(
+            t('Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
+                'сол уақыт келгенше орындаушыларға көрінбейді.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _scheduledOrdersEnabled,
+            saving: _scheduledOrdersSaving,
+            icon: Icons.schedule_outlined,
+            onLabel: t('Клиент алдын ала тапсырыс бере алады'),
+            offLabel: t('Тек «дәл қазір» заказ'),
+            onChanged: _toggleScheduledOrders,
+          ),
+          if (_scheduledOrdersEnabled) ...[
+            const SizedBox(height: 10),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _schedMinHours,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: t('Ең аз алдын ала уақыт (сағат)'),
+                      prefixIcon: const Icon(Icons.hourglass_bottom_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _schedMaxDays,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: t('Ең көп алдын ала уақыт (күн)'),
+                      prefixIcon: const Icon(Icons.event_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  BusyButton(
+                      label: t('Сақтау'), onPressed: _saveScheduledOrders),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Орындаушыны картада тірі көрсету')),
+          Text(
+            t('Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
+                'көреді (орындаушы GPS-і 20 секунд сайын жіберіледі).'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _liveTrackingEnabled,
+            saving: _liveTrackingSaving,
+            icon: Icons.location_searching,
+            onLabel: t('Орындаушының орны картада көрінеді'),
+            offLabel: t('Тек статикалық маршрут'),
+            onChanged: _toggleLiveTracking,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Сапарды бөлісу')),
+          Text(
+            t('Клиент заказдың сілтемесін жақынына жібере алады — олар '
+                'қосымшасыз, кірместен барысты қарайды.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _shareTripEnabled,
+            saving: _shareTripSaving,
+            icon: Icons.ios_share,
+            onLabel: t('«Бөлісу» түймесі көрінеді'),
+            offLabel: t('Сілтемелер жұмыс істемейді'),
+            onChanged: _toggleShareTrip,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Жаттыққа шақыру бонусы')),
+          Text(
+            t('Пайдаланушылар бір-бірін өз кодымен шақырады. Тек ұпай/санақ '
+                '— балансқа не ақшаға ешбір әсері жоқ.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _referralEnabled,
+            saving: _referralSaving,
+            icon: Icons.card_giftcard,
+            onLabel: t('Профильде шақыру коды көрінеді'),
+            offLabel: t('Шақыру функциясы жасырылған'),
+            onChanged: _toggleReferral,
+          ),
+          const SizedBox(height: 24),
+
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
             t('Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды build нөмірін '

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../core/env.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
@@ -187,6 +190,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ];
   }
 
+  /// Жаттыққа шақыру бонусы (0060) модератор баптауында қосулы ма.
+  bool _referralEnabled(WidgetRef ref) {
+    final s = ref.watch(appSettingsProvider).value;
+    final cfg = s?['referral'];
+    return cfg is Map && cfg['enabled'] == true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
@@ -244,6 +254,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // емес (бос бет ашылар еді), тек пікірлер мен қолдау.
                 _QuickGrid(tiles: _quickTiles(p, isExec)),
                 const SizedBox(height: 14),
+
+                // ---------- Жаттыққа шақыру бонусы (0060) ----------
+                // Тек ұпай/санақ — балансқа/ақшаға ешбір әсері жоқ.
+                if (_referralEnabled(ref)) ...[
+                  _ReferralCard(profile: p),
+                  const SizedBox(height: 14),
+                ],
 
                 // ---------- Орындаушының карталары ----------
                 if (isExec) ...[
@@ -1001,6 +1018,154 @@ class _ExecEarningsCard extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ЖАТТЫҚҚА ШАҚЫРУ БОНУСЫ (0060)
+// ============================================================
+/// Тек ұпай/санақ — балансқа/ақшаға ЕШБІР әсері жоқ (пайдаланушы
+/// 2026-08-07 осылай таңдады, клиентте wallet жоқ). Екі жағдай:
+///   · referredBy әлі жоқ болса — код енгізу өрісі көрсетіледі;
+///   · referralCode бар болса — өз кодын бөлісу + «N адам шақырдыңыз».
+class _ReferralCard extends ConsumerStatefulWidget {
+  final Profile profile;
+  const _ReferralCard({required this.profile});
+
+  @override
+  ConsumerState<_ReferralCard> createState() => _ReferralCardState();
+}
+
+class _ReferralCardState extends ConsumerState<_ReferralCard> {
+  final _codeCtrl = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _redeem() async {
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await Repo.redeemReferralCode(code);
+      ref.invalidate(myProfileProvider);
+      if (mounted) showSnack(context, t('Код қабылданды!'));
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _shareCode(String code) async {
+    await SharePlus.instance.share(ShareParams(
+      text: '${t('Tasu қосымшасына менің кодыммен тіркеліңіз')}: '
+          '$code\n${Env.webBaseUrl}',
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.profile;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.card_giftcard, color: Gz.violet),
+              const SizedBox(width: 8),
+              Text(t('Досыңды шақыр'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 14.5)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (p.referralCode != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${t('Сіз')} ${p.referralCount} '
+                    '${t('адам шақырдыңыз')}',
+                    style: const TextStyle(
+                        color: Gz.textSecondary, fontSize: 12.5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Gz.bg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Gz.border),
+                    ),
+                    child: Text(
+                      p.referralCode!,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: () => _shareCode(p.referralCode!),
+                  icon: const Icon(Icons.ios_share, size: 18),
+                  label: Text(t('Бөлісу')),
+                ),
+              ],
+            ),
+          ],
+          if (p.referralCode != null && p.referredBy == null) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+          ],
+          if (p.referredBy == null) ...[
+            Text(
+              t('Досыңыздың кодын енгізіңіз'),
+              style: const TextStyle(
+                  color: Gz.textSecondary, fontSize: 12.5),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _codeCtrl,
+                    enabled: !_busy,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: t('Код'),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _busy ? null : _redeem,
+                  child: Text(t('Қолдану')),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

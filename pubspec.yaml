@@ -30,6 +30,8 @@ dependencies:
   # Модератор Kaspi Pay выпискасын (xlsx/csv) жүктеу үшін (0051):
   # image_picker тек суретті алады, ал бұл кестелік файл.
   file_picker: ^11.0.2
+  # Сапарды бөлісу сілтемесін (0060) жүйелік Share мәзірі арқылы жіберу үшін.
+  share_plus: ^11.0.0
 
 dev_dependencies:
   flutter_test:

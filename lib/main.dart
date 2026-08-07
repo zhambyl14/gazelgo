@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,6 +21,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
 import 'features/client/order_detail_screen.dart';
+import 'features/client/track_screen.dart';
 import 'features/executor/balance_screen.dart';
 import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
@@ -31,6 +33,30 @@ import 'shared/widgets.dart';
 
 /// Push/локал уведомлениелерден навигация үшін — түбір Navigator кілті.
 final navigatorKey = GlobalKey<NavigatorState>();
+
+/// «Сапарды бөлісу» (0060) — тек ВЕБТЕ: URL `/track/<token>` болса, токенді
+/// қайтарады. Мобиль қосымшада `Uri.base` мағынасыз (файл жолы), сол
+/// себепті `kIsWeb` шартымен қорғалған. AuthGate/ClientShell МҮЛДЕМ
+/// айналып өтіледі — сілтемені ашқан адамда аккаунт болуы шарт емес.
+String? _shareTrackToken() {
+  if (!kIsWeb) return null;
+  final segments = Uri.base.pathSegments;
+  if (segments.length >= 2 && segments[segments.length - 2] == 'track') {
+    final token = segments.last.trim();
+    return token.isEmpty ? null : token;
+  }
+  return null;
+}
+
+/// Қосымшаның бастапқы беті: Supabase бапталмаса — қате хабары; веб-те
+/// `/track/<token>` сілтемесі болса — TrackScreen (аутентификациясыз);
+/// қалғаны — кәдімгі AuthGate.
+Widget _appHome() {
+  if (!Env.isConfigured) return const _NotConfigured();
+  final token = _shareTrackToken();
+  if (token != null) return TrackScreen(token: token);
+  return const UpdateGate(child: AuthGate());
+}
 
 /// Хабарламаны басқанда тиісті бетке өту. FCM (onMessageOpenedApp,
 /// getInitialMessage) және Android foreground локал уведомлениесі де осында
@@ -200,9 +226,7 @@ class GazelGoApp extends StatelessWidget {
             child: PortraitFrame(child: child!),
           );
         },
-        home: Env.isConfigured
-            ? const UpdateGate(child: AuthGate())
-            : const _NotConfigured(),
+        home: _appHome(),
       ),
     );
   }

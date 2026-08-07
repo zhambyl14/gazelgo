@@ -49,6 +49,10 @@ class RouteMap extends StatelessWidget {
   final List<LatLng> routePoints;
   final double height;
 
+  /// Қосымша маркерлер (0060, орындаушыны тірі көрсету) — мыс. орындаушының
+  /// ағымдағы GPS нүктесі. Бос болса ештеңе өзгермейді.
+  final List<Marker> extraMarkers;
+
   const RouteMap({
     super.key,
     required this.from,
@@ -56,12 +60,13 @@ class RouteMap extends StatelessWidget {
     this.stops = const [],
     this.routePoints = const [],
     this.height = 200,
+    this.extraMarkers = const [],
   });
 
   @override
   Widget build(BuildContext context) {
-    final all = [from, ...stops, to];
-    final points = routePoints.isEmpty ? all : routePoints;
+    final all = [from, ...stops, to, for (final m in extraMarkers) m.point];
+    final points = routePoints.isEmpty ? [from, ...stops, to] : routePoints;
     return ClipRRect(
       borderRadius: BorderRadius.circular(Gz.radius),
       child: SizedBox(
@@ -86,6 +91,7 @@ class RouteMap extends StatelessWidget {
                 originMarker(from),
                 for (final s in stops) pointMarker(s, color: Gz.violet),
                 pointMarker(to, color: Gz.red),
+                ...extraMarkers,
               ]),
             ],
           ),
@@ -94,3 +100,20 @@ class RouteMap extends StatelessWidget {
     );
   }
 }
+
+/// Орындаушының тірі орнына арналған маркер (жүк көлігі иконкасы, көк).
+Marker executorLiveMarker(LatLng p) => Marker(
+      point: p,
+      width: 34,
+      height: 34,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Gz.blue,
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6)],
+        ),
+        child: const Icon(Icons.local_shipping,
+            color: Colors.white, size: 16),
+      ),
+    );

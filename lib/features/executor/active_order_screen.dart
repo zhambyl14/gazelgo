@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -27,6 +29,47 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 
   /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
   static const _proximityKm = 1.5;
+
+  /// Орындаушыны картада тірі көрсету (0060) — модератор баптауы қосулы
+  /// болса, ағымдағы GPS нүктесі 20с сайын серверге жіберіледі. Соңғы
+  /// белгілі статус осында сақталады (build ішінде жаңарады) — таймер
+  /// оны шақырғанда белсенді статус па деп тексереді.
+  Timer? _locTimer;
+  String? _lastStatus;
+
+  static const _trackableStatuses = {
+    'accepted', 'arrived', 'loading', 'in_transit'
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _initLiveTracking();
+  }
+
+  Future<void> _initLiveTracking() async {
+    try {
+      final s = await Repo.settings();
+      final live = s['live_tracking'];
+      if (live is Map && live['enabled'] == true) {
+        _locTimer = Timer.periodic(
+            const Duration(seconds: 20), (_) => _pushLocationIfActive());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pushLocationIfActive() async {
+    if (!_trackableStatuses.contains(_lastStatus)) return;
+    final pos = await Geo.currentPosition();
+    if (pos == null) return;
+    await Repo.updateExecutorLocation(pos.latitude, pos.longitude);
+  }
+
+  @override
+  void dispose() {
+    _locTimer?.cancel();
+    super.dispose();
+  }
 
   // «arrived → loading» әдейі ЖОҚ: тиеуді енді КЛИЕНТ растайды (0027).
   // Орындаушы «Келдім» дегеннен кейін клиенттің растауын күтеді, содан соң
@@ -133,6 +176,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           _maybeShowReview(o);
+          _lastStatus = o.status;
           final next = _nextFor(o.status);
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),

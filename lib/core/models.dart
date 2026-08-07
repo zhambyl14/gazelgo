@@ -91,6 +91,11 @@ class Profile {
   /// backend-пен қосымша «жаңа» деп бос рейтинг көрсетіп қалмайды.
   final bool _dualRole;
 
+  /// Жаттыққа шақыру бонусы (0060) — тек ұпай/санақ, ақшаға тимейді.
+  final String? referralCode;
+  final int referralCount;
+  final String? referredBy;
+
   Profile.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       role = m['role'] as String? ?? 'client',
@@ -115,7 +120,10 @@ class Profile {
       executorRating = _d(m['executor_rating']),
       executorRatingCount = _i(m['executor_rating_count']),
       executorTrips = _i(m['executor_trips']),
-      _dualRole = m.containsKey('client_rating');
+      _dualRole = m.containsKey('client_rating'),
+      referralCode = m['referral_code'] as String?,
+      referralCount = _i(m['referral_count']),
+      referredBy = m['referred_by'] as String?;
 
   bool get isBlocked => blockedAt != null;
   bool get isExecutor => role == 'executor';
@@ -348,6 +356,10 @@ class Order {
   /// Аралық аялдамалар (0047) — бос болса кәдімгі «A → B» заказ.
   final List<OrderStop> stops;
 
+  /// Алдын ала тапсырыс (0060) — берілген уақытқа дейін орындаушыға
+  /// көрінбейді. `null` — әдеттегідей «дәл қазір» заказ.
+  final DateTime? scheduledAt;
+
   Order.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       clientId = m['client_id'] as String,
@@ -376,10 +388,16 @@ class Order {
       completedAt = _dt(m['completed_at']),
       cancelReason = m['cancel_reason'] as String?,
       cancelledBy = m['cancelled_by'] as String?,
-      stops = OrderStop.listFrom(m['stops']);
+      stops = OrderStop.listFrom(m['stops']),
+      scheduledAt = _dt(m['scheduled_at']);
 
   bool get isActive => kActiveOrderStatuses.contains(status);
   bool get isVip => tariff == 'vip';
+
+  /// Алдын ала тапсырыс, белгіленген уақыты әлі келмеген — орындаушыға
+  /// осы уақытқа дейін көрінбейді.
+  bool get isScheduledPending =>
+      scheduledAt != null && scheduledAt!.isAfter(DateTime.now());
   int? get displayPrice => finalPrice ?? systemPrice ?? clientPrice;
 
   /// Қалалар аралық (межгород) заказ ба. Аралық аялдамалар (0047) да
