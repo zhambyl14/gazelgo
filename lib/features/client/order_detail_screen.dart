@@ -9,6 +9,8 @@ import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import '../support/support_screen.dart';
+import 'address_picker.dart';
+import 'create_order_screen.dart';
 
 /// Клиенттің заказ экраны: ұсыныстар, барыс, пікір.
 class OrderDetailScreen extends StatefulWidget {
@@ -43,6 +45,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       _photosCleaned = true;
       Repo.deleteOrderPhotos(o.photos);
     }
+  }
+
+  /// Дәл осы маршрутпен ЖАҢА заказ ашады (Yandex Go/InDrive-тегі «Тағы да
+  /// тапсырыс беру»). Клиент адрестерді қайта іздемейді — «қайдан»/«қайда»/
+  /// аралық аялдамалар мен көлік түрі дайын күйде Заказ құру экранына
+  /// беріледі, тек бағаны мен жүк сипаттамасын өзі растайды.
+  void _reorder(Order o) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CreateOrderScreen(
+          from: PickedAddress(
+            o.fromAddress,
+            LatLng(o.fromLat, o.fromLng),
+            o.fromCity,
+          ),
+          to: PickedAddress(o.toAddress, LatLng(o.toLat, o.toLng), o.toCity),
+          stops: [
+            for (final s in o.stops)
+              PickedAddress(s.address, LatLng(s.lat, s.lng), s.city),
+          ],
+          vehicleType: o.vehicleType,
+        ),
+      ),
+    );
   }
 
   static const _clientCancelReasons = [
@@ -190,6 +216,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _ExecutorCard(executorId: o.executorId!, showCall: false),
           const SizedBox(height: 10),
           ReviewPrompt(orderId: o.id, title: t('Орындаушыны бағалаңыз')),
+          const SizedBox(height: 10),
+          _ReorderButton(onPressed: () => _reorder(o)),
         ];
       case 'cancelled':
         return [
@@ -206,6 +234,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ]),
           ),
+          const SizedBox(height: 10),
+          _ReorderButton(onPressed: () => _reorder(o)),
         ];
       default:
         return [
@@ -217,8 +247,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   child: Text(t('Заказдың мерзімі өтті — ешкім қабылдамады.'))),
             ]),
           ),
+          const SizedBox(height: 10),
+          _ReorderButton(onPressed: () => _reorder(o)),
         ];
     }
+  }
+}
+
+/// «Тағы да тапсырыс беру» — дәл осы маршрутпен жаңа заказ ашады
+/// (Yandex Go/InDrive-тегі «Заказать снова»). Аяқталған, тоқтатылған және
+/// мерзімі өткен заказдарда көрсетіледі — адрестерді қайта іздеудің
+/// қажеті жоқ.
+class _ReorderButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _ReorderButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Gz.ink,
+        side: const BorderSide(color: Gz.yellowDark, width: 1.6),
+      ),
+      icon: const Icon(Icons.replay_rounded),
+      label: Text(t('Тағы да тапсырыс беру')),
+    );
   }
 }
 

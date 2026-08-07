@@ -130,6 +130,27 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   int? get _priceValue => int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
 
+  /// Бағаны таңдауға көмектесетін ҮШ ҰСЫНЫС (InDrive/Yandex Go-дағыдай):
+  /// «Аз» · «Орташа» · «Жоғары». Қашықтыққа қарай шамамен есептеледі —
+  /// НАҚТЫ нарық бағасы емес, бастапқы нүкте ретінде ғана. Орындаушылар
+  /// бәрібір келіседі не өз бағасын ұсынады, сол себепті бұл тек клиентке
+  /// «қанша жазсам жарайды» деген сұрақты жеңілдетеді.
+  ///
+  /// Жоғары баға — жылдамырақ жауап аласыз деген түсінікпен белгіленеді
+  /// (InDrive-тың негізгі идеясы: баға неғұрлым тартымды, соғұрлым тез
+  /// келіседі).
+  List<int> _priceSuggestions(double km) {
+    final perKm = _intercity ? 70.0 : 130.0;
+    final base = (_minPrice + km * perKm).clamp(_minPrice.toDouble(), 1e9);
+    int roundTo50(double v) => (v / 50).round() * 50;
+    final mid = roundTo50(base);
+    final low = roundTo50(base * 0.82).clamp(_minPrice, mid);
+    final high = roundTo50(base * 1.35);
+    // Үшеуі бір-бірінен КЕМІНДЕ 50 ₸ ерекшеленуі керек — әйтпесе қысқа
+    // қашықтықта чиптер бірдей санмен қайталанып, мағынасыз көрінеді.
+    return [low, if (mid > low) mid else low + 50, if (high > mid) high else mid + 50];
+  }
+
   /// Жарияларға дайын емес болса — НЕ жетпейтіні (батырманың астында бір
   /// қатармен көрсетіледі). Дайын болса null.
   ///
@@ -873,6 +894,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             fontSize: 12.5,
                           ),
                         ),
+                        // Баға ұсынысы (InDrive/Yandex Go-дағыдай): қашықтыққа
+                        // қарай шамамен есептелген 3 нұсқа. Маршрут әлі
+                        // есептелмесе (route == null) көрсетілмейді.
+                        if (route != null) ...[
+                          const SizedBox(height: 10),
+                          _PriceSuggestions(
+                            values: _priceSuggestions(route.distanceKm),
+                            selected: _priceValue,
+                            onPick: (v) => setState(() => _price.text = '$v'),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         TextField(
                           controller: _price,
@@ -1095,6 +1127,99 @@ class _EditableAddr extends StatelessWidget {
                 tooltip: t('Алып тастау'),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Баға ұсынысының үш чипі: «Аз» · «Орташа» · «Жоғары». Түртсе — баға
+/// өрісіне сол сан тікелей толтырылады, қолмен жазудың қажеті жоқ.
+/// Ағымдағы бағаға сәйкес чип БАСЫМ түрде белгіленеді (таңдалғанын білдіру
+/// үшін), бірақ мұны қатаң таңдау деп санамау керек — қолданушы кез келген
+/// санды өз бетінше жаза алады, чиптер тек бастапқы нүкте.
+class _PriceSuggestions extends StatelessWidget {
+  final List<int> values;
+  final int? selected;
+  final ValueChanged<int> onPick;
+
+  const _PriceSuggestions({
+    required this.values,
+    required this.selected,
+    required this.onPick,
+  });
+
+  static const _labels = ['Аз', 'Орташа', 'Жоғары'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < values.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: _chip(
+              label: t(i < _labels.length ? _labels[i] : ''),
+              value: values[i],
+              active: selected == values[i],
+              // Соңғы (ең жоғары) чип — жылдамырақ жауап аласыз деген
+              // белгімен ерекшеленеді (InDrive-тың негізгі идеясы).
+              fast: i == values.length - 1,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required int value,
+    required bool active,
+    required bool fast,
+  }) {
+    return Material(
+      color: active ? Gz.ink : Gz.bg,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: () => onPick(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: active ? Gz.ink : Gz.border,
+              width: 1.3,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                fast ? '⚡ $label' : label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: active
+                      ? Colors.white.withValues(alpha: 0.75)
+                      : Gz.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  fmtT(value),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: active ? Colors.white : Gz.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

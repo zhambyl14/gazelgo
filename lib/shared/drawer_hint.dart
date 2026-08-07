@@ -227,8 +227,13 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
   }
 }
 
-/// Логотип-түйме: панельді ашады. Бұрын жай сурет еді — енді бұрышында
+/// Логотип-түйме: панельді ашады. Бұрын жай сурет еді — енді сыртында
 /// шағын «мәзір» белгісі тұр, сол себепті түйме екені бірден көрінеді.
+///
+/// МАҢЫЗДЫ: белгі логотиптің ІШІНДЕ емес, СЫРТЫНДА тұрады (Stack-тың
+/// `clipBehavior: Clip.none`-мен шетінен асып). Бұрын Material-дың өзі
+/// клиптейтін еді — сол кезде белгі логотиптің оң-төменгі бұрышында тұрған
+/// «Tasu» жазуының «u» әрпін ЖАУЫП тұратын. Енді сурет таза қалады.
 class LogoMenuButton extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -239,44 +244,54 @@ class LogoMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 3,
-      borderRadius: BorderRadius.circular(size * 0.3),
-      clipBehavior: Clip.antiAlias,
-      color: Gz.surface,
-      shadowColor: Colors.black26,
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(
-          children: [
-            Image.asset(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          elevation: 3,
+          borderRadius: BorderRadius.circular(size * 0.3),
+          clipBehavior: Clip.antiAlias,
+          color: Gz.surface,
+          shadowColor: Colors.black26,
+          child: InkWell(
+            onTap: onTap,
+            child: Image.asset(
               'assets/icon/icon.png',
               width: size,
               height: size,
               fit: BoxFit.cover,
             ),
-            // «Мәзір» белгісі — логотиптің оң-төменгі бұрышында.
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(4, 3, 3, 3),
-                decoration: const BoxDecoration(
-                  color: Gz.ink,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(9),
+          ),
+        ),
+        // «Мәзір» белгісі — логотиптің сыртында, оң-төменгі бұрышында
+        // қалқып тұрады (аватардағы «онлайн» нүктесі сияқты).
+        Positioned(
+          right: -5,
+          bottom: -5,
+          child: IgnorePointer(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Gz.ink,
+                shape: BoxShape.circle,
+                border: Border.all(color: Gz.surface, width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 3,
+                    offset: Offset(0, 1),
                   ),
-                ),
-                child: const Icon(
-                  Icons.menu_rounded,
-                  size: 12,
-                  color: Gz.yellow,
-                ),
+                ],
+              ),
+              child: const Icon(
+                Icons.menu_rounded,
+                size: 12,
+                color: Gz.yellow,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
