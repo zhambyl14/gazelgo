@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
-
-import '../../core/env.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
@@ -1064,11 +1063,18 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
     }
   }
 
+  /// Нақты жария домен жоқ (қосымша ТЕК iOS/Android) — сол себепті
+  /// сілтеме орнына дүкенде «Tasu» деп іздеуді айтамыз.
   Future<void> _shareCode(String code) async {
     await SharePlus.instance.share(ShareParams(
-      text: '${t('Tasu қосымшасына менің кодыммен тіркеліңіз')}: '
-          '$code\n${Env.webBaseUrl}',
+      text: '${t('Tasu қосымшасына менің кодыммен тіркеліңіз')}: $code. '
+          '${t('Play Market немесе App Store-дан «Tasu» деп іздеп табыңыз.')}',
     ));
+  }
+
+  Future<void> _copyCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (mounted) showSnack(context, t('Көшірілді'));
   }
 
   @override
@@ -1090,10 +1096,10 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
           const SizedBox(height: 4),
           Text(
             p.isExecutor
-                ? t('Досыңыз тіркеліп кодыңызды енгізсе — балансыңызға '
-                    'бонус қосылады')
-                : t('Досыңыз тіркеліп кодыңызды енгізсе — шақыру санағыңыз '
-                    'өседі'),
+                ? t('Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
+                    'балансыңызға бонус қосылады')
+                : t('Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
+                    'шақыру санағыңыз өседі'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
           ),
           const SizedBox(height: 6),
@@ -1142,6 +1148,12 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _copyCode(p.referralCode!),
+                  tooltip: t('Көшіру'),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                ),
+                const SizedBox(width: 4),
                 IconButton.filled(
                   onPressed: () => _shareCode(p.referralCode!),
                   tooltip: t('Бөлісу'),

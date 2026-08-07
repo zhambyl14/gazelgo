@@ -89,6 +89,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _referralSaving = false;
   Map<String, dynamic> _referralRaw = {};
   final _referralBonusAmount = TextEditingController();
+  final _referralClientPoints = TextEditingController();
 
   /// Ауысым терезесінің түрі (0055): `fixed` — сағатқа тіркелген циклдік
   /// терезе (08:00-ден бастап, ұзындығы [_durationHours]); `rolling` —
@@ -135,6 +136,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _schedMinHours.dispose();
     _schedMaxDays.dispose();
     _referralBonusAmount.dispose();
+    _referralClientPoints.dispose();
     super.dispose();
   }
 
@@ -207,6 +209,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _referralRaw = Map<String, dynamic>.from(referral);
       _referralEnabled = referral['enabled'] == true;
       _referralBonusAmount.text = '${referral['executor_bonus_amount'] ?? 200}';
+      _referralClientPoints.text =
+          '${referral['client_points_per_referral'] ?? 1}';
     } catch (e) {
       _error = errText(e);
     } finally {
@@ -649,8 +653,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       showSnack(context, t('Соманы дұрыс жазыңыз'), error: true);
       return;
     }
-    final next = {..._referralRaw, 'enabled': _referralEnabled,
-        'executor_bonus_amount': amount};
+    final points = _int(_referralClientPoints);
+    if (points == null || points < 0) {
+      showSnack(context, t('Ұпай санын дұрыс жазыңыз'), error: true);
+      return;
+    }
+    final next = {
+      ..._referralRaw,
+      'enabled': _referralEnabled,
+      'executor_bonus_amount': amount,
+      'client_points_per_referral': points,
+    };
     await Repo.modUpdateSetting('referral', next);
     _referralRaw = next;
     if (mounted) showSnack(context, t('Сақталды'));
@@ -1266,10 +1279,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Жаттыққа шақыру бонусы')),
           Text(
             t('Пайдаланушылар бір-бірін өз кодымен шақырады (тіркелу '
-                'экранында да, профильде де енгізуге болады). Шақырушы '
-                'ОРЫНДАУШЫ болса — балансына нақты бонус түседі. Шақырушы '
-                'клиент болса — тек «N адам шақырдыңыз» санағы өседі '
-                '(клиентте баланс жоқ).'),
+                'экранында да, профильде де енгізуге болады). Досы кодты '
+                'енгізгеннен КЕЙІН, БІРІНШІ ЗАКАЗЫН АЯҚТАҒАНДА ғана сыйақы '
+                'беріледі (жалған тіркелумен фармитуден қорғау үшін): '
+                'ОРЫНДАУШЫ шақырса — балансына сома, КЛИЕНТ шақырса — тек '
+                'санағы өседі.'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1293,11 +1307,25 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     decoration: InputDecoration(
                       labelText: t('Орындаушыға бонус сомасы (₸)'),
                       helperText: t(
-                          'Шақырған адамы орындаушы болса, досы тіркеліп '
-                          'кодты енгізген сәтте балансына қосылады. '
+                          'Шақырған адамы орындаушы болса, досы БІРІНШІ '
+                          'заказын аяқтағанда балансына қосылады. '
                           '0 қойсаңыз — бонус берілмейді, тек санақ жүреді.'),
                       helperMaxLines: 3,
                       prefixIcon: const Icon(Icons.payments_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _referralClientPoints,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: t('Клиентке ұпай саны'),
+                      helperText: t(
+                          'Шақырған адамы клиент болса, досы БІРІНШІ '
+                          'заказын аяқтағанда «шақырдыңыз» санағына осынша '
+                          'қосылады (ақшаға тимейді). Әдепкі — 1.'),
+                      helperMaxLines: 3,
+                      prefixIcon: const Icon(Icons.stars_outlined),
                     ),
                   ),
                   const SizedBox(height: 12),
