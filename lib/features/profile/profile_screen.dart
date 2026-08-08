@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, TextInputFormatter, TextEditingValue;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -1030,6 +1031,21 @@ class _ExecEarningsCard extends ConsumerWidget {
 /// 2026-08-07 осылай таңдады, клиентте wallet жоқ). Екі жағдай:
 ///   · referredBy әлі жоқ болса — код енгізу өрісі көрсетіледі;
 ///   · referralCode бар болса — өз кодын бөлісу + «N адам шақырдыңыз».
+/// Шақыру кодын теру өрісінің форматтауышы: бос орын мен қызмет
+/// таңбаларын алып тастап, ЕРІКСІЗ БАС ӘРІПКЕ айналдырады. Пайдаланушы
+/// кодты хабарламадан көшіргенде («F591C6 » немесе «f591c6») сервер оны
+/// таппай қалмауы үшін керек — енгізген бойда көзге де дұрыс көрінеді.
+class _CodeFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue _, TextEditingValue v) {
+    final clean = v.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    return TextEditingValue(
+      text: clean,
+      selection: TextSelection.collapsed(offset: clean.length),
+    );
+  }
+}
+
 class _ReferralCard extends ConsumerStatefulWidget {
   final Profile profile;
   const _ReferralCard({required this.profile});
@@ -1171,30 +1187,43 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
             Text(
               t('Досыңыздың кодын енгізіңіз'),
               style: const TextStyle(
-                  color: Gz.textSecondary, fontSize: 12.5),
+                  fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              t('Тіркелу кезінде енгізуді ұмытсаңыз — осы жерден енгізіңіз. '
+                  'Бірінші заказыңызды аяқтағанға ДЕЙІН үлгеру керек.'),
+              style: const TextStyle(
+                  color: Gz.textSecondary, fontSize: 11.5),
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeCtrl,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: t('Код'),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _busy ? null : _redeem,
-                  child: Text(t('Қолдану')),
-                ),
-              ],
+            // Өріс пен батырма БІР ҚАТАРДА тұрған: тар экранда өріс
+            // қысылып, жазу да, «Қолдану» да қолжетімсіз болып қалатын.
+            // Енді екеуі де ТОЛЫҚ ЕНМЕН, бірінің астына бірі қойылды.
+            TextField(
+              controller: _codeCtrl,
+              enabled: !_busy,
+              autocorrect: false,
+              enableSuggestions: false,
+              textCapitalization: TextCapitalization.characters,
+              textInputAction: TextInputAction.done,
+              // Код — 6 таңбалы HEX (мыс. F591C6). Кіші әріппен терсе де,
+              // бос орынмен көшірсе де сервер таппай қалмауы үшін өрістің
+              // ӨЗІНДЕ тазаланады (сервер де upper/trim жасайды).
+              inputFormatters: [_CodeFormatter()],
+              onSubmitted: (_) => _redeem(),
+              // Батырманың қосулы/өшірулі күйі теру барысында жаңарады.
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: '${t('Мысалы')}: F591C6',
+                prefixIcon: const Icon(Icons.redeem, size: 20),
+              ),
+            ),
+            const SizedBox(height: 8),
+            BusyButton(
+              label: t('Қолдану'),
+              enabled: !_busy && _codeCtrl.text.trim().isNotEmpty,
+              onPressed: _redeem,
             ),
           ],
         ],

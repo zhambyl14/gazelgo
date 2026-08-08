@@ -135,7 +135,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (code.isNotEmpty) {
         try {
           await Repo.redeemReferralCode(code);
-        } catch (_) {}
+        } catch (e) {
+          // Қатені ЖҰТПАЙМЫЗ: бұрын код қате терілсе де үнсіз өтіп кететін
+          // де, адам «шақыру есептелді» деп ойлап жүретін. Тіркелу бәрібір
+          // сәтті — тек себебі айтылады (кодты кейін профильден енгізуге
+          // болады). Snackbar түбірдегі ScaffoldMessenger-де көрсетіледі,
+          // сол себепті келесі жолдағы pop-тан кейін де көрініп тұрады.
+          if (mounted) showSnack(context, errText(e), error: true);
+        }
       }
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
