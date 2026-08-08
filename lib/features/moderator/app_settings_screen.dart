@@ -57,6 +57,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _supportBotEnabled = false;
   bool _supportBotSaving = false;
 
+  /// `support_bot` кілтінің бастапқы мәні — `_botRaw`-пен бірдей себеппен
+  /// (қосып-өшіргенде осы экранда көрінбейтін кілттер жоғалмауы үшін).
+  Map<String, dynamic> _supportBotRaw = {};
+
   final _tariffPrice = TextEditingController();
   final _durationHours = TextEditingController();
   final _ordersPerShift = TextEditingController();
@@ -162,6 +166,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _botRaw = Map<String, dynamic>.from(bot);
       _botEnabled = bot['enabled'] == true;
       final supportBot = (s['support_bot'] as Map?) ?? {};
+      _supportBotRaw = Map<String, dynamic>.from(supportBot);
       _supportBotEnabled = supportBot['enabled'] == true;
       _botMax.text = '${bot['auto_approve_max'] ?? 0}';
       _botAgeHours.text = '${bot['max_receipt_age_hours'] ?? 24}';
@@ -370,10 +375,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _supportBotSaving = true;
     });
     try {
-      await Repo.modUpdateSetting(
-        'support_bot',
-        {'enabled': v, 'max_auto_replies_per_thread': 5},
-      );
+      // Бүкіл мәнді ҚАЙТА ЖАЗБАЙМЫЗ, бар кілттердің үстіне қосамыз: бұл
+      // жолда `knowledge` (боттың білім базасына қосымша мәтін) сияқты
+      // осы экраннан баптанбайтын кілттер тұруы мүмкін — қосып-өшіргенде
+      // олар жоғалып кетпеуі керек.
+      await Repo.modUpdateSetting('support_bot', {
+        ..._supportBotRaw,
+        'enabled': v,
+        'max_auto_replies_per_thread':
+            _supportBotRaw['max_auto_replies_per_thread'] ?? 5,
+      });
+      _supportBotRaw['enabled'] = v;
       if (mounted) {
         showSnack(
           context,

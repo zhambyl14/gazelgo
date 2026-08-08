@@ -16,7 +16,6 @@ import 'core/push.dart';
 import 'core/repo.dart';
 import 'core/theme.dart';
 import 'features/auth/blocked_screen.dart';
-import 'features/auth/executor_apply_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
@@ -341,10 +340,15 @@ class _ExecutorRouter extends ConsumerWidget {
         onRetry: () => ref.invalidate(myExecutorProfileProvider),
       ),
       data: (e) {
-        // Әлі өтінім толтырмаған (профиль жоқ) — толтыру экраны.
-        if (e == null) return const ExecutorApplyScreen();
         // Модератор БҰҒАТТАҒАН аккаунт — қосымшаға кіре алмайды.
-        if (e.status == 'blocked') return PendingScreen(profile: e);
+        if (e != null && e.status == 'blocked') return PendingScreen(profile: e);
+        // ӘЛІ ӨТІНІМ ТОЛТЫРМАҒАН (профиль жоқ) да ExecutorShell-ге кіреді.
+        // Бұрын мұндай адам бірден ExecutorApplyScreen-ге тірелетін де,
+        // құжаттарын жинамайынша қосымшада не бар екенін МҮЛДЕМ көрмейтін.
+        // Бұл теріс: жүйеде өзіне лайық заказ бар-жоғын білмей тұрып құжат
+        // толтыруға мәжбүрлеу. Енді лента бірден ашық (сервер 0063 «танысу
+        // режимінде» бәрін көрсетеді), ал өтінім — экранның үстіндегі
+        // шақыру картасы мен заказды басқандағы гейт арқылы ұсынылады.
         // Қалғаны (pending/rejected/approved) — кәдімгі орындаушыдай кіреді:
         // заказдар лентасы мен профильге қолжетімді. Расталмаған/қабылданбаған
         // болса — лентада «тексеруде / қайта толтыру» деп ескертіледі әрі

@@ -578,6 +578,12 @@ class ExecutorStats {
   final bool onLine;
   final String? city;
 
+  /// Орындаушы өтінімі ӘЛІ ТОЛТЫРЫЛМАҒАН (0063 «танысу режимі»). Мұндай
+  /// адам лентаны толық көреді, бірақ ұсыныс бере де, тариф ала да алмайды.
+  /// Экрандар мұны `myExecutorProfileProvider` арқылы да біледі — бұл өріс
+  /// сервер шешімін қайталайды (RPC қате шығармай, нөлдік күй қайтарады).
+  final bool noProfile;
+
   ExecutorStats.fromMap(Map<String, dynamic> m)
     : balance = _i(m['balance']),
       totalEarned = _i(m['total_earned']),
@@ -596,7 +602,11 @@ class ExecutorStats {
       isNight = m['is_night'] as bool? ?? false,
       price = _i(m['price'] ?? m['price_simple']),
       onLine = m['on_line'] as bool? ?? true,
-      city = m['city'] as String?;
+      city = m['city'] as String?,
+      // Ескі backend (0063 қолданылмаған) бұл кілтті қайтармайды — ондай
+      // жағдайда өтімсіз орындаушыға RPC бәрібір қате шығарады, сондықтан
+      // `false` дұрыс әдепкі.
+      noProfile = m['no_profile'] as bool? ?? false;
 
   bool get trialActive =>
       trialUntil != null && trialUntil!.isAfter(DateTime.now());

@@ -27,7 +27,12 @@ class ExecutorHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(executorStatsStreamProvider).value;
-    final ep = ref.watch(myExecutorProfileProvider).value;
+    final epAsync = ref.watch(myExecutorProfileProvider);
+    final ep = epAsync.value;
+    // Өтінім ЖОҚ екені — деректер КЕЛГЕН соң ғана (жүктелу кезінде де
+    // `value == null` болады, оны «өтінімсіз» деп оқыса, расталған
+    // орындаушыға да «Өтінім толтырыңыз» картасы жыпылықтап кетер еді).
+    final noApplication = epAsync.hasValue && ep == null;
     return Scaffold(
       drawer: const AppDrawer(),
       body: SafeArea(
@@ -65,7 +70,11 @@ class ExecutorHomeScreen extends ConsumerWidget {
                 // тариф / аккаунт күйі басқару жолағы
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: _LineControlBar(stats: s, ep: ep),
+                  child: _LineControlBar(
+                    stats: s,
+                    ep: ep,
+                    noApplication: noApplication,
+                  ),
                 ),
                 // модератордың құжат жаңарту хабары (басты бетте де)
                 if (ep != null &&
@@ -139,7 +148,15 @@ class _BalancePill extends StatelessWidget {
 class _LineControlBar extends ConsumerWidget {
   final ExecutorStats? stats;
   final ExecutorProfile? ep;
-  const _LineControlBar({required this.stats, required this.ep});
+
+  /// Өтінім МҮЛДЕМ толтырылмаған (0063). `ep == null`-дан бөлек беріледі:
+  /// профиль әлі ЖҮКТЕЛІП ЖАТҚАНДА да `ep` null болады.
+  final bool noApplication;
+  const _LineControlBar({
+    required this.stats,
+    required this.ep,
+    required this.noApplication,
+  });
 
   void _openTariffs(BuildContext context) {
     Navigator.of(
@@ -151,6 +168,24 @@ class _LineControlBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = stats;
     final e = ep;
+
+    // ӨТІНІМ ӘЛІ ЖОҚ (0063 «танысу режимі») — тариф картасының орнына
+    // өтінімге ШАҚЫРУ. Заказдар лентасы астында ашық тұрады: адам алдымен
+    // қандай жұмыс бар екенін көреді де, содан кейін өзі шешеді.
+    if (noApplication) {
+      return _StatusCard(
+        icon: Icons.assignment_outlined,
+        color: Gz.blue,
+        title: t('Заказдармен таныса беріңіз'),
+        subtitle: t('Заказ қабылдау үшін өтінім толтырыңыз: көлігіңіз бен '
+            'құжаттарыңыз. Модератор растаған соң тариф алып, жұмысқа '
+            'кірісесіз.'),
+        actionLabel: t('Өтінім толтыру'),
+        onAction: () async => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ExecutorApplyScreen()),
+        ),
+      );
+    }
 
     // Аккаунт әлі РАСТАЛМАҒАН — тариф картасының орнына күй картасы
     // (тарифті тек расталған орындаушы сатып ала алады).

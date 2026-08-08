@@ -397,8 +397,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   Widget build(BuildContext context) {
     final resubmit = widget.existing != null;
     // Клиент рөлі ашық болса — «шығу» орнына «клиентке қайту» ұсынамыз.
-    final canReturnToClient =
-        !resubmit && (ref.watch(myProfileProvider).value?.hasClientRole ?? false);
+    // Экран ЛЕНТАНЫҢ ҮСТІНЕ ашылған болса (0063 — өтінім енді мәжбүрлі
+    // емес) қарапайым «артқа» көрсеткіші бар, шығатын жол бұрыннан
+    // табылады: екінші батырма тек шатастырады әрі рөл АУЫСТЫРЫП жібереді.
+    final canReturnToClient = !resubmit &&
+        !Navigator.of(context).canPop() &&
+        (ref.watch(myProfileProvider).value?.hasClientRole ?? false);
     return Scaffold(
       appBar: AppBar(
         title: Text(resubmit

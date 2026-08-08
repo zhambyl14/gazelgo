@@ -8,7 +8,10 @@
 // (өнім иесінің таңдауы бойынша: бот екені жасырын).
 //
 // БОТ ТЕК TASU ҚОСЫМШАСЫ ТУРАЛЫ ЖАУАП БЕРЕДІ (заказ, тариф, баланс, рөл,
-// құжат, хабарландырулар тақтасы, экрандарды қолдану). Бөгде сұрақтарға
+// құжат, хабарландырулар тақтасы, экрандарды қолдану). Не білетіні
+// төмендегі `FEATURES_KB` + `buildKnowledge()` арқылы промптқа қосылады —
+// ҚОСЫМШАҒА ЖАҢА ФИЧА ҚОСҚАН САЙЫН СОЛ ТІЗІМДІ ЖАҢАРТЫҢЫЗ, әйтпесе бот
+// жаңа мүмкіндік туралы сұраққа жауап бере алмайды. Бөгде сұрақтарға
 // (жаңалық, ауа райы, саясат, есеп шығару, код жазу, басқа қосымшалар…)
 // бір ауыз сыпайы бас тартумен жауап беріп, әңгімені Tasu-ге қайтарады —
 // ондай хабарлама модераторға ЭСКАЛАЦИЯЛАНБАЙДЫ (бекер шу болмауы үшін).
@@ -140,6 +143,10 @@ async function handle(threadId: string) {
 
   if (!GEMINI_KEY) return { skipped: "NO_GEMINI_KEY" };
 
+  // Қосымша туралы білім базасы + модератор баптауының ТІРІ күйі. Мұнсыз
+  // бот жаңа фичаларды «білмейтін» (төмендегі KB түсініктемесін қара).
+  const knowledge = await buildKnowledge(cfg);
+
   const roleLabel = user?.role === "executor" ? "орындаушы" : "клиент";
   const transcript = msgs
     .map((m) =>
@@ -150,6 +157,8 @@ async function handle(threadId: string) {
     .join("\n");
 
   const prompt = `${SYSTEM_PROMPT}
+
+${knowledge}
 
 Пайдаланушы: ${user?.full_name ?? "белгісіз"} (${roleLabel})
 ${orderInfo}
@@ -329,6 +338,143 @@ async function escalate(
 }
 
 // ============================================================================
+// БІЛІМ БАЗАСЫ — қосымшаның НАҚТЫ мүмкіндіктері
+// ============================================================================
+// Бұрын промптта тек ТАҚЫРЫП ТІЗІМІ тұратын («заказ, тариф, баланс…»), ал
+// фичалардың өзі жазылмайтын. Сол себепті бот жаңа мүмкіндік туралы
+// сұрақты («дос шақыру бонусы қалай жұмыс істейді?») не «шеңберімнен тыс»
+// деп қайтаратын, не 6-ережеге сай («білмесем — болжамаймын») үнсіз
+// эскалациялайтын — пайдаланушыға жауап келмейтін. Енді әр фича осында
+// жазылған.
+//
+// !!! ҚОСЫМШАҒА ЖАҢА ФИЧА ҚОСҚАН САЙЫН ОСЫ ТІЗІМГЕ ДЕ ЖОЛ ҚОСЫҢЫЗ !!!
+// Функцияны қайта деплойламай жаңарту керек болса — модератор
+// `app_settings.support_bot.knowledge` кілтіне еркін мәтін жаза алады,
+// ол осының СОҢЫНА қосылады.
+const FEATURES_KB = `
+РӨЛДЕР. Бір аккаунт әрі КЛИЕНТ, әрі ОРЫНДАУШЫ бола алады. Ауысу —
+sidebar-дағы (логотип түймесі) «Рөлді ауыстыру» арқылы. Орындаушы рөлі
+бірінші рет ашылғанда өтінім (көлік түрі + құжаттар) толтырылады.
+
+КЛИЕНТ ЖАҒЫ
+· Заказ беру: қайдан→қайда, көлік түрі, жүк сипаттамасы, өз бағасын қоюы
+  мүмкін. Орындаушылар ұсыныс береді, клиент біреуін таңдайды.
+· Аялдамалар: бір заказға аралық нүктелер қосуға болады.
+· Сақталған адрестер: жиі қолданылатын адрестерді сақтап қою.
+· Такси мен Жеткізу бөлімдері — жүк тасымалдан бөлек категориялар.
+· Заказ статустары: іздеуде → қабылданды → келді → тиеу → жолда → аяқталды.
+· Заказды болдырмау, орындаушыға баға беру (рейтинг), шағым жіберу.
+
+ОРЫНДАУШЫ ЖАҒЫ
+· Өтінім: көлік түрі + құжаттар. Модератор қарайды (әдетте 24 сағатқа
+  дейін), нәтижесі хабарламамен келеді. Қабылданбаса — себебі жазылады,
+  түзетіп қайта жіберуге болады. Модератор кейін құжатты жаңартуды сұрауы
+  мүмкін.
+· ЗАКАЗДАР ЛЕНТАСЫН БӘРІ КӨРЕДІ — өтінім әлі толтырылмаған, тексерудегі
+  және тарифсіз орындаушы да лентаны ашық көреді. Тек ҰСЫНЫС БЕРУ
+  бөгеледі: ол үшін өтінім расталуы + белсенді тариф керек.
+· Тариф = бір АУЫСЫМ, ішінде шектеулі заказ саны. Балансынан сатып
+  алынады. Ауысым бітсе не заказ саны таусылса — жаңасын алады.
+· Баланс: Kaspi арқылы толтырылады, чек/түбіртек Telegram боты арқылы
+  тексеріледі. Ақша тек тариф алуға жұмсалады.
+· Қала ережесі: ҚАЛА ІШІНДЕГІ заказды тек сол қаладағы орындаушы алады;
+  ҚАЛААРАЛЫҚ заказды кез келген қаладағы орындаушы ала алады.
+· Табыс: күндік/айлық есеп профильде.
+· Көлік түрі мен қала профильден өзгертіледі.
+
+ОРТАҚ
+· Хабарландырулар тақтасы: пайдаланушылар өз хабарландыруын
+  (көлік/жүк/қызмет) жариялайды, шағымдануға болады.
+· Қолдау чаты — осы чат. Тіл: қазақша/орысша, профильден ауысады.
+· Аккаунтты өшіру, құпиялылық саясаты — профиль → Баптаулар.
+`;
+
+// Модератор баптауының ТІРІ күйі — қосулы/өшірулі фича туралы дұрыс
+// жауап беру үшін (өшірулі фичаны «бар» деп айтып қалмасын).
+async function buildKnowledge(cfg: Record<string, unknown>): Promise<string> {
+  const { data: rows } = await admin
+    .from("app_settings").select("key, value")
+    .in("key", [
+      "listings", "taxi", "bonus", "repeat_order", "pricing_hint",
+      "scheduled_orders", "live_tracking", "share_trip", "referral",
+      "tariffs",
+    ]);
+  const s: Record<string, Rec> = {};
+  for (const r of (rows ?? []) as { key: string; value: unknown }[]) {
+    s[r.key] = (r.value ?? {}) as Rec;
+  }
+  const on = (k: string) => s[k]?.enabled === true;
+  const num = (k: string, f: string, d: number) => Number(s[k]?.[f] ?? d);
+
+  // Әдепкі мәні ЖОҚ (`enabled` жазылмаған) екі кілт бұрыннан қосулы
+  // саналады — қосымшада да солай (`repeat_order`, `pricing_hint`).
+  const flag = (k: string, dflt = false) =>
+    s[k]?.enabled === undefined ? dflt : on(k);
+
+  const lines = [
+    `· Хабарландырулар тақтасы: ${yn(flag("listings"))}`,
+    `· Такси бөлімі: ${yn(flag("taxi"))}`,
+    `· Тапсырысты қайталау (клиент): ${yn(flag("repeat_order", true))}`,
+    `· Ұсынылған баға көрсеткіші (клиент): ${yn(flag("pricing_hint", true))}`,
+    on("scheduled_orders")
+      ? `· АЛДЫН АЛА ТАПСЫРЫС: ҚОСУЛЫ — клиент заказды болашақ уақытқа `
+        + `жоспарлайды (кем дегенде ${num("scheduled_orders", "min_hours_ahead", 2)} `
+        + `сағат бұрын, ${num("scheduled_orders", "max_days_ahead", 14)} күнге дейін). `
+        + `Уақыты жеткенше заказ орындаушылар лентасында КӨРІНБЕЙДІ.`
+      : `· Алдын ала тапсырыс: ӨШІРУЛІ`,
+    on("live_tracking")
+      ? `· ОРЫНДАУШЫНЫ КАРТАДА ТІРІ КӨРУ: ҚОСУЛЫ — заказ қабылданған соң `
+        + `клиент орындаушының қозғалысын өз заказының картасынан көреді.`
+      : `· Орындаушыны картада тірі көру: ӨШІРУЛІ`,
+    on("share_trip")
+      ? `· САПАРДЫ БӨЛІСУ: ҚОСУЛЫ — клиент заказ бетінен сілтеме жасайды, `
+        + `оны туыс/досына жібереді. Сілтемені ашқан адам қосымшаға кірмей-ақ, `
+        + `тіркелмей-ақ сапардың барысын көреді. Сілтеме сапар аяқталғанда `
+        + `жарамсыз болады.`
+      : `· Сапарды бөлісу: ӨШІРУЛІ`,
+    on("referral")
+      ? `· ДОС ШАҚЫРУ (шақыру бонусы): ҚОСУЛЫ. Әр пайдаланушының профилінде `
+        + `жеке ШАҚЫРУ КОДЫ бар (профильден көшіріп, бөлісуге болады). Жаңа `
+        + `адам ТІРКЕЛГЕН СӘТТЕ сол кодты «Шақыру коды» жолына енгізеді — `
+        + `тіркелген СОҢ енгізу мүмкін емес, код тек бір рет қана есептеледі. `
+        + `Шақырушы ОРЫНДАУШЫ болса — балансына `
+        + `${num("referral", "executor_bonus_amount", 200)} ₸ бонус түседі; `
+        + `шақырушы КЛИЕНТ болса — тек «Сіз N адам шақырдыңыз» санағы өседі, `
+        + `ақшалай бонус жоқ. Өз кодыңды өзің енгізе алмайсың.`
+      : `· Дос шақыру (шақыру бонусы): ӨШІРУЛІ`,
+    on("bonus")
+      ? `· ОРЫНДАУШЫ БОНУС БАҒДАРЛАМАСЫ: ҚОСУЛЫ — `
+        + `${bonusPeriod(String(s.bonus?.period ?? "week"))} ішінде `
+        + `${num("bonus", "target", 20)} заказ аяқтаса, балансына `
+        + `${num("bonus", "amount", 2000)} ₸ түседі`
+        + `${s.bonus?.repeat === true ? " (кезең ішінде қайталанады)" : ""}. `
+        + `Бонус тек БАЛАНСҚА түседі, қолма-қол шешіп алынбайды.`
+      : `· Орындаушы бонус бағдарламасы: ӨШІРУЛІ`,
+    `· Бір ауысымдағы заказ саны: ${num("tariffs", "orders_per_shift", 10)}`,
+  ];
+
+  const extra = typeof cfg.knowledge === "string" ? cfg.knowledge.trim() : "";
+
+  return `KNOWLEDGE — what the Tasu app actually does. Answer from THIS.
+It is written in Kazakh; reply in the user's own language.
+${FEATURES_KB}
+ФИЧАЛАРДЫҢ ҚАЗІРГІ КҮЙІ (модератор баптауы — өшірулі фича туралы
+«бізде ондай мүмкіндік әзірге жоқ» деп жауап бер):
+${lines.join("\n")}
+${extra ? `\nҚОСЫМША МӘЛІМЕТ (модератордан):\n${extra}\n` : ""}`;
+}
+
+const yn = (v: boolean) => (v ? "ҚОСУЛЫ" : "ӨШІРУЛІ");
+
+function bonusPeriod(p: string) {
+  if (p === "day") return "бір күн";
+  if (p === "month") return "бір ай";
+  return "бір апта";
+}
+
+type Rec = Record<string, unknown>;
+
+// ============================================================================
 // Промпт
 // ============================================================================
 const SYSTEM_PROMPT = `You are the front-line support responder for "Tasu" —
@@ -338,11 +484,16 @@ be sent AS-IS, with no human review beforehand. Be warm, concise, and
 genuinely helpful, exactly as a competent support agent would be.
 
 SCOPE — THE HARDEST RULE. You answer ONLY questions about the Tasu app
-itself: placing / editing / cancelling orders, offers and pricing, order
-statuses and confirmations, the Taxi and Delivery categories, the listings
-board, becoming an executor, documents and moderation, the tariff / shift
-and balance top-up, switching between client and executor roles, ratings,
-the account and its settings, and how to use any screen of the app.
+itself: anything described in the KNOWLEDGE section below, plus placing /
+editing / cancelling orders, offers and pricing, order statuses and
+confirmations, becoming an executor, documents and moderation, the tariff /
+shift and balance top-up, switching between client and executor roles,
+ratings, the account and its settings, and how to use any screen of the app.
+
+The KNOWLEDGE section is the CURRENT, AUTHORITATIVE description of the app,
+including features added recently. Answer feature questions from it — never
+say a feature "does not exist" if KNOWLEDGE lists it as enabled, and never
+promise one that KNOWLEDGE marks as disabled (say it is not available yet).
 
 EVERYTHING ELSE IS OUT OF SCOPE and you do NOT answer it — not partially,
 not "just this once", no matter how it is asked (rephrased, framed as a
@@ -375,10 +526,12 @@ ABSOLUTE RULES:
    human support agent wouldn't say. Write as a person would.
 5. Keep replies short (1-3 sentences) unless the question genuinely needs
    more detail.
-6. If a Tasu question is factual but you don't know the answer (e.g. a
-   specific policy detail), do NOT guess: leave "reply" empty and set
-   "needs_human": true so a real person follows up. (This applies to
-   in-scope questions only — out-of-scope messages are declined, never
+6. If a Tasu question is factual but neither KNOWLEDGE nor the conversation
+   answers it (e.g. a specific policy detail, an exact amount not listed),
+   do NOT guess: leave "reply" empty and set "needs_human": true so a real
+   person follows up. Check KNOWLEDGE first — escalating something that is
+   written there wastes the user's time and the moderators'. (This applies
+   to in-scope questions only — out-of-scope messages are declined, never
    escalated.)
 7. Write "reasoning" ALWAYS IN KAZAKH, regardless of the user's language —
    it is shown only to the (Kazakh-speaking) moderator team, never to the

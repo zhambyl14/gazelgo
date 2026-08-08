@@ -18,6 +18,7 @@ import 'executor_order_screen.dart';
 
 /// Орындаушының заказға ұсыныс беруіне кедергі себебі (feed гейті).
 enum _Gate {
+  notApplied,
   noTariff,
   underReview,
   rejected,
@@ -185,8 +186,13 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// бөгеу себебі. Сервер де осыны қайта тексереді (exec_can_take ішінде,
   /// place_offer/accept_offer арқылы) — бұл тек ыңғайлы алдын ала ескерту.
   _Gate? _actionGate(Order o) {
-    final ep = ref.read(myExecutorProfileProvider).value;
+    final epAsync = ref.read(myExecutorProfileProvider);
+    final ep = epAsync.value;
     final stats = ref.read(executorStatsStreamProvider).value;
+    // Өтінім МҮЛДЕМ жоқ (0063 «танысу режимі») — лентаны көреді, бірақ
+    // ұсыныс бере алмайды; өтінім толтыруға шақырамыз. Профиль әлі
+    // жүктеліп жатса (`!hasValue`) — «тексеруде» деп ұстай тұрамыз.
+    if (epAsync.hasValue && ep == null) return _Gate.notApplied;
     if (ep == null) return _Gate.underReview;
     if (ep.status == 'rejected') return _Gate.rejected;
     if (ep.status != 'approved') return _Gate.underReview;
@@ -207,6 +213,19 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   void _showGate(_Gate gate) {
     final ep = ref.read(myExecutorProfileProvider).value;
     switch (gate) {
+      case _Gate.notApplied:
+        _gateDialog(
+          icon: Icons.assignment_outlined,
+          color: Gz.blue,
+          title: t('Алдымен өтінім толтырыңыз'),
+          text: t('Заказдарды қарау ашық, ал ұсыныс беру үшін көлігіңіз бен '
+              'құжаттарыңызды жіберу керек. Модератор растаған соң заказ '
+              'қабылдай бастайсыз.'),
+          actionLabel: t('Өтінім толтыру'),
+          onAction: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ExecutorApplyScreen()),
+          ),
+        );
       case _Gate.noTariff:
         _gateDialog(
           icon: Icons.bolt,

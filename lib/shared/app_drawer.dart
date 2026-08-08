@@ -327,7 +327,9 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
       message: _toExecutor
           ? (_firstTime
                 ? t('Аккаунтыңыз сақталады — үстіне орындаушы рөлі қосылады. '
-                      'Көлік деректері мен құжаттарды толтырып, өтінім '
+                      'Заказдар лентасы бірден ашылады: қандай жұмыс бар '
+                      'екенін көресіз. Заказ ҚАБЫЛДАУ үшін ғана көлік '
+                      'деректері мен құжаттарды толтырып, өтінім '
                       'жібересіз.\n\nОрындаушы рейтингі бөлек басталады.')
                 : t('Орындаушы режиміне ауысасыз: заказ лентасы, баланс, '
                       'орындаушы уведомлениелері.\n\nРейтингіңіз де '
@@ -347,7 +349,7 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
       await Repo.switchRole(target);
       // Рөл ауысты — профильді де, орындаушы профилін де қайта сұраймыз:
       // `_RoleRouter` жаңа рөлге сай экранды өзі ашады (өтінім толтырылмаған
-      // болса — «Өтінім» экраны).
+      // болса да заказдар лентасы ашылады, 0063).
       ref.invalidate(myProfileProvider);
       ref.invalidate(myExecutorProfileProvider);
       if (!mounted) return;
