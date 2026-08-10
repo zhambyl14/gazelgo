@@ -519,10 +519,12 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
   Future<void> _detect() async {
     final pos = await Geo.currentPosition();
     if (pos == null || !mounted) return;
-    final (_, city) = await Geo.reverseWithCity(
-      LatLng(pos.latitude, pos.longitude),
-    );
-    if (mounted) setState(() => _detectedCity = city);
+    final p = LatLng(pos.latitude, pos.longitude);
+    // ТІРЕК қала (лентаның қала сүзгісі осы бойынша жүреді). Reverse-геокодер
+    // қайтаратын нақты елді мекенді («Қосшы», «Луговой») алсақ, орындаушының
+    // қаласы сол ауыл болып өзгеріп, лентадағы БАРЛЫҚ заказ жоғалып кетеді.
+    final anchor = Geo.anchorCity(p);
+    if (mounted) setState(() => _detectedCity = anchor);
   }
 
   Future<void> _switchCity() async {

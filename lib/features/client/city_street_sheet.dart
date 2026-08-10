@@ -41,8 +41,35 @@ class CityStreetSheet extends StatefulWidget {
   State<CityStreetSheet> createState() => _CityStreetSheetState();
 }
 
+/// Қала таңдау нәтижесі.
+///
+/// Клиенттердің бәрі облыс орталығында тұрмайды: Тараз маңында Мерке, Луговой;
+/// Астана маңында Ерейментау, Қосшы бар. Сол себепті ЕКІ ұғымды бөлеміз:
+///
+///  • [city] — ТІРЕК қала. Заказдың `from_city`/`to_city` өрісіне осы жазылады,
+///    орындаушылар лентасының қала сүзгісі де осы бойынша жүреді. Егер бұған
+///    ауыл атын жазсақ, Луговойдағы заказды ЕШБІР орындаушы көрмей қалады.
+///  • [settlement] — клиент таңдаған НАҚТЫ елді мекен. Карта сол жерден
+///    ашылады, ал ауыл аты адрес жолына қосылады («Луговой, Абая, 5»).
+class CityChoice {
+  final String city;
+  final String? settlement;
+  final LatLng? point;
+  const CityChoice({required this.city, this.settlement, this.point});
+
+  /// Клиентке көрсетілетін атау.
+  String get label => settlement ?? city;
+}
+
 class _CityStreetSheetState extends State<CityStreetSheet> {
   String? _city;
+
+  /// Тірек қаладан бөлек нақты елді мекен (болса).
+  String? _area;
+
+  /// Іздеу мен картаны бағыттайтын орталық (ауыл таңдалса — ауылдың ортасы).
+  LatLng? _cityPoint;
+
   String? _street;
   LatLng? _point;
   bool _detectingCity = false;
@@ -94,6 +121,9 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   }
 
   /// Өз орнының қаласын автоматты анықтайды (GPS арқылы).
+  ///
+  /// Reverse-геокодер НАҚТЫ елді мекенді береді («Қосшы», «Луговой»), ал
+  /// заказға тірек қала керек — сол себепті екеуін бөліп аламыз.
   Future<void> _detectCity() async {
     setState(() => _detectingCity = true);
     final pos = await Geo.currentPosition();
@@ -106,17 +136,21 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       setState(() => _detectingCity = false);
       return;
     }
-    final (_, city) = await Geo.reverseWithCity(p);
-    if (mounted) {
-      setState(() {
-        _city = city;
-        _detectingCity = false;
-      });
-    }
+    final (_, settlement) = await Geo.reverseWithCity(p);
+    if (!mounted) return;
+    final anchor = Geo.anchorCity(p) ?? settlement;
+    setState(() {
+      _city = anchor;
+      _area = (settlement != null && !Geo.sameCity(settlement, anchor))
+          ? settlement
+          : null;
+      _cityPoint = p;
+      _detectingCity = false;
+    });
   }
 
   Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
+    final picked = await showModalBottomSheet<CityChoice>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Gz.surface,
@@ -127,7 +161,9 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     );
     if (picked != null && mounted) {
       setState(() {
-        _city = picked;
+        _city = picked.city;
+        _area = picked.settlement;
+        _cityPoint = picked.point ?? Geo.cityCenter(picked.city);
         // қала өзгерсе, бұрын таңдалған нүкте басқа қалаға тиесілі болуы мүмкін
         _street = null;
         _point = null;
@@ -151,6 +187,8 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       ),
       builder: (_) => _StreetPickerSheet(
         city: city,
+        cityLabel: _area ?? city,
+        cityPoint: _cityPoint ?? Geo.cityCenter(city),
         initialQuery: _street,
         initialPoint: _point,
       ),
@@ -159,8 +197,16 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       setState(() {
         _street = picked.address;
         _point = picked.point;
-        // Қаланы ЕШҚАШАН ауыстырмаймыз: пайдаланушы таңдаған қала — түпкі дереккөз.
-        // (Адрес сол қала ішінде ғана ізделеді әрі картада расталады.)
+        // Клиент картадан МҮЛДЕМ басқа аймақты белгілеп, қаланы ауыстыруға
+        // келіскен болса ғана тірек қала өзгереді (парақ соны қайтарады).
+        final returned = picked.city;
+        if (returned != null &&
+            returned.isNotEmpty &&
+            !Geo.sameCity(returned, city)) {
+          _city = returned;
+          _area = null;
+          _cityPoint = Geo.cityCenter(returned) ?? picked.point;
+        }
       });
     }
   }
@@ -248,7 +294,15 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                       ],
                       _fieldTile(
                         label: t('Қай қала/елді мекенге?'),
-                        value: _detectingCity ? t('Анықталуда…') : _city,
+                        value: _detectingCity
+                            ? t('Анықталуда…')
+                            : (_area ?? _city),
+                        // Ауыл/кент таңдалса, заказ қай қалаға тіркелетінін
+                        // ашық жазамыз — клиент «неге Тараз?» деп таңданбауы
+                        // үшін (орындаушылар сол қаладан келеді).
+                        hint: _area == null
+                            ? null
+                            : '${t('Тапсырыс тіркелетін қала:')} $_city',
                         onTap: _pickCity,
                       ),
                       const SizedBox(height: 10),
@@ -424,6 +478,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     required String label,
     required String? value,
     required VoidCallback onTap,
+    String? hint,
   }) {
     return InkWell(
       onTap: onTap,
@@ -461,6 +516,19 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                           : Gz.ink,
                     ),
                   ),
+                  if (hint != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: Gz.blue,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -481,7 +549,16 @@ class _CityPickerSheet extends StatefulWidget {
 
 class _CityPickerSheetState extends State<_CityPickerSheet> {
   final _search = TextEditingController();
+  Timer? _debounce;
+
+  /// Дайын тізімнен сүзілген қалалар (лезде шығады).
   List<String> _filtered = kzCities;
+
+  /// Картадан ізделген елді мекендер — тізімде ЖОҚ ауыл/кенттер
+  /// (Мерке, Луговой, Ерейментау, Қосшы…). Тегін тізімге бәрін тығу мүмкін
+  /// емес, сол себепті олар осылай — сұраныс бойынша табылады.
+  List<GeoPlace> _found = const [];
+  bool _loading = false;
 
   void _onChanged(String q) {
     final n = q.trim().toLowerCase();
@@ -489,17 +566,56 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
       _filtered = n.isEmpty
           ? kzCities
           : kzCities.where((c) => c.toLowerCase().contains(n)).toList();
+      if (n.length < 2) {
+        _found = const [];
+        _loading = false;
+      } else {
+        _loading = true;
+      }
     });
+    _debounce?.cancel();
+    if (n.length < 2) return;
+    _debounce = Timer(const Duration(milliseconds: 450), () async {
+      final res = await Geo.searchSettlement(q);
+      if (!mounted) return;
+      setState(() {
+        // Дайын тізімде бары қайталанбасын.
+        _found = res
+            .where((e) => !kzCities.any((c) => Geo.sameCity(c, e.name)))
+            .toList();
+        _loading = false;
+      });
+    });
+  }
+
+  /// Тізімдегі ірі қала — тірек қаланың өзі.
+  void _pickKnown(String city) => Navigator.of(context).pop(
+    CityChoice(city: city, point: Geo.cityCenter(city)),
+  );
+
+  /// Ауыл/кент — тірек қала ретінде ЕҢ ЖАҚЫН ірі қала жазылады, ал ауылдың
+  /// өз аты адрес пен картаға барады.
+  void _pickSettlement(GeoPlace p) {
+    final anchor = Geo.anchorCity(p.point);
+    Navigator.of(context).pop(
+      CityChoice(
+        city: anchor ?? p.name,
+        settlement: anchor == null ? null : p.name,
+        point: p.point,
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasQuery = _search.text.trim().length >= 2;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -523,32 +639,95 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
               autofocus: true,
               onChanged: _onChanged,
               decoration: InputDecoration(
-                hintText: t('Қала немесе елді мекен іздеу…'),
+                hintText: t('Қала, кент немесе ауыл іздеу…'),
                 prefixIcon: const Icon(Icons.search),
+                suffixIcon: _loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
               ),
             ),
           ),
           const Divider(height: 1),
           Expanded(
-            child: _filtered.isEmpty
+            child: (_filtered.isEmpty && _found.isEmpty && !_loading)
                 ? Center(
-                    child: Text(
-                      t('Табылмады'),
-                      style: const TextStyle(color: Gz.textSecondary),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        t('Табылмады. Атын басқаша жазып көріңіз '
+                            '(мыс. орысша немесе қазақша).'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Gz.textSecondary),
+                      ),
                     ),
                   )
-                : ListView.separated(
+                : ListView(
                     controller: scroll,
-                    itemCount: _filtered.length,
-                    separatorBuilder: (_, i) => const Divider(height: 1),
-                    itemBuilder: (_, i) => ListTile(
-                      leading: const Icon(
-                        Icons.location_city_outlined,
-                        color: Gz.textSecondary,
-                      ),
-                      title: Text(_filtered[i]),
-                      onTap: () => Navigator.of(context).pop(_filtered[i]),
-                    ),
+                    children: [
+                      for (final c in _filtered)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.location_city_outlined,
+                            color: Gz.textSecondary,
+                          ),
+                          title: Text(c),
+                          onTap: () => _pickKnown(c),
+                        ),
+                      if (_found.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                          child: Text(
+                            t('Кент, ауыл, шағын қалалар'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Gz.textSecondary,
+                            ),
+                          ),
+                        ),
+                        for (final p in _found)
+                          ListTile(
+                            leading: const Icon(
+                              Icons.holiday_village_outlined,
+                              color: Gz.green,
+                            ),
+                            title: Text(p.name),
+                            subtitle: Builder(
+                              builder: (_) {
+                                final anchor = Geo.anchorCity(p.point);
+                                return Text(
+                                  anchor == null
+                                      ? t('Қазақстан')
+                                      : '$anchor ${t('маңы')}',
+                                  style: const TextStyle(fontSize: 12),
+                                );
+                              },
+                            ),
+                            onTap: () => _pickSettlement(p),
+                          ),
+                      ],
+                      if (hasQuery && _found.isEmpty && !_loading)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                          child: Text(
+                            t('Ауылыңыз тізімде жоқ па? Ең жақын қаланы '
+                                'таңдаңыз да, келесі қадамда картадан дәл '
+                                'жерді белгілеңіз — ауыл аты адреске өзі '
+                                'қосылады.'),
+                            style: const TextStyle(
+                              color: Gz.textSecondary,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
           ),
         ],
@@ -557,12 +736,34 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
   }
 }
 
+/// Нүкте басқа аймақта болғандағы клиенттің жауабы.
+enum _AreaAnswer {
+  /// Тапсырыс ұсынылған тірек қалаға тіркелсін.
+  switchCity,
+
+  /// Таңдалған қала қалсын (әкімшілік жағынан дұрысын клиент біледі).
+  keepCity,
+
+  /// Картадан қайта белгілеймін.
+  remark,
+}
+
 class _StreetPickerSheet extends StatefulWidget {
+  /// Тірек қала — заказға жазылатын қала.
   final String city;
+
+  /// Клиентке көрсетілетін атау (ауыл таңдалса — ауылдың аты).
+  final String cityLabel;
+
+  /// Іздеу мен картаның орталығы.
+  final LatLng? cityPoint;
+
   final String? initialQuery;
   final LatLng? initialPoint;
   const _StreetPickerSheet({
     required this.city,
+    required this.cityLabel,
+    this.cityPoint,
     this.initialQuery,
     this.initialPoint,
   });
@@ -598,63 +799,143 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
     }
     setState(() => _loading = true);
     _debounce = Timer(const Duration(milliseconds: 450), () async {
-      final res = await Geo.searchStreet(city: widget.city, street: q);
+      final res = await Geo.searchStreet(
+        city: widget.city,
+        street: q,
+        near: widget.cityPoint,
+      );
       if (mounted) {
         setState(() {
-          // ЕРЕЖЕ №1: таңдалған қаладан тыс нәтижелерді МҮЛДЕ көрсетпейміз.
-          // Nominatim кейде «Алматы» сұрағанда Шымкенттегі нәтиже қайтарады —
-          // ол клиентке ешқашан көрінбеуі керек.
-          _results = _onlySelectedCity(res);
+          _results = _inSelectedArea(res);
           _loading = false;
         });
       }
     });
   }
 
-  /// Тек таңдалған қала ішіндегі нәтижелерді қалдырады.
-  /// Қаласы белгісіз (null) нәтижелерді де алып тастаймыз — басқа қалаға
-  /// «жасырын» өтіп кетпеу үшін (табылмаса — картадан белгілейді).
-  List<GeoPlace> _onlySelectedCity(List<GeoPlace> res) =>
-      res.where((e) => Geo.sameCity(e.city, widget.city)).toList();
+  LatLng? get _center => widget.cityPoint ?? Geo.cityCenter(widget.city);
 
-  /// Картадан белгіленген нүкте таңдалған қалаға сай ма (ЕРЕЖЕ №6).
-  /// Қаласы анықталмаса (ауылдық жер, тегін деректе жоқ) — рұқсат етеміз.
-  bool _pointInSelectedCity(PickedAddress p) {
+  /// Нүкте таңдалған қаланың аймағында ма ([Geo.inCityArea] ережесі).
+  bool _pointInArea(LatLng p) =>
+      Geo.inCityArea(p, widget.city, center: _center);
+
+  /// Таңдалған қала мен оның маңындағы нәтижелерді ғана қалдырады.
+  /// (Бұрын дәл қала аты талап етілетін — сондықтан «Луговой, Абая» деп
+  /// іздегенде тізім әрқашан бос болатын.)
+  List<GeoPlace> _inSelectedArea(List<GeoPlace> res) => res
+      .where((e) => Geo.sameCity(e.city, widget.city) || _pointInArea(e.point))
+      .toList();
+
+  /// Адрестің басындағы қала атауын алып тастайды («Тараз, Абая, 5» →
+  /// «Абая, 5»), қала өрісінде онсыз да сол қала тұрғанда қайталанбауы үшін.
+  static String _stripCityPrefix(String address, String city) {
+    final parts = address.split(',');
+    if (parts.length > 1 && Geo.sameCity(parts.first.trim(), city)) {
+      return parts.skip(1).join(',').trim();
+    }
+    return address;
+  }
+
+  /// Картадан белгіленген нүктені ҚАБЫЛДАУ.
+  ///
+  /// БҰРЫН: нүктенің елді мекені таңдалған қаладан өзгеше болса — қатемен
+  /// қайтарылатын. Сол себепті Астананы таңдап Ерейментауды, Таразды таңдап
+  /// Мерке/Луговойды белгілеу МҮЛДЕМ мүмкін емес еді — ал клиенттердің
+  /// үлкен бөлігі дәл сол қала маңындағы елді мекендерде тұрады.
+  ///
+  /// ЕНДІ нүкте ЕШҚАШАН жоғалмайды:
+  ///  • Қала аймағында (≤ [_areaRadiusKm]) — үнсіз қабылданады, ауыл аты
+  ///    адрес жолына қосылып қойған болады.
+  ///  • Мүлдем басқа аймақта — қаланы ауыстыруды сұраймыз (қате таңдау болуы
+  ///    ықтимал), клиент келіссе жаңа қаламен қайтарамыз.
+  Future<PickedAddress?> _accept(PickedAddress p) async {
     if (!Geo.inKazakhstan(p.point)) {
       showSnack(context, t('Тек Қазақстан ішінде'), error: true);
-      return false;
+      return null;
     }
-    if (p.city != null &&
-        p.city!.isNotEmpty &&
-        !Geo.sameCity(p.city, widget.city)) {
-      showSnack(
-        context,
-        Lang.current.value == AppLang.ru
-            ? 'Эта точка не в городе ${widget.city}. '
-                  'Отметьте в пределах ${widget.city}.'
-            : 'Бұл нүкте ${widget.city} ішінде емес. '
-                  '${widget.city} шегінде белгілеңіз.',
-        error: true,
-      );
-      return false;
+    if (_pointInArea(p.point)) {
+      return PickedAddress(p.address, p.point, widget.city);
     }
-    return true;
+    final suggested = Geo.anchorCity(p.point) ?? p.city;
+    if (suggested == null ||
+        Geo.sameCity(suggested, widget.city) ||
+        !mounted) {
+      // Тірек қала табылмады (шалғай жер) не сол қаланың өзі — нүктені
+      // сұраусыз қабылдаймыз.
+      return PickedAddress(p.address, p.point, widget.city);
+    }
+    switch (await _askSwitchCity(suggested, p.city)) {
+      case _AreaAnswer.switchCity:
+        return PickedAddress(
+          _stripCityPrefix(p.address, suggested),
+          p.point,
+          suggested,
+        );
+      case _AreaAnswer.keepCity:
+        return PickedAddress(p.address, p.point, widget.city);
+      case _AreaAnswer.remark:
+      case null:
+        return null;
+    }
+  }
+
+  /// «Бұл нүкте басқа аймақта — қаланы ауыстырайық па?» сұрағы.
+  ///
+  /// ҮШ жауап болуы МАҢЫЗДЫ. Тірек қала әрдайым әкімшілік жағынан дұрыс
+  /// бола бермейді: мысалы Жаңатас — Жамбыл облысы (Тараз), бірақ картада
+  /// оған Түркістан жақынырақ. Сондықтан «таңдалған қаланы қалдыру» деген
+  /// жауап болмаса, клиент дұрыс нүктесінен айырылып қалар еді.
+  Future<_AreaAnswer?> _askSwitchCity(String suggested, String? settlement) {
+    final ru = Lang.current.value == AppLang.ru;
+    final where = (settlement != null &&
+            settlement.isNotEmpty &&
+            !Geo.sameCity(settlement, suggested))
+        ? '$settlement ($suggested)'
+        : suggested;
+    return showDialog<_AreaAnswer>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ru ? 'Другой регион' : 'Басқа аймақ'),
+        content: Text(
+          ru
+              ? 'Отмеченная точка находится в: $where, '
+                  'а выбранный город — ${widget.cityLabel}.\n\n'
+                  'К какому городу отнести заказ? '
+                  'Точка на карте сохранится в любом случае.'
+              : 'Белгіленген нүкте — $where, ал таңдалған қала — '
+                  '${widget.cityLabel}.\n\n'
+                  'Тапсырыс қай қалаға тіркелсін? '
+                  'Картадағы нүкте екі жағдайда да сақталады.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.remark),
+            child: Text(ru ? 'Отметить заново' : 'Қайта белгілеу'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.keepCity),
+            child: Text(widget.cityLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.switchCity),
+            child: Text(suggested),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _findOnMap() async {
-    // Карта таңдалған қаланың ортасынан ашылады.
+    // Карта таңдалған қаланың (не ауылдың) ортасынан ашылады.
     final res = await AddressPickerScreen.pick(
       context,
-      title: widget.city,
-      initial: widget.initialPoint ?? Geo.cityCenter(widget.city),
+      title: widget.cityLabel,
+      city: widget.city,
+      initial: widget.initialPoint ?? _center,
     );
-    if (res != null && mounted) {
-      if (!_pointInSelectedCity(res)) return;
-      // Қаланы таңдалған қалаға бекітеміз (координата сол қалада расталды).
-      Navigator.of(
-        context,
-      ).pop(PickedAddress(res.address, res.point, widget.city));
-    }
+    if (res == null || !mounted) return;
+    final accepted = await _accept(res);
+    if (accepted != null && mounted) Navigator.of(context).pop(accepted);
   }
 
   /// Клиент жазған адресті қолдану. Егер геокодер дәл тапса — соның нүктесін
@@ -664,13 +945,17 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
   Future<void> _useTyped() async {
     final text = _search.text.trim();
     if (text.length < 2) return;
-    // Тек таңдалған қаладағы нәтиженің нүктесін аламыз (ЕРЕЖЕ №4):
-    // тізімдегі бірінші элемент басқа қала болуы мүмкін, сондықтан фильтрлеп аламыз.
+    // Тек таңдалған қала мен оның маңындағы нәтиженің нүктесін аламыз:
+    // тізімдегі бірінші элемент басқа облыс болуы мүмкін.
     LatLng? point = _results.isNotEmpty ? _results.first.point : null;
     if (point == null) {
       setState(() => _loading = true);
-      final res = _onlySelectedCity(
-        await Geo.searchStreet(city: widget.city, street: text),
+      final res = _inSelectedArea(
+        await Geo.searchStreet(
+          city: widget.city,
+          street: text,
+          near: widget.cityPoint,
+        ),
       );
       point = res.isNotEmpty ? res.first.point : null;
       if (mounted) setState(() => _loading = false);
@@ -680,18 +965,18 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
       Navigator.of(context).pop(PickedAddress(text, point, widget.city));
       return;
     }
-    // Қала ішінде дәл табылмады → басқа қаланы ЕШҚАШАН ұсынбаймыз,
+    // Аймақ ішінен дәл табылмады → басқа облысты ЕШҚАШАН ұсынбаймыз,
     // тек картадан дәл жерді белгілетеміз (жазған мәтін адрес болып қалады).
     final picked = await AddressPickerScreen.pick(
       context,
       title: '${t('Картадан белгілеңіз:')} $text',
-      initial: Geo.cityCenter(widget.city),
+      city: widget.city,
+      initial: _center,
     );
-    if (picked != null && mounted) {
-      if (!_pointInSelectedCity(picked)) return;
-      // Клиент жазған мәтінді сақтаймыз, координата — картадан дәл.
-      Navigator.of(context).pop(PickedAddress(text, picked.point, widget.city));
-    }
+    if (picked == null || !mounted) return;
+    // Клиент жазған мәтінді сақтаймыз, координата — картадан дәл.
+    final accepted = await _accept(PickedAddress(text, picked.point, picked.city));
+    if (accepted != null && mounted) Navigator.of(context).pop(accepted);
   }
 
   @override
@@ -719,7 +1004,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
-                '${widget.city}: ${t('көше мен үй нөмірі')}',
+                '${widget.cityLabel}: ${t('көше, үй немесе нысан аты')}',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -733,7 +1018,7 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                 autofocus: true,
                 onChanged: _onChanged,
                 decoration: InputDecoration(
-                  hintText: t('мыс: Бауыржан Момышулы, 79'),
+                  hintText: t('мыс: Бауыржан Момышулы 79 немесе «Хан Шатыр»'),
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _loading
                       ? const Padding(
@@ -819,26 +1104,32 @@ class _StreetPickerSheetState extends State<_StreetPickerSheet> {
                       controller: scroll,
                       itemCount: _results.length,
                       separatorBuilder: (_, i) => const Divider(height: 1),
-                      itemBuilder: (_, i) => ListTile(
-                        leading: const Icon(
-                          Icons.place_outlined,
-                          color: Gz.red,
-                        ),
-                        title: Text(
-                          _results[i].name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // Қала әрдайым таңдалған қала болып қалады (нәтиже
-                        // онсыз да сол қала ішінен фильтрленген).
-                        onTap: () => Navigator.of(context).pop(
-                          PickedAddress(
-                            _results[i].name,
-                            _results[i].point,
-                            widget.city,
+                      itemBuilder: (_, i) {
+                        final r = _results[i];
+                        // Нәтиже қала маңындағы ауылда болса, ауыл атын
+                        // адреске ҚОСАМЫЗ — орындаушы қайда баратынын
+                        // адрестің өзінен көруі керек.
+                        final other = r.city != null &&
+                            r.city!.isNotEmpty &&
+                            !Geo.sameCity(r.city, widget.city);
+                        final label = other ? '${r.city}, ${r.name}' : r.name;
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.place_outlined,
+                            color: Gz.red,
                           ),
-                        ),
-                      ),
+                          title: Text(
+                            label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          // Тірек қала өзгермейді: нәтиже сол қаланың
+                          // аймағынан сүзілген.
+                          onTap: () => Navigator.of(context).pop(
+                            PickedAddress(label, r.point, widget.city),
+                          ),
+                        );
+                      },
                     ),
             ),
           ],

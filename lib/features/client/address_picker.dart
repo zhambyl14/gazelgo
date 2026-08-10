@@ -21,13 +21,25 @@ class PickedAddress {
 class AddressPickerScreen extends StatefulWidget {
   final String title;
   final LatLng? initial;
-  const AddressPickerScreen({super.key, required this.title, this.initial});
+
+  /// Клиент таңдаған қала. Адрес жолында осы қаланың аты ҚАЙТАЛАНБАЙДЫ, ал
+  /// нүкте басқа елді мекенде болса (Ерейментау, Мерке, Луговой…) — сол елді
+  /// мекеннің аты адреске МІНДЕТТІ түрде қосылады.
+  final String? city;
+
+  const AddressPickerScreen({
+    super.key,
+    required this.title,
+    this.initial,
+    this.city,
+  });
 
   static Future<PickedAddress?> pick(BuildContext context,
-      {required String title, LatLng? initial}) {
+      {required String title, LatLng? initial, String? city}) {
     return Navigator.of(context).push<PickedAddress>(
       MaterialPageRoute(
-          builder: (_) => AddressPickerScreen(title: title, initial: initial)),
+          builder: (_) =>
+              AddressPickerScreen(title: title, initial: initial, city: city)),
     );
   }
 
@@ -47,6 +59,14 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   String? _centerCity;
   LatLng _center = Geo.almaty;
   bool _resolving = false;
+
+  /// Маңайдағы аты бар нысандар (ТРЦ, ЖК, базар…) — «мынау ма?» ұсынысы.
+  List<GeoPlace> _nearby = const [];
+
+  /// Адрес жолын клиент ӨЗІ таңдады/жазды ма. Rasa болса, картаның жылжуы
+  /// (мыс. іздеуден кейінгі анимация) reverse-геокодтауды іске қосып, клиент
+  /// таңдаған ТРЦ атын қайтадан «жәй ғана көшеге» ауыстырып жіберетін.
+  bool _addrLocked = false;
 
   @override
   void initState() {
@@ -71,6 +91,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
       final p = LatLng(pos.latitude, pos.longitude);
       _map.move(p, 16);
       _center = p;
+      _addrLocked = false;
       _resolveCenter();
     }
   }
@@ -78,17 +99,22 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   Future<void> _resolveCenter() async {
     final target = _center;
     setState(() => _resolving = true);
-    final (addr, city) = await Geo.reverseWithCity(target);
+    final addr = await Geo.reverseDetailed(target);
     // Осы маңда клиенттер бұрын түзеткен атау бар ма?
     final corr = await Repo.nearbyAddress(target.latitude, target.longitude);
     if (!mounted || target != _center) return;
+    final label = addr.labelFor(widget.city);
     setState(() {
-      _rawAddress = addr;
-      _centerCity = city;
+      _rawAddress = label;
+      _centerCity = addr.settlement;
       _corrected = corr != null;
-      _addr.text = corr ?? addr;
+      if (!_addrLocked) _addr.text = corr ?? label;
       _resolving = false;
     });
+    // Маңайдағы нысандар — баяу әрі міндетті емес, сол себепті бөлек әрі
+    // адрес шыққаннан КЕЙІН жүктеледі (экран қатып қалмауы үшін).
+    final near = await Geo.nearbyPlaces(target);
+    if (mounted && target == _center) setState(() => _nearby = near);
   }
 
   void _confirmSave() {
@@ -118,9 +144,129 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
       _rawAddress = p.name;
       _corrected = false;
       _addr.text = p.name;
+      _addrLocked = true;
       _centerCity = p.city;
+      _nearby = const [];
     });
     _map.move(p.point, 16.5);
+  }
+
+  /// Маңайдағы нысанды таңдау: пин сол нысанның дәл ортасына көшеді, ал адрес
+  /// жолы «ТРЦ аты, көше, үй» болып жазылады.
+  void _selectNearby(GeoPlace p) {
+    FocusScope.of(context).unfocus();
+    final settlement = _centerCity;
+    final needsSettlement = settlement != null &&
+        settlement.isNotEmpty &&
+        !Geo.sameCity(settlement, widget.city);
+    setState(() {
+      _center = p.point;
+      _addr.text = needsSettlement ? '$settlement, ${p.name}' : p.name;
+      _addrLocked = true;
+      _corrected = false;
+    });
+    _map.move(p.point, 17);
+  }
+
+  /// «Осы жерде:» — маңайдағы нысандар лентасы. Клиент ТРЦ/ЖК/базарды бір
+  /// түртумен адрес етіп қоя алады (қолмен теруден құтылады).
+  Widget _nearbyStrip() {
+    if (_nearby.isEmpty) return const SizedBox.shrink();
+    final chosen = _addr.text.trim().toLowerCase();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        Text(
+          t('Осы жерде — түртіп таңдаңыз:'),
+          style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: Gz.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 34,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _nearby.length,
+            separatorBuilder: (_, i) => const SizedBox(width: 7),
+            itemBuilder: (_, i) {
+              final p = _nearby[i];
+              final active = chosen.contains(p.name.toLowerCase());
+              return InkWell(
+                onTap: () => _selectNearby(p),
+                borderRadius: BorderRadius.circular(17),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: active ? Gz.yellow : Gz.bg,
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(
+                        color: active ? Gz.yellowDark : Gz.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_nearbyIcon(p.kind), size: 15, color: Gz.ink),
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 190),
+                        child: Text(
+                          p.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  static IconData _nearbyIcon(String? kind) {
+    switch (kind) {
+      case 'mall':
+      case 'department_store':
+      case 'supermarket':
+      case 'convenience':
+        return Icons.storefront_rounded;
+      case 'marketplace':
+        return Icons.shopping_basket_rounded;
+      case 'apartments':
+      case 'residential':
+        return Icons.apartment_rounded;
+      case 'hospital':
+      case 'clinic':
+      case 'pharmacy':
+        return Icons.local_hospital_rounded;
+      case 'school':
+      case 'university':
+      case 'college':
+        return Icons.school_rounded;
+      case 'bus_station':
+      case 'train_station':
+      case 'terminal':
+        return Icons.directions_bus_rounded;
+      case 'hotel':
+        return Icons.hotel_rounded;
+      case 'restaurant':
+      case 'cafe':
+      case 'fast_food':
+        return Icons.restaurant_rounded;
+      case 'bank':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.place_rounded;
+    }
   }
 
   @override
@@ -136,6 +282,9 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
               initialZoom: 14,
               onPositionChanged: (camera, hasGesture) {
                 _center = camera.center;
+                // Картаны клиент ӨЗ ҚОЛЫМЕН жылжытты — демек жаңа жерді
+                // іздеп жатыр, ескі атауды ұстап тұрудың қажеті жоқ.
+                if (hasGesture) _addrLocked = false;
                 _moveDebounce?.cancel();
                 _moveDebounce = Timer(
                     const Duration(milliseconds: 400), _resolveCenter);
@@ -238,6 +387,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     TextField(
                       controller: _addr,
                       textCapitalization: TextCapitalization.sentences,
+                      onChanged: (_) => _addrLocked = true,
                       decoration: InputDecoration(
                         isDense: true,
                         prefixIcon: const Icon(Icons.location_on,
@@ -246,6 +396,27 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                         labelText: t('Осы жердің аты (түзетуге болады)'),
                       ),
                     ),
+                    if (_centerCity != null &&
+                        !Geo.sameCity(_centerCity, widget.city)) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              size: 14, color: Gz.blue),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              '${t('Елді мекен:')} $_centerCity',
+                              style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Gz.blue),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    _nearbyStrip(),
                     const SizedBox(height: 6),
                     Text(
                       _corrected

@@ -132,10 +132,15 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
   Future<void> _resolveFrom(LatLng center, {bool persist = false}) async {
     setState(() => _resolvingFrom = true);
-    final (addr, city) = await Geo.reverseWithCity(center);
+    final a = await Geo.reverseDetailed(center);
     if (!mounted) return;
+    // Заказға ТІРЕК қала жазылады, себебі орындаушылар лентасы қала бойынша
+    // сүзіледі: клиент Қосшыда/Луговойда тұрса да заказды Астана/Тараз
+    // орындаушылары көруі керек. Ал ауылдың өз аты адрес жолында қалады
+    // («Қосшы, Абылай хан, 12») — орындаушы қайда баратынын біледі.
+    final anchor = Geo.anchorCity(center) ?? a.settlement;
     setState(() {
-      _from = PickedAddress(addr, center, city);
+      _from = PickedAddress(a.labelFor(anchor), center, anchor);
       _resolvingFrom = false;
     });
     // Клиент өзі белгілеген орынды есте сақтаймыз (келесі ашылудың әдепкісі).
