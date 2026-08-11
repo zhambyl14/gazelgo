@@ -18,6 +18,9 @@
 --   · link_url + link_label — міндетті емес «Толығырақ» түймесі;
 --   · duration_sec — сторис ЭКРАНДА неше секунд тұрады (видеода видеоның
 --     өз ұзақтығы басым);
+--   · bg_index — фон градиентінің нөмірі (0..5): мәтіндік стористе фон,
+--     суретте/видеода айналасындағы жиек түсі. WhatsApp статусындағы түс
+--     таңдағыш секілді — модератор құрастырғышта КӨРІП ТҰРЫП таңдайды;
 --   · starts_at / expires_at — қашан ШЫҒАДЫ және қашан ЖОҒАЛАДЫ
 --     («неше уақыт тұратыны»); expires_at null — мерзімсіз;
 --   · audiences — КІМГЕ көрінеді: {client}, {executor}, {client,executor},
@@ -133,6 +136,9 @@ create table if not exists public.news_stories (
   audiences    text[] not null default array['client', 'executor'],
   -- сторис экранда неше секунд тұрады (видеода видеоның ұзақтығы басым)
   duration_sec int not null default 6 check (duration_sec between 2 and 60),
+  -- фон градиентінің нөмірі (0..5). CHECK ӘДЕЙІ ЖОҚ: мәнді `mod_news_save`
+  -- қысады, ал жаңа түс қосылғанда кестені өзгертудің қажеті болмайды.
+  bg_index     int not null default 0,
   active       boolean not null default true,
   sort_order   int not null default 0,
   starts_at    timestamptz not null default now(),
@@ -154,6 +160,12 @@ create table if not exists public.news_stories (
     media_type = 'text' or coalesce(media_path, '') <> ''
   )
 );
+
+-- Кестені бұрын құрып қойған серверде `create table if not exists` жаңа
+-- бағанды ҚОСПАЙДЫ — сол себепті бөлек `alter` (файл қайта орындалуға
+-- қауіпсіз болып қалуы үшін).
+alter table public.news_stories
+  add column if not exists bg_index int not null default 0;
 
 create index if not exists idx_news_live
   on public.news_stories (sort_order, created_at desc)
@@ -223,6 +235,7 @@ as $$
         n.link_url,
         n.link_label,
         n.duration_sec,
+        n.bg_index,
         n.sort_order,
         n.created_at,
         exists (
@@ -302,7 +315,8 @@ create or replace function public.mod_news_save(
   p_duration_sec int,
   p_active       boolean,
   p_starts_at    timestamptz,
-  p_expires_at   timestamptz
+  p_expires_at   timestamptz,
+  p_bg_index     int default 0
 )
 returns uuid
 language plpgsql security definer
@@ -312,6 +326,7 @@ declare
   v_id  uuid;
   v_old public.news_stories;
   v_dur int;
+  v_bg  int;
 begin
   if auth.uid() is null or not public.is_moderator() then
     raise exception 'FORBIDDEN';
@@ -329,18 +344,21 @@ begin
   -- Ұзақтықты ҚЫСАМЫЗ (қате санмен `check` бұзылып, түсініксіз қате
   -- шықпауы үшін): 2..60 сек.
   v_dur := least(60, greatest(2, coalesce(p_duration_sec, 6)));
+  -- Түс палитрасы қосымшада 6 градиент (0..5) — шектен шыққан сан келсе
+  -- бірінші түске түседі, ешқашан «түссіз» сторис болмайды.
+  v_bg := least(5, greatest(0, coalesce(p_bg_index, 0)));
 
   if p_id is null then
     insert into public.news_stories (
       title, body, media_type, media_path, music_path, music_title,
-      link_url, link_label, audiences, duration_sec, active,
+      link_url, link_label, audiences, duration_sec, bg_index, active,
       sort_order, starts_at, expires_at, created_by
     ) values (
       coalesce(p_title, ''), coalesce(p_body, ''), p_media_type,
       nullif(coalesce(p_media_path, ''), ''),
       nullif(coalesce(p_music_path, ''), ''), coalesce(p_music_title, ''),
       coalesce(p_link_url, ''), coalesce(p_link_label, ''),
-      p_audiences, v_dur, coalesce(p_active, true),
+      p_audiences, v_dur, v_bg, coalesce(p_active, true),
       coalesce((select min(sort_order) - 1 from public.news_stories), 0),
       coalesce(p_starts_at, now()), p_expires_at, auth.uid()
     ) returning id into v_id;
@@ -376,6 +394,7 @@ begin
          link_label   = coalesce(p_link_label, ''),
          audiences    = p_audiences,
          duration_sec = v_dur,
+         bg_index     = v_bg,
          active       = coalesce(p_active, true),
          starts_at    = coalesce(p_starts_at, v_old.starts_at),
          expires_at   = p_expires_at,
@@ -385,9 +404,18 @@ begin
 end;
 $$;
 
+-- ЕСКЕРТУ: файл бұрын `p_bg_index`-сіз орындалған болса, сол ЕСКІ 14
+-- аргументті нұсқа базада қалып қояды (`create or replace` тек ДӘЛ сол
+-- қолтаңбаны алмастырады) — қосымша қай нұсқаны шақыратыны белгісіз
+-- болып, «function is not unique» қатесі шығар еді. Сол себепті ескісін
+-- әдейі түсіреміз.
+drop function if exists public.mod_news_save(
+  uuid, text, text, text, text, text, text, text, text, text[],
+  int, boolean, timestamptz, timestamptz);
+
 grant execute on function public.mod_news_save(
   uuid, text, text, text, text, text, text, text, text, text[],
-  int, boolean, timestamptz, timestamptz) to authenticated;
+  int, boolean, timestamptz, timestamptz, int) to authenticated;
 
 create or replace function public.mod_news_delete(p_id uuid)
 returns void

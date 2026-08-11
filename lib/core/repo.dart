@@ -1395,6 +1395,7 @@ class Repo {
     String linkLabel = '',
     required List<String> audiences,
     required int durationSec,
+    int bgIndex = 0,
     required bool active,
     DateTime? startsAt,
     DateTime? expiresAt,
@@ -1413,6 +1414,7 @@ class Repo {
         'p_link_label': linkLabel,
         'p_audiences': audiences,
         'p_duration_sec': durationSec,
+        'p_bg_index': bgIndex,
         'p_active': active,
         // Уақыттар серверде timestamptz — UTC-мен жібереміз.
         'p_starts_at': (startsAt ?? DateTime.now()).toUtc().toIso8601String(),

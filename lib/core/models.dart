@@ -820,6 +820,10 @@ class NewsStory {
   /// Сторис экранда неше секунд тұрады. Видеода видеоның ӨЗ ұзақтығы
   /// басым — бұл сан суретке/мәтінге қатысты.
   final int durationSec;
+
+  /// Фон градиентінің нөмірі (0..5) — `newsStoryGradients` тізіміндегі орны.
+  /// Мәтіндік стористе бүкіл фон, суретте/видеода айналасындағы жиек.
+  final int bgIndex;
   final int sortOrder;
   final DateTime? createdAt;
 
@@ -848,6 +852,7 @@ class NewsStory {
     this.linkUrl = '',
     this.linkLabel = '',
     this.durationSec = 6,
+    this.bgIndex = 0,
     this.sortOrder = 0,
     this.createdAt,
     this.seen = false,
@@ -869,6 +874,7 @@ class NewsStory {
     linkUrl: m['link_url'] as String? ?? '',
     linkLabel: m['link_label'] as String? ?? '',
     durationSec: _i(m['duration_sec'] ?? 6),
+    bgIndex: _i(m['bg_index']),
     sortOrder: _i(m['sort_order']),
     createdAt: _dt(m['created_at']),
     seen: m['seen'] == true,
@@ -909,6 +915,7 @@ class NewsStory {
     linkUrl: linkUrl,
     linkLabel: linkLabel,
     durationSec: durationSec,
+    bgIndex: bgIndex,
     sortOrder: sortOrder,
     createdAt: createdAt,
     seen: seen ?? this.seen,

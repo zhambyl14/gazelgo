@@ -23,14 +23,24 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 
-/// Мәтіндік стористің фоны — брендтің қара-көк градиенті (ақ жазу анық
-/// оқылады, сурет жоқ кезде экран «бос» болып көрінбейді).
-const _textGradients = <List<Color>>[
-  [Color(0xFF1B2836), Color(0xFF0F1720)],
-  [Color(0xFF3730A3), Color(0xFF1E1B4B)],
-  [Color(0xFF0E8A3E), Color(0xFF064E28)],
-  [Color(0xFFE6AC00), Color(0xFF8A6400)],
+/// Стористің фон градиенттері (WhatsApp статусындағыдай палитра).
+///
+/// Қайсысы қолданылатынын МОДЕРАТОР таңдайды (`NewsStory.bgIndex`) — сол
+/// себепті құрастырғыштағы алдын ала көрініс қолданушы көретін экранмен
+/// ДӘЛ КЕЛЕДІ. Барлығында ақ жазу анық оқылады.
+const newsStoryGradients = <List<Color>>[
+  [Color(0xFF1B2836), Color(0xFF0F1720)], // қара-көк (бренд)
+  [Color(0xFF3730A3), Color(0xFF1E1B4B)], // күлгін
+  [Color(0xFF0E8A3E), Color(0xFF064E28)], // жасыл
+  [Color(0xFFE6AC00), Color(0xFF8A6400)], // сары (бренд)
+  [Color(0xFFB91C1C), Color(0xFF6B1010)], // қызыл
+  [Color(0xFF0E7490), Color(0xFF083344)], // көгілдір
 ];
+
+/// [NewsStory.bgIndex] тізімнен шығып кетпеуін қамтамасыз етеді (сервер де
+/// қысады, бірақ ескі жазба/бұзылған дерек келсе қосымша құламауы керек).
+List<Color> newsStoryGradient(int index) =>
+    newsStoryGradients[index.clamp(0, newsStoryGradients.length - 1)];
 
 class NewsStoryScreen extends ConsumerStatefulWidget {
   final List<NewsStory> stories;
@@ -255,14 +265,13 @@ class _NewsStoryScreenState extends ConsumerState<NewsStoryScreen>
               controller: _pages,
               onPageChanged: _onPageChanged,
               itemCount: widget.stories.length,
-              itemBuilder: (_, i) => _StoryBody(
+              itemBuilder: (_, i) => NewsStoryCanvas(
                 story: widget.stories[i],
                 // Видео мен қате тек АҒЫМДАҒЫ бетке қатысты — көрші
                 // беттер алдын ала салынғанда олардың контроллері жоқ.
                 video: i == _index ? _video : null,
                 loading: i == _index && _loading,
                 error: i == _index ? _mediaError : null,
-                index: i,
               ),
             ),
             _topBar(),
@@ -346,106 +355,12 @@ class _NewsStoryScreenState extends ConsumerState<NewsStoryScreen>
     );
   }
 
-  Widget _bottomBar() {
-    final s = _story;
-    // Мәтіндік стористе жазу ортада тұрады ([_StoryBody]) — астында тағы
-    // бір рет қайталанбауы керек.
-    final showText = s.isImage || s.isVideo;
-    // ЕСКЕРТУ: мұндағы мәтіндер мен градиент қимылды БӨГЕМЕЙДІ (Text пен
-    // Container hit-test-ке қатыспайды) — түрту жоғарыдағы GestureDetector-ге
-    // жетеді. Тек «Толығырақ» түймесі басылуды өзіне алады.
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 40, 18, 8),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Color(0xCC000000)],
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (showText && s.title.isNotEmpty)
-                Text(
-                  s.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    height: 1.2,
-                  ),
-                ),
-              if (showText && s.body.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  s.body,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-              if (s.musicTitle.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.music_note,
-                      size: 14,
-                      color: Colors.white60,
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        s.musicTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (s.hasLink) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Gz.yellow,
-                      foregroundColor: Gz.ink,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => _openLink(s),
-                    child: Text(
-                      s.linkLabel.isEmpty ? t('Толығырақ') : s.linkLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 6),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _bottomBar() => Positioned(
+    left: 0,
+    right: 0,
+    bottom: 0,
+    child: NewsStoryCaption(story: _story, onLink: () => _openLink(_story)),
+  );
 
   Future<void> _openLink(NewsStory s) async {
     // Сілтеме сыртқы браузерде ашылады — сол сәтте сторис тоқтап тұрсын,
@@ -462,31 +377,54 @@ class _NewsStoryScreenState extends ConsumerState<NewsStoryScreen>
   }
 }
 
-/// Бір стористің мазмұны (фон + медиа). Прогресс пен түрту қимылдары
+// ============================================================
+// ҚАЙТА ҚОЛДАНЫЛАТЫН БӨЛІКТЕР
+// ============================================================
+// Мына екі виджетті МОДЕРАТОРДЫҢ ҚҰРАСТЫРҒЫШЫ да (news_admin_screen.dart)
+// пайдаланады — сол себепті ол «көріп тұрып» өңдейді әрі көргені мен
+// қолданушыға баратыны ДӘЛ БІР ЭКРАН болады. Стильді екі жерде бөлек
+// қайталасақ, біреуін өзгерткенде екіншісі қалып қойып, алдын ала көрініс
+// «өтірік» айта бастар еді.
+//
+// [titleEdit] / [bodyEdit] БЕРІЛСЕ — жазулар сол ЖЕРІНДЕ өңделеді
+// (құрастырғыш режимі); берілмесе — қарапайым мәтін (қарау режимі).
+
+/// Бір стористің фоны мен медиасы. Прогресс пен түрту қимылдары
 /// [NewsStoryScreen]-де — бұл виджет тек СУРЕТТЕЙДІ.
-class _StoryBody extends StatelessWidget {
+class NewsStoryCanvas extends StatelessWidget {
   final NewsStory story;
   final VideoPlayerController? video;
   final bool loading;
   final String? error;
-  final int index;
-  const _StoryBody({
+
+  /// Мәтіндік стористің ортадағы жазуын өңдеуге арналған (құрастырғыш).
+  final TextEditingController? titleEdit;
+  final TextEditingController? bodyEdit;
+  final FocusNode? titleFocus;
+  final FocusNode? bodyFocus;
+
+  const NewsStoryCanvas({
+    super.key,
     required this.story,
-    required this.video,
-    required this.loading,
-    required this.error,
-    required this.index,
+    this.video,
+    this.loading = false,
+    this.error,
+    this.titleEdit,
+    this.bodyEdit,
+    this.titleFocus,
+    this.bodyFocus,
   });
+
+  bool get _editing => titleEdit != null && bodyEdit != null;
 
   @override
   Widget build(BuildContext context) {
-    final grad = _textGradients[index % _textGradients.length];
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: grad,
+          colors: newsStoryGradient(story.bgIndex),
         ),
       ),
       child: Stack(
@@ -521,26 +459,28 @@ class _StoryBody extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (story.title.isNotEmpty)
-                        Text(
-                          story.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 26,
-                            height: 1.2,
-                          ),
+                      if (_editing)
+                        _field(
+                          controller: titleEdit!,
+                          focus: titleFocus,
+                          hint: t('Тақырып'),
+                          style: _bigTitle,
+                          maxLines: 3,
+                        )
+                      else if (story.title.isNotEmpty)
+                        Text(story.title, style: _bigTitle),
+                      if (_editing) ...[
+                        const SizedBox(height: 8),
+                        _field(
+                          controller: bodyEdit!,
+                          focus: bodyFocus,
+                          hint: t('Мәтіні'),
+                          style: _bigBody,
+                          maxLines: 10,
                         ),
-                      if (story.body.isNotEmpty) ...[
+                      ] else if (story.body.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Text(
-                          story.body,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            height: 1.45,
-                          ),
-                        ),
+                        Text(story.body, style: _bigBody),
                       ],
                     ],
                   ),
@@ -551,6 +491,18 @@ class _StoryBody extends StatelessWidget {
       ),
     );
   }
+
+  static const _bigTitle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w900,
+    fontSize: 26,
+    height: 1.2,
+  );
+  static const _bigBody = TextStyle(
+    color: Colors.white,
+    fontSize: 16,
+    height: 1.45,
+  );
 
   Widget _mediaFailed(String msg) => Center(
     child: Padding(
@@ -570,6 +522,163 @@ class _StoryBody extends StatelessWidget {
     ),
   );
 }
+
+/// Стористің АСТЫҢҒЫ бөлігі: қараңғылатқыш градиент, жазуы (сурет/видеода),
+/// әуеннің атауы және «Толығырақ» түймесі.
+class NewsStoryCaption extends StatelessWidget {
+  final NewsStory story;
+  final VoidCallback? onLink;
+
+  /// Берілсе — жазулар сол жерінде өңделеді (құрастырғыш режимі).
+  final TextEditingController? titleEdit;
+  final TextEditingController? bodyEdit;
+  final FocusNode? titleFocus;
+  final FocusNode? bodyFocus;
+
+  const NewsStoryCaption({
+    super.key,
+    required this.story,
+    this.onLink,
+    this.titleEdit,
+    this.bodyEdit,
+    this.titleFocus,
+    this.bodyFocus,
+  });
+
+  bool get _editing => titleEdit != null && bodyEdit != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = story;
+    // Мәтіндік стористе жазу ортада тұрады ([NewsStoryCanvas]) — астында
+    // тағы бір рет қайталанбауы керек.
+    final showText = s.isImage || s.isVideo;
+    // ЕСКЕРТУ: мұндағы мәтіндер мен градиент қимылды БӨГЕМЕЙДІ (Text пен
+    // Container hit-test-ке қатыспайды) — түрту жоғарыдағы GestureDetector-ге
+    // жетеді. Тек «Толығырақ» түймесі басылуды өзіне алады.
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 40, 18, 8),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Color(0xCC000000)],
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showText && _editing)
+              _field(
+                controller: titleEdit!,
+                focus: titleFocus,
+                hint: t('Тақырып'),
+                style: _capTitle,
+                maxLines: 2,
+              )
+            else if (showText && s.title.isNotEmpty)
+              Text(s.title, style: _capTitle),
+            if (showText && _editing) ...[
+              const SizedBox(height: 2),
+              _field(
+                controller: bodyEdit!,
+                focus: bodyFocus,
+                hint: t('Мәтіні'),
+                style: _capBody,
+                maxLines: 4,
+              ),
+            ] else if (showText && s.body.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(s.body, style: _capBody),
+            ],
+            if (s.musicTitle.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.music_note, size: 14, color: Colors.white60),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      s.musicTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (s.hasLink) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Gz.yellow,
+                    foregroundColor: Gz.ink,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: onLink,
+                  child: Text(
+                    s.linkLabel.isEmpty ? t('Толығырақ') : s.linkLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const _capTitle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w900,
+    fontSize: 20,
+    height: 1.2,
+  );
+  static const _capBody = TextStyle(
+    color: Colors.white70,
+    fontSize: 14,
+    height: 1.35,
+  );
+}
+
+/// Стористің ҮСТІНДЕ тұратын өңдеуге арналған өріс: рамкасы да, фоны да
+/// жоқ — жазу дәл қарау режиміндегідей көрінеді, тек курсоры бар.
+Widget _field({
+  required TextEditingController controller,
+  required FocusNode? focus,
+  required String hint,
+  required TextStyle style,
+  required int maxLines,
+}) => TextField(
+  controller: controller,
+  focusNode: focus,
+  style: style,
+  maxLines: maxLines,
+  minLines: 1,
+  cursorColor: Gz.yellow,
+  textCapitalization: TextCapitalization.sentences,
+  decoration: InputDecoration(
+    isDense: true,
+    contentPadding: EdgeInsets.zero,
+    border: InputBorder.none,
+    hintText: hint,
+    hintStyle: style.copyWith(color: Colors.white38),
+  ),
+);
 
 class _ProgressBar extends StatelessWidget {
   final double value;
