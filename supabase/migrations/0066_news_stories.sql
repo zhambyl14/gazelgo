@@ -21,6 +21,15 @@
 --   · bg_index — фон градиентінің нөмірі (0..5): мәтіндік стористе фон,
 --     суретте/видеода айналасындағы жиек түсі. WhatsApp статусындағы түс
 --     таңдағыш секілді — модератор құрастырғышта КӨРІП ТҰРЫП таңдайды;
+--   · layout — ЖАЗУ мен СУРЕТТІҢ экрандағы орны (Instagram-дағыдай еркін
+--     сүйреу/масштабтау) әрі жазудың ТҮСІ. Бір ғана jsonb: болашақта жаңа
+--     тұтқа қосылса, кестені қайта өзгертудің керегі жоқ. Кілттері:
+--       tx, ty      — жазу блогының орталығы (0..1, экранға қатысты)
+--       tscale      — жазудың мөлшері (0.5..2.5)
+--       tcolor      — жазудың түсі, ARGB саны (ақ сурет үстінде ақ жазу
+--                     жоғалып кетпеуі үшін модератор өзі таңдайды)
+--       mx, my      — суреттің/видеоның жылжуы (экран өлшемінің үлесі)
+--       mscale      — суреттің/видеоның масштабы;
 --   · starts_at / expires_at — қашан ШЫҒАДЫ және қашан ЖОҒАЛАДЫ
 --     («неше уақыт тұратыны»); expires_at null — мерзімсіз;
 --   · audiences — КІМГЕ көрінеді: {client}, {executor}, {client,executor},
@@ -139,6 +148,9 @@ create table if not exists public.news_stories (
   -- фон градиентінің нөмірі (0..5). CHECK ӘДЕЙІ ЖОҚ: мәнді `mod_news_save`
   -- қысады, ал жаңа түс қосылғанда кестені өзгертудің қажеті болмайды.
   bg_index     int not null default 0,
+  -- Жазу мен суреттің орны/мөлшері/түсі (жоғарыдағы түсініктемені қараңыз).
+  -- Бос `{}` — бәрі әдепкі орында (жазу ортада, сурет жылжымаған).
+  layout       jsonb not null default '{}'::jsonb,
   active       boolean not null default true,
   sort_order   int not null default 0,
   starts_at    timestamptz not null default now(),
@@ -166,6 +178,8 @@ create table if not exists public.news_stories (
 -- қауіпсіз болып қалуы үшін).
 alter table public.news_stories
   add column if not exists bg_index int not null default 0;
+alter table public.news_stories
+  add column if not exists layout jsonb not null default '{}'::jsonb;
 
 create index if not exists idx_news_live
   on public.news_stories (sort_order, created_at desc)
@@ -236,6 +250,7 @@ as $$
         n.link_label,
         n.duration_sec,
         n.bg_index,
+        n.layout,
         n.sort_order,
         n.created_at,
         exists (
@@ -316,7 +331,8 @@ create or replace function public.mod_news_save(
   p_active       boolean,
   p_starts_at    timestamptz,
   p_expires_at   timestamptz,
-  p_bg_index     int default 0
+  p_bg_index     int default 0,
+  p_layout       jsonb default '{}'::jsonb
 )
 returns uuid
 language plpgsql security definer
@@ -351,14 +367,15 @@ begin
   if p_id is null then
     insert into public.news_stories (
       title, body, media_type, media_path, music_path, music_title,
-      link_url, link_label, audiences, duration_sec, bg_index, active,
+      link_url, link_label, audiences, duration_sec, bg_index, layout, active,
       sort_order, starts_at, expires_at, created_by
     ) values (
       coalesce(p_title, ''), coalesce(p_body, ''), p_media_type,
       nullif(coalesce(p_media_path, ''), ''),
       nullif(coalesce(p_music_path, ''), ''), coalesce(p_music_title, ''),
       coalesce(p_link_url, ''), coalesce(p_link_label, ''),
-      p_audiences, v_dur, v_bg, coalesce(p_active, true),
+      p_audiences, v_dur, v_bg, coalesce(p_layout, '{}'::jsonb),
+      coalesce(p_active, true),
       coalesce((select min(sort_order) - 1 from public.news_stories), 0),
       coalesce(p_starts_at, now()), p_expires_at, auth.uid()
     ) returning id into v_id;
@@ -395,6 +412,7 @@ begin
          audiences    = p_audiences,
          duration_sec = v_dur,
          bg_index     = v_bg,
+         layout       = coalesce(p_layout, '{}'::jsonb),
          active       = coalesce(p_active, true),
          starts_at    = coalesce(p_starts_at, v_old.starts_at),
          expires_at   = p_expires_at,
@@ -404,18 +422,22 @@ begin
 end;
 $$;
 
--- ЕСКЕРТУ: файл бұрын `p_bg_index`-сіз орындалған болса, сол ЕСКІ 14
--- аргументті нұсқа базада қалып қояды (`create or replace` тек ДӘЛ сол
--- қолтаңбаны алмастырады) — қосымша қай нұсқаны шақыратыны белгісіз
--- болып, «function is not unique» қатесі шығар еді. Сол себепті ескісін
--- әдейі түсіреміз.
+-- ЕСКЕРТУ: файл бұрынғы (қысқарақ) нұсқасымен орындалған болса, сол ЕСКІ
+-- қолтаңбалар базада ҚАЛЫП ҚОЯДЫ (`create or replace` тек ДӘЛ сол
+-- қолтаңбаны алмастырады). Жаңа параметрлердің әдепкі мәні бар болғандықтан,
+-- 14 аргументпен шақырғанда Postgres қайсысын алуды білмей, «function
+-- ... is not unique» қатесін берер еді. Сол себепті ескілерін әдейі
+-- түсіреміз (жоқ болса — үнсіз өтеді).
 drop function if exists public.mod_news_save(
   uuid, text, text, text, text, text, text, text, text, text[],
   int, boolean, timestamptz, timestamptz);
+drop function if exists public.mod_news_save(
+  uuid, text, text, text, text, text, text, text, text, text[],
+  int, boolean, timestamptz, timestamptz, int);
 
 grant execute on function public.mod_news_save(
   uuid, text, text, text, text, text, text, text, text, text[],
-  int, boolean, timestamptz, timestamptz, int) to authenticated;
+  int, boolean, timestamptz, timestamptz, int, jsonb) to authenticated;
 
 create or replace function public.mod_news_delete(p_id uuid)
 returns void

@@ -791,6 +791,90 @@ class NewBadges {
 }
 
 // ---------- Жаңалықтар (сторис) — 0066 ----------
+/// Стористің ЖАЗУЫ мен СУРЕТІНІҢ экрандағы орны, мөлшері және жазудың түсі
+/// (`news_stories.layout` jsonb өрісі).
+///
+/// Instagram-дағыдай: модератор жазуды да, суретті де саусағымен қалаған
+/// жеріне сүйрейді, екі саусақпен үлкейтеді. Осы сандар САҚТАЛАДЫ да,
+/// қолданушының экранында ДӘЛ сол орында шығады.
+///
+/// Барлық координата ЭКРАН ӨЛШЕМІНІҢ ҮЛЕСІ (0..1) — телефон экраны үлкен
+/// не кіші болса да, жазу суреттің дәл сол жерінде тұрады (пиксельмен
+/// сақтасақ, басқа экранда жылжып кетер еді).
+class NewsLayout {
+  /// Жазу блогының ОРТАЛЫҒЫ: 0.5, 0.5 — экранның дәл ортасы.
+  final double textX;
+  final double textY;
+
+  /// Жазудың мөлшері (1.0 — әдепкі).
+  final double textScale;
+
+  /// Жазудың түсі (ARGB). Ақ суреттің үстінде ақ жазу жоғалып кетпеуі
+  /// үшін модератор өзі таңдайды.
+  final int textColor;
+
+  /// Суреттің/видеоның жылжуы — экран өлшемінің үлесі (0 — ортасында).
+  final double mediaX;
+  final double mediaY;
+
+  /// Суреттің/видеоның масштабы (1.0 — экранға толық сыйған қалпы).
+  final double mediaScale;
+
+  const NewsLayout({
+    this.textX = 0.5,
+    this.textY = 0.5,
+    this.textScale = 1,
+    this.textColor = 0xFFFFFFFF,
+    this.mediaX = 0,
+    this.mediaY = 0,
+    this.mediaScale = 1,
+  });
+
+  factory NewsLayout.fromMap(Map<String, dynamic>? m) {
+    double d(dynamic v, double fallback) =>
+        v is num ? v.toDouble() : fallback;
+    return NewsLayout(
+      textX: d(m?['tx'], 0.5).clamp(0.0, 1.0),
+      textY: d(m?['ty'], 0.5).clamp(0.0, 1.0),
+      textScale: d(m?['tscale'], 1).clamp(0.4, 3.0),
+      textColor: m?['tcolor'] is num
+          ? (m!['tcolor'] as num).toInt()
+          : 0xFFFFFFFF,
+      mediaX: d(m?['mx'], 0).clamp(-1.0, 1.0),
+      mediaY: d(m?['my'], 0).clamp(-1.0, 1.0),
+      mediaScale: d(m?['mscale'], 1).clamp(0.5, 5.0),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'tx': textX,
+    'ty': textY,
+    'tscale': textScale,
+    'tcolor': textColor,
+    'mx': mediaX,
+    'my': mediaY,
+    'mscale': mediaScale,
+  };
+
+  NewsLayout copyWith({
+    double? textX,
+    double? textY,
+    double? textScale,
+    int? textColor,
+    double? mediaX,
+    double? mediaY,
+    double? mediaScale,
+  }) => NewsLayout(
+    textX: textX ?? this.textX,
+    textY: textY ?? this.textY,
+    textScale: textScale ?? this.textScale,
+    textColor: textColor ?? this.textColor,
+    mediaX: mediaX ?? this.mediaX,
+    mediaY: mediaY ?? this.mediaY,
+    mediaScale: mediaScale ?? this.mediaScale,
+  );
+}
+
 /// Бір сторис. Модератор жасайды, клиент/орындаушы/гест толық экранмен
 /// көреді (Instagram Stories үлгісі).
 ///
@@ -824,6 +908,9 @@ class NewsStory {
   /// Фон градиентінің нөмірі (0..5) — `newsStoryGradients` тізіміндегі орны.
   /// Мәтіндік стористе бүкіл фон, суретте/видеода айналасындағы жиек.
   final int bgIndex;
+
+  /// Жазу мен суреттің экрандағы орны, мөлшері және жазудың түсі.
+  final NewsLayout layout;
   final int sortOrder;
   final DateTime? createdAt;
 
@@ -853,6 +940,7 @@ class NewsStory {
     this.linkLabel = '',
     this.durationSec = 6,
     this.bgIndex = 0,
+    this.layout = const NewsLayout(),
     this.sortOrder = 0,
     this.createdAt,
     this.seen = false,
@@ -875,6 +963,9 @@ class NewsStory {
     linkLabel: m['link_label'] as String? ?? '',
     durationSec: _i(m['duration_sec'] ?? 6),
     bgIndex: _i(m['bg_index']),
+    layout: NewsLayout.fromMap(
+      m['layout'] is Map ? Map<String, dynamic>.from(m['layout'] as Map) : null,
+    ),
     sortOrder: _i(m['sort_order']),
     createdAt: _dt(m['created_at']),
     seen: m['seen'] == true,
@@ -916,6 +1007,7 @@ class NewsStory {
     linkLabel: linkLabel,
     durationSec: durationSec,
     bgIndex: bgIndex,
+    layout: layout,
     sortOrder: sortOrder,
     createdAt: createdAt,
     seen: seen ?? this.seen,

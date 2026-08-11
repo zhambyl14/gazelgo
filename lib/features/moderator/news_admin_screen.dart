@@ -43,6 +43,17 @@ String _audienceLabel(String key) => switch (key) {
   _ => t('Гест'),
 };
 
+/// Жазудың түс палитрасы (ARGB). Ақ суреттің үстінде ақ жазу жоғалып
+/// кетпеуі үшін модератор ЖАЗЫП ТҰРЫП, көзбен көріп таңдайды.
+const _textColors = <int>[
+  0xFFFFFFFF, // ақ
+  0xFF0F1720, // қара (бренд)
+  0xFFFFC400, // сары (бренд)
+  0xFF16A34A, // жасыл
+  0xFFDC2626, // қызыл
+  0xFF2563EB, // көк
+];
+
 /// Мерзім (қанша тұрады) — дайын нұсқалар. null = мерзімсіз.
 const _lifetimeHours = <int?>[6, 24, 72, 168, 720, null];
 
@@ -136,8 +147,10 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
         audiences: s.audiences,
         durationSec: s.durationSec,
         // `mod_news_save` жазбаны БҮТІНДЕЙ жазады — қалған өрістерді де
-        // бергені міндетті, әйтпесе фон түсі әдепкіге түсіп кетер еді.
+        // бергені міндетті, әйтпесе фон түсі мен жазудың орны әдепкіге
+        // түсіп кетер еді.
         bgIndex: s.bgIndex,
+        layout: s.layout,
         active: v,
         startsAt: s.startsAt,
         expiresAt: s.expiresAt,
@@ -466,6 +479,14 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
   int _bgIndex = 0;
   bool _active = true;
 
+  /// Жазу мен суреттің экрандағы ОРНЫ, мөлшері және жазудың түсі
+  /// (саусақпен сүйрегенде осы өзгереді).
+  NewsLayout _layout = const NewsLayout();
+
+  /// Жазу режимі: true — өрістер ашық, пернетақта шығады, сүйреу өшірулі;
+  /// false — жазу тек көрінеді әрі саусақпен жылжытылады.
+  bool _textEditing = false;
+
   /// Мерзімі сағатпен: null — мерзімсіз, -1 — «өз мерзімі» ([_customExpires]).
   int? _lifetime = 24;
 
@@ -507,6 +528,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     _audiences = s.audiences.toSet();
     _durationSec = s.durationSec;
     _bgIndex = s.bgIndex;
+    _layout = s.layout;
     _active = s.active;
     _startsAt = s.startsAt;
     _customExpires = s.expiresAt;
@@ -555,6 +577,13 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     linkLabel: _linkLabel.text,
     durationSec: _durationSec,
     bgIndex: _bgIndex,
+    // ЖАЗУ РЕЖИМІНДЕ жазуды уақытша жоғарырақ көтереміз: әйтпесе ол
+    // экранның төменгі жартысында тұрса, пернетақта оны жауып қалып,
+    // модератор не жазып жатқанын көрмей қалар еді (Instagram да солай
+    // істейді). САҚТАЛАТЫНЫ — өзгермеген `_layout`.
+    layout: _textEditing
+        ? _layout.copyWith(textX: 0.5, textY: 0.3)
+        : _layout,
     audiences: _audiences.toList(),
     active: _active,
     startsAt: _startsAt,
@@ -768,6 +797,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         audiences: _audiences.toList(),
         durationSec: _durationSec,
         bgIndex: _bgIndex,
+        layout: _layout,
         active: _active,
         startsAt: _startsAt,
         expiresAt: _expiresAt,
@@ -806,6 +836,51 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     if (ok && mounted) Navigator.of(context).pop(false);
   }
 
+  // ------------------------------------------------------------- орналастыру
+
+  /// Қимыл БАСЫНДАҒЫ масштаб — `onScaleUpdate` масштабты қимылдың басынан
+  /// бері есептейді, сол себепті бастапқы мәнді есте сақтап тұрамыз.
+  double _scaleBase = 1;
+
+  void _textMoveStart() => _scaleBase = _layout.textScale;
+
+  void _textMove(double dx, double dy, double scale) {
+    setState(() {
+      _layout = _layout.copyWith(
+        textX: (_layout.textX + dx).clamp(0.05, 0.95),
+        textY: (_layout.textY + dy).clamp(0.06, 0.94),
+        textScale: (_scaleBase * scale).clamp(0.4, 3.0),
+      );
+    });
+  }
+
+  void _mediaMoveStart() => _scaleBase = _layout.mediaScale;
+
+  void _mediaMove(double dx, double dy, double scale) {
+    setState(() {
+      _layout = _layout.copyWith(
+        mediaX: (_layout.mediaX + dx).clamp(-1.0, 1.0),
+        mediaY: (_layout.mediaY + dy).clamp(-1.0, 1.0),
+        mediaScale: (_scaleBase * scale).clamp(0.5, 5.0),
+      );
+    });
+  }
+
+  /// Жазуды түрту — ЖАЗУ РЕЖИМІНЕ ауысу (Instagram-дағыдай: сүйреу мен
+  /// теру араласып кетпеуі үшін екеуі БӨЛЕК режим).
+  void _startTextEdit() {
+    setState(() => _textEditing = true);
+    // Өріс салынып болған соң фокус береміз, әйтпесе пернетақта ашылмайды.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _titleFocus.requestFocus();
+    });
+  }
+
+  void _stopTextEdit() {
+    FocusScope.of(context).unfocus();
+    setState(() => _textEditing = false);
+  }
+
   // ---------------------------------------------------------------- көрініс
 
   @override
@@ -815,64 +890,80 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       // Жүйенің «артқа» қимылы да растаудан өтуі керек.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_busy) _close();
+        if (didPop || _busy) return;
+        // Жазу режимінде «артқа» — алдымен сол режимнен шығады.
+        if (_textEditing) {
+          _stopTextEdit();
+          return;
+        }
+        _close();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        // Пернетақтаны өзіміз есептейміз (астыңғы жазу оның үстіне
-        // көтеріледі), әйтпесе фон суреті қысылып, көрінісі бұзылар еді.
+        // Пернетақтаны өзіміз есептейміз, әйтпесе фон қысылып, жазудың
+        // орны «жылжып» кеткендей көрінер еді.
         resizeToAvoidBottomInset: false,
         body: Stack(
           children: [
-            // 1) Стористің ӨЗІ — қолданушы көретін ДӘЛ сол виджеттер.
+            // 1) Стористің ӨЗІ — қолданушы көретін ДӘЛ сол виджет.
             Positioned.fill(
-              child: GestureDetector(
-                // Бос жерді түртсе — пернетақта жабылады (жазуды бітірдім).
-                behavior: HitTestBehavior.opaque,
-                onTap: () => FocusScope.of(context).unfocus(),
-                child: NewsStoryCanvas(
-                  story: s,
-                  video: _video,
-                  loading: _videoLoading,
-                  // Мәтіндік стористе ортадағы жазу СОЛ ЖЕРДЕ теріледі.
-                  titleEdit: _mediaType == 'text' ? _title : null,
-                  bodyEdit: _mediaType == 'text' ? _body : null,
-                  titleFocus: _mediaType == 'text' ? _titleFocus : null,
-                  bodyFocus: _mediaType == 'text' ? _bodyFocus : null,
-                ),
+              child: NewsStoryCanvas(
+                story: s,
+                video: _video,
+                loading: _videoLoading,
+                showTextFrame: !_textEditing,
+                // Жазу режимінде ғана өрістер шығады.
+                titleEdit: _textEditing ? _title : null,
+                bodyEdit: _textEditing ? _body : null,
+                titleFocus: _textEditing ? _titleFocus : null,
+                bodyFocus: _textEditing ? _bodyFocus : null,
+                // Сүйреу тек ҚАРАУ режимінде (теріп жатқанда емес).
+                onTextMoveStart: _textEditing ? null : _textMoveStart,
+                onTextMove: _textEditing ? null : _textMove,
+                onTextTap: _textEditing ? null : _startTextEdit,
+                onMediaMoveStart: _textEditing ? null : _mediaMoveStart,
+                onMediaMove: _textEditing ? null : _mediaMove,
+                onBackgroundTap: _textEditing ? _stopTextEdit : null,
               ),
             ),
 
-            // 2) Жоғарғы жолақ: прогресс «үлгісі», жабу, оң жақтағы құралдар.
-            SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: const LinearProgressIndicator(
-                        // Тек ҮЛГІ: қолданушыда осы жерде толып бара жатқан
-                        // жолақ тұрады — құрастырғышта оны да көрсетеміз.
-                        value: 0.35,
-                        minHeight: 2.5,
-                        backgroundColor: Colors.white24,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
+            // 2) Астыңғы жолақ: әуен/сілтеме — қолданушыдағыдай.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(child: NewsStoryCaption(story: s)),
+            ),
+
+            // 3) Жоғарғы жолақ: прогресс «үлгісі», жабу, құралдар бағаны.
+            if (!_textEditing)
+              SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: const LinearProgressIndicator(
+                          // Тек ҮЛГІ: қолданушыда осы жерде толып бара
+                          // жатқан жолақ тұрады.
+                          value: 0.35,
+                          minHeight: 2.5,
+                          backgroundColor: Colors.white24,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
                       ),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: _busy ? null : _close,
-                        icon: const Icon(Icons.close, color: Colors.white),
-                      ),
-                      const Spacer(),
-                      if (_busy)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 14),
-                          child: SizedBox(
+                    Row(
+                      children: [
+                        _roundBtn(
+                          Icons.close,
+                          onTap: _busy ? null : _close,
+                        ),
+                        const SizedBox(width: 8),
+                        if (_busy)
+                          const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
@@ -880,51 +971,127 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                               color: Colors.white,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  _toolbar(),
-                ],
-              ),
-            ),
-
-            // 3) Астыңғы жазу (сурет/видеода) — ол да сол жерінде теріледі.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Padding(
-                // Пернетақта ашылғанда жазу оның ҮСТІНДЕ тұрсын.
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    NewsStoryCaption(
-                      story: s,
-                      titleEdit: _mediaType == 'text' ? null : _title,
-                      bodyEdit: _mediaType == 'text' ? null : _body,
-                      titleFocus: _mediaType == 'text' ? null : _titleFocus,
-                      bodyFocus: _mediaType == 'text' ? null : _bodyFocus,
+                        const Spacer(),
+                      ],
                     ),
-                    _publishBar(),
+                    _toolbar(),
                   ],
                 ),
               ),
-            ),
+
+            // 4) ЖАЗУ РЕЖИМІНДЕ: жоғарыда «Дайын», астында түс палитрасы.
+            if (_textEditing) _textEditBars(),
+
+            // 5) Ең асты: «Жариялау» (жазу режимінде жасырылады — пернетақта
+            //    оны бәрібір жауып тұрар еді).
+            if (!_textEditing)
+              Positioned(left: 0, right: 0, bottom: 0, child: _publishBar()),
           ],
         ),
       ),
     );
   }
 
+  /// Жазу режиміндегі жолақтар: «Дайын» түймесі мен жазу түсінің палитрасы.
+  /// Түсті ДӘЛ ТЕРІП ЖАТҚАНДА таңдау керек — «жазуымның түсі көрінбейді»
+  /// деген жағдай сол сәтте, көзбен көріп тұрып шешіледі.
+  Widget _textEditBars() {
+    return SafeArea(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 10, top: 4),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Gz.yellow,
+                    foregroundColor: Gz.ink,
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: _stopTextEdit,
+                  child: Text(
+                    t('Дайын'),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          // Пернетақтаның ҮСТІНДЕ тұратын түс палитрасы.
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 10,
+            ),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.format_color_text,
+                      color: Colors.white70, size: 18),
+                  const SizedBox(width: 10),
+                  for (final c in _textColors) _colorDot(c),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _colorDot(int argb) {
+    final on = _layout.textColor == argb;
+    return GestureDetector(
+      onTap: () => setState(
+        () => _layout = _layout.copyWith(textColor: argb),
+      ),
+      child: Container(
+        width: 26,
+        height: 26,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Color(argb),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: on ? Gz.yellow : Colors.white38,
+            width: on ? 3 : 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roundBtn(IconData icon, {VoidCallback? onTap}) => GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      margin: const EdgeInsets.only(left: 10, top: 6),
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Colors.black45,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: Colors.white, size: 20),
+    ),
+  );
+
   /// Оң жақтағы дөңгелек түймелер — әрқайсысы бір баптауды ашады.
   /// Астындағы кішкене жазу ағымдағы мәнді көрсетеді, сол себепті
   /// парақшаны ашпай-ақ бәрі көрініп тұрады.
   ///
   /// Ені ӘДЕЙІ шектелген (84px): бағанның астындағы аймақ бос қалуы керек —
-  /// әйтпесе ол стористің ортасындағы жазуды түртуді бөгеп қояр еді.
+  /// әйтпесе ол суретті сүйреуді бөгеп қояр еді.
   Widget _toolbar() {
     return Expanded(
       child: Align(
@@ -936,16 +1103,22 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             child: Column(
               children: [
                 _tool(
+                  icon: Icons.text_fields,
+                  label: t('Жазу'),
+                  active: _title.text.isNotEmpty || _body.text.isNotEmpty,
+                  onTap: _startTextEdit,
+                ),
+                _tool(
                   icon: _mediaType == 'video'
                       ? Icons.videocam
                       : _mediaType == 'image'
                       ? Icons.image
-                      : Icons.text_fields,
+                      : Icons.wallpaper,
                   label: _mediaType == 'video'
                       ? t('Видео')
                       : _mediaType == 'image'
                       ? t('Сурет')
-                      : t('Мәтін'),
+                      : t('Медиа'),
                   active: _mediaType != 'text',
                   onTap: _mediaSheet,
                 ),
@@ -955,6 +1128,18 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                   color: newsStoryGradient(_bgIndex).first,
                   onTap: _colorSheet,
                 ),
+                if (_mediaType != 'text')
+                  _tool(
+                    icon: Icons.center_focus_strong_outlined,
+                    label: t('Ортаға'),
+                    onTap: () => setState(
+                      () => _layout = _layout.copyWith(
+                        mediaX: 0,
+                        mediaY: 0,
+                        mediaScale: 1,
+                      ),
+                    ),
+                  ),
                 _tool(
                   icon: Icons.music_note,
                   label: _musicPath == null ? t('Әуен') : t('Әуен қосулы'),
@@ -1024,7 +1209,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
               child: Icon(icon, color: Colors.white, size: 20),
             ),
             const SizedBox(height: 3),
-            // Жазу тар — сыймаса қиылады (сурет/видеоны жаппауы керек).
+            // Жазу тар — сыймаса қиылады (суретті жаппауы керек).
             Text(
               label,
               maxLines: 1,
@@ -1043,12 +1228,22 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     );
   }
 
-  /// Ең астыңғы жолақ: эфир/жоба қосқышы, не жетпейтіні және «Жариялау».
+  /// Ең астыңғы жолақ: эфир/жоба қосқышы және «Жариялау» түймесі.
+  ///
+  /// Түйме ӘРҚАШАН сары әрі басылады — дайын болмаса, басқанда НЕ жетпейтіні
+  /// қалқымамен айтылады. Бұрын ол «сөнген» күйде қара фонда мүлдем
+  /// көрінбей тұратын да, «жариялау түймесі жоқ» болып шығатын.
   Widget _publishBar() {
     final miss = _missing;
     return Container(
-      color: Colors.black,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Color(0xE6000000)],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 26, 14, 8),
       child: SafeArea(
         top: false,
         child: Row(
@@ -1057,33 +1252,47 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             GestureDetector(
               onTap: () => setState(() => _active = !_active),
               behavior: HitTestBehavior.opaque,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _active ? Icons.visibility : Icons.visibility_off,
-                    color: _active ? Gz.green : Colors.white54,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    _active ? t('Эфирде') : t('Жоба'),
-                    style: TextStyle(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _active ? Icons.visibility : Icons.visibility_off,
                       color: _active ? Gz.green : Colors.white54,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      size: 18,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 5),
+                    Text(
+                      _active ? t('Эфирде') : t('Жоба'),
+                      style: TextStyle(
+                        color: _active ? Gz.green : Colors.white54,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             if (miss != null)
               Expanded(
                 child: Text(
                   miss,
                   maxLines: 2,
-                  style: const TextStyle(color: Gz.red, fontSize: 11.5),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                  ),
                 ),
               )
             else
@@ -1093,16 +1302,20 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
               style: FilledButton.styleFrom(
                 backgroundColor: Gz.yellow,
                 foregroundColor: Gz.ink,
-                disabledBackgroundColor: Colors.white12,
-                disabledForegroundColor: Colors.white38,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 shape: const StadiumBorder(),
               ),
-              onPressed: _busy || miss != null ? null : _save,
-              icon: const Icon(Icons.send, size: 16),
+              onPressed: _busy ? null : _save,
+              icon: const Icon(Icons.send, size: 17),
               label: Text(
                 _isNew ? t('Жариялау') : t('Сақтау'),
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14.5,
+                ),
               ),
             ),
           ],
