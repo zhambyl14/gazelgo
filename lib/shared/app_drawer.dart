@@ -12,6 +12,7 @@ import '../features/executor/balance_screen.dart';
 import '../features/executor/bonus_widgets.dart';
 import '../features/executor/earnings_screen.dart';
 import '../features/legal/legal_screen.dart';
+import '../features/news/news_card.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/support/support_screen.dart';
 import 'widgets.dart';
@@ -128,6 +129,12 @@ class AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 children: [
+                  // ---- ЖАҢАЛЫҚТАР (сторис, 0066) — тізімнің ЕҢ БАСЫНДА ----
+                  // Бөлім өшірулі болса не бұл қолданушыға арналған жаңалық
+                  // жоқ болса — виджет өзі `SizedBox.shrink()` қайтарады,
+                  // сол себепті мұнда шарт жазудың қажеті жоқ.
+                  const NewsDrawerCard(),
+
                   // ---- ЖАҢА: хабарландырулар тақтасы ----
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),

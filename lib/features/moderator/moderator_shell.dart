@@ -6,6 +6,7 @@ import 'app_settings_screen.dart';
 import 'applications_screen.dart';
 import 'executors_screen.dart';
 import 'line_screen.dart';
+import 'news_admin_screen.dart';
 import 'overview_screen.dart';
 import 'reports_screen.dart';
 import 'support_admin_screen.dart';
@@ -25,7 +26,8 @@ class ModeratorShell extends StatefulWidget {
   static const int tabSupport = 5;
   static const int tabReports = 6;
   static const int tabVehicles = 7;
-  static const int tabSettings = 8;
+  static const int tabNews = 8;
+  static const int tabSettings = 9;
 
   /// Қойындыға өту сұранысы (push-хабарламаны басқанда).
   ///
@@ -45,7 +47,7 @@ class ModeratorShell extends StatefulWidget {
 
 class _ModeratorShellState extends State<ModeratorShell>
     with SingleTickerProviderStateMixin {
-  static const _tabCount = 9;
+  static const _tabCount = 10;
   late final TabController _tabs =
       TabController(length: _tabCount, vsync: this);
 
@@ -105,6 +107,7 @@ class _ModeratorShellState extends State<ModeratorShell>
           Tab(text: t('Қолдау')),
           Tab(text: t('Хабарламалар')),
           Tab(text: t('Көліктер')),
+          Tab(text: t('Жаңалықтар')),
           Tab(text: t('Баптаулар')),
         ]),
       ),
@@ -119,6 +122,7 @@ class _ModeratorShellState extends State<ModeratorShell>
           SupportAdminScreen(),
           ReportsScreen(),
           VehicleTypesScreen(),
+          NewsAdminScreen(),
           AppSettingsScreen(),
         ],
       ),

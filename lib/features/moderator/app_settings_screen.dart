@@ -41,6 +41,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _taxiNewBadge = true;
   bool _taxiBadgeSaving = false;
 
+  /// «Жаңалықтар» (сторис) бөлімі қосулы ма (0066). ӨШУЛІ болса мәзірдегі
+  /// карта МҮЛДЕМ көрінбейді — модератор стористерін дайындап болғанда
+  /// қосады. Стористердің ӨЗІ бөлек «Жаңалықтар» табында жасалады.
+  bool _newsEnabled = false;
+  bool _newsSaving = false;
+  bool _newsNewBadge = true;
+  bool _newsBadgeSaving = false;
+
   /// Чекті тексеретін бот қосулы ма (0051). Өшірулі болса ештеңе өзгермейді —
   /// толтырулар баяғыдай толық қолмен қаралады.
   bool _botEnabled = false;
@@ -162,6 +170,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final taxi = (s['taxi'] as Map?) ?? {};
       _taxiEnabled = taxi['enabled'] == true;
       _taxiNewBadge = taxi['new_badge'] != false;
+      final news = (s['news'] as Map?) ?? {};
+      _newsEnabled = news['enabled'] == true;
+      _newsNewBadge = news['new_badge'] != false;
       final bot = (s['topup_bot'] as Map?) ?? {};
       _botRaw = Map<String, dynamic>.from(bot);
       _botEnabled = bot['enabled'] == true;
@@ -527,6 +538,61 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
+  /// «Жаңалықтар» (сторис) бөлімін қосу/өшіру — бірден сақталады.
+  Future<void> _toggleNews(bool v) async {
+    setState(() {
+      _newsEnabled = v;
+      _newsSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('news', {
+        'enabled': v,
+        'new_badge': _newsNewBadge,
+      });
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Жаңалықтар бөлімі ҚОСЫЛДЫ') : t('Жаңалықтар бөлімі ӨШІРІЛДІ'),
+        );
+      }
+    } catch (e) {
+      // Сәтсіз болса — қосқышты кері қайтарамыз (жалған күй қалмауы үшін).
+      if (mounted) {
+        setState(() => _newsEnabled = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _newsSaving = false);
+    }
+  }
+
+  /// «Жаңалықтар» картасындағы «Жаңа» жапсырмасы (бөлімнің өзіне тимейді).
+  Future<void> _toggleNewsBadge(bool v) async {
+    setState(() {
+      _newsNewBadge = v;
+      _newsBadgeSaving = true;
+    });
+    try {
+      await Repo.modUpdateSetting('news', {
+        'enabled': _newsEnabled,
+        'new_badge': v,
+      });
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('«ЖАҢА» белгісі қосылды') : t('«ЖАҢА» белгісі алынды'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _newsNewBadge = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _newsBadgeSaving = false);
+    }
+  }
+
   // ---------- «ЖАҢА» жапсырмалары (0058) ----------
   /// Белгіні қосу/өшіру фичаның ӨЗІНЕ тимейді — тек жапсырма жоғалады.
   Future<void> _toggleNewBadge(bool v, {required bool board}) async {
@@ -740,6 +806,40 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ---- ЖАҢА БӨЛІМ: Жаңалықтар · сторис (0066) ----
+          _sectionTitle(t('Жаңалықтар (сторис)')),
+          Text(
+            t('Логотип батырмасындағы мәзірде, «Хабарландырулардың» ҮСТІНДЕ '
+                'тұратын бөлім: Instagram сторисі секілді сурет, қысқа видео, '
+                'мәтін және әуен. Стористің ӨЗІН жоғарыдағы «Жаңалықтар» '
+                'табынан қосасыз — әрқайсысына мерзім мен аудитория (клиент · '
+                'орындаушы · гест) бөлек қойылады. Осы қосқыш өшулі болса — '
+                'карта ешкімге көрінбейді.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _newsEnabled,
+            saving: _newsSaving,
+            icon: _newsEnabled
+                ? Icons.auto_awesome
+                : Icons.auto_awesome_outlined,
+            onLabel: t('Қолданушылар жаңалықтарды көреді'),
+            offLabel: t('Бөлім жасырулы (карта мүлдем көрінбейді)'),
+            onChanged: _toggleNews,
+          ),
+          if (_newsEnabled) ...[
+            const SizedBox(height: 8),
+            _toggleCard(
+              enabled: _newsNewBadge,
+              saving: _newsBadgeSaving,
+              icon: Icons.fiber_new_outlined,
+              onLabel: t('Картада сары «Жаңа» жапсырмасы тұр'),
+              offLabel: t('Жапсырмасыз (бөлімнің өзі орнында қалады)'),
+              onChanged: _toggleNewsBadge,
+            ),
+          ],
+          const SizedBox(height: 24),
           // ---- ЖАҢА БӨЛІМ: Такси (0046) ----
           _sectionTitle(t('Такси бөлімі')),
           Text(

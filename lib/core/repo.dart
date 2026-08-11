@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
 import 'phone.dart';
+import 'prefs.dart';
 
 /// Барлық дерек-қатынас осы жерде: Supabase RPC, стримдер, storage.
 class Repo {
@@ -438,9 +439,13 @@ class Repo {
     try {
       final res = await c.rpc('new_badges');
       final m = Map<String, dynamic>.from(res as Map);
-      return NewBadges(board: m['board'] != false, taxi: m['taxi'] != false);
+      return NewBadges(
+        board: m['board'] != false,
+        taxi: m['taxi'] != false,
+        news: m['news'] != false,
+      );
     } catch (_) {
-      return const NewBadges(board: true, taxi: true);
+      return const NewBadges(board: true, taxi: true, news: true);
     }
   }
 
@@ -1294,6 +1299,135 @@ class Repo {
       c.rpc('mod_resolve_listing_report',
           params: {'p_id': id, 'p_action': action});
 
+  // ================= ЖАҢАЛЫҚТАР · СТОРИС (0066) =================
+  /// Бөлім қосулы ма (модератор Баптаулардан басқарады). Желі қатесінде
+  /// `false` — sidebar-да карта жай ғана көрінбейді, ешбір экран сынбайды.
+  static Future<bool> newsEnabled() async {
+    try {
+      return (await c.rpc('news_enabled')) as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Қолданушыға көрінетін стористер. Сервер аудиторияны (клиент /
+  /// орындаушы / гест) ӨЗІ анықтап сүзеді, сол себепті мұнда параметр жоқ.
+  /// Гест те шақырады (anon кілтімен) — кірмеген адамға арналған жаңалық
+  /// та болуы мүмкін.
+  static Future<List<NewsStory>> newsFeed() async {
+    try {
+      final rows = await c.rpc('news_feed');
+      return [
+        for (final m in rows as List)
+          NewsStory.fromMap(Map<String, dynamic>.from(m as Map)),
+      ];
+    } catch (_) {
+      // Бөлім жаңа қосылып, миграция әлі қолданылмаған сервер де болуы
+      // мүмкін — сонда карта мүлдем көрінбейді, қосымша сынбайды.
+      return const [];
+    }
+  }
+
+  /// «Көрдім» белгісі. Гесте (uid жоқ) сервер үнсіз өтеді — қосымша
+  /// белгіні құрылғының өзінде ([Prefs.markNewsSeen]) сақтайды.
+  static Future<void> newsMarkSeen(String id) async {
+    if (uid == null) return;
+    try {
+      await c.rpc('news_mark_seen', params: {'p_id': id});
+    } catch (_) {}
+  }
+
+  /// Стористің медиасы/әуені (public 'news' бакеті).
+  static String newsMediaUrl(String path) =>
+      c.storage.from('news').getPublicUrl(path);
+
+  /// Модератор жүктеген файл (сурет · видео · әуен). Жолын қайтарады.
+  /// Бакетке жазуға тек модератордың құқығы бар (0066 саясаты).
+  static Future<String> uploadNewsMedia(String name, Uint8List bytes) async {
+    final id = uid;
+    if (id == null) throw Exception('AUTH');
+    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$name';
+    await c.storage
+        .from('news')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: _newsContentTypeFor(name)),
+        );
+    return path;
+  }
+
+  /// Файл кеңейтіміне қарай Content-Type. МАҢЫЗДЫ: видео мен әуен дұрыс
+  /// түрмен жүктелмесе, браузер (web) оларды ойната алмайды.
+  static String _newsContentTypeFor(String name) {
+    final n = name.toLowerCase();
+    if (n.endsWith('.mp4')) return 'video/mp4';
+    if (n.endsWith('.mov')) return 'video/quicktime';
+    if (n.endsWith('.webm')) return 'video/webm';
+    if (n.endsWith('.mp3')) return 'audio/mpeg';
+    if (n.endsWith('.m4a') || n.endsWith('.aac')) return 'audio/mp4';
+    if (n.endsWith('.wav')) return 'audio/wav';
+    if (n.endsWith('.ogg')) return 'audio/ogg';
+    if (n.endsWith('.png')) return 'image/png';
+    if (n.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  /// Модератордың ТОЛЫҚ тізімі — өшірулісі мен мерзімі өткені де кіреді.
+  static Future<List<NewsStory>> modNewsList() async {
+    final rows = await c.rpc('mod_news_list');
+    return [
+      for (final m in rows as List)
+        NewsStory.fromMap(Map<String, dynamic>.from(m as Map)),
+    ];
+  }
+
+  /// Стористі қосу (id == null) немесе өңдеу. Жаңасының id-ін қайтарады.
+  static Future<String> modNewsSave({
+    String? id,
+    required String title,
+    required String body,
+    required String mediaType,
+    String? mediaPath,
+    String? musicPath,
+    String musicTitle = '',
+    String linkUrl = '',
+    String linkLabel = '',
+    required List<String> audiences,
+    required int durationSec,
+    required bool active,
+    DateTime? startsAt,
+    DateTime? expiresAt,
+  }) async {
+    final res = await c.rpc(
+      'mod_news_save',
+      params: {
+        'p_id': id,
+        'p_title': title,
+        'p_body': body,
+        'p_media_type': mediaType,
+        'p_media_path': mediaPath,
+        'p_music_path': musicPath,
+        'p_music_title': musicTitle,
+        'p_link_url': linkUrl,
+        'p_link_label': linkLabel,
+        'p_audiences': audiences,
+        'p_duration_sec': durationSec,
+        'p_active': active,
+        // Уақыттар серверде timestamptz — UTC-мен жібереміз.
+        'p_starts_at': (startsAt ?? DateTime.now()).toUtc().toIso8601String(),
+        'p_expires_at': expiresAt?.toUtc().toIso8601String(),
+      },
+    );
+    return res.toString();
+  }
+
+  static Future<void> modNewsDelete(String id) =>
+      c.rpc('mod_news_delete', params: {'p_id': id});
+
+  static Future<void> modNewsReorder(List<String> ids) =>
+      c.rpc('mod_news_reorder', params: {'p_ids': ids});
+
   // ================= STORAGE =================
   /// Файлды docs бакетіне жүктеп, жолын қайтарады. Content-type файл
   /// атының кеңейтіміне қарай анықталады — Kaspi кейде скриншотты
@@ -1439,6 +1573,24 @@ final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
 /// Баптаулардан әрқайсысын бөлек алып тастайды.
 final newBadgesProvider =
     FutureProvider<NewBadges>((ref) => Repo.newBadges());
+
+/// «Жаңалықтар» бөлімі қосулы ма (0066). Модератор Баптаулардан
+/// қосқанда/өшіргенде `ref.invalidate(newsEnabledProvider)` шақырылады.
+final newsEnabledProvider = FutureProvider<bool>((ref) => Repo.newsEnabled());
+
+/// Қолданушыға көрінетін стористер (0066). Аудиторияны сервер өзі сүзеді,
+/// сол себепті рөл ауысқанда лента да ауысуы керек — `authStateProvider`-ды
+/// тыңдаймыз (кіру/шығу кезінде өзі жаңарады).
+final newsFeedProvider = FutureProvider<List<NewsStory>>((ref) {
+  ref.watch(authStateProvider);
+  return Repo.newsFeed();
+});
+
+/// Құрылғыда «көрілген» деп белгіленген стористер (0066). Сервердегі
+/// белгінің ҮСТІНЕ қосылады: гесте сервер белгісі мүлдем болмайды, ал
+/// желі үзілсе де сақина жыпылықтап тұрмайды.
+final newsSeenLocalProvider =
+    FutureProvider<Set<String>>((ref) => Prefs.seenNews());
 
 /// Толық app_settings карта (0060) — жаңа клиент фичаларының (алдын ала
 /// тапсырыс, тірі трекинг, бөлісу, реферал, қайталау) `enabled`

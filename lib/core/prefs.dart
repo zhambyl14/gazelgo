@@ -94,4 +94,33 @@ class Prefs {
     await p.setDouble(_kLastLat, lat);
     await p.setDouble(_kLastLng, lng);
   }
+
+  static const _kSeenNews = 'seen_news_ids';
+
+  /// Тізімде сақталатын ең көп сторис id-і. Ескілері шетінен шығып отырады
+  /// — әйтпесе тізім жылдар бойы шексіз өсер еді (жаңалық серверде ондаған
+  /// күннен кейін мүлдем жойылады, сол себепті 200-і жеткілікті).
+  static const _kSeenNewsMax = 200;
+
+  /// Құрылғыда «көрілген» деп белгіленген стористер (0066).
+  ///
+  /// ГЕСТ үшін МІНДЕТТІ: кірмеген адамның uid-і жоқ, сол себепті сервер
+  /// оның көргенін тіркей алмайды. Кірген адамда бұл серверлік белгінің
+  /// ҮСТІНЕ қосылады — интернет үзілсе де сақина жыпылықтап тұрмайды.
+  static Future<Set<String>> seenNews() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList(_kSeenNews) ?? const <String>[]).toSet();
+  }
+
+  static Future<void> markNewsSeen(String id) async {
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_kSeenNews) ?? <String>[];
+    if (list.contains(id)) return;
+    list.add(id);
+    // Ең ескілерін (тізімнің басындағыларын) қиямыз.
+    if (list.length > _kSeenNewsMax) {
+      list.removeRange(0, list.length - _kSeenNewsMax);
+    }
+    await p.setStringList(_kSeenNews, list);
+  }
 }

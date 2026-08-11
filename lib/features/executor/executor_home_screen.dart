@@ -41,7 +41,7 @@ class ExecutorHomeScreen extends ConsumerWidget {
           children: [
             Column(
               children: [
-                // жоғарғы жолақ: лого (sidebar батырмасы) + баланс
+                // жоғарғы жолақ: лого (sidebar) + уведомление + баланс
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
                   child: Row(
@@ -55,7 +55,19 @@ class ExecutorHomeScreen extends ConsumerWidget {
                           onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 10),
+                      // Уведомление тумблері — БАЛАНСТЫҢ СОЛ ЖАҒЫНДА.
+                      // Бұрын тариф картасының АСТЫНДА, толық ені бар бөлек
+                      // жолақ болатын: экранның бір қатарын алып тұрса да,
+                      // тек бір қосқыш еді. Енді жоғарғы жолақтың бос орнына
+                      // сыйып тұр, жазуы да қысқарды («Уведомление»).
+                      // Тек РАСТАЛҒАН орындаушыда: өтінімі қаралып жатқан
+                      // адамға жаңа заказ хабары әлі келмейді.
+                      if (ep != null && ep.status == 'approved')
+                        const Expanded(child: _OrderNotifyToggle())
+                      else
+                        const Spacer(),
+                      const SizedBox(width: 8),
                       _BalancePill(
                         balance: s?.balance,
                         onTap: () => Navigator.of(context).push(
@@ -242,8 +254,9 @@ class _LineControlBar extends ConsumerWidget {
         : perShift;
     final used = (total - s.ordersLeft).clamp(0, total);
 
-    // Тариф белсенді — толық ені бар «Тариф пен баланс» түймесі + астында
-    // жаңа заказ уведомлениесін қосу/өшіру тумблері.
+    // Тариф белсенді — толық ені бар «Тариф пен баланс» түймесі.
+    // Уведомление тумблері бұдан былай ЖОҒАРҒЫ ЖОЛАҚТА, баланстың сол
+    // жағында тұрады ([ExecutorHomeScreen]) — мұнда бөлек жол алмайды.
     return Column(
       children: [
         Material(
@@ -326,8 +339,6 @@ class _LineControlBar extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        const _OrderNotifyToggle(),
       ],
     );
   }
@@ -431,10 +442,13 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-/// Жаңа заказ уведомлениелерін қосу/өшіру тумблері. Сервердегі мәнге
-/// (`executor_profiles.order_push_enabled`) сай инициализацияланады — сол
-/// мән арқылы push ҚОСЫМША ЖАБЫҚ болса да келеді (0028); жергілікті Prefs
-/// қосымша тірі/фонда тұрғанда жылдам foreground хабарлау үшін сақталады.
+/// Жаңа заказ уведомлениелерін қосу/өшіру тумблері — ЖОҒАРҒЫ ЖОЛАҚТА,
+/// баланс «таблеткасының» СОЛ ЖАҒЫНДА тұратын ықшам «таблетка».
+///
+/// Сервердегі мәнге (`executor_profiles.order_push_enabled`) сай
+/// инициализацияланады — сол мән арқылы push ҚОСЫМША ЖАБЫҚ болса да келеді
+/// (0028); жергілікті Prefs қосымша тірі/фонда тұрғанда жылдам foreground
+/// хабарлау үшін сақталады.
 class _OrderNotifyToggle extends ConsumerStatefulWidget {
   const _OrderNotifyToggle();
 
@@ -467,29 +481,59 @@ class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
   Widget build(BuildContext context) {
     final ep = ref.watch(myExecutorProfileProvider).value;
     if (ep != null) _initFrom(ep.orderPushEnabled);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
-      decoration: BoxDecoration(
-        color: Gz.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Gz.border),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _on ? Icons.notifications_active : Icons.notifications_off,
-            size: 20,
-            color: _on ? Gz.yellowDark : Gz.textSecondary,
+    return Material(
+      color: Gz.surface,
+      elevation: 1.5,
+      shadowColor: Colors.black26,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        // Жазуды түртсе де қосылады/өшеді — кішкентай тумблерді дәл басу
+        // қиын (әсіресе қолғаппен).
+        onTap: () => _toggle(!_on),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(11, 2, 2, 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _on ? Icons.notifications_active : Icons.notifications_off,
+                size: 18,
+                color: _on ? Gz.yellowDark : Gz.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              // Жазу ҚЫСҚАРДЫ («Заказдарға уведомление» → «Уведомление»):
+              // таблетка жоғарғы жолақтағы бос орынға сыюы керек. Тар
+              // экранда (не жүйе шрифті үлкейтілгенде) FittedBox оны
+              // кішірейтеді — ЕШҚАШАН екінші жолға түспейді.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    t('Уведомление'),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              // Стандарт Switch таблеткаға сыймайды — кішірейтіп қоямыз.
+              Transform.scale(
+                scale: 0.75,
+                child: Switch(
+                  value: _on,
+                  activeThumbColor: Gz.green,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: _toggle,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              t('Заказдарға уведомление'),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-            ),
-          ),
-          Switch(value: _on, activeThumbColor: Gz.green, onChanged: _toggle),
-        ],
+        ),
       ),
     );
   }

@@ -780,7 +780,144 @@ class ListingReport {
 class NewBadges {
   final bool board;
   final bool taxi;
-  const NewBadges({required this.board, required this.taxi});
+
+  /// «Жаңалықтар» картасындағы белгі (0066).
+  final bool news;
+  const NewBadges({
+    required this.board,
+    required this.taxi,
+    required this.news,
+  });
+}
+
+// ---------- Жаңалықтар (сторис) — 0066 ----------
+/// Бір сторис. Модератор жасайды, клиент/орындаушы/гест толық экранмен
+/// көреді (Instagram Stories үлгісі).
+///
+/// БІР класс екі жерде де қолданылады: қосымшаның лентасында да
+/// (`news_feed`), модератордың басқару экранында да (`mod_news_list`) —
+/// айырмасы тек модераторға ғана келетін өрістерде ([audiences], [active],
+/// [startsAt], [expiresAt], [views]), олар лентада әдепкі мәнде тұрады.
+class NewsStory {
+  final String id;
+  final String title;
+  final String body;
+
+  /// `image` · `video` · `text`.
+  final String mediaType;
+
+  /// `news` бакетіндегі жол (мәтіндік стористе null).
+  final String? mediaPath;
+
+  /// Фонда ойнайтын әуеннің жолы (міндетті емес).
+  final String? musicPath;
+  final String musicTitle;
+
+  /// Міндетті емес «Толығырақ» түймесі.
+  final String linkUrl;
+  final String linkLabel;
+
+  /// Сторис экранда неше секунд тұрады. Видеода видеоның ӨЗ ұзақтығы
+  /// басым — бұл сан суретке/мәтінге қатысты.
+  final int durationSec;
+  final int sortOrder;
+  final DateTime? createdAt;
+
+  /// Осы адам стористі бұрын көрген бе (серверде тіркелген). Гесте әрқашан
+  /// `false` — оның көргені құрылғыда ([Prefs.seenNews]) сақталады.
+  final bool seen;
+
+  // ---- тек модератордың экранына ----
+  /// Кімге көрінеді: `client` · `executor` · `guest` (бірнешеуі бірге).
+  final List<String> audiences;
+  final bool active;
+  final DateTime? startsAt;
+
+  /// null — мерзімсіз (модератор өзі өшіргенше тұрады).
+  final DateTime? expiresAt;
+  final int views;
+
+  const NewsStory({
+    required this.id,
+    this.title = '',
+    this.body = '',
+    this.mediaType = 'text',
+    this.mediaPath,
+    this.musicPath,
+    this.musicTitle = '',
+    this.linkUrl = '',
+    this.linkLabel = '',
+    this.durationSec = 6,
+    this.sortOrder = 0,
+    this.createdAt,
+    this.seen = false,
+    this.audiences = const ['client', 'executor'],
+    this.active = true,
+    this.startsAt,
+    this.expiresAt,
+    this.views = 0,
+  });
+
+  factory NewsStory.fromMap(Map<String, dynamic> m) => NewsStory(
+    id: m['id'].toString(),
+    title: m['title'] as String? ?? '',
+    body: m['body'] as String? ?? '',
+    mediaType: m['media_type'] as String? ?? 'text',
+    mediaPath: m['media_path'] as String?,
+    musicPath: m['music_path'] as String?,
+    musicTitle: m['music_title'] as String? ?? '',
+    linkUrl: m['link_url'] as String? ?? '',
+    linkLabel: m['link_label'] as String? ?? '',
+    durationSec: _i(m['duration_sec'] ?? 6),
+    sortOrder: _i(m['sort_order']),
+    createdAt: _dt(m['created_at']),
+    seen: m['seen'] == true,
+    audiences: [
+      for (final a in (m['audiences'] as List? ?? const ['client', 'executor']))
+        a.toString(),
+    ],
+    active: m['active'] != false,
+    startsAt: _dt(m['starts_at']),
+    expiresAt: _dt(m['expires_at']),
+    views: _i(m['views']),
+  );
+
+  bool get isImage => mediaType == 'image';
+  bool get isVideo => mediaType == 'video';
+  bool get hasMusic => (musicPath ?? '').isNotEmpty;
+  bool get hasLink => linkUrl.isNotEmpty;
+
+  /// Мерзімі әлі БАСТАЛМАҒАН (модератор кейінге жоспарлаған).
+  bool get isScheduled =>
+      startsAt != null && startsAt!.isAfter(DateTime.now());
+
+  /// Мерзімі ӨТКЕН — қолданушыға енді көрінбейді.
+  bool get isExpired =>
+      expiresAt != null && expiresAt!.isBefore(DateTime.now());
+
+  /// Дәл ҚАЗІР қолданушыға көріне ме (модератор тізіміндегі белгі үшін).
+  bool get isLive => active && !isScheduled && !isExpired;
+
+  NewsStory copyWith({bool? seen}) => NewsStory(
+    id: id,
+    title: title,
+    body: body,
+    mediaType: mediaType,
+    mediaPath: mediaPath,
+    musicPath: musicPath,
+    musicTitle: musicTitle,
+    linkUrl: linkUrl,
+    linkLabel: linkLabel,
+    durationSec: durationSec,
+    sortOrder: sortOrder,
+    createdAt: createdAt,
+    seen: seen ?? this.seen,
+    audiences: audiences,
+    active: active,
+    startsAt: startsAt,
+    expiresAt: expiresAt,
+    views: views,
+  );
 }
 
 class AppConfig {
