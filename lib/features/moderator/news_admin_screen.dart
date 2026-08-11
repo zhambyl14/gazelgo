@@ -135,6 +135,9 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
         linkLabel: s.linkLabel,
         audiences: s.audiences,
         durationSec: s.durationSec,
+        // `mod_news_save` жазбаны БҮТІНДЕЙ жазады — қалған өрістерді де
+        // бергені міндетті, әйтпесе фон түсі әдепкіге түсіп кетер еді.
+        bgIndex: s.bgIndex,
         active: v,
         startsAt: s.startsAt,
         expiresAt: s.expiresAt,
@@ -356,7 +359,13 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Gz.ink,
+        // Фоны — стористің ӨЗ түсі: тізімде де қайсысы қандай екені
+        // бірден көрініп тұрады.
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: newsStoryGradient(s.bgIndex),
+        ),
         borderRadius: BorderRadius.circular(10),
       ),
       child: inner,
@@ -407,3 +416,1140 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
   );
 }
 
+
+// ============================================================
+// ҚҰРАСТЫРҒЫШ — Instagram / WhatsApp үлгісіндегі толық экранды редактор
+// ============================================================
+/// Жаңа сторис жасау (`story == null`) немесе барын өңдеу.
+///
+/// НЕГЕ ФОРМА ЕМЕС: жаңалық — көзге арналған дүние. Форма толтырғанда
+/// модератор нәтижені тек САҚТАҒАН СОҢ көретін де, «жазуым суреттің қай
+/// жеріне түсті? түсі оқыла ма?» деген сұрақ жауапсыз қалатын. Мұнда
+/// экранның ӨЗІ — сторис: жазу тікелей сол жерде теріледі, түс/сурет/әуен
+/// қосылған сәтте көрінеді.
+///
+/// Оң жақтағы дөңгелек түймелер (Instagram-дағыдай) — қосымша баптаулар:
+/// медиа, түс, әуен, сілтеме, ұзақтық, мерзім, аудитория. Әрқайсысы
+/// астыңғы парақшаны ашады, жабылған соң өзгеріс дереу экранға түседі.
+///
+/// Экран `Navigator.pop(true)` арқылы «сақталды» дегенді қайтарады —
+/// тізім соны көріп жаңарады.
+class NewsStoryComposer extends StatefulWidget {
+  final NewsStory? story;
+  const NewsStoryComposer({super.key, this.story});
+
+  @override
+  State<NewsStoryComposer> createState() => _NewsStoryComposerState();
+}
+
+class _NewsStoryComposerState extends State<NewsStoryComposer> {
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  final _linkUrl = TextEditingController();
+  final _linkLabel = TextEditingController();
+  final _musicTitle = TextEditingController();
+  final _titleFocus = FocusNode();
+  final _bodyFocus = FocusNode();
+
+  String _mediaType = 'text';
+
+  /// Серверде САҚТАУЛЫ жол (өңдеуде — ескісі, жаңа файл жүктелсе — жаңасы).
+  String? _mediaPath;
+  String? _musicPath;
+
+  /// Жаңа таңдалған файлдың АТЫ — парақшада көрсету үшін.
+  String? _mediaName;
+  String? _musicName;
+
+  Set<String> _audiences = {'client', 'executor'};
+  int _durationSec = 6;
+  int _bgIndex = 0;
+  bool _active = true;
+
+  /// Мерзімі сағатпен: null — мерзімсіз, -1 — «өз мерзімі» ([_customExpires]).
+  int? _lifetime = 24;
+
+  /// Дайын нұсқаға дәл келмейтін мерзім (өңдеуде өзгертілмесе сол күйі
+  /// сақталады) — әйтпесе модератор жазуын ғана түзеткенде мерзім
+  /// байқаусыз ұзарып/қысқарып кетер еді.
+  DateTime? _customExpires;
+
+  /// Кейінге жоспарланған шығу уақыты (null — дереу).
+  DateTime? _startsAt;
+
+  bool _busy = false;
+
+  /// Видеоның АЛДЫН АЛА КӨРІНІСІ — құрастырғышта да нақты ойнап тұрады
+  /// (қолданушы көретін экранмен дәл бірдей болуы үшін).
+  VideoPlayerController? _video;
+  bool _videoLoading = false;
+
+  /// Әуенді ТЫҢДАП КӨРУ. Автоматты ойнамайды: модератор өзі басады —
+  /// әйтпесе әр өңдеуде күтпеген жерден дыбыс шығып кетер еді.
+  AudioPlayer? _audio;
+  bool _musicPlaying = false;
+
+  bool get _isNew => widget.story == null;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.story;
+    if (s == null) return;
+    _title.text = s.title;
+    _body.text = s.body;
+    _linkUrl.text = s.linkUrl;
+    _linkLabel.text = s.linkLabel;
+    _musicTitle.text = s.musicTitle;
+    _mediaType = s.mediaType;
+    _mediaPath = s.mediaPath;
+    _musicPath = s.musicPath;
+    _audiences = s.audiences.toSet();
+    _durationSec = s.durationSec;
+    _bgIndex = s.bgIndex;
+    _active = s.active;
+    _startsAt = s.startsAt;
+    _customExpires = s.expiresAt;
+    _lifetime = _matchLifetime(s.startsAt, s.expiresAt);
+    if (s.isVideo && s.mediaPath != null) _loadVideo(s.mediaPath!);
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    _linkUrl.dispose();
+    _linkLabel.dispose();
+    _musicTitle.dispose();
+    _titleFocus.dispose();
+    _bodyFocus.dispose();
+    _video?.dispose();
+    _audio?.dispose();
+    super.dispose();
+  }
+
+  int? _matchLifetime(DateTime? from, DateTime? to) {
+    if (to == null) return null;
+    final base = from ?? DateTime.now();
+    final hours = to.difference(base).inHours;
+    for (final h in _lifetimeHours) {
+      if (h != null && (hours - h).abs() <= 1) return h;
+    }
+    return -1;
+  }
+
+  // ---------------------------------------------------------- алдын ала көру
+
+  /// Экранда көрінетін сторис — өрістердің АҒЫМДАҒЫ мәнінен құралады.
+  /// Дәл осындай нысанды қолданушы да алады, сол себепті көрініс шындықпен
+  /// сәйкес келеді.
+  NewsStory get _preview => NewsStory(
+    id: widget.story?.id ?? 'preview',
+    title: _title.text,
+    body: _body.text,
+    mediaType: _mediaType,
+    mediaPath: _mediaPath,
+    musicPath: _musicPath,
+    musicTitle: _musicTitle.text,
+    linkUrl: _linkUrl.text,
+    linkLabel: _linkLabel.text,
+    durationSec: _durationSec,
+    bgIndex: _bgIndex,
+    audiences: _audiences.toList(),
+    active: _active,
+    startsAt: _startsAt,
+    expiresAt: _expiresAt,
+  );
+
+  DateTime? get _expiresAt {
+    if (_lifetime == null) return null;
+    if (_lifetime == -1) return _customExpires;
+    final base = _startsAt ?? DateTime.now();
+    return base.add(Duration(hours: _lifetime!));
+  }
+
+  Future<void> _loadVideo(String path) async {
+    await _video?.dispose();
+    final v = VideoPlayerController.networkUrl(
+      Uri.parse(Repo.newsMediaUrl(path)),
+    );
+    if (!mounted) return;
+    setState(() {
+      _video = v;
+      _videoLoading = true;
+    });
+    try {
+      await v.initialize();
+      if (!mounted || _video != v) return;
+      await v.setLooping(true);
+      await v.setVolume(0); // құрастырғышта дыбыс керек емес
+      await v.play();
+    } catch (_) {
+      // Видео ашылмаса да құрастырғыш жұмысын жалғастырады — сақтауға
+      // кедергі емес (файл серверде тұр, тек алдын ала көрсете алмадық).
+    } finally {
+      if (mounted && _video == v) setState(() => _videoLoading = false);
+    }
+  }
+
+  // ---------------------------------------------------------------- файлдар
+
+  Future<void> _pickImage() async {
+    try {
+      final f = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        // Сторис толық экранға созылады — 1440px жеткілікті, ал сапасы 80
+        // мәтінді анық ұстайды әрі трафикті үнемдейді.
+        imageQuality: 80,
+        maxWidth: 1440,
+      );
+      if (f == null) return;
+      final bytes = await f.readAsBytes();
+      if (!mounted) return;
+      setState(() => _busy = true);
+      final path = await Repo.uploadNewsMedia('story.jpg', bytes);
+      await _video?.dispose();
+      if (!mounted) return;
+      setState(() {
+        _video = null;
+        _mediaPath = path;
+        _mediaName = f.name;
+        _mediaType = 'image';
+        _busy = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['mp4', 'mov', 'webm'],
+        withData: true,
+      );
+      final file = picked?.files.firstOrNull;
+      final bytes = file?.bytes;
+      if (bytes == null || file == null) return;
+      // Сторис — ҚЫСҚА видео. 40 МБ-тан асқанын жүктемейміз: мобиль
+      // интернетте ол ашылғанша сторис аяқталып қалады.
+      if (bytes.lengthInBytes > 40 * 1024 * 1024) {
+        if (mounted) {
+          showSnack(
+            context,
+            t('Видео тым үлкен (40 МБ-қа дейін болсын)'),
+            error: true,
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _busy = true);
+      final path = await Repo.uploadNewsMedia(file.name, bytes);
+      if (!mounted) return;
+      setState(() {
+        _mediaPath = path;
+        _mediaName = file.name;
+        _mediaType = 'video';
+        _busy = false;
+      });
+      await _loadVideo(path);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _pickMusic() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg'],
+        withData: true,
+      );
+      final file = picked?.files.firstOrNull;
+      final bytes = file?.bytes;
+      if (bytes == null || file == null) return;
+      if (bytes.lengthInBytes > 15 * 1024 * 1024) {
+        if (mounted) {
+          showSnack(
+            context,
+            t('Әуен тым үлкен (15 МБ-қа дейін болсын)'),
+            error: true,
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _busy = true);
+      final path = await Repo.uploadNewsMedia(file.name, bytes);
+      if (!mounted) return;
+      setState(() {
+        _musicPath = path;
+        _musicName = file.name;
+        _busy = false;
+        if (_musicTitle.text.trim().isEmpty) {
+          _musicTitle.text = file.name.replaceAll(RegExp(r'\.\w+$'), '');
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showSnack(context, errText(e), error: true);
+    }
+  }
+
+  /// Әуенді тыңдап көру (парақшадағы ▶/⏹ түймесі).
+  Future<void> _toggleMusicPreview() async {
+    final path = _musicPath;
+    if (path == null) return;
+    try {
+      if (_musicPlaying) {
+        await _audio?.stop();
+        if (mounted) setState(() => _musicPlaying = false);
+        return;
+      }
+      final player = _audio ??= AudioPlayer();
+      await player.play(UrlSource(Repo.newsMediaUrl(path)));
+      if (mounted) setState(() => _musicPlaying = true);
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _stopMusicPreview() async {
+    if (!_musicPlaying) return;
+    await _audio?.stop();
+    if (mounted) setState(() => _musicPlaying = false);
+  }
+
+  // ---------------------------------------------------------------- сақтау
+
+  /// Жариялауға дайын емес болса — НЕ жетпейтіні, дайын болса null.
+  String? get _missing {
+    if (_audiences.isEmpty) return t('Кемінде бір аудитория таңдаңыз');
+    if (_mediaType != 'text' && (_mediaPath ?? '').isEmpty) {
+      return _mediaType == 'video' ? t('Видео жүктеңіз') : t('Сурет жүктеңіз');
+    }
+    if (_mediaType == 'text' &&
+        _title.text.trim().isEmpty &&
+        _body.text.trim().isEmpty) {
+      return t('Мәтін жазыңыз');
+    }
+    return null;
+  }
+
+  Future<void> _save() async {
+    final miss = _missing;
+    if (miss != null) {
+      showSnack(context, miss, error: true);
+      return;
+    }
+    await _stopMusicPreview();
+    if (!mounted) return;
+    setState(() => _busy = true);
+    try {
+      await Repo.modNewsSave(
+        id: widget.story?.id,
+        title: _title.text.trim(),
+        body: _body.text.trim(),
+        mediaType: _mediaType,
+        // Мәтіндік стористе бұрын жүктелген файл БОСҚА тұрып қалмауы үшін
+        // жолды әдейі тазалаймыз — сервер ескісін өшіру кезегіне қояды.
+        mediaPath: _mediaType == 'text' ? null : _mediaPath,
+        musicPath: _musicPath,
+        musicTitle: _musicTitle.text.trim(),
+        linkUrl: _linkUrl.text.trim(),
+        linkLabel: _linkLabel.text.trim(),
+        audiences: _audiences.toList(),
+        durationSec: _durationSec,
+        bgIndex: _bgIndex,
+        active: _active,
+        startsAt: _startsAt,
+        expiresAt: _expiresAt,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showSnack(context, errText(e), error: true);
+    }
+  }
+
+  /// Шығар алдында: жазғаны болса растатамыз (бір басқанда бәрін жоғалтып
+  /// алмауы үшін). Жүйенің «артқа» түймесі де осында түседі ([PopScope]).
+  Future<void> _close() async {
+    await _stopMusicPreview();
+    if (!mounted) return;
+    final hasContent =
+        _title.text.trim().isNotEmpty ||
+        _body.text.trim().isNotEmpty ||
+        _mediaPath != null;
+    if (!hasContent) {
+      Navigator.of(context).pop(false);
+      return;
+    }
+    final ok = await confirmDialog(
+      context,
+      title: t('Шығу'),
+      message: t('Сақталмаған өзгерістер жоғалады.'),
+      cancelLabel: t('Қалу'),
+      confirmLabel: t('Шығу'),
+      confirmColor: Gz.red,
+      icon: Icons.close,
+    );
+    if (ok && mounted) Navigator.of(context).pop(false);
+  }
+
+  // ---------------------------------------------------------------- көрініс
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _preview;
+    return PopScope(
+      // Жүйенің «артқа» қимылы да растаудан өтуі керек.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_busy) _close();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        // Пернетақтаны өзіміз есептейміз (астыңғы жазу оның үстіне
+        // көтеріледі), әйтпесе фон суреті қысылып, көрінісі бұзылар еді.
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            // 1) Стористің ӨЗІ — қолданушы көретін ДӘЛ сол виджеттер.
+            Positioned.fill(
+              child: GestureDetector(
+                // Бос жерді түртсе — пернетақта жабылады (жазуды бітірдім).
+                behavior: HitTestBehavior.opaque,
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: NewsStoryCanvas(
+                  story: s,
+                  video: _video,
+                  loading: _videoLoading,
+                  // Мәтіндік стористе ортадағы жазу СОЛ ЖЕРДЕ теріледі.
+                  titleEdit: _mediaType == 'text' ? _title : null,
+                  bodyEdit: _mediaType == 'text' ? _body : null,
+                  titleFocus: _mediaType == 'text' ? _titleFocus : null,
+                  bodyFocus: _mediaType == 'text' ? _bodyFocus : null,
+                ),
+              ),
+            ),
+
+            // 2) Жоғарғы жолақ: прогресс «үлгісі», жабу, оң жақтағы құралдар.
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: const LinearProgressIndicator(
+                        // Тек ҮЛГІ: қолданушыда осы жерде толып бара жатқан
+                        // жолақ тұрады — құрастырғышта оны да көрсетеміз.
+                        value: 0.35,
+                        minHeight: 2.5,
+                        backgroundColor: Colors.white24,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _busy ? null : _close,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                      const Spacer(),
+                      if (_busy)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 14),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  _toolbar(),
+                ],
+              ),
+            ),
+
+            // 3) Астыңғы жазу (сурет/видеода) — ол да сол жерінде теріледі.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Padding(
+                // Пернетақта ашылғанда жазу оның ҮСТІНДЕ тұрсын.
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    NewsStoryCaption(
+                      story: s,
+                      titleEdit: _mediaType == 'text' ? null : _title,
+                      bodyEdit: _mediaType == 'text' ? null : _body,
+                      titleFocus: _mediaType == 'text' ? null : _titleFocus,
+                      bodyFocus: _mediaType == 'text' ? null : _bodyFocus,
+                    ),
+                    _publishBar(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Оң жақтағы дөңгелек түймелер — әрқайсысы бір баптауды ашады.
+  /// Астындағы кішкене жазу ағымдағы мәнді көрсетеді, сол себепті
+  /// парақшаны ашпай-ақ бәрі көрініп тұрады.
+  ///
+  /// Ені ӘДЕЙІ шектелген (84px): бағанның астындағы аймақ бос қалуы керек —
+  /// әйтпесе ол стористің ортасындағы жазуды түртуді бөгеп қояр еді.
+  Widget _toolbar() {
+    return Expanded(
+      child: Align(
+        alignment: Alignment.topRight,
+        child: SizedBox(
+          width: 84,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(right: 4, top: 4, bottom: 8),
+            child: Column(
+              children: [
+                _tool(
+                  icon: _mediaType == 'video'
+                      ? Icons.videocam
+                      : _mediaType == 'image'
+                      ? Icons.image
+                      : Icons.text_fields,
+                  label: _mediaType == 'video'
+                      ? t('Видео')
+                      : _mediaType == 'image'
+                      ? t('Сурет')
+                      : t('Мәтін'),
+                  active: _mediaType != 'text',
+                  onTap: _mediaSheet,
+                ),
+                _tool(
+                  icon: Icons.palette_outlined,
+                  label: t('Түс'),
+                  color: newsStoryGradient(_bgIndex).first,
+                  onTap: _colorSheet,
+                ),
+                _tool(
+                  icon: Icons.music_note,
+                  label: _musicPath == null ? t('Әуен') : t('Әуен қосулы'),
+                  active: _musicPath != null,
+                  onTap: _musicSheet,
+                ),
+                _tool(
+                  icon: Icons.link,
+                  label: _linkUrl.text.trim().isEmpty
+                      ? t('Сілтеме')
+                      : t('Сілтеме бар'),
+                  active: _linkUrl.text.trim().isNotEmpty,
+                  onTap: _linkSheet,
+                ),
+                _tool(
+                  icon: Icons.timer_outlined,
+                  label: '$_durationSec ${t('сек')}',
+                  onTap: _durationSheet,
+                ),
+                _tool(
+                  icon: Icons.schedule,
+                  label: _lifetimeLabel(_lifetime),
+                  onTap: _scheduleSheet,
+                ),
+                _tool(
+                  icon: Icons.groups_outlined,
+                  label: _audiences.length == _audienceKeys.length
+                      ? t('Барлығы')
+                      : _audiences.map(_audienceLabel).join(', '),
+                  active: true,
+                  onTap: _audienceSheet,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tool({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool active = false,
+    Color? color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: _busy ? null : onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color ?? Colors.black45,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: active ? Gz.yellow : Colors.white24,
+                  width: active ? 1.8 : 1,
+                ),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(height: 3),
+            // Жазу тар — сыймаса қиылады (сурет/видеоны жаппауы керек).
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Ең астыңғы жолақ: эфир/жоба қосқышы, не жетпейтіні және «Жариялау».
+  Widget _publishBar() {
+    final miss = _missing;
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Өшірулі күйде сақтауға болады — «жоба» (тек модератор көреді).
+            GestureDetector(
+              onTap: () => setState(() => _active = !_active),
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _active ? Icons.visibility : Icons.visibility_off,
+                    color: _active ? Gz.green : Colors.white54,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _active ? t('Эфирде') : t('Жоба'),
+                    style: TextStyle(
+                      color: _active ? Gz.green : Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (miss != null)
+              Expanded(
+                child: Text(
+                  miss,
+                  maxLines: 2,
+                  style: const TextStyle(color: Gz.red, fontSize: 11.5),
+                ),
+              )
+            else
+              const Spacer(),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Gz.yellow,
+                foregroundColor: Gz.ink,
+                disabledBackgroundColor: Colors.white12,
+                disabledForegroundColor: Colors.white38,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: const StadiumBorder(),
+              ),
+              onPressed: _busy || miss != null ? null : _save,
+              icon: const Icon(Icons.send, size: 16),
+              label: Text(
+                _isNew ? t('Жариялау') : t('Сақтау'),
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------- парақшалар
+
+  /// Барлық баптау парақшасы БІРДЕЙ көрінеді. Жабылған соң `setState` —
+  /// өзгеріс дереу стористің өзіне түседі.
+  ///
+  /// `setSheet` — парақшаның ІШІН қайта салуға (қосқыш басылғаны сол
+  /// жерде көрінуі үшін); `setState` — АРТЫНДАҒЫ стористі жаңартуға.
+  Future<void> _sheet(String title, Widget Function(StateSetter) body) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Gz.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 18,
+            right: 18,
+            top: 16,
+            bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                body(setSheet),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _mediaSheet() => _sheet(
+    t('Түрі'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.image_outlined),
+          title: Text(t('Сурет')),
+          subtitle: Text(
+            _mediaType == 'image' && _mediaPath != null
+                ? (_mediaName ?? t('Файл жүктелген'))
+                : t('Галереядан таңдау'),
+          ),
+          trailing: _mediaType == 'image'
+              ? const Icon(Icons.check_circle, color: Gz.green)
+              : null,
+          onTap: () async {
+            Navigator.pop(context);
+            await _pickImage();
+          },
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.videocam_outlined),
+          title: Text(t('Видео')),
+          subtitle: Text(
+            _mediaType == 'video' && _mediaPath != null
+                ? (_mediaName ?? t('Файл жүктелген'))
+                : t('Қысқа видео (40 МБ-қа дейін)'),
+          ),
+          trailing: _mediaType == 'video'
+              ? const Icon(Icons.check_circle, color: Gz.green)
+              : null,
+          onTap: () async {
+            Navigator.pop(context);
+            await _pickVideo();
+          },
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.text_fields),
+          title: Text(t('Мәтін')),
+          subtitle: Text(t('Медиасыз — түсті фонға жазу')),
+          trailing: _mediaType == 'text'
+              ? const Icon(Icons.check_circle, color: Gz.green)
+              : null,
+          onTap: () async {
+            // Жүктелген файл серверде қалады, бірақ САҚТАҒАНДА мәтіндік
+            // сторис файлсыз жазылады да, ескісі өшіру кезегіне түседі.
+            await _video?.dispose();
+            if (!mounted) return;
+            setState(() {
+              _video = null;
+              _mediaType = 'text';
+            });
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _colorSheet() => _sheet(
+    t('Фон түсі'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t('Мәтіндік стористе — бүкіл фон. Суретте/видеода — айналасындағы '
+              'жиек түсі.'),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (var i = 0; i < newsStoryGradients.length; i++)
+              GestureDetector(
+                onTap: () {
+                  setState(() => _bgIndex = i);
+                  setSheet(() {});
+                },
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: newsStoryGradients[i],
+                    ),
+                    border: Border.all(
+                      color: _bgIndex == i ? Gz.yellow : Gz.border,
+                      width: _bgIndex == i ? 3 : 1,
+                    ),
+                  ),
+                  child: _bgIndex == i
+                      ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      : null,
+                ),
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _musicSheet() async {
+    await _sheet(
+      t('Әуен'),
+      (setSheet) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.music_note, color: Gz.violet),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _musicName ??
+                      (_musicPath == null
+                          ? t('Әуен қосылмаған')
+                          : t('Әуен қосулы')),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              if (_musicPath != null) ...[
+                IconButton(
+                  tooltip: t('Тыңдап көру'),
+                  onPressed: () async {
+                    await _toggleMusicPreview();
+                    setSheet(() {});
+                  },
+                  icon: Icon(
+                    _musicPlaying ? Icons.stop_circle : Icons.play_circle_fill,
+                    color: Gz.violet,
+                  ),
+                ),
+                IconButton(
+                  tooltip: t('Алып тастау'),
+                  onPressed: () async {
+                    await _stopMusicPreview();
+                    if (!mounted) return;
+                    setState(() {
+                      _musicPath = null;
+                      _musicName = null;
+                      _musicTitle.clear();
+                    });
+                    setSheet(() {});
+                  },
+                  icon: const Icon(Icons.close, color: Gz.red),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _pickMusic();
+            },
+            icon: const Icon(Icons.library_music_outlined, size: 18),
+            label: Text(
+              _musicPath == null ? t('Әуен таңдау') : t('Басқасын таңдау'),
+            ),
+          ),
+          if (_musicPath != null) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _musicTitle,
+              onChanged: (_) => setSheet(() {}),
+              decoration: InputDecoration(
+                labelText: t('Әуеннің атауы (экранда көрінеді)'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+    // Парақша жабылды — тыңдап көру де тоқтасын.
+    await _stopMusicPreview();
+  }
+
+  Future<void> _linkSheet() => _sheet(
+    t('«Толығырақ» түймесі'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          t('Бос болса — түйме мүлдем шықпайды.'),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _linkUrl,
+          keyboardType: TextInputType.url,
+          onChanged: (_) => setSheet(() {}),
+          decoration: const InputDecoration(
+            labelText: 'https://…',
+            prefixIcon: Icon(Icons.link, size: 19),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _linkLabel,
+          onChanged: (_) => setSheet(() {}),
+          decoration: InputDecoration(
+            labelText: t('Түйменің жазуы («Толығырақ»)'),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _durationSheet() => _sheet(
+    t('Экранда тұру уақыты'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          t('Сурет пен мәтін осынша секунд тұрады. Видеода видеоның өз '
+              'ұзақтығы қолданылады.'),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: _durationSec.toDouble(),
+                min: 2,
+                max: 30,
+                divisions: 28,
+                label: '$_durationSec ${t('сек')}',
+                onChanged: (v) {
+                  setState(() => _durationSec = v.round());
+                  setSheet(() {});
+                },
+              ),
+            ),
+            SizedBox(
+              width: 58,
+              child: Text(
+                '$_durationSec ${t('сек')}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _scheduleSheet() => _sheet(
+    t('Қанша уақыт тұрады'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          t('Мерзімі өткенде сторис қолданушыға МҮЛДЕМ көрінбейді (сіз оны '
+              'осында өңдей бересіз).'),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final h in _lifetimeHours)
+              ChoiceChip(
+                label: Text(_lifetimeLabel(h)),
+                selected: _lifetime == h,
+                onSelected: (_) {
+                  setState(() => _lifetime = h);
+                  setSheet(() {});
+                },
+              ),
+            if (_lifetime == -1)
+              ChoiceChip(
+                label: Text(t('Өз мерзімі')),
+                selected: true,
+                onSelected: (_) {},
+              ),
+          ],
+        ),
+        const Divider(height: 24),
+        Row(
+          children: [
+            const Icon(Icons.schedule, size: 19, color: Gz.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _startsAt == null
+                    ? t('Дереу шығады')
+                    : '${t('Шығады')}: ${_fmtFull(_startsAt!)}',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _pickStart();
+                setSheet(() {});
+              },
+              child: Text(t('Уақыт қою')),
+            ),
+            if (_startsAt != null)
+              IconButton(
+                tooltip: t('Дереу шығарту'),
+                onPressed: () {
+                  setState(() => _startsAt = null);
+                  setSheet(() {});
+                },
+                icon: const Icon(Icons.close, size: 18),
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _audienceSheet() => _sheet(
+    t('Кімге көрінеді'),
+    (setSheet) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t('Кемінде біреуін таңдаңыз. «Гест» — қосымшаға әлі кірмеген '
+              'қолданушы.'),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final key in _audienceKeys)
+              FilterChip(
+                label: Text(_audienceLabel(key)),
+                selected: _audiences.contains(key),
+                onSelected: (v) {
+                  setState(() {
+                    if (v) {
+                      _audiences.add(key);
+                    } else {
+                      _audiences.remove(key);
+                    }
+                  });
+                  setSheet(() {});
+                },
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _pickStart() async {
+    final now = DateTime.now();
+    final day = await showDatePicker(
+      context: context,
+      initialDate: _startsAt ?? now,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (day == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startsAt ?? now),
+    );
+    if (time == null || !mounted) return;
+    setState(
+      () => _startsAt = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        time.hour,
+        time.minute,
+      ),
+    );
+  }
+
+  String _fmtFull(DateTime d) {
+    two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)}.${d.year} ${two(d.hour)}:'
+        '${two(d.minute)}';
+  }
+}
