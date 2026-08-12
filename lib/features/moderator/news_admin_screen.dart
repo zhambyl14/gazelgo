@@ -505,6 +505,11 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
   VideoPlayerController? _video;
   bool _videoLoading = false;
 
+  /// Видео ашылмағанда — НЕ болғаны. Бұрын қате үнсіз жұтылатын да, экран
+  /// жай ғана бос көк фон болып тұратын: модератор видеосының жүктелгенін
+  /// де, ойналмағанын да білмейтін.
+  String? _videoError;
+
   /// Әуенді ТЫҢДАП КӨРУ. Автоматты ойнамайды: модератор өзі басады —
   /// әйтпесе әр өңдеуде күтпеген жерден дыбыс шығып кетер еді.
   AudioPlayer? _audio;
@@ -606,6 +611,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     setState(() {
       _video = v;
       _videoLoading = true;
+      _videoError = null;
     });
     try {
       await v.initialize();
@@ -613,9 +619,16 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       await v.setLooping(true);
       await v.setVolume(0); // құрастырғышта дыбыс керек емес
       await v.play();
-    } catch (_) {
+    } catch (e) {
       // Видео ашылмаса да құрастырғыш жұмысын жалғастырады — сақтауға
       // кедергі емес (файл серверде тұр, тек алдын ала көрсете алмадық).
+      // Бірақ МОЛЫҚ ҮНСІЗ қалдырмаймыз: экранда неге бос тұрғаны жазылады,
+      // әйтпесе «видео қойдым, бірақ көк экран» болып шығады.
+      if (mounted && _video == v) {
+        _videoError =
+            '${t('Бұл видеоны құрылғы ойната алмады. MP4 (H.264) пішіміне '
+                'ауыстырып көріңіз.')}\n${errText(e)}';
+      }
     } finally {
       if (mounted && _video == v) setState(() => _videoLoading = false);
     }
@@ -641,6 +654,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       if (!mounted) return;
       setState(() {
         _video = null;
+        _videoError = null;
         _mediaPath = path;
         _mediaName = f.name;
         _mediaType = 'image';
@@ -844,11 +858,14 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
 
   void _textMoveStart() => _scaleBase = _layout.textScale;
 
+  /// Жазуды сүйреу. `textX`/`textY` — блоктың ОРТАСЫ (экран үлесімен), сол
+  /// себепті шеті экраннан асып кетпеуі үшін аздап шектеп қоямыз — бірақ
+  /// жазу экранның ЖОҒАРЫСЫНА да, АСТЫНА да, шеттеріне де толық барады.
   void _textMove(double dx, double dy, double scale) {
     setState(() {
       _layout = _layout.copyWith(
-        textX: (_layout.textX + dx).clamp(0.05, 0.95),
-        textY: (_layout.textY + dy).clamp(0.06, 0.94),
+        textX: (_layout.textX + dx).clamp(0.10, 0.90),
+        textY: (_layout.textY + dy).clamp(0.08, 0.92),
         textScale: (_scaleBase * scale).clamp(0.4, 3.0),
       );
     });
@@ -911,6 +928,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                 story: s,
                 video: _video,
                 loading: _videoLoading,
+                error: _videoError,
                 showTextFrame: !_textEditing,
                 // Жазу режимінде ғана өрістер шығады.
                 titleEdit: _textEditing ? _title : null,
@@ -1099,7 +1117,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         child: SizedBox(
           width: 84,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(right: 4, top: 4, bottom: 8),
+            // Астыңғы бос орын ӘДЕЙІ үлкен: тізімнің соңғы түймелері
+            // «Жариялау» жолағының астына тығылып қалмауы керек (кіші
+            // экранда тоғыз құрал сол жолаққа дейін жетеді).
+            padding: const EdgeInsets.only(right: 4, top: 4, bottom: 130),
             child: Column(
               children: [
                 _tool(
@@ -1230,9 +1251,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
 
   /// Ең астыңғы жолақ: эфир/жоба қосқышы және «Жариялау» түймесі.
   ///
-  /// Түйме ӘРҚАШАН сары әрі басылады — дайын болмаса, басқанда НЕ жетпейтіні
-  /// қалқымамен айтылады. Бұрын ол «сөнген» күйде қара фонда мүлдем
-  /// көрінбей тұратын да, «жариялау түймесі жоқ» болып шығатын.
+  /// Түйме ЭКРАННЫҢ БҮКІЛ ЕНІН алады әрі әрқашан басылады — дайын болмаса,
+  /// басқанда НЕ жетпейтіні қалқымамен айтылады. Бұрын ол оң жақ бұрышта,
+  /// құралдар бағанының қасында кішкене тұрғандықтан модератор оны мүлдем
+  /// байқамай, «жариялау түймесі жоқ» деп жүретін.
   Widget _publishBar() {
     final miss = _missing;
     return Container(
@@ -1240,81 +1262,85 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Color(0xE6000000)],
+          colors: [Colors.transparent, Color(0xF2000000)],
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 26, 14, 8),
+      padding: const EdgeInsets.fromLTRB(14, 30, 14, 8),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Өшірулі күйде сақтауға болады — «жоба» (тек модератор көреді).
-            GestureDetector(
-              onTap: () => setState(() => _active = !_active),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _active ? Icons.visibility : Icons.visibility_off,
-                      color: _active ? Gz.green : Colors.white54,
-                      size: 18,
+            Row(
+              children: [
+                // Өшірулі күйде де сақтауға болады — «жоба» (тек модератор
+                // көреді).
+                GestureDetector(
+                  onTap: () => setState(() => _active = !_active),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      _active ? t('Эфирде') : t('Жоба'),
-                      style: TextStyle(
-                        color: _active ? Gz.green : Colors.white54,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    decoration: BoxDecoration(
+                      color: Colors.black45,
+                      borderRadius: BorderRadius.circular(30),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (miss != null)
-              Expanded(
-                child: Text(
-                  miss,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.5,
-                    shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _active ? Icons.visibility : Icons.visibility_off,
+                          color: _active ? Gz.green : Colors.white54,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          _active ? t('Эфирде') : t('Жоба'),
+                          style: TextStyle(
+                            color: _active ? Gz.green : Colors.white54,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              )
-            else
-              const Spacer(),
-            const SizedBox(width: 8),
+                const SizedBox(width: 10),
+                if (miss != null)
+                  Expanded(
+                    child: Text(
+                      miss,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        color: Gz.yellow,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: Gz.yellow,
                 foregroundColor: Gz.ink,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: const StadiumBorder(),
               ),
               onPressed: _busy ? null : _save,
-              icon: const Icon(Icons.send, size: 17),
+              icon: Icon(_isNew ? Icons.send : Icons.check, size: 19),
               label: Text(
-                _isNew ? t('Жариялау') : t('Сақтау'),
+                _isNew ? t('ЖАРИЯЛАУ') : t('САҚТАУ'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 14.5,
+                  fontSize: 15.5,
+                  letterSpacing: 0.4,
                 ),
               ),
             ),
@@ -1425,6 +1451,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             if (!mounted) return;
             setState(() {
               _video = null;
+              _videoError = null;
               _mediaType = 'text';
             });
             Navigator.pop(context);

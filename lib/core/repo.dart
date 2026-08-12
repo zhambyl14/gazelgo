@@ -1346,15 +1346,45 @@ class Repo {
   static Future<String> uploadNewsMedia(String name, Uint8List bytes) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
-    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$name';
+    final safe = newsSafeFileName(name);
+    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$safe';
     await c.storage
         .from('news')
         .uploadBinary(
           path,
           bytes,
-          fileOptions: FileOptions(contentType: _newsContentTypeFor(name)),
+          fileOptions: FileOptions(contentType: _newsContentTypeFor(safe)),
         );
     return path;
+  }
+
+  /// Файл атын Storage КІЛТІНЕ жарамды түрге келтіреді.
+  ///
+  /// НЕГЕ КЕРЕК: Supabase Storage кілтте тек қауіпсіз ASCII таңбаларын
+  /// қабылдайды. Қазақша/орысша әріп, бос орын, жақша бар ат («Abzal
+  /// Uteshov - Біз жолығамыз ( M V2026 ).m4a») жүктегенде
+  /// `StorageException(Invalid key: …)` шығады да, модератор әуенін де,
+  /// видеосын да қоя алмайды. Сол себепті кілтке тек `a-z0-9-_` жібереміз;
+  /// адамға көрінетін АТАУ бұл жерде емес — ол `music_title` өрісінде
+  /// (қазақша күйі сақталады).
+  ///
+  /// Кеңейтім МІНДЕТТІ ТҮРДЕ сақталады: одан Content-Type анықталады, ал ол
+  /// дұрыс болмаса браузер видео/әуенді ойната алмайды.
+  static String newsSafeFileName(String name) {
+    final dot = name.lastIndexOf('.');
+    var ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : '';
+    ext = ext.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    if (ext.isEmpty || ext.length > 5) ext = 'bin';
+    var base = (dot > 0 ? name.substring(0, dot) : name)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (base.length > 40) base = base.substring(0, 40);
+    // Кириллицадан ғана тұратын ат толығымен «қырқылып» қалуы мүмкін —
+    // сонда да кілт жарамды болуы керек (алдында уақыт белгісі бар,
+    // сол себепті аттар бір-бірімен соқтығыспайды).
+    if (base.isEmpty) base = 'file';
+    return '$base.$ext';
   }
 
   /// Файл кеңейтіміне қарай Content-Type. МАҢЫЗДЫ: видео мен әуен дұрыс

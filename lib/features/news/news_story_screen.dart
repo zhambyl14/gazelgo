@@ -535,8 +535,15 @@ class NewsStoryCanvas extends StatelessWidget {
 
   /// Жазу — экранның қалаған жерінде тұратын ЖЕКЕ ҚАБАТ.
   ///
-  /// `Align` + `Alignment(-1..1)` қолданылады: орны ҮЛЕСПЕН сақталғандықтан
-  /// кез келген өлшемдегі экранда суреттің дәл сол жерінде қалады.
+  /// ОРНЫ: `textX`/`textY` — жазу блогының ОРТАСЫ, экранның үлесімен
+  /// (0..1). Экранның ортасынан бастап `Transform.translate` арқылы
+  /// жылжытамыз, сол себепті бір ғана үлес кез келген өлшемдегі экранда
+  /// суреттің дәл сол жеріне түседі.
+  ///
+  /// НЕГЕ `Align` ЕМЕС: `Align` баланы БОС ҚАЛҒАН орынға ғана таратады.
+  /// Блоктың ені экранның 86%-ы болғандықтан, бос орын небәрі 14% еді —
+  /// модератор жазуды бүкіл экранға сүйрегісі келсе де, ол «рамканың
+  /// ішінде» бір-екі миллиметр ғана жылжитын.
   Widget _textLayer(double w, double h) {
     final l = story.layout;
     final color = Color(l.textColor);
@@ -604,37 +611,35 @@ class NewsStoryCanvas extends StatelessWidget {
       ),
     );
 
-    final block = Align(
-      // 0..1 үлесін Alignment-тің -1..1 шкаласына аударамыз.
-      alignment: Alignment(l.textX * 2 - 1, l.textY * 2 - 1),
-      child: FractionallySizedBox(
-        widthFactor: 0.86,
-        child: Transform.scale(
-          scale: l.textScale,
-          child: content,
+    // Блокты экранның ОРТАСЫНА қойып, содан кейін керекті нүктеге
+    // жылжытамыз. Ені — ең көбі 86%: қысқа жазу өз мөлшерінде қалады да,
+    // сүйрегенде «блок» емес, дәл сол сөз жылжып бара жатқандай көрінеді.
+    Widget place(Widget child) => Transform.translate(
+      offset: Offset((l.textX - 0.5) * w, (l.textY - 0.5) * h),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: w * 0.86),
+          child: child,
         ),
       ),
     );
 
-    if (onTextMove == null && onTextTap == null) return block;
+    if (onTextMove == null && onTextTap == null) {
+      return place(Transform.scale(scale: l.textScale, child: content));
+    }
     // Қимыл ТЕК жазудың өз аймағында ұсталады — қалған жерде фон (сурет)
-    // сүйреледі. `deferToChild`: өңдеу режимінде терезедегі өрістер
-    // басылуды өзіне алады, сүйреу оларға кедергі жасамайды.
-    return Align(
-      alignment: Alignment(l.textX * 2 - 1, l.textY * 2 - 1),
-      child: FractionallySizedBox(
-        widthFactor: 0.86,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTextTap,
-          onScaleStart: (_) => onTextMoveStart?.call(),
-          onScaleUpdate: (d) => onTextMove?.call(
-            d.focalPointDelta.dx / w,
-            d.focalPointDelta.dy / h,
-            d.scale,
-          ),
-          child: Transform.scale(scale: l.textScale, child: content),
+    // сүйреледі.
+    return place(
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTextTap,
+        onScaleStart: (_) => onTextMoveStart?.call(),
+        onScaleUpdate: (d) => onTextMove?.call(
+          d.focalPointDelta.dx / w,
+          d.focalPointDelta.dy / h,
+          d.scale,
         ),
+        child: Transform.scale(scale: l.textScale, child: content),
       ),
     );
   }
