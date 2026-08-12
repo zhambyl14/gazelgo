@@ -77,25 +77,27 @@ class ListingCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           Text(
                             l.priceDisplay,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15.5,
+                              fontSize: 16.5,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: -0.2,
+                              height: 1.2,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             l.body,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 13,
-                              height: 1.35,
+                              height: 1.45,
+                              color: Gz.textSecondary,
                             ),
                           ),
                         ],
@@ -146,9 +148,9 @@ class ListingCard extends StatelessWidget {
   }
 
   Widget _badge(String text, Color color, {bool filled = false}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
     decoration: BoxDecoration(
-      color: filled ? color : color.withValues(alpha: 0.12),
+      color: filled ? color : Gz.tint(color, 0.12),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Text(
@@ -156,28 +158,32 @@ class ListingCard extends StatelessWidget {
       style: TextStyle(
         fontSize: 10.5,
         fontWeight: FontWeight.w800,
+        letterSpacing: 0.2,
         color: filled ? Colors.white : color,
       ),
     ),
   );
 
   Widget _tag(IconData icon, String text, {Color? color}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
     decoration: BoxDecoration(
-      color: color == null ? Gz.bg : color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(8),
+      color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(
+          color: color == null ? Gz.border : Gz.tint(color, 0.25)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13, color: color ?? Gz.textSecondary),
-        const SizedBox(width: 4),
+        const SizedBox(width: 5),
         Text(
           text,
           style: TextStyle(
             fontSize: 11.5,
             color: color ?? Gz.ink,
-            fontWeight: FontWeight.w600,
+            letterSpacing: -0.05,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -199,15 +205,16 @@ class _Thumb extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Gz.bg,
-          borderRadius: BorderRadius.circular(12),
+          color: Gz.surfaceAlt,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: Gz.border),
         ),
         child: Center(child: vehicleIcon(listing.vehicleType, size: 32)),
       );
     }
     final px = (size * MediaQuery.devicePixelRatioOf(context)).round();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(13),
       child: Image.network(
         Repo.listingPhotoUrl(listing.photos.first),
         width: size,
@@ -218,7 +225,7 @@ class _Thumb extends StatelessWidget {
         errorBuilder: (_, e, s) => Container(
           width: size,
           height: size,
-          color: Gz.bg,
+          color: Gz.surfaceAlt,
           child: Center(child: vehicleIcon(listing.vehicleType, size: 32)),
         ),
       ),

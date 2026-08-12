@@ -189,9 +189,11 @@ class _ChatViewState extends State<ChatView> {
                     : IconButton.filled(
                         style: IconButton.styleFrom(
                             backgroundColor: Gz.yellow,
-                            foregroundColor: Gz.ink),
+                            foregroundColor: Gz.ink,
+                            elevation: 4,
+                            shadowColor: Gz.yellow.withValues(alpha: 0.5)),
                         onPressed: () => _send(),
-                        icon: const Icon(Icons.send),
+                        icon: const Icon(Icons.send_rounded),
                       ),
               ],
             ),
@@ -218,18 +220,25 @@ class _Bubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: mine ? Gz.yellow : Gz.surface,
+          // Өз хабарламам — БРЕНД градиенті (жалаң тегіс сарыдан гөрі әрлі),
+          // қарсы тараптікі — ақ, жиегі мен жеңіл көлеңкесі бар: екеуі
+          // көзге бірден ажырайды.
+          gradient: mine ? Gz.brandGradient : null,
+          color: mine ? null : Gz.surface,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(14),
-            topRight: const Radius.circular(14),
-            bottomLeft: Radius.circular(mine ? 14 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 14),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(mine ? 16 : 5),
+            bottomRight: Radius.circular(mine ? 5 : 16),
           ),
           border: mine ? null : Border.all(color: Gz.border),
+          boxShadow: mine
+              ? Gz.glow(Gz.yellow, alpha: 0.22, blur: 10)
+              : Gz.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -370,10 +370,13 @@ class _FeedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Gz.radius),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Gz.radius),
             border: Border.all(color: Gz.border, width: 1),
+            // Лентадағы карточкалар фоннан «көтеріліп» тұрады — тізім
+            // жалғасқан жалпақ жолақ емес, бөлек-бөлек карта болып оқылады.
+            boxShadow: Gz.cardShadow,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,20 +384,15 @@ class _FeedCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: _ClientMini(clientId: order.clientId)),
-                  Text(
-                    fmtT(order.displayPrice),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                      color: Gz.ink,
-                    ),
-                  ),
+                  const SizedBox(width: 8),
+                  // Баға — орындаушы лентаны ЕҢ АЛДЫМЕН сол сан бойынша
+                  // шолады, сол себепті ең салмақты элемент.
+                  Text(fmtT(order.displayPrice), style: Gz.money),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 11),
               _CompactRoute(from: order.fromDisplay, to: order.toDisplay),
-              const SizedBox(height: 8),
+              const SizedBox(height: 11),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -450,16 +448,17 @@ class _FeedCard extends StatelessWidget {
     Widget? leading,
   }) {
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
-        color: Gz.bg,
-        borderRadius: BorderRadius.circular(8),
+        color: Gz.surfaceAlt,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: Gz.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           leading ?? Icon(icon, size: 13, color: Gz.textSecondary),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Flexible(
             child: Text(
               text,
@@ -468,7 +467,8 @@ class _FeedCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11.5,
                 color: Gz.ink,
-                fontWeight: FontWeight.w600,
+                letterSpacing: -0.05,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -544,7 +544,16 @@ class _CompactRoute extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _line(Icons.trip_origin, Gz.green, from),
-        const SizedBox(height: 3),
+        // Екі нүктені жалғайтын нүктелі сызық — «маршрут» екені көзге
+        // бірден түседі (бұрын екі жол жай ғана қатар тұратын).
+        Padding(
+          padding: const EdgeInsets.only(left: 6.5),
+          child: Container(
+            width: 1.6,
+            height: 10,
+            color: Gz.border,
+          ),
+        ),
         _line(Icons.location_on, Gz.red, to),
       ],
     );
@@ -553,13 +562,17 @@ class _CompactRoute extends StatelessWidget {
   Widget _line(IconData icon, Color color, String text) => Row(
     children: [
       Icon(icon, size: 14, color: color),
-      const SizedBox(width: 6),
+      const SizedBox(width: 7),
       Expanded(
         child: Text(
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+              letterSpacing: -0.1),
         ),
       ),
     ],

@@ -358,14 +358,8 @@ class _ProfileHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
         gradient: Gz.heroGradient,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x330F1720),
-            blurRadius: 22,
-            offset: Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: Gz.liftShadow,
       ),
       child: Column(
         children: [
@@ -414,12 +408,13 @@ class _ProfileHero extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
-                            color: Gz.yellow,
+                            gradient: Gz.brandGradient,
                             shape: BoxShape.circle,
                             border: Border.all(color: Gz.ink, width: 2),
+                            boxShadow: Gz.glow(Gz.yellow, alpha: 0.4, blur: 8),
                           ),
                           child: const Icon(
-                            Icons.camera_alt,
+                            Icons.camera_alt_rounded,
                             size: 12,
                             color: Gz.ink,
                           ),
@@ -460,8 +455,9 @@ class _ProfileHero extends StatelessWidget {
                           vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
-                          color: Gz.yellow,
+                          gradient: Gz.brandGradient,
                           borderRadius: BorderRadius.circular(20),
+                          boxShadow: Gz.glow(Gz.yellow, alpha: 0.3, blur: 10),
                         ),
                         child: Text(
                           p.isExecutor ? t('Орындаушы') : t('Клиент'),
@@ -514,11 +510,11 @@ class _ProfileHero extends StatelessWidget {
                     value: '${p.trustScore}',
                     label: t('сенім'),
                     icon: Icons.verified_user_rounded,
+                    // Қою фондағы көрсеткіш — ЖАРҚЫН реңктер (қою жасыл не
+                    // қою қызыл түнгі градиентте көрінбей қалады).
                     color: p.trustScore >= 80
-                        ? const Color(0xFF4ADE80)
-                        : (p.trustScore >= 50
-                              ? Gz.yellow
-                              : const Color(0xFFF87171)),
+                        ? Gz.greenBright
+                        : (p.trustScore >= 50 ? Gz.yellow : Gz.redBright),
                   ),
                 ),
               ],
@@ -555,27 +551,35 @@ class _HeroStat extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 5),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
-                fontSize: 16,
+                fontSize: 17,
+                height: 1.15,
+                letterSpacing: -0.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
+        // Астыңғы жазу — БАС ӘРІППЕН, әріп аралығы кеңейтілген микро-белгі:
+        // үстіндегі ірі саннан айқын ажырайды, үшеуі бір «көрсеткіш
+        // тақтасы» болып оқылады.
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            label,
+            label.toUpperCase(),
             maxLines: 1,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 9.5,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
             ),
           ),
         ),
@@ -635,45 +639,51 @@ class _QuickGrid extends StatelessWidget {
     );
   }
 
-  Widget _tile(_QuickTile q) => Material(
-    color: Gz.surface,
-    borderRadius: BorderRadius.circular(18),
-    child: InkWell(
+  Widget _tile(_QuickTile q) => PressScale(
+    child: Material(
+      color: Gz.surface,
       borderRadius: BorderRadius.circular(18),
-      onTap: q.onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Gz.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: q.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: q.onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Gz.border),
+            boxShadow: Gz.cardShadow,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Gz.tint(q.color, 0.13),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: Gz.tint(q.color, 0.20), width: 1.2),
+                ),
+                child: Icon(q.icon, size: 19, color: q.color),
               ),
-              child: Icon(q.icon, size: 19, color: q.color),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  q.label,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
+              const SizedBox(width: 11),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    q.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      height: 1.2,
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ),

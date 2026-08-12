@@ -47,20 +47,36 @@ class AppDrawer extends ConsumerWidget {
         child: Column(
           children: [
             // ---- тақырып ----
-            Padding(
+            // Жоғарғы жолақ жеңіл САРЫ реңкке боялған: sidebar ашылғанда
+            // көз алдымен осы «бренд аймағына» түседі де, төмендегі ақ
+            // тізім одан анық ажырайды.
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Gz.tint(Gz.yellow, 0.20), Gz.surface],
+                ),
+              ),
               padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/icon/icon.png',
-                      width: 42,
-                      height: 42,
-                      fit: BoxFit.cover,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(13),
+                      boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: Image.asset(
+                        'assets/icon/icon.png',
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,18 +105,21 @@ class AppDrawer extends ConsumerWidget {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 2.5,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: Gz.yellow.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(20),
+                                decoration: const BoxDecoration(
+                                  gradient: Gz.brandGradient,
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(20),
+                                  ),
                                 ),
                                 child: Text(
                                   isExecutor ? t('Орындаушы') : t('Клиент'),
                                   style: const TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.2,
                                     color: Gz.ink,
                                   ),
                                 ),
@@ -275,13 +294,40 @@ class AppDrawer extends ConsumerWidget {
     String label,
     VoidCallback onTap,
   ) {
-    return ListTile(
-      leading: Icon(icon, size: 21, color: Gz.textSecondary),
-      title: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+    // Иконка ЖҰМСАҚ ШАРШЫНЫҢ ішінде: тізім жалаң белгілер тізбегі емес,
+    // біркелкі «карточкалар» болып оқылады әрі әр жолдың басы бір
+    // вертикаль сызықтан басталады. Басқанда толқын дөңгелектелген
+    // таблетка болып шығады (shape), сол себепті sidebar-дың шетіне
+    // тіреліп тұрмайды.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        horizontalTitleGap: 12,
+        minLeadingWidth: 34,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Gz.surfaceAlt,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: Gz.border),
+          ),
+          child: Icon(icon, size: 18, color: Gz.ink),
+        ),
+        title: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -0.15),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded,
+            size: 20, color: Gz.textTertiary),
+        onTap: onTap,
       ),
-      onTap: onTap,
     );
   }
 }
@@ -373,73 +419,86 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: _busy ? null : _switch,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Gz.bg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Gz.border, width: 1.2),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Gz.ink,
-                shape: BoxShape.circle,
+    return PressScale(
+      enabled: !_busy,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: _busy ? null : _switch,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: Gz.surfaceAlt,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Gz.border, width: 1.2),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: const BoxDecoration(
+                  gradient: Gz.heroGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _toExecutor
+                      ? Icons.local_shipping_rounded
+                      : Icons.person_rounded,
+                  size: 18,
+                  color: Gz.yellow,
+                ),
               ),
-              child: Icon(
-                _toExecutor
-                    ? Icons.local_shipping_outlined
-                    : Icons.person_outline,
-                size: 18,
-                color: Gz.yellow,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Sidebar тар (≈300px) әрі иконка мен trailing белгі орын
-            // алады: орысша жазулар («Стать исполнителем») сыймай екінші
-            // жолға түсетін. BtnLabel — сыймаса кішірейтеді, ЕШҚАШАН
-            // екінші жолға түспейді.
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: BtnLabel(
-                      _title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
+              const SizedBox(width: 12),
+              // Sidebar тар (≈300px) әрі иконка мен trailing белгі орын
+              // алады: орысша жазулар («Стать исполнителем») сыймай екінші
+              // жолға түсетін. BtnLabel — сыймаса кішірейтеді, ЕШҚАШАН
+              // екінші жолға түспейді.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: BtnLabel(
+                        _title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: BtnLabel(
-                      _subtitle,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: Gz.textSecondary,
+                    const SizedBox(height: 1),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: BtnLabel(
+                        _subtitle,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: Gz.textSecondary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (_busy)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              const Icon(Icons.swap_horiz, color: Gz.textSecondary),
-          ],
+              if (_busy)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: Gz.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.swap_horiz_rounded,
+                      size: 18, color: Gz.textSecondary),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -463,78 +522,93 @@ class _BoardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Gz.yellow.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Gz.yellow, width: 1.4),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.storefront, size: 21, color: Gz.ink),
-                const SizedBox(width: 8),
-                // Жүйе шрифті үлкейтілген телефондарда «Хабарландырулар»
-                // рамкаға сыймай ЕКІ ЖОЛҒА бөлініп кететін («Хабарландырула»
-                // + «р»). FittedBox сыймаған жағдайда жазуды кішірейтеді,
-                // сол себепті ол ӘРҚАШАН бір жолда тұрады.
-                Expanded(
-                  child: SizedBox(
-                    height: 19,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        t('Хабарландырулар'),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14.5,
+    return PressScale(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Gz.yellow.withValues(alpha: 0.28),
+                Gz.yellow.withValues(alpha: 0.12),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Gz.yellow, width: 1.4),
+            boxShadow: Gz.glow(Gz.yellow, alpha: 0.22, blur: 14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.storefront_rounded, size: 21, color: Gz.ink),
+                  const SizedBox(width: 8),
+                  // Жүйе шрифті үлкейтілген телефондарда «Хабарландырулар»
+                  // рамкаға сыймай ЕКІ ЖОЛҒА бөлініп кететін
+                  // («Хабарландырула» + «р»). FittedBox сыймаған жағдайда
+                  // жазуды кішірейтеді, сол себепті ол ӘРҚАШАН бір жолда.
+                  Expanded(
+                    child: SizedBox(
+                      height: 19,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          t('Хабарландырулар'),
+                          maxLines: 1,
+                          softWrap: false,
+                          // Тіркелген 19px қорап — жол биіктігі айқын
+                          // берілмесе, FittedBox жазуды бекер кішірейтеді.
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14.5,
+                            height: 1.1,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                if (showNew)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Gz.ink,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      t('Жаңа'),
-                      style: const TextStyle(
-                        color: Gz.yellow,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                  if (showNew)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Gz.ink,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        t('Жаңа'),
+                        style: const TextStyle(
+                          color: Gz.yellow,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              isExecutor
-                  ? t('Жұмыстарды қараңыз, қызметіңізді жариялаңыз')
-                  : t('Қызметтерді қараңыз, жұмысыңызды жариялаңыз'),
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.4,
-                color: Gz.textSecondary,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 7),
+              Text(
+                isExecutor
+                    ? t('Жұмыстарды қараңыз, қызметіңізді жариялаңыз')
+                    : t('Қызметтерді қараңыз, жұмысыңызды жариялаңыз'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: Gz.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

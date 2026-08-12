@@ -67,8 +67,15 @@ class RouteMap extends StatelessWidget {
   Widget build(BuildContext context) {
     final all = [from, ...stops, to, for (final m in extraMarkers) m.point];
     final points = routePoints.isEmpty ? [from, ...stops, to] : routePoints;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(Gz.radius),
+    // Картаның айналасында ЖИЕК бар: ақ карточкаға тікелей жапсырылған
+    // тайл суреті «жамау» болып көрінетін — жіңішке жиек оны нақты
+    // блокқа айналдырады.
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.border),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: SizedBox(
         height: height,
         child: IgnorePointer(
@@ -84,8 +91,15 @@ class RouteMap extends StatelessWidget {
             ),
             children: [
               osmTileLayer(),
+              // Маршрут сызығы ЕКІ ҚАБАТ: астында ақ «контур», үстінде
+              // көк сызық — карта суретінің үстінде анық көрінеді (бұрын
+              // қою тайлдарда сызық жоғалып кететін).
               PolylineLayer(polylines: [
-                Polyline(points: points, strokeWidth: 4, color: Gz.blue),
+                Polyline(
+                    points: points,
+                    strokeWidth: 7,
+                    color: Colors.white.withValues(alpha: 0.9)),
+                Polyline(points: points, strokeWidth: 4.5, color: Gz.blue),
               ]),
               MarkerLayer(markers: [
                 originMarker(from),

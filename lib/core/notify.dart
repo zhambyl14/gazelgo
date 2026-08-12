@@ -71,7 +71,8 @@ class Notify {
           importance: Importance.high,
           priority: Priority.high,
           icon: 'ic_stat_notify',
-          color: Color(0xFFFFC400),
+          // Бренд сарысы (Gz.yellow) — хабарлама тақтасындағы акцент түсі.
+          color: Color(0xFFFFC61A),
         ),
         // iOS-та presentSound анық true болмаса, локал хабарлама
         // дыбыссыз (тек баннер) көрсетіледі — flutter_local_notifications-тың

@@ -165,6 +165,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                       style: const TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 12,
+                        height: 1.1,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -195,17 +196,23 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
           return GestureDetector(
             onTap: () => widget.onChanged(v),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
               width: _cardW,
               height: _cardH,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               decoration: BoxDecoration(
-                color: sel ? Gz.ink : Gz.bg,
-                borderRadius: BorderRadius.circular(12),
+                // Таңдалған карточка — градиентті «түнгі» фон + сары жиек
+                // әрі жылы сәуле: каруселде қайсысы таңдалғаны бір қарағанда
+                // көрінеді (бұрын жалаң қара шаршы еді).
+                gradient: sel ? Gz.heroGradient : null,
+                color: sel ? null : Gz.surfaceAlt,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
                 ),
+                boxShadow: sel ? Gz.glow(Gz.yellow, alpha: 0.28, blur: 12) : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -224,9 +231,15 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                         v.label,
                         maxLines: 1,
                         softWrap: false,
+                        // `height` ӘДЕЙІ АЙҚЫН берілген: тақырыптық
+                        // тақтадағы жол биіктігі (1.48) мұнда мұраланса,
+                        // 13px-тік қорапқа сыймай, FittedBox жазуды
+                        // кішірейтіп жіберер еді.
                         style: TextStyle(
                           fontSize: 10.5,
+                          height: 1.1,
                           fontWeight: FontWeight.w800,
+                          letterSpacing: -0.1,
                           color: fg,
                         ),
                       ),
@@ -313,16 +326,19 @@ class VehicleCategoryTabs extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
         height: tileHeight,
         padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
-          color: active ? Gz.ink : Gz.bg,
-          borderRadius: BorderRadius.circular(14),
+          gradient: active ? Gz.heroGradient : null,
+          color: active ? null : Gz.surfaceAlt,
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: active ? Gz.yellow : Gz.border,
             width: active ? 2 : 1.2,
           ),
+          boxShadow: active ? Gz.glow(Gz.yellow, alpha: 0.26, blur: 12) : null,
         ),
         // Белгі («ЖАҢА») плитканың оң жақ ТӨБЕСІНДЕ, мазмұнның үстінде
         // қалқып тұрады — сол себепті мәтінге орын алмайды.
@@ -347,8 +363,11 @@ class VehicleCategoryTabs extends StatelessWidget {
                           label,
                           maxLines: 1,
                           softWrap: false,
+                          // Тіркелген 16px қорап — жол биіктігі айқын
+                          // берілмесе, FittedBox жазуды кішірейтеді.
                           style: TextStyle(
                             fontSize: 12.5,
+                            height: 1.1,
                             fontWeight: FontWeight.w800,
                             color: active ? Colors.white : Gz.ink,
                           ),
@@ -367,9 +386,10 @@ class VehicleCategoryTabs extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                   decoration: BoxDecoration(
-                    color: Gz.yellow,
+                    gradient: Gz.brandGradient,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Gz.surface, width: 1.5),
+                    boxShadow: Gz.glow(Gz.yellow, alpha: 0.4, blur: 8),
                   ),
                   child: Text(
                     badge,

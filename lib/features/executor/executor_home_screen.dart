@@ -119,35 +119,50 @@ class _BalancePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Gz.surface,
-      elevation: 1.5,
-      shadowColor: Colors.black26,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 18,
-                color: Gz.yellowDark,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                balance == null ? '—' : fmtT(balance),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
+    return PressScale(
+      child: Material(
+        color: Gz.surface,
+        elevation: 0,
+        shape: StadiumBorder(
+          side: BorderSide(color: Gz.yellow.withValues(alpha: 0.55), width: 1.4),
+        ),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 7, 7, 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 18,
+                  color: Gz.yellowDark,
                 ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.add, size: 16, color: Gz.textSecondary),
-            ],
+                const SizedBox(width: 7),
+                Text(
+                  balance == null ? '—' : fmtT(balance),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                // «+» — жалаң иконка емес, САРЫ дөңгелек: «баланс толтыру»
+                // әрекеті таблетканың ішіндегі нақты түймедей көрінеді.
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    gradient: Gz.brandGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add_rounded, size: 16, color: Gz.ink),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -262,15 +277,22 @@ class _LineControlBar extends ConsumerWidget {
         Material(
           color: Gz.surface,
           elevation: 0,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             onTap: () => _openTariffs(context),
             child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Gz.green.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(18),
+                // «Бәрі дұрыс» күйі — карта ЖАСЫЛ реңкке аздап боялады:
+                // ақ карточкалардың арасында бірден көзге түседі.
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Gz.tint(Gz.greenBright, 0.10), Gz.surface],
+                ),
+                border: Border.all(color: Gz.green.withValues(alpha: 0.35)),
                 boxShadow: Gz.cardShadow,
               ),
               child: Column(
@@ -278,12 +300,19 @@ class _LineControlBar extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
-                        Icons.check_circle,
-                        color: Gz.green,
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Gz.tint(Gz.greenBright, 0.16),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Gz.green,
+                          size: 17,
+                        ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 11),
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -296,8 +325,11 @@ class _LineControlBar extends ConsumerWidget {
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
+                                height: 1.25,
+                                letterSpacing: -0.25,
                               ),
                             ),
+                            const SizedBox(height: 1),
                             Text(
                               '${t('Белсенді')} · ${_tariffLabel(s, total)}',
                               maxLines: 1,
@@ -305,14 +337,16 @@ class _LineControlBar extends ConsumerWidget {
                               style: const TextStyle(
                                 color: Gz.green,
                                 fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
                               ),
                             ),
                           ],
                         ),
                       ),
                       const Icon(
-                        Icons.chevron_right,
-                        color: Gz.textSecondary,
+                        Icons.chevron_right_rounded,
+                        color: Gz.textTertiary,
                       ),
                     ],
                   ),
@@ -321,15 +355,15 @@ class _LineControlBar extends ConsumerWidget {
                   // жабылады, сол себепті таусылуға жақындағанда түсі
                   // ескертетін сарыға ауысады.
                   if (total > 0) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: (used / total).clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor: Gz.green.withValues(alpha: 0.15),
+                        minHeight: 7,
+                        backgroundColor: Gz.tint(Gz.greenBright, 0.18),
                         valueColor: AlwaysStoppedAnimation(
-                          s.ordersLeft <= 2 ? Gz.yellowDark : Gz.green,
+                          s.ordersLeft <= 2 ? Gz.amber : Gz.greenBright,
                         ),
                       ),
                     ),
@@ -381,11 +415,17 @@ class _StatusCard extends StatelessWidget {
     // енін алып, мәтінге тек 100px қалатын да, тақырып та, түсініктеме де
     // «Ваш а…», «Модератор прове ряет ва…» болып қиылып, оқылмайтын еді.
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
-        color: Gz.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        // Карта өз түсінің ӨТЕ ЖЕҢІЛ реңкінен ақ түске ауысады: күйдің
+        // мағынасы (күту / қате / шақыру) фоннан-ақ оқылады.
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Gz.tint(color, 0.09), Gz.surface],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
         boxShadow: Gz.cardShadow,
       ),
       child: Column(
@@ -395,12 +435,13 @@ class _StatusCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Gz.tint(color, 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Gz.tint(color, 0.22), width: 1.2),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -411,18 +452,19 @@ class _StatusCard extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
                         height: 1.25,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 12.5,
-                        height: 1.35,
+                        height: 1.5,
                       ),
                     ),
                   ],
@@ -431,7 +473,7 @@ class _StatusCard extends StatelessWidget {
             ],
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // BusyButton — басылғанда spinner көрсетеді (әрекет шынымен
             // жүріп жатқаны көрініп тұрады).
             BusyButton(label: actionLabel!, onPressed: onAction!),
@@ -482,10 +524,16 @@ class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
     final ep = ref.watch(myExecutorProfileProvider).value;
     if (ep != null) _initFrom(ep.orderPushEnabled);
     return Material(
-      color: Gz.surface,
-      elevation: 1.5,
-      shadowColor: Colors.black26,
-      shape: const StadiumBorder(),
+      color: _on ? Gz.surface : Gz.surfaceAlt,
+      elevation: 0,
+      shape: StadiumBorder(
+        // Қосулы күйде жиегі ЖАСЫЛ, өшірулі күйде — бейтарап сұр: тумблерге
+        // қарамай-ақ, таблетканың өзінен күйі оқылады.
+        side: BorderSide(
+          color: _on ? Gz.green.withValues(alpha: 0.45) : Gz.border,
+          width: 1.4,
+        ),
+      ),
       child: InkWell(
         customBorder: const StadiumBorder(),
         // Жазуды түртсе де қосылады/өшеді — кішкентай тумблерді дәл басу
@@ -497,9 +545,11 @@ class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _on ? Icons.notifications_active : Icons.notifications_off,
+                _on
+                    ? Icons.notifications_active_rounded
+                    : Icons.notifications_off_rounded,
                 size: 18,
-                color: _on ? Gz.yellowDark : Gz.textSecondary,
+                color: _on ? Gz.green : Gz.textTertiary,
               ),
               const SizedBox(width: 6),
               // Жазу ҚЫСҚАРДЫ («Заказдарға уведомление» → «Уведомление»):

@@ -34,6 +34,55 @@ class BtnLabel extends StatelessWidget {
       );
 }
 
+/// Басылғанда сәл КІШІРЕЙЕТІН қаптама — «тірі» батырма әсері.
+///
+/// Material-дың әдепкі ripple-і жалғыз кері байланыс болатын: сары батырмада
+/// ол әрең көрінеді. Масштаб анимациясы кез келген түсте, кез келген
+/// платформада (web-те де) бірдей сезіледі. [Listener] қолданылады —
+/// GestureDetector-ден бөлек, ол баланың өз басу оқиғасын ҰРЛАМАЙДЫ.
+class PressScale extends StatefulWidget {
+  final Widget child;
+  final double scale;
+
+  /// false болса — анимация мүлдем жүрмейді (өшірулі батырма «басылып»
+  /// тұрғандай көрінбеуі керек).
+  final bool enabled;
+
+  const PressScale({
+    super.key,
+    required this.child,
+    this.scale = 0.97,
+    this.enabled = true,
+  });
+
+  @override
+  State<PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<PressScale> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (!widget.enabled || _down == v) return;
+    setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down && widget.enabled ? widget.scale : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 /// Async-әрекеті бар батырма: басқанда spinner көрсетеді.
 class BusyButton extends StatefulWidget {
   final String label;
@@ -75,18 +124,25 @@ class _BusyButtonState extends State<BusyButton> {
 
   @override
   Widget build(BuildContext context) {
+    // Spinner батырманың МӘТІН ТҮСІМЕН: түрлі-түсті (қызыл/жасыл) батырмада
+    // жазу ақ болады, ал spinner бұрын әрқашан қара еді — қызыл фонда
+    // көмескі көрінетін.
+    final spinnerColor = widget.outlined
+        ? Gz.ink
+        : (widget.color == null ? Gz.ink : Colors.white);
     final child = _busy
-        ? const SizedBox(
+        ? SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: Gz.ink),
+            child: CircularProgressIndicator(
+                strokeWidth: 2.4, color: spinnerColor),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.icon != null) ...[
                 Icon(widget.icon, size: 20),
-                const SizedBox(width: 8),
+                const SizedBox(width: 9),
               ],
               // Ұзын мәтін (әсіресе орысша) екінші жолға сынып қиылмауы
               // үшін — қажет болса кішірейеді.
@@ -94,19 +150,103 @@ class _BusyButtonState extends State<BusyButton> {
             ],
           );
     final active = widget.enabled && !_busy;
+    // Күй ауысқанда (жазу ↔ spinner) батырма іші «секіріп» алмасын.
+    final animated = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: KeyedSubtree(key: ValueKey(_busy), child: child),
+    );
     if (widget.outlined) {
-      return OutlinedButton(onPressed: active ? _run : null, child: child);
+      return PressScale(
+        enabled: active,
+        child: OutlinedButton(onPressed: active ? _run : null, child: animated),
+      );
     }
-    return FilledButton(
-      onPressed: active ? _run : null,
-      style: widget.color == null
-          ? null
-          : FilledButton.styleFrom(
-              backgroundColor: widget.color,
-              foregroundColor: Colors.white,
-              shadowColor: widget.color!.withValues(alpha: 0.4),
+    return PressScale(
+      enabled: active,
+      child: FilledButton(
+        onPressed: active ? _run : null,
+        style: widget.color == null
+            ? null
+            : FilledButton.styleFrom(
+                backgroundColor: widget.color,
+                foregroundColor: Colors.white,
+                // Көлеңке де батырманың өз түсімен жарқырайды.
+                shadowColor: widget.color!.withValues(alpha: 0.5),
+              ),
+        child: animated,
+      ),
+    );
+  }
+}
+
+/// БАСТЫ әрекет батырмасы — градиентті әрі өз түсімен жарқырайтын нұсқа.
+///
+/// Жалаң [FilledButton] бүкіл қосымшада негізгі батырма болып қала береді;
+/// бұл — экранның БІР ғана шешуші әрекетіне («Шақыру», «Заказ жариялау»)
+/// арналған: градиент + жылы сәуле оны басқа батырмалардан бөліп тұрады.
+class GzPrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final double height;
+
+  const GzPrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.height = 54,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return PressScale(
+      enabled: enabled,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: height,
+        decoration: BoxDecoration(
+          gradient: enabled ? Gz.brandGradient : null,
+          color: enabled ? null : Gz.disabledBg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: enabled ? Gz.glow(Gz.yellow, alpha: 0.45) : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onPressed,
+            splashColor: Gz.ink.withValues(alpha: 0.10),
+            highlightColor: Gz.ink.withValues(alpha: 0.06),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon,
+                        size: 20,
+                        color: enabled ? Gz.ink : Gz.disabledFg),
+                    const SizedBox(width: 9),
+                  ],
+                  Flexible(
+                    child: BtnLabel(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.1,
+                        color: enabled ? Gz.ink : Gz.disabledFg,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-      child: child,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -142,16 +282,22 @@ class ConfirmCheck extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutBack,
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: value ? Gz.green : Colors.transparent,
+                color: value ? Gz.greenBright : Gz.surfaceAlt,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: value ? Gz.green : Gz.border,
+                  color: value ? Gz.greenBright : Gz.border,
                   width: 1.8,
                 ),
+                // Белгі қойылғанда жасыл дөңгелек жеңіл жарқырайды —
+                // «қабылданды» деген сезім күшейеді.
+                boxShadow: value
+                    ? Gz.glow(Gz.greenBright, alpha: 0.35, blur: 10)
+                    : null,
               ),
               child: Icon(
                 Icons.check_rounded,
@@ -280,33 +426,47 @@ class AddAddressButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Material(
-        color: Gz.yellow.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(11),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(11),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: Gz.yellow, width: 1.3),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.add_location_alt_outlined,
-                    size: 17, color: Gz.ink),
-                const SizedBox(width: 6),
-                BtnLabel(
-                  label ?? t('Мекенжай қосу'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Gz.ink,
+      child: PressScale(
+        child: Material(
+          color: Gz.yellow.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 13, 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Gz.yellow, width: 1.4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // «+» белгісі толтырылған сары дөңгелекте — түйменің
+                  // «қосу» әрекеті екені сөзді оқымай-ақ түсінікті.
+                  Container(
+                    width: 20,
+                    height: 20,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: Gz.yellow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add_rounded,
+                        size: 15, color: Gz.ink),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 7),
+                  BtnLabel(
+                    label ?? t('Мекенжай қосу'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.1,
+                      color: Gz.ink,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -344,17 +504,20 @@ class AddressRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
         decoration: BoxDecoration(
-          color: Gz.bg,
-          borderRadius: BorderRadius.circular(12),
+          color: Gz.surfaceAlt,
+          borderRadius: BorderRadius.circular(14),
+          // Жіңішке жиек: ақ панельдің ішіндегі жол «басуға болатын өріс»
+          // екені бірден көрінеді (бұрын тек сәл сұр фон болатын).
+          border: Border.all(color: Gz.border),
         ),
         child: Row(
           children: [
             SizedBox(width: 20, child: Center(child: mark)),
-            const SizedBox(width: 10),
+            const SizedBox(width: 11),
             Expanded(
               child: Text(
                 text,
@@ -362,8 +525,9 @@ class AddressRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: dim ? FontWeight.w500 : FontWeight.w700,
-                  color: dim ? Gz.textSecondary : Gz.ink,
+                  color: dim ? Gz.textTertiary : Gz.ink,
                   fontSize: 14,
+                  letterSpacing: -0.1,
                 ),
               ),
             ),
@@ -403,16 +567,33 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Түрлі-түсті НҮКТЕ + жиек: чип жалаң боялған тіктөртбұрыш емес,
+    // «статус белгісі» болып оқылады әрі түсі солғын фонда да айқын.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.fromLTRB(9, 5, 11, 5),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.1),
+        color: Gz.tint(_color, 0.11),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Gz.tint(_color, 0.26)),
       ),
-      child: Text(
-        statusLabel(status, vehicleType: vehicleType),
-        style: TextStyle(
-            color: _color, fontWeight: FontWeight.w700, fontSize: 12.5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
+          ),
+          Text(
+            statusLabel(status, vehicleType: vehicleType),
+            style: TextStyle(
+                color: _color,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                letterSpacing: 0.1),
+          ),
+        ],
       ),
     );
   }
@@ -460,14 +641,22 @@ class InitialsAvatar extends StatelessWidget {
         .take(2)
         .map((w) => w[0].toUpperCase())
         .join();
-    final fallback = CircleAvatar(
-      radius: radius,
-      backgroundColor: Gz.ink,
+    // Суреті жоқ профиль — жалаң қара дөңгелек емес, ГРАДИЕНТТІ «түнгі
+    // аспан» фоны мен сары әріптер: аватарлар тізімі әлдеқайда әрлі көрінеді.
+    final fallback = Container(
+      width: radius * 2,
+      height: radius * 2,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        gradient: Gz.heroGradient,
+        shape: BoxShape.circle,
+      ),
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: TextStyle(
             color: Gz.yellow,
             fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
             fontSize: radius * 0.72),
       ),
     );
@@ -571,29 +760,53 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Иконка ЕКІ ҚАБАТТЫ сақинада: сыртқы өте солғын, ішкі қоюлау —
+            // жалаң дөңгелектен гөрі «сәуле шашып тұрған» әсер береді.
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
-                color: Gz.yellow.withValues(alpha: 0.15),
+                color: Gz.yellow.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: Gz.ink),
+              child: Container(
+                padding: const EdgeInsets.all(19),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Gz.yellowLight.withValues(alpha: 0.55),
+                      Gz.yellow.withValues(alpha: 0.30),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 38, color: Gz.ink),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(title,
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                style: const TextStyle(
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w900,
+                    height: 1.3,
+                    letterSpacing: -0.3)),
             if (subtitle != null) ...[
-              const SizedBox(height: 6),
-              Text(subtitle!,
-                  textAlign: TextAlign.center,
-                  style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 14)),
+              const SizedBox(height: 7),
+              // Ені ШЕКТЕЛГЕН: ұзын сөйлем экранның шетінен шетіне
+              // созылмайды — 2-3 қысқа жол болып, көзге әдемі оқылады.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(subtitle!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
+              ),
             ],
           ],
         ),
@@ -621,31 +834,49 @@ class RouteLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Атау (ҚАЙДАН / АЯЛДАМА 1 / ҚАЙДА) — БАС ӘРІППЕН әрі әріп аралығы
+    // кеңейтілген микро-жазу. Ол мекенжайдың өзімен ешқашан шатаспайды:
+    // көз алдымен қою мекенжайды оқиды, атау «белгі» болып фонда қалады.
     Widget row(Widget lead, String label, String text) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(width: 20, child: Center(child: lead)),
-            const SizedBox(width: 10),
+            const SizedBox(width: 11),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 10.5, color: Gz.textSecondary)),
+                  Text(label.toUpperCase(), style: Gz.label),
+                  const SizedBox(height: 1),
                   Text(text,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w700)),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                          letterSpacing: -0.1)),
                 ],
               ),
             ),
           ],
         );
+    // Нүктелерді жалғайтын сызық — жоғарыдан төмен солғындайды: маршрут
+    // «ағып» бара жатқандай көрінеді.
     Widget connector() => Padding(
-          padding: const EdgeInsets.only(left: 9.5),
-          child: Container(width: 2, height: 14, color: Gz.border),
+          padding: const EdgeInsets.only(left: 9),
+          child: Container(
+            width: 2,
+            height: 16,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(1),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Gz.border, Gz.border.withValues(alpha: 0.35)],
+              ),
+            ),
+          ),
         );
     // Аялдамалар НӨМІРЛЕНЕДІ (1, 2 …), ақырғы нүкте — ФИНИШ ТУЫ. Осылайша
     // маршрут «қайдан → 1 → 2 → финиш» болып оқылады.
@@ -695,33 +926,30 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Gz.radius),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      fmtT(order.displayPrice),
-                      style: const TextStyle(
-                          fontSize: 18.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3),
-                    ),
+                    // Баға — карточкадағы ЕҢ САЛМАҚТЫ элемент: орындаушы
+                    // лентаны сол сан бойынша шолады.
+                    child: Text(fmtT(order.displayPrice), style: Gz.money),
                   ),
+                  const SizedBox(width: 8),
                   trailing ??
                       StatusChip(order.status, vehicleType: order.vehicleType),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               RouteLine(
                 from: order.fromDisplay,
                 to: order.toDisplay,
                 stops: order.stops.map((s) => s.display).toList(),
               ),
               if (showMap) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 RouteMap(
                   from: LatLng(order.fromLat, order.fromLng),
                   to: LatLng(order.toLat, order.toLng),
@@ -730,7 +958,7 @@ class OrderCard extends StatelessWidget {
                   height: 104,
                 ),
               ],
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -760,16 +988,17 @@ class OrderCard extends StatelessWidget {
                 ],
               ),
               if (order.cargoDesc.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 9),
                 Text(
                   order.cargoDesc,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                      color: Gz.textSecondary, fontSize: 13, height: 1.45),
                 ),
               ],
               if (footer != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 footer!,
               ],
             ],
@@ -781,21 +1010,24 @@ class OrderCard extends StatelessWidget {
 
   Widget _tag(IconData icon, String text, {Color? color, Widget? leading}) =>
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
         decoration: BoxDecoration(
-          color: color == null ? Gz.bg : color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
+          color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+              color: color == null ? Gz.border : Gz.tint(color, 0.25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             leading ?? Icon(icon, size: 14, color: color ?? Gz.textSecondary),
-            const SizedBox(width: 4),
+            const SizedBox(width: 5),
             Text(text,
                 style: TextStyle(
                     fontSize: 12,
                     color: color ?? Gz.ink,
-                    fontWeight: FontWeight.w600)),
+                    letterSpacing: -0.05,
+                    fontWeight: FontWeight.w700)),
           ],
         ),
       );
@@ -826,10 +1058,16 @@ class InfoRow extends StatelessWidget {
                       const TextStyle(color: Gz.textSecondary, fontSize: 13.5)),
             ),
           ),
+          const SizedBox(width: 8),
+          // Мәні қоюлау әрі қара: атау (солғын) мен мәннің АРАСЫНДАҒЫ айырма
+          // көзге бірден түседі — жол «екі баған» болып оқылады.
           Expanded(
             child: Text(value,
                 style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13.5)),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    height: 1.4,
+                    color: Gz.ink)),
           ),
         ],
       ),
@@ -1056,17 +1294,24 @@ class GazelGoHero extends StatelessWidget {
         // бөлек мәтіндік жазу қосылмайды.
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [
+            borderRadius: BorderRadius.circular(30),
+            // ЕКІ ҚАБАТТЫ сәуле: тығыз әрі жақын + кең әрі солғын —
+            // логотип беттің үстінде «жүзіп» тұрғандай көрінеді.
+            boxShadow: [
               BoxShadow(
-                color: Color(0x73FFC400),
-                blurRadius: 30,
-                offset: Offset(0, 14),
+                color: Gz.yellow.withValues(alpha: 0.45),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Gz.amber.withValues(alpha: 0.30),
+                blurRadius: 44,
+                offset: const Offset(0, 20),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(30),
             child: Image.asset(
               'assets/icon/icon.png',
               width: 108,
@@ -1076,11 +1321,17 @@ class GazelGoHero extends StatelessWidget {
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            subtitle!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+          const SizedBox(height: 18),
+          // Ені шектеулі — слоган экранның екі шетіне созылмай, ортада
+          // теңгерімді екі жол болып тұрады.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Gz.textSecondary, fontSize: 14, height: 1.5),
+            ),
           ),
         ],
       ],
@@ -1136,26 +1387,38 @@ Future<bool> confirmDialog(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (icon != null) ...[
-              Container(
-                width: 52,
-                height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: confirmColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+              // «Featured icon»: сол жақта, дөңгелектелген шаршыда, айналасы
+              // екі қабат реңкпен қоршалған. Диалогтың бүкіл мазмұны СОЛ
+              // ЖАҚҚА тураланған — иконка да, тақырып та, мәтін де бір
+              // сызықтан басталады, көз оларды бір бағанда оқиды.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Gz.tint(confirmColor, 0.12),
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(color: Gz.tint(confirmColor, 0.22),
+                        width: 1.4),
+                  ),
+                  child: Icon(icon, color: confirmColor, size: 27),
                 ),
-                child: Icon(icon, color: confirmColor, size: 26),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
             ],
             Text(title,
                 style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
+                    fontSize: 18.5,
+                    fontWeight: FontWeight.w900,
+                    height: 1.25,
+                    letterSpacing: -0.35)),
+            const SizedBox(height: 9),
             Text(message,
                 style: const TextStyle(
-                    color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
-            const SizedBox(height: 22),
+                    color: Gz.textSecondary, fontSize: 13.5, height: 1.55)),
+            const SizedBox(height: 24),
             // Екі батырма қатарда — әрқайсысына диалог енінің ЖАРТЫСЫ ғана
             // тиеді (тар телефонда ≈125px). Material-дың әдепкі көлденең
             // padding-і (24+24) сол еннен 48px «жеп», мәтінге ~77px қана
@@ -1328,7 +1591,7 @@ class LanguageSwitcher extends StatelessWidget {
       builder: (context, lang, _) => Container(
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: Gz.bg,
+          color: Gz.surfaceAlt,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Gz.border),
         ),
@@ -1348,16 +1611,21 @@ class LanguageSwitcher extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? Gz.yellow : Colors.transparent,
+          // Белсенді тіл — градиентті «таблетка» + жеңіл көлеңке: қай тіл
+          // қосулы екені бір қарағанда көрінеді.
+          gradient: active ? Gz.brandGradient : null,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: active ? Gz.glow(Gz.yellow, alpha: 0.35, blur: 8) : null,
         ),
         child: Text(label,
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
                 color: active ? Gz.ink : Gz.textSecondary)),
       ),
     );

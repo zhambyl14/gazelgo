@@ -121,15 +121,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 38),
+                    const SizedBox(height: 36),
+                    // Тақырып + оның астындағы бір жолдық түсіндірме: көз
+                    // алдымен «Кіру» деген қою жазуды, содан кейін не істеу
+                    // керегін оқиды (бұрын жалғыз тақырып тұрып, өрістер
+                    // бірден басталатын).
+                    Text(t('Кіру'), style: Gz.h1),
+                    const SizedBox(height: 4),
                     Text(
-                      t('Кіру'),
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      t('Нөміріңіз бен құпиясөзіңізді енгізіңіз'),
+                      style: Gz.bodyMuted,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
                     TextFormField(
                       controller: _phone,
                       keyboardType: TextInputType.phone,
@@ -145,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (v) =>
                           Phone.isValid(v ?? '') ? null : t('Нөмір дұрыс емес'),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _password,
                       obscureText: _obscure,
@@ -173,19 +176,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             builder: (_) => const ForgotPasswordScreen(),
                           ),
                         ),
+                        // САРЫ мәтін ақ фонда әрең оқылады (контраст ~2:1) —
+                        // сол себепті мұнда брендтің ҚОЮ реңкі қолданылады.
                         style: TextButton.styleFrom(
-                          foregroundColor: Gz.yellowDark,
+                          foregroundColor: Gz.yellowDeep,
                         ),
                         child: Text(t('Құпиясөзді ұмыттыңыз ба?')),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     BusyButton(
                       label: t('Кіру'),
                       enabled: _canSubmit,
                       onPressed: _login,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 22),
                     // «Тіркелу» әдейі АЙҚЫН батырма (бұрын жіңішке сілтеме
                     // еді): қосымшаны алғаш ашқандар оны байқамай, кіру
                     // өрістерін толтырып, қызыл қатеге тірелетін.
@@ -193,19 +198,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const Expanded(child: Divider()),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             t('Аккаунт жоқ па?'),
                             style: const TextStyle(
                               color: Gz.textSecondary,
                               fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         const Expanded(child: Divider()),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
                     OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(

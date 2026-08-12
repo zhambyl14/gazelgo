@@ -395,19 +395,28 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Material(
-                        elevation: 3,
-                        shape: const CircleBorder(),
-                        color: Gz.surface,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: _goToMyLocation,
-                          child: const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Icon(
-                              Icons.my_location,
-                              color: Gz.ink,
-                              size: 22,
+                      // «Менің орным» — картаның үстінде тұрған жалғыз
+                      // дөңгелек батырма: көлеңкесі күштірек болмаса,
+                      // карта суретіне сіңіп кетеді.
+                      Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: Gz.cardShadow,
+                        ),
+                        child: Material(
+                          elevation: 0,
+                          shape: const CircleBorder(),
+                          color: Gz.surface,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _goToMyLocation,
+                            child: const Padding(
+                              padding: EdgeInsets.all(13),
+                              child: Icon(
+                                Icons.my_location_rounded,
+                                color: Gz.ink,
+                                size: 22,
+                              ),
                             ),
                           ),
                         ),
@@ -440,14 +449,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                       decoration: BoxDecoration(
                         color: Gz.surface,
-                        borderRadius: BorderRadius.circular(26),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x260F1720),
-                            blurRadius: 30,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: Gz.liftShadow,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -462,31 +465,39 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                             child: Column(
                               children: [
                                 Container(
-                                  width: 40,
-                                  height: 4,
-                                  margin: const EdgeInsets.only(bottom: 10),
+                                  width: 44,
+                                  height: 5,
+                                  margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
-                                    color: Gz.border,
-                                    borderRadius: BorderRadius.circular(2),
+                                    color: Gz.disabledBg,
+                                    borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
                                 Row(
                                   children: [
+                                    // Санат иконкасы — градиентті шаршыда
+                                    // әрі жылы сәулемен: панельдің «жүрегі»
+                                    // осы жерде екені бірден көрінеді.
                                     Container(
-                                      padding: const EdgeInsets.all(7),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Gz.yellow,
-                                        borderRadius: BorderRadius.circular(11),
+                                        gradient: Gz.brandGradient,
+                                        borderRadius: BorderRadius.circular(13),
+                                        boxShadow: Gz.glow(
+                                          Gz.yellow,
+                                          alpha: 0.4,
+                                          blur: 12,
+                                        ),
                                       ),
                                       child: Icon(
                                         _category == VehicleCategory.taxi
-                                            ? Icons.local_taxi
-                                            : Icons.local_shipping,
+                                            ? Icons.local_taxi_rounded
+                                            : Icons.local_shipping_rounded,
                                         size: 19,
                                         color: Gz.ink,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(width: 11),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -494,30 +505,50 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         children: [
                                           Text(
                                             t('Қандай көлік керек?'),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 16.5,
                                               fontWeight: FontWeight.w900,
+                                              height: 1.2,
+                                              letterSpacing: -0.35,
                                             ),
                                           ),
-                                          if (!_panelCollapsed)
+                                          if (!_panelCollapsed) ...[
+                                            const SizedBox(height: 2),
                                             Text(
                                               t('Картадан орныңызды белгілеңіз'),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
                                                 color: Gz.textSecondary,
-                                                fontSize: 11.5,
+                                                fontSize: 12,
+                                                height: 1.2,
                                               ),
                                             ),
+                                          ],
                                         ],
                                       ),
                                     ),
+                                    // Бүктеу белгісі — жұмсақ дөңгелек
+                                    // фонда: жалаң көрсеткіден гөрі түйме
+                                    // екені айқынырақ.
                                     AnimatedRotation(
                                       duration: const Duration(
                                         milliseconds: 200,
                                       ),
                                       turns: _panelCollapsed ? 0.5 : 0,
-                                      child: const Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                        color: Gz.textSecondary,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: Gz.surfaceAlt,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Gz.textSecondary,
+                                          size: 22,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -665,26 +696,25 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           onPressed: _addDestination,
                                         ),
                                       ],
-                                      const SizedBox(height: 12),
-                                      FilledButton(
+                                      const SizedBox(height: 14),
+                                      // Экранның ЖАЛҒЫЗ шешуші әрекеті —
+                                      // сол себепті градиентті әрі өз
+                                      // сәулесі бар нұсқа: панельдегі басқа
+                                      // элементтердің ешқайсысы онымен
+                                      // «жарысып» тұрмайды.
+                                      //
+                                      // Жазуы ұзын атауларда
+                                      // («Ассенизатор шақыру») не жүйе
+                                      // шрифті үлкейтілгенде де БІР жолда
+                                      // қалады (ішінде BtnLabel бар).
+                                      GzPrimaryButton(
+                                        label: vehicleCallLabel(_vehicle),
                                         onPressed:
                                             (_from == null || _resolvingFrom)
                                             ? null
                                             : (_to == null
                                                   ? _pickTo
                                                   : _maybeContinue),
-                                        // FittedBox: ұзын атаулар
-                                        // («Ассенизатор шақыру» т.б.) не жүйе
-                                        // шрифті үлкейтілген кезде де 1
-                                        // жолда қалады.
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(
-                                            vehicleCallLabel(_vehicle),
-                                            maxLines: 1,
-                                            softWrap: false,
-                                          ),
-                                        ),
                                       ),
                                     ],
                                   ),
@@ -736,19 +766,23 @@ class _ActiveOrdersBanner extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Gz.ink,
-              borderRadius: BorderRadius.circular(16),
+              // Жалаң қара тіктөртбұрыштың орнына градиент + тереңдік:
+              // банер картаның үстінде «қалқып» тұрғандай көрінеді.
+              gradient: Gz.heroGradient,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: Gz.liftShadow,
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Gz.yellow,
+                  decoration: BoxDecoration(
+                    gradient: Gz.brandGradient,
                     shape: BoxShape.circle,
+                    boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
                   ),
                   child: const Icon(
-                    Icons.local_shipping,
+                    Icons.local_shipping_rounded,
                     size: 18,
                     color: Gz.ink,
                   ),
@@ -760,12 +794,17 @@ class _ActiveOrdersBanner extends StatelessWidget {
                     children: [
                       Text(
                         statusLabel(o.status, vehicleType: o.vehicleType),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
+                          height: 1.25,
+                          letterSpacing: -0.2,
                         ),
                       ),
+                      const SizedBox(height: 1),
                       Text(
                         '${o.fromDisplay} → ${o.toDisplay}',
                         maxLines: 1,
@@ -773,6 +812,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
+                          height: 1.3,
                         ),
                       ),
                     ],

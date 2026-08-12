@@ -29,12 +29,12 @@ import '../../core/theme.dart';
 /// себепті құрастырғыштағы алдын ала көрініс қолданушы көретін экранмен
 /// ДӘЛ КЕЛЕДІ. Барлығында ақ жазу анық оқылады.
 const newsStoryGradients = <List<Color>>[
-  [Color(0xFF1B2836), Color(0xFF0F1720)], // қара-көк (бренд)
-  [Color(0xFF3730A3), Color(0xFF1E1B4B)], // күлгін
-  [Color(0xFF0E8A3E), Color(0xFF064E28)], // жасыл
-  [Color(0xFFE6AC00), Color(0xFF8A6400)], // сары (бренд)
-  [Color(0xFFB91C1C), Color(0xFF6B1010)], // қызыл
-  [Color(0xFF0E7490), Color(0xFF083344)], // көгілдір
+  [Color(0xFF243449), Color(0xFF101828)], // қара-көк (бренд)
+  [Color(0xFF4F46E5), Color(0xFF1E1B4B)], // күлгін
+  [Color(0xFF12A150), Color(0xFF064E28)], // жасыл
+  [Color(0xFFE8A800), Color(0xFF8A6400)], // сары (бренд)
+  [Color(0xFFDC2F3F), Color(0xFF6B1010)], // қызыл
+  [Color(0xFF0E8FA8), Color(0xFF083344)], // көгілдір
 ];
 
 /// [NewsStory.bgIndex] тізімнен шығып кетпеуін қамтамасыз етеді (сервер де

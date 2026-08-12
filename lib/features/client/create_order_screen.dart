@@ -382,10 +382,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Widget _scheduleSection(int minHours, int maxDays) {
     final picked = _scheduledAt;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Gz.bg,
-        borderRadius: BorderRadius.circular(15),
+        color: Gz.surfaceAlt,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.border),
       ),
       child: Column(
@@ -393,13 +393,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule_outlined, size: 18, color: Gz.textSecondary),
-              const SizedBox(width: 6),
+              const Icon(Icons.schedule_rounded, size: 18, color: Gz.textSecondary),
+              const SizedBox(width: 7),
               Text(t('Қашан керек?'),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      letterSpacing: -0.2)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -574,33 +577,43 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               children: [
                 const SizedBox(height: 10),
                 Container(
-                  width: 40,
-                  height: 4,
+                  width: 44,
+                  height: 5,
                   decoration: BoxDecoration(
-                    color: Gz.border,
-                    borderRadius: BorderRadius.circular(2),
+                    color: Gz.disabledBg,
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 10, 8, 2),
+                  padding: const EdgeInsets.fromLTRB(18, 12, 8, 4),
                   child: Row(
                     children: [
                       Expanded(
-                        child: BtnLabel(
-                          _isTaxi
-                              ? t('Такси шақыру')
-                              : (_isDelivery
-                                    ? t('Доставка тапсыру')
-                                    : t('Заказ құру')),
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: BtnLabel(
+                            _isTaxi
+                                ? t('Такси шақыру')
+                                : (_isDelivery
+                                      ? t('Доставка тапсыру')
+                                      : t('Заказ құру')),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
                       ),
+                      // Жабу түймесі — жұмсақ дөңгелек фонда: жалаң «✕»
+                      // тақырыппен бір салмақта тұрып, көзді бөліп тұратын.
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Gz.surface,
+                          foregroundColor: Gz.textSecondary,
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 20),
                       ),
                     ],
                   ),
@@ -620,16 +633,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: (_intercity ? Gz.violet : Gz.green)
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Gz.tint(
+                                  _intercity ? Gz.violet : Gz.green, 0.10),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Gz.tint(
+                                    _intercity ? Gz.violet : Gz.green, 0.25),
+                              ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
                                   _intercity
-                                      ? Icons.alt_route
-                                      : Icons.location_city_outlined,
+                                      ? Icons.alt_route_rounded
+                                      : Icons.location_city_rounded,
                                   size: 18,
                                   color: _intercity ? Gz.violet : Gz.green,
                                 ),
@@ -640,9 +657,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                         ? '${t('Қалааралық')}: '
                                               '${_from.city} → ${_to.city}'
                                         : t('Қала ішінде'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12.5,
+                                      letterSpacing: -0.1,
                                       color: _intercity ? Gz.violet : Gz.green,
                                     ),
                                   ),

@@ -66,8 +66,9 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(
-          color: Gz.ink,
-          borderRadius: BorderRadius.circular(16),
+          gradient: Gz.heroGradient,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: Gz.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +76,7 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
             Row(
               children: [
                 const Icon(
-                  Icons.auto_awesome,
+                  Icons.auto_awesome_rounded,
                   size: 19,
                   color: Gz.yellow,
                 ),
@@ -92,10 +93,13 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
                         t('Жаңалықтар'),
                         maxLines: 1,
                         softWrap: false,
+                        // Тіркелген 19px қорап — жол биіктігі айқын
+                        // берілмесе, FittedBox жазуды бекер кішірейтеді.
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
                           fontSize: 14.5,
+                          height: 1.1,
                         ),
                       ),
                     ),
@@ -109,8 +113,9 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Gz.yellow,
+                      gradient: Gz.brandGradient,
                       borderRadius: BorderRadius.circular(20),
+                      boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 10),
                     ),
                     child: Text(
                       unseenCount > 1 ? '$unseenCount ${t('жаңа')}' : t('Жаңа'),
@@ -118,6 +123,7 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
                         color: Gz.ink,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ),
@@ -172,14 +178,30 @@ class _StoryBubble extends StatelessWidget {
               padding: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  // Оқылмағаны — сары, оқылғаны — солғын сұр (стористердің
-                  // әдеттегі белгісі: не қалғанын бір қарағанда көресіз).
-                  color: unseen ? Gz.yellow : Colors.white24,
-                  width: unseen ? 2.4 : 1.4,
-                ),
+                // Оқылмағаны — ГРАДИЕНТТІ сақина (Instagram-дағыдай),
+                // оқылғаны — солғын жіңішке жиек: не қалғанын бір қарағанда
+                // көресіз.
+                gradient: unseen
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Gz.yellowLight, Gz.yellow, Gz.amber],
+                      )
+                    : null,
+                border: unseen
+                    ? null
+                    : Border.all(color: Colors.white24, width: 1.4),
               ),
-              child: ClipOval(child: _preview()),
+              child: Container(
+                // Сақина мен суреттің АРАСЫНДАҒЫ қара саңылау — сақина
+                // суретке жабысып қалмайды, анық көрінеді.
+                padding: EdgeInsets.all(unseen ? 2 : 0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: unseen ? Gz.ink : Colors.transparent,
+                ),
+                child: ClipOval(child: _preview()),
+              ),
             ),
             const SizedBox(height: 5),
             Text(
