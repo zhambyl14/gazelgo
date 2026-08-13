@@ -670,12 +670,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               ],
                             ),
                           ),
+                        // Маршрут картасы — заказ берер алдындағы СОҢҒЫ
+                        // тексеру. Түртсе толық экранда ашылады: клиент
+                        // еркін жылжытып, жақындатып, «бағыт дұрыс па?»
+                        // дегенге көз жеткізеді.
                         RouteMap(
                           from: _from.point,
                           to: _to.point,
                           stops: _stops.map((s) => s.point).toList(),
                           routePoints: route?.points ?? const [],
-                          height: 170,
+                          height: 190,
+                          fromLabel: _from.address,
+                          toLabel: _to.address,
+                          stopLabels:
+                              _stops.map((s) => s.address).toList(),
+                          distanceKm: route?.distanceKm,
                         ),
                         const SizedBox(height: 10),
                         SectionCard(

@@ -46,7 +46,11 @@ class ExecutorOrderScreen extends StatelessWidget {
                   from: LatLng(o.fromLat, o.fromLng),
                   to: LatLng(o.toLat, o.toLng),
                   stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                  height: 160,
+                  height: 175,
+                  fromLabel: o.fromDisplay,
+                  toLabel: o.toDisplay,
+                  stopLabels: o.stops.map((s) => s.display).toList(),
+                  distanceKm: o.distanceKm,
                 ),
                 const SizedBox(height: 10),
                 SectionCard(

@@ -329,19 +329,23 @@ class ConfirmCheck extends StatelessWidget {
   }
 }
 
-/// Маршрут нүктесінің БЕЛГІСІ — бүкіл қосымшада бірдей «тіл»:
-///   • алу нүктесі  → жасыл сақина (GPS нүктесі: «осы жерден аламыз»);
-///   • аралық аялдама → КҮЛГІН дөңгелектегі НӨМІР (1, 2 …);
-///   • ақырғы нүкте  → ФИНИШ ТУЫ (шахмат жалауша).
+/// Тізімдегі маршрут нүктесінің белгісі — КАРТАДАҒЫ ПИНДЕРМЕН БІР ТІЛДЕ:
+///   • алу нүктесі  → жасыл НЫСАНА (ақ сақина + ақ өзек);
+///   • аралық аялдама → нөмірленген КҮЛГІН тамшы;
+///   • ақырғы нүкте  → ішінде ақ шаршысы бар ҚЫЗЫЛ тамшы.
 ///
-/// Осылайша қолданушы бір қарағанда «қайдан → 1 → 2 → финиш» деп оқиды:
-/// бұрын аралық аялдама да, соңғы нүкте де жай ғана «пин» болатын да,
-/// қайсысы соңғы екені білінбейтін.
+/// Бұрын тізім мен карта ЕКІ БӨЛЕК тілде сөйлейтін (тізімде шахмат туы —
+/// картада жалаң материал иконкасы), сол себепті клиент тізімдегі «2» мен
+/// картадағы белгіні байланыстыра алмайтын. Енді екеуі де бір [MapPin]:
+/// түс те, ақ контур да, көлеңке де дәл бірдей.
+///
+/// ӨЛШЕМ: [size] — белгінің ЕНІ (тамшы үшін басының диаметрі, жалпы
+/// биіктігі ≈1.21·size). Тізім слоттары 20–22 px, сол себепті әдепкі 18.
 class RoutePointMark extends StatelessWidget {
   /// null болса — АЛУ нүктесі. 1-ден басталатын сан болса — аралық аялдама.
   final int? number;
 
-  /// true болса — маршруттың АҚЫРҒЫ нүктесі (финиш туы).
+  /// true болса — маршруттың АҚЫРҒЫ нүктесі (финиш).
   final bool finish;
   final double size;
 
@@ -368,43 +372,11 @@ class RoutePointMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (finish) {
-      // Шахмат жалауша — «маршрут осында бітеді» дегеннің әмбебап белгісі.
-      return Icon(Icons.sports_score, size: size + 3, color: Gz.red);
-    }
+    if (finish) return MapPin.destination(size: size, color: Gz.red);
     if (number != null) {
-      return Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          color: Gz.violet,
-          shape: BoxShape.circle,
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            '$number',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.62,
-              height: 1,
-            ),
-          ),
-        ),
-      );
+      return MapPin.stop(number, size: size, color: Gz.violet);
     }
-    // Алу нүктесі — ішінде ақ орталығы бар жасыл сақина.
-    return Container(
-      width: size - 3,
-      height: size - 3,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(color: Gz.green, width: (size - 3) * 0.26),
-      ),
-    );
+    return MapPin.origin(size: size, color: Gz.green);
   }
 }
 
@@ -956,6 +928,10 @@ class OrderCard extends StatelessWidget {
                   stops:
                       order.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
                   height: 104,
+                  // Тізім ішіндегі карточкада картаны түрту заказдың ӨЗ
+                  // бетін ашуы керек — толық экранды карта емес (әйтпесе
+                  // карточканы басу орны екіге бөлініп, шатастырады).
+                  expandable: false,
                 ),
               ],
               const SizedBox(height: 12),

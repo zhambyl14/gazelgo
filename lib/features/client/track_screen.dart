@@ -125,6 +125,11 @@ class _TrackScreenState extends State<TrackScreen> {
                 if (lat != null && lng != null)
                   executorLiveMarker(LatLng(lat, lng)),
               ],
+              fromLabel:
+                  '${d['from_city'] ?? ''} ${d['from_address'] ?? ''}'.trim(),
+              toLabel:
+                  '${d['to_city'] ?? ''} ${d['to_address'] ?? ''}'.trim(),
+              distanceKm: (d['distance_km'] as num?)?.toDouble(),
             ),
           const SizedBox(height: 12),
           SectionCard(

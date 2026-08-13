@@ -292,16 +292,11 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
             ),
             children: [osmTileLayer()],
           ),
-          // орталық пин
-          const IgnorePointer(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 38),
-                child: Icon(Icons.location_on, size: 46, color: Gz.red,
-                    shadows: [Shadow(color: Colors.black38, blurRadius: 8)]),
-              ),
-            ),
-          ),
+          // Орталық пин. Ұшы картаның центріне ДӘЛ түседі ([MapCenterPin]
+          // биіктігіне тең бос орынмен теңгереді) — бұрынғы «bottom: 38»
+          // жуықтауының орнына нақты есеп, сол себепті таңдалған нүкте мен
+          // анықталған мекенжай айырылмайды.
+          MapCenterPin(color: Gz.red, size: 36, busy: _resolving),
           // іздеу өрісі
           Positioned(
             top: 12,

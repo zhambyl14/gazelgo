@@ -326,40 +326,19 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               children: [osmTileLayer()],
             ),
           ),
+          // Экранның ортасындағы пин — картаның `camera.center`-і, яғни
+          // «алу нүктесі». Бұл — қосымшадағы ЕҢ КӨП КӨРІНЕТІН белгі.
+          //
+          // [MapCenterPin] пиннің ҰШЫН дәл центрге қояды (өз ішінде
+          // биіктігіне тең бос орын қалдырады) — бұрынғы «bottom: 20» деп
+          // қолмен теңшелген жуықтаудың орнына нақты есеп. Сол себепті
+          // белгіленген жер мен анықталған мекенжай дәл сәйкес келеді.
           Positioned.fill(
             bottom: _bottomInset,
-            child: IgnorePointer(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedScale(
-                        duration: const Duration(milliseconds: 150),
-                        scale: _resolvingFrom ? 0.85 : 1,
-                        child: const Icon(
-                          Icons.location_on,
-                          size: 44,
-                          color: Gz.green,
-                          shadows: [
-                            Shadow(color: Colors.black38, blurRadius: 8),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 6,
-                        height: 6,
-                        margin: const EdgeInsets.only(top: 2),
-                        decoration: const BoxDecoration(
-                          color: Colors.black26,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            child: MapCenterPin(
+              color: Gz.green,
+              size: 34,
+              busy: _resolvingFrom,
             ),
           ),
           SafeArea(

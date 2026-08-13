@@ -140,6 +140,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                 ? const BonusStrip()
                 : _FeedCard(
                     order: eligible[i - 1],
+                    myPos: _pos,
                     onTap: () => _openOrder(eligible[i - 1]),
                   ),
           ),
@@ -176,6 +177,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       ),
       builder: (_) => _OrderSheet(
         order: o,
+        myPos: _pos,
         onAgree: () => _offer(o, o.clientPrice!, ''),
         onCounter: () => _counterOffer(o),
       ),
@@ -359,7 +361,22 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
 class _FeedCard extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
-  const _FeedCard({required this.order, required this.onTap});
+
+  /// Орындаушының ағымдағы орны — «алу нүктесі МЕНЕН қанша алыс?» деген
+  /// сұраққа жауап беру үшін. GPS рұқсаты жоқ болса null (тег көрінбейді).
+  final Position? myPos;
+
+  const _FeedCard({required this.order, required this.onTap, this.myPos});
+
+  /// Орындаушыдан алу нүктесіне дейінгі тік қашықтық (км).
+  double? get _toPickupKm {
+    final p = myPos;
+    if (p == null) return null;
+    return Geo.haversineKm(
+      LatLng(p.latitude, p.longitude),
+      LatLng(order.fromLat, order.fromLng),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,6 +414,15 @@ class _FeedCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
+                  // «Алу нүктесі МЕНЕН қанша алыс?» — орындаушы заказды алар
+                  // алдында алдымен осыны сұрайды (бекер жол жүрмеу үшін).
+                  // 5 км-ге дейін ЖАСЫЛ: «жақын, тиімді» деген белгі.
+                  if (_toPickupKm case final km?)
+                    _tag(
+                      Icons.near_me_rounded,
+                      '${t('Сізден')} ${km < 10 ? km.toStringAsFixed(1) : km.round()} ${t('км')}',
+                      color: km <= 5 ? Gz.green : null,
+                    ),
                   _tag(
                     Icons.local_shipping,
                     order.vehicleType.label,
@@ -446,27 +472,31 @@ class _FeedCard extends StatelessWidget {
     String text, {
     bool flexible = false,
     Widget? leading,
+
+    /// Ерекшелегіміз келсе — тегтің өз түсі (мыс. «жақын» = жасыл).
+    Color? color,
   }) {
     final chip = Container(
       padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
-        color: Gz.surfaceAlt,
+        color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: Gz.border),
+        border: Border.all(
+            color: color == null ? Gz.border : Gz.tint(color, 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          leading ?? Icon(icon, size: 13, color: Gz.textSecondary),
+          leading ?? Icon(icon, size: 13, color: color ?? Gz.textSecondary),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
-                color: Gz.ink,
+                color: color ?? Gz.ink,
                 letterSpacing: -0.05,
                 fontWeight: FontWeight.w700,
               ),
@@ -585,10 +615,16 @@ class _OrderSheet extends StatelessWidget {
   final Order order;
   final VoidCallback onAgree;
   final VoidCallback onCounter;
+
+  /// Орындаушының ағымдағы орны — алу нүктесіне дейінгі қашықтықты
+  /// көрсету үшін (GPS рұқсаты жоқ болса null).
+  final Position? myPos;
+
   const _OrderSheet({
     required this.order,
     required this.onAgree,
     required this.onCounter,
+    this.myPos,
   });
 
   @override
@@ -604,44 +640,62 @@ class _OrderSheet extends StatelessWidget {
         children: [
           Center(
             child: Container(
-              width: 40,
-              height: 4,
+              width: 44,
+              height: 5,
               decoration: BoxDecoration(
-                color: Gz.border,
-                borderRadius: BorderRadius.circular(2),
+                color: Gz.disabledBg,
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          // ---- 1) БАҒА: орындаушы ЕҢ АЛДЫМЕН осыны көреді ----
           Row(
             children: [
               Expanded(
                 child: Text(
                   fmtT(o.displayPrice),
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 26,
                     fontWeight: FontWeight.w900,
+                    height: 1.1,
+                    letterSpacing: -1,
                     color: Gz.ink,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               vehicleIcon(o.vehicleType, size: 20, color: Gz.textSecondary),
               const SizedBox(width: 6),
-              Text(
-                o.vehicleType.label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: Gz.textSecondary,
+              Flexible(
+                child: BtnLabel(
+                  o.vehicleType.label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Gz.textSecondary,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          // ---- 2) БАҒЫТ: «қайдан → қайда» БІР ҚАРАҒАНДА ----
+          // Орындаушының екінші сұрағы — «бұл маған жол ма?». Қала атаулары
+          // мен қашықтық бір жолда ірі әрі қою тұрса, ол жауапты мекенжай
+          // жолдарын оқымай-ақ алады.
+          _DirectionStrip(order: o, myPos: myPos),
           const SizedBox(height: 12),
+          // ---- 3) КАРТА: түртсе толық экранда ашылады ----
           RouteMap(
             from: LatLng(o.fromLat, o.fromLng),
             to: LatLng(o.toLat, o.toLng),
             stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-            height: 150,
+            height: 200,
+            fromLabel: o.fromDisplay,
+            toLabel: o.toDisplay,
+            stopLabels: o.stops.map((s) => s.display).toList(),
+            distanceKm: o.distanceKm > 0 ? o.distanceKm : null,
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -657,15 +711,9 @@ class _OrderSheet extends StatelessWidget {
                 const Divider(height: 20),
                 InfoRow(t('Жүк'), o.cargoDesc),
                 if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
-                InfoRow(
-                  t('Бағыты'),
-                  o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде'),
-                ),
-                if (o.distanceKm > 0)
-                  InfoRow(
-                    t('Қашықтық'),
-                    '≈ ${o.distanceKm.toStringAsFixed(1)} км',
-                  ),
+                // «Бағыты» мен «Қашықтық» ӘДЕЙІ ЖОҚ: екеуі де жоғарыдағы
+                // бағыт жолағында ірі әрі айқын тұр — мұнда қайталанса,
+                // парақ ұзарып, маңыздысы төмен ысырылар еді.
               ],
             ),
           ),
@@ -707,6 +755,124 @@ class _OrderSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+/// «ҚАЙДАН → ҚАЙДА» жолағы — орындаушының шешім қабылдауына керек ЕКІНШІ
+/// ақпарат (біріншісі — баға).
+///
+/// Мекенжайдың толық жолын («Абая 15, 3-подъезд») оқу уақыт алады, ал
+/// орындаушыға алдымен МАСШТАБ керек: қала ішінде ме, әлде басқа қалаға
+/// ма, қанша шақырым. Сол себепті мұнда тек қала атаулары ірі әрі қою
+/// жазылады, астында — қашықтық пен бағыт түрі. Толық мекенжайлар
+/// төмендегі маршрут тізімінде қалады.
+class _DirectionStrip extends StatelessWidget {
+  final Order order;
+  final Position? myPos;
+  const _DirectionStrip({required this.order, this.myPos});
+
+  /// Қала белгісіз болса — мекенжай жолының БІРІНШІ бөлігі (әдетте елді
+  /// мекеннің аты сонда тұрады).
+  static String _place(String? city, String fallback) {
+    if (city != null && city.trim().isNotEmpty) return city.trim();
+    final head = fallback.split(',').first.trim();
+    return head.isEmpty ? '—' : head;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final o = order;
+    final accent = o.intercity ? Gz.violet : Gz.blue;
+    final from = _place(o.fromCity, o.fromDisplay);
+    final to = _place(o.toCity, o.toDisplay);
+
+    final p = myPos;
+    final toPickup = p == null
+        ? null
+        : Geo.haversineKm(
+            LatLng(p.latitude, p.longitude),
+            LatLng(o.fromLat, o.fromLng),
+          );
+
+    final facts = <String>[
+      if (o.distanceKm > 0) '${o.distanceKm.toStringAsFixed(1)} ${t('км')}',
+      o.intercity ? t('Қалааралық') : t('Қала ішінде'),
+      if (o.hasStops) '+${o.stops.length} ${t('аялдама')}',
+      // Алу нүктесіне дейінгі жол — «бекер бармаймын ба?» деген сұрақтың
+      // жауабы. Ол маршрут ұзындығынан БӨЛЕК: заказ қысқа болса да, алуға
+      // 30 км жүру керек болуы мүмкін.
+      if (toPickup != null)
+        '${t('Сізден')} ${toPickup < 10 ? toPickup.toStringAsFixed(1) : toPickup.round()} ${t('км')}',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Gz.tint(accent, 0.10), Gz.surfaceAlt],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Gz.tint(accent, 0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Қала атаулары ұзын болуы мүмкін («Петропавл» / «Усть-Каменогорск»)
+          // — екеуі де Flexible + BtnLabel, сол себепті ЕШҚАШАН екінші жолға
+          // түспейді де, қиылмайды: сыймаса сәл кішірейеді.
+          Row(
+            children: [
+              const MapPin.origin(size: 15),
+              const SizedBox(width: 8),
+              Flexible(
+                child: BtnLabel(
+                  from,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                    letterSpacing: -0.4,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Icon(Icons.arrow_forward_rounded, size: 17, color: accent),
+              const SizedBox(width: 9),
+              Flexible(
+                child: BtnLabel(
+                  to,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                    letterSpacing: -0.4,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const MapPin.destination(size: 15),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            facts.join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+              color: accent,
+            ),
+          ),
         ],
       ),
     );

@@ -198,7 +198,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   from: LatLng(o.fromLat, o.fromLng),
                   to: LatLng(o.toLat, o.toLng),
                   stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                  height: 170,
+                  height: 180,
+                  fromLabel: o.fromDisplay,
+                  toLabel: o.toDisplay,
+                  stopLabels: o.stops.map((s) => s.display).toList(),
+                  distanceKm: o.distanceKm,
                 ),
                 const SizedBox(height: 10),
                 _NavToggle(
