@@ -75,9 +75,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   VehicleType _taxiVehicle = VehicleType.taxi;
 
   /// Заказға кететін НАҚТЫ көлік түрі.
-  VehicleType get _vehicle => _category == VehicleCategory.taxi
-      ? _taxiVehicle
-      : _cargoVehicle;
+  VehicleType get _vehicle =>
+      _category == VehicleCategory.taxi ? _taxiVehicle : _cargoVehicle;
 
   @override
   void initState() {
@@ -259,7 +258,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       final go = await confirmDialog(
         context,
         title: t('Белсенді заказ бар'),
-        message: '$count ${t('белсенді заказыңыз бар — оны «Тапсырыстар» '
+        message:
+            '$count ${t('белсенді заказыңыз бар — оны «Тапсырыстар» '
             'бетінен қадағалаңыз. Жаңа заказ бересіз бе?')}',
         cancelLabel: t('Жоқ'),
         confirmLabel: t('Жаңа заказ'),
@@ -303,416 +303,429 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       // картаны солға жылжытқан сайын sidebar ашылып кетер еді. Sidebar тек
       // логотип батырмасымен ашылады.
       drawerEnableOpenDragGesture: false,
-      body: Stack(
-        children: [
-          // Негізгі панельдің нақты өлшенген биіктігіне сай карта мен
-          // пинді бірге жоғары ысырамыз (`_bottomInset`,
-          // `_measureBottomInset` арқылы әр кадрда жаңартылады). Локация
-          // батырмасы мен банер картаның үстінде қалқып тұрады, inset-ке
-          // кірмейді. Екеуі бірдей тіктөртбұрышта жатуы МІНДЕТТІ —
-          // flutter_map `camera.center` дәл сол виджеттің геометриялық
-          // ортасын қайтарады, сол себепті пин визуалды жерімен нақты
-          // координата сәйкес келуі үшін FlutterMap-тың өзін де солай
-          // ысыру керек.
-          Positioned.fill(
-            bottom: _bottomInset,
-            child: FlutterMap(
-              mapController: _map,
-              options: MapOptions(
-                initialCenter: Geo.almaty,
-                initialZoom: 13,
-                onPositionChanged: _onMapMove,
-              ),
-              children: [osmTileLayer()],
-            ),
-          ),
-          // Экранның ортасындағы пин — картаның `camera.center`-і, яғни
-          // «алу нүктесі». Бұл — қосымшадағы ЕҢ КӨП КӨРІНЕТІН белгі.
-          //
-          // [MapCenterPin] пиннің ҰШЫН дәл центрге қояды (өз ішінде
-          // биіктігіне тең бос орын қалдырады) — бұрынғы «bottom: 20» деп
-          // қолмен теңшелген жуықтаудың орнына нақты есеп. Сол себепті
-          // белгіленген жер мен анықталған мекенжай дәл сәйкес келеді.
-          Positioned.fill(
-            bottom: _bottomInset,
-            child: MapCenterPin(
-              color: Gz.green,
-              size: 34,
-              busy: _resolvingFrom,
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  // Логотип — ЕНДІ БАТЫРМА: sol жақтан sidebar ашады
-                  // (профиль, тапсырыстар, хабарландырулар тақтасы — бәрі
-                  // сонда). Оң жақтағы бөлек профиль батырмасы жойылды.
-                  // Бұрышында «мәзір» белгісі бар және өлшемі ұлғайтылған —
-                  // адамдар оны түйме екенін байқамай қалатын.
-                  child: Row(
-                    children: [
-                      LogoMenuButton(
-                        onTap: () {
-                          // Модератор «Такси»/«Хабарландырулар» бөлімін
-                          // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
-                          // қайта ашуды талап етпей, күйін сұрап аламыз.
-                          ref.invalidate(taxiEnabledProvider);
-                          _scaffoldKey.currentState?.openDrawer();
-                        },
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
+      // `Scaffold` `body`-ге БОС (loose) биіктік шектеуін береді, ал `Stack`
+      // мұндайда позицияланбаған балаларының өлшеміне жиырылады. Мұнда оны
+      // төменгі панель бағаны толтырып тұр, бірақ оған тәуекел етпейміз:
+      // тығыз шектеу қойылса, экран ешқашан бір жолаққа қысылмайды.
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            // Негізгі панельдің нақты өлшенген биіктігіне сай карта мен
+            // пинді бірге жоғары ысырамыз (`_bottomInset`,
+            // `_measureBottomInset` арқылы әр кадрда жаңартылады). Локация
+            // батырмасы мен банер картаның үстінде қалқып тұрады, inset-ке
+            // кірмейді. Екеуі бірдей тіктөртбұрышта жатуы МІНДЕТТІ —
+            // flutter_map `camera.center` дәл сол виджеттің геометриялық
+            // ортасын қайтарады, сол себепті пин визуалды жерімен нақты
+            // координата сәйкес келуі үшін FlutterMap-тың өзін де солай
+            // ысыру керек.
+            Positioned.fill(
+              bottom: _bottomInset,
+              child: FlutterMap(
+                mapController: _map,
+                options: MapOptions(
+                  initialCenter: Geo.almaty,
+                  initialZoom: 13,
+                  onPositionChanged: _onMapMove,
                 ),
-                const Spacer(),
-                // менің локациям батырмасы — картаның үстінде қалқып тұрады,
-                // карта inset-іне кірмейді (жай ғана карта аймағында жүзеді)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12, bottom: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // «Менің орным» — картаның үстінде тұрған жалғыз
-                      // дөңгелек батырма: көлеңкесі күштірек болмаса,
-                      // карта суретіне сіңіп кетеді.
-                      Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: Gz.cardShadow,
+                children: [osmTileLayer()],
+              ),
+            ),
+            // Экранның ортасындағы пин — картаның `camera.center`-і, яғни
+            // «алу нүктесі». Бұл — қосымшадағы ЕҢ КӨП КӨРІНЕТІН белгі.
+            //
+            // [MapCenterPin] пиннің ҰШЫН дәл центрге қояды (өз ішінде
+            // биіктігіне тең бос орын қалдырады) — бұрынғы «bottom: 20» деп
+            // қолмен теңшелген жуықтаудың орнына нақты есеп. Сол себепті
+            // белгіленген жер мен анықталған мекенжай дәл сәйкес келеді.
+            Positioned.fill(
+              bottom: _bottomInset,
+              child: MapCenterPin(
+                color: Gz.green,
+                size: 34,
+                busy: _resolvingFrom,
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    // Логотип — ЕНДІ БАТЫРМА: sol жақтан sidebar ашады
+                    // (профиль, тапсырыстар, хабарландырулар тақтасы — бәрі
+                    // сонда). Оң жақтағы бөлек профиль батырмасы жойылды.
+                    // Бұрышында «мәзір» белгісі бар және өлшемі ұлғайтылған —
+                    // адамдар оны түйме екенін байқамай қалатын.
+                    child: Row(
+                      children: [
+                        LogoMenuButton(
+                          onTap: () {
+                            // Модератор «Такси»/«Хабарландырулар» бөлімін
+                            // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
+                            // қайта ашуды талап етпей, күйін сұрап аламыз.
+                            ref.invalidate(taxiEnabledProvider);
+                            _scaffoldKey.currentState?.openDrawer();
+                          },
                         ),
-                        child: Material(
-                          elevation: 0,
-                          shape: const CircleBorder(),
-                          color: Gz.surface,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: _goToMyLocation,
-                            child: const Padding(
-                              padding: EdgeInsets.all(13),
-                              child: Icon(
-                                Icons.my_location_rounded,
-                                color: Gz.ink,
-                                size: 22,
+                        const Spacer(),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  // менің локациям батырмасы — картаның үстінде қалқып тұрады,
+                  // карта inset-іне кірмейді (жай ғана карта аймағында жүзеді)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12, bottom: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // «Менің орным» — картаның үстінде тұрған жалғыз
+                        // дөңгелек батырма: көлеңкесі күштірек болмаса,
+                        // карта суретіне сіңіп кетеді.
+                        Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: Gz.cardShadow,
+                          ),
+                          child: Material(
+                            elevation: 0,
+                            shape: const CircleBorder(),
+                            color: Gz.surface,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: _goToMyLocation,
+                              child: const Padding(
+                                padding: EdgeInsets.all(13),
+                                child: Icon(
+                                  Icons.my_location_rounded,
+                                  color: Gz.ink,
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                // белсенді («Іздеуде») заказ баннері — локация батырмасының астында
-                const _ActiveOrdersBanner(),
-                // Панельдің (жалғыз опак блок) биіктігі өзгергенде (бүктелу
-                // анимациясы, шрифт масштабы) картаның inset-і сол сәтте
-                // қайта өлшенеді — `build()` шақырылуын күтпей, сол себепті
-                // карта панельмен тегіс жылжиды. Локация батырмасы мен
-                // баннер бұған кірмейді — олар әдепкідей картаның үстінде
-                // қалқып тұруы керек (map inset-ін ұлғайтпайды).
-                NotificationListener<SizeChangedLayoutNotification>(
-                  onNotification: (_) {
-                    WidgetsBinding.instance.addPostFrameCallback(
-                      (_) => _measureBottomInset(),
-                    );
-                    return true;
-                  },
-                  child: SizeChangedLayoutNotifier(
-                    child: Container(
-                      key: _blockKey,
-                      // негізгі панель — тұтқасынан (не тақырыптан) қолмен
-                      // төмен тартса бүктеледі де карта ашылады, қайта жоғары
-                      // тартса не түртсе қайта ашылады
-                      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                      decoration: BoxDecoration(
-                        color: Gz.surface,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: Gz.liftShadow,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => setState(
-                              () => _panelCollapsed = !_panelCollapsed,
-                            ),
-                            onVerticalDragUpdate: _onPanelDragUpdate,
-                            onVerticalDragEnd: _onPanelDragEnd,
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 5,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  decoration: BoxDecoration(
-                                    color: Gz.disabledBg,
-                                    borderRadius: BorderRadius.circular(3),
+                  // белсенді («Іздеуде») заказ баннері — локация батырмасының астында
+                  const _ActiveOrdersBanner(),
+                  // Панельдің (жалғыз опак блок) биіктігі өзгергенде (бүктелу
+                  // анимациясы, шрифт масштабы) картаның inset-і сол сәтте
+                  // қайта өлшенеді — `build()` шақырылуын күтпей, сол себепті
+                  // карта панельмен тегіс жылжиды. Локация батырмасы мен
+                  // баннер бұған кірмейді — олар әдепкідей картаның үстінде
+                  // қалқып тұруы керек (map inset-ін ұлғайтпайды).
+                  NotificationListener<SizeChangedLayoutNotification>(
+                    onNotification: (_) {
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _measureBottomInset(),
+                      );
+                      return true;
+                    },
+                    child: SizeChangedLayoutNotifier(
+                      child: Container(
+                        key: _blockKey,
+                        // негізгі панель — тұтқасынан (не тақырыптан) қолмен
+                        // төмен тартса бүктеледі де карта ашылады, қайта жоғары
+                        // тартса не түртсе қайта ашылады
+                        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                        decoration: BoxDecoration(
+                          color: Gz.surface,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: Gz.liftShadow,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => setState(
+                                () => _panelCollapsed = !_panelCollapsed,
+                              ),
+                              onVerticalDragUpdate: _onPanelDragUpdate,
+                              onVerticalDragEnd: _onPanelDragEnd,
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 5,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: Gz.disabledBg,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
                                   ),
-                                ),
-                                Row(
-                                  children: [
-                                    // Санат иконкасы — градиентті шаршыда
-                                    // әрі жылы сәулемен: панельдің «жүрегі»
-                                    // осы жерде екені бірден көрінеді.
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        gradient: Gz.brandGradient,
-                                        borderRadius: BorderRadius.circular(13),
-                                        boxShadow: Gz.glow(
-                                          Gz.yellow,
-                                          alpha: 0.4,
-                                          blur: 12,
+                                  Row(
+                                    children: [
+                                      // Санат иконкасы — градиентті шаршыда
+                                      // әрі жылы сәулемен: панельдің «жүрегі»
+                                      // осы жерде екені бірден көрінеді.
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          gradient: Gz.brandGradient,
+                                          borderRadius: BorderRadius.circular(
+                                            13,
+                                          ),
+                                          boxShadow: Gz.glow(
+                                            Gz.yellow,
+                                            alpha: 0.4,
+                                            blur: 12,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          _category == VehicleCategory.taxi
+                                              ? Icons.local_taxi_rounded
+                                              : Icons.local_shipping_rounded,
+                                          size: 19,
+                                          color: Gz.ink,
                                         ),
                                       ),
-                                      child: Icon(
-                                        _category == VehicleCategory.taxi
-                                            ? Icons.local_taxi_rounded
-                                            : Icons.local_shipping_rounded,
-                                        size: 19,
-                                        color: Gz.ink,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 11),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            t('Қандай көлік керек?'),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 16.5,
-                                              fontWeight: FontWeight.w900,
-                                              height: 1.2,
-                                              letterSpacing: -0.35,
-                                            ),
-                                          ),
-                                          if (!_panelCollapsed) ...[
-                                            const SizedBox(height: 2),
+                                      const SizedBox(width: 11),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
                                             Text(
-                                              t('Картадан орныңызды белгілеңіз'),
+                                              t('Қандай көлік керек?'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                color: Gz.textSecondary,
-                                                fontSize: 12,
-                                                height: 1.2,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    // Бүктеу белгісі — жұмсақ дөңгелек
-                                    // фонда: жалаң көрсеткіден гөрі түйме
-                                    // екені айқынырақ.
-                                    AnimatedRotation(
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      turns: _panelCollapsed ? 0.5 : 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: const BoxDecoration(
-                                          color: Gz.surfaceAlt,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          color: Gz.textSecondary,
-                                          size: 22,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.easeInOut,
-                            alignment: Alignment.topCenter,
-                            child: _panelCollapsed
-                                ? const SizedBox(width: double.infinity)
-                                : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      const SizedBox(height: 10),
-                                      // ---- САНАТ (такси қосулы болғанда) ----
-                                      // Модератор «Такси» бөлімін қосса ғана
-                                      // екі иконка шығады; өшулі болса бұл
-                                      // блок мүлдем салынбайды.
-                                      if (taxiOn) ...[
-                                        VehicleCategoryTabs(
-                                          selected: _category,
-                                          onChanged: (c) =>
-                                              setState(() => _category = c),
-                                          // «ЖАҢА» белгісін модератор алып
-                                          // тастай алады (0058).
-                                          showNewBadge: ref
-                                                  .watch(newBadgesProvider)
-                                                  .value
-                                                  ?.taxi ??
-                                              true,
-                                        ),
-                                        const SizedBox(height: 10),
-                                      ],
-                                      // Көлік түрін таңдау — заказ тек сол
-                                      // түрдегі орындаушыларға көрінеді.
-                                      // ЕКІ САНАТТА ДА карусель: «Такси»
-                                      // басылса — «Такси» мен «Доставка»,
-                                      // «Спецтехника» басылса — газель,
-                                      // фургон, КамАЗ… (бірдей тәртіп).
-                                      if (_category == VehicleCategory.taxi)
-                                        VehicleTypeCarousel(
-                                          selected: _taxiVehicle,
-                                          types: kTaxiVehicleTypes,
-                                          onChanged: (v) => setState(
-                                            () => _taxiVehicle = v,
-                                          ),
-                                        )
-                                      else
-                                        VehicleTypeCarousel(
-                                          selected: _cargoVehicle,
-                                          onChanged: (v) => setState(
-                                            () => _cargoVehicle = v,
-                                          ),
-                                        ),
-                                      const SizedBox(height: 10),
-                                      // ---- МАРШРУТ ----
-                                      // «Қайдан» картамен байланысты, бірақ
-                                      // түртіп сәл өзгертуге болады.
-                                      AddressRow(
-                                        mark: const RoutePointMark.origin(),
-                                        text: _resolvingFrom
-                                            ? t('Анықталуда…')
-                                            : (_from?.address ??
-                                                  t('Картаны жылжытыңыз')),
-                                        onTap: _resolvingFrom
-                                            ? null
-                                            : _editFrom,
-                                        trailing: _resolvingFrom
-                                            ? const SizedBox(
-                                                width: 14,
-                                                height: 14,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : const Icon(
-                                                Icons.edit_outlined,
-                                                size: 16,
-                                                color: Gz.textSecondary,
-                                              ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Жеткізу нүктелері. БІРНЕШЕУ болса —
-                                      // панель биіктемеуі үшін БІР ЖОЛҒА
-                                      // жиналады («A → B»), түртсе басқару
-                                      // парағы ашылады (ретін ауыстыру,
-                                      // өшіру, қосу).
-                                      if (_stops.isEmpty)
-                                        AddressRow(
-                                          mark: const RoutePointMark.finish(),
-                                          text: _to?.address ??
-                                              t('Қайда жеткіземіз?'),
-                                          dim: _to == null,
-                                          onTap: _pickTo,
-                                          trailing: const Icon(
-                                            Icons.chevron_right,
-                                            color: Gz.textSecondary,
-                                          ),
-                                        )
-                                      else
-                                        AddressRow(
-                                          mark: const Icon(
-                                            Icons.sports_score,
-                                            size: 20,
-                                            color: Gz.red,
-                                          ),
-                                          text: _destinations
-                                              .map((d) => d.address)
-                                              .join('  →  '),
-                                          onTap: _openStopsSheet,
-                                          trailing: Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 7,
-                                                  vertical: 2,
-                                                ),
-                                            decoration: BoxDecoration(
-                                              color: Gz.violet
-                                                  .withValues(alpha: 0.14),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                            ),
-                                            child: Text(
-                                              '${_destinations.length}',
-                                              style: const TextStyle(
-                                                fontSize: 11.5,
+                                                fontSize: 16.5,
                                                 fontWeight: FontWeight.w900,
-                                                color: Gz.violet,
+                                                height: 1.2,
+                                                letterSpacing: -0.35,
                                               ),
                                             ),
+                                            if (!_panelCollapsed) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                t(
+                                                  'Картадан орныңызды белгілеңіз',
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color: Gz.textSecondary,
+                                                  fontSize: 12,
+                                                  height: 1.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      // Бүктеу белгісі — жұмсақ дөңгелек
+                                      // фонда: жалаң көрсеткіден гөрі түйме
+                                      // екені айқынырақ.
+                                      AnimatedRotation(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        turns: _panelCollapsed ? 0.5 : 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: const BoxDecoration(
+                                            color: Gz.surfaceAlt,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: Gz.textSecondary,
+                                            size: 22,
                                           ),
                                         ),
-                                      // «Мекенжай қосу» — жеткізу нүктесі
-                                      // белгіленген соң ғана әрі шектен
-                                      // аспағанда.
-                                      if (_to != null &&
-                                          _stops.length < kMaxExtraStops) ...[
-                                        const SizedBox(height: 8),
-                                        AddAddressButton(
-                                          onPressed: _addDestination,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 14),
-                                      // Экранның ЖАЛҒЫЗ шешуші әрекеті —
-                                      // сол себепті градиентті әрі өз
-                                      // сәулесі бар нұсқа: панельдегі басқа
-                                      // элементтердің ешқайсысы онымен
-                                      // «жарысып» тұрмайды.
-                                      //
-                                      // Жазуы ұзын атауларда
-                                      // («Ассенизатор шақыру») не жүйе
-                                      // шрифті үлкейтілгенде де БІР жолда
-                                      // қалады (ішінде BtnLabel бар).
-                                      GzPrimaryButton(
-                                        label: vehicleCallLabel(_vehicle),
-                                        onPressed:
-                                            (_from == null || _resolvingFrom)
-                                            ? null
-                                            : (_to == null
-                                                  ? _pickTo
-                                                  : _maybeContinue),
                                       ),
                                     ],
                                   ),
-                          ),
-                        ],
+                                ],
+                              ),
+                            ),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeInOut,
+                              alignment: Alignment.topCenter,
+                              child: _panelCollapsed
+                                  ? const SizedBox(width: double.infinity)
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        const SizedBox(height: 10),
+                                        // ---- САНАТ (такси қосулы болғанда) ----
+                                        // Модератор «Такси» бөлімін қосса ғана
+                                        // екі иконка шығады; өшулі болса бұл
+                                        // блок мүлдем салынбайды.
+                                        if (taxiOn) ...[
+                                          VehicleCategoryTabs(
+                                            selected: _category,
+                                            onChanged: (c) =>
+                                                setState(() => _category = c),
+                                            // «ЖАҢА» белгісін модератор алып
+                                            // тастай алады (0058).
+                                            showNewBadge:
+                                                ref
+                                                    .watch(newBadgesProvider)
+                                                    .value
+                                                    ?.taxi ??
+                                                true,
+                                          ),
+                                          const SizedBox(height: 10),
+                                        ],
+                                        // Көлік түрін таңдау — заказ тек сол
+                                        // түрдегі орындаушыларға көрінеді.
+                                        // ЕКІ САНАТТА ДА карусель: «Такси»
+                                        // басылса — «Такси» мен «Доставка»,
+                                        // «Спецтехника» басылса — газель,
+                                        // фургон, КамАЗ… (бірдей тәртіп).
+                                        if (_category == VehicleCategory.taxi)
+                                          VehicleTypeCarousel(
+                                            selected: _taxiVehicle,
+                                            types: kTaxiVehicleTypes,
+                                            onChanged: (v) => setState(
+                                              () => _taxiVehicle = v,
+                                            ),
+                                          )
+                                        else
+                                          VehicleTypeCarousel(
+                                            selected: _cargoVehicle,
+                                            onChanged: (v) => setState(
+                                              () => _cargoVehicle = v,
+                                            ),
+                                          ),
+                                        const SizedBox(height: 10),
+                                        // ---- МАРШРУТ ----
+                                        // «Қайдан» картамен байланысты, бірақ
+                                        // түртіп сәл өзгертуге болады.
+                                        AddressRow(
+                                          mark: const RoutePointMark.origin(),
+                                          text: _resolvingFrom
+                                              ? t('Анықталуда…')
+                                              : (_from?.address ??
+                                                    t('Картаны жылжытыңыз')),
+                                          onTap: _resolvingFrom
+                                              ? null
+                                              : _editFrom,
+                                          trailing: _resolvingFrom
+                                              ? const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 16,
+                                                  color: Gz.textSecondary,
+                                                ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        // Жеткізу нүктелері. БІРНЕШЕУ болса —
+                                        // панель биіктемеуі үшін БІР ЖОЛҒА
+                                        // жиналады («A → B»), түртсе басқару
+                                        // парағы ашылады (ретін ауыстыру,
+                                        // өшіру, қосу).
+                                        if (_stops.isEmpty)
+                                          AddressRow(
+                                            mark: const RoutePointMark.finish(),
+                                            text:
+                                                _to?.address ??
+                                                t('Қайда жеткіземіз?'),
+                                            dim: _to == null,
+                                            onTap: _pickTo,
+                                            trailing: const Icon(
+                                              Icons.chevron_right,
+                                              color: Gz.textSecondary,
+                                            ),
+                                          )
+                                        else
+                                          AddressRow(
+                                            mark: const Icon(
+                                              Icons.sports_score,
+                                              size: 20,
+                                              color: Gz.red,
+                                            ),
+                                            text: _destinations
+                                                .map((d) => d.address)
+                                                .join('  →  '),
+                                            onTap: _openStopsSheet,
+                                            trailing: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 7,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Gz.violet.withValues(
+                                                  alpha: 0.14,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                '${_destinations.length}',
+                                                style: const TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Gz.violet,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        // «Мекенжай қосу» — жеткізу нүктесі
+                                        // белгіленген соң ғана әрі шектен
+                                        // аспағанда.
+                                        if (_to != null &&
+                                            _stops.length < kMaxExtraStops) ...[
+                                          const SizedBox(height: 8),
+                                          AddAddressButton(
+                                            onPressed: _addDestination,
+                                          ),
+                                        ],
+                                        const SizedBox(height: 14),
+                                        // Экранның ЖАЛҒЫЗ шешуші әрекеті —
+                                        // сол себепті градиентті әрі өз
+                                        // сәулесі бар нұсқа: панельдегі басқа
+                                        // элементтердің ешқайсысы онымен
+                                        // «жарысып» тұрмайды.
+                                        //
+                                        // Жазуы ұзын атауларда
+                                        // («Ассенизатор шақыру») не жүйе
+                                        // шрифті үлкейтілгенде де БІР жолда
+                                        // қалады (ішінде BtnLabel бар).
+                                        GzPrimaryButton(
+                                          label: vehicleCallLabel(_vehicle),
+                                          onPressed:
+                                              (_from == null || _resolvingFrom)
+                                              ? null
+                                              : (_to == null
+                                                    ? _pickTo
+                                                    : _maybeContinue),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Sidebar-ды ТАБУҒА көмектесетін екі элемент (0059): сол шеттегі
-          // тұрақты тұтқа (түртсе де, оңға тартса да ашылады) және алғашқы
-          // ашылуларда шығатын қысқа нұсқау. Екеуі де картаның үстінде,
-          // панельдің сыртында тұр — мазмұнды жаппайды.
-          const SafeArea(child: DrawerEdgeHandle()),
-          const SafeArea(child: DrawerHintOverlay(top: 78)),
-        ],
+            // Sidebar-ды ТАБУҒА көмектесетін екі элемент (0059): сол шеттегі
+            // тұрақты тұтқа (түртсе де, оңға тартса да ашылады) және алғашқы
+            // ашылуларда шығатын қысқа нұсқау. Екеуі де картаның үстінде,
+            // панельдің сыртында тұр — мазмұнды жаппайды.
+            const SafeArea(child: DrawerEdgeHandle()),
+            const SafeArea(child: DrawerHintOverlay(top: 78)),
+          ],
+        ),
       ),
     );
   }
