@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tasu/core/i18n/ru_bonus.dart';
 import 'package:tasu/core/i18n/ru_dual_role.dart';
+import 'package:tasu/core/lang.dart';
 
 /// Аударма сөздігі КОДПЕН СӘЙКЕС ПЕ — детерминирленген тексеру.
 ///
@@ -72,4 +73,62 @@ void main() {
   checkDict('ruDualRole', ruDualRole);
   // Бонус бағдарламасы / sidebar нұсқауы / жаңа профиль (0059).
   checkDict('ruBonus', ruBonus);
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  КЕРІ БАҒЫТ: кодтағы ӘР `t()` мәтінінің аудармасы бар ма
+  // ═══════════════════════════════════════════════════════════════════
+  //
+  // Жоғарыдағы тексеру «сөздікте артық кілт бар ма?» дегенге жауап
+  // береді, ал ЕҢ ЖИІ кездесетін ақау — керісінше: жаңа экран жазылады
+  // да, аудармасын қосу ҰМЫТЫЛАДЫ. `t()` ондайда қате шығармайды —
+  // қазақша мәтіннің өзін қайтарады, сол себепті орыс тіліндегі
+  // қолданушы экранның ортасынан қазақша сөйлемдерді көріп отырады.
+  // (0068 аудитінде дәл осылай 17 мәтін табылған: жаңа мекенжай парағы,
+  // модератор экрандары, кіру беті, орындаушы лентасы.)
+  //
+  // ҚАЗАҚШАҒА ТӘН ӘРІПТЕР бойынша сүзгі қоямыз: «км», «мин», «Маршрут»,
+  // «Доставка» сияқты сөздер екі тілде БІРДЕЙ жазылады, оларға бөлек
+  // аударма кілтін талап ету — бос шу.
+  test('кодтағы әр t() мәтінінің орысша аудармасы бар', () {
+    final tCall = RegExp(r"\bt\(\s*'((?:[^'\\]|\\.)*)'");
+    final kazakhOnly = RegExp(r'[әғқңөұүһіӘҒҚҢӨҰҮҺІ]');
+
+    // Кодтағы литерал — ЭКРАНИЗАЦИЯЛАНҒАН түрі (`\n` екі таңба), ал
+    // сөздіктегі кілт — НАҚТЫ жол ауысымы. Салыстыру алдында кодтағы
+    // литералды Dart-тың өзі оқығандай қалпына келтіреміз.
+    String unescape(String literal) {
+      final out = StringBuffer();
+      for (var i = 0; i < literal.length; i++) {
+        if (literal[i] != r'\'[0] || i + 1 >= literal.length) {
+          out.write(literal[i]);
+          continue;
+        }
+        final next = literal[++i];
+        out.write(switch (next) { 'n' => '\n', 't' => '\t', _ => next });
+      }
+      return out.toString();
+    }
+
+    final keys = <String>{};
+    for (final m in tCall.allMatches(code)) {
+      final raw = m.group(1)!;
+      // Интерполяциясы бар мәтін сөздікке кілт бола алмайды.
+      if (raw.contains(r'$')) continue;
+      final key = unescape(raw);
+      if (kazakhOnly.hasMatch(key)) keys.add(key);
+    }
+
+    // Аударманы НАҚТЫ `t()` арқылы сұраймыз — сонда сөздіктердің бірігу
+    // реті де, басып озуы да тексеріледі.
+    Lang.current.value = AppLang.ru;
+    final missing = keys.where((k) => t(k) == k).toList()..sort();
+    Lang.current.value = AppLang.kk;
+
+    expect(
+      missing,
+      isEmpty,
+      reason: 'Бұл мәтіндердің орысша аудармасы жоқ — RU тілінде экранда '
+          'қазақша күйінде көрінеді:\n${missing.join('\n---\n')}',
+    );
+  });
 }

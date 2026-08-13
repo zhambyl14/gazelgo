@@ -69,7 +69,10 @@ class _ListingsListState extends State<_ListingsList> {
     try {
       await Repo.deleteListing(l.id);
       _reload();
-      if (mounted) showSnack(context, t('Өшірілді'));
+      // «Жойылды» — хабарландыру ЖОЙЫЛДЫ. «Өшірілді» кілті баптаулардағы
+      // қосқыштың «сөндірілді» күйіне қалдырылған (екеуі бір сөз болса,
+      // орысшасы біреуі үшін міндетті түрде қате шығады).
+      if (mounted) showSnack(context, t('Жойылды'));
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }

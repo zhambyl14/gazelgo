@@ -158,7 +158,11 @@ class _ListingSheetState extends State<_ListingSheet> {
       widget.onChanged?.call();
       if (mounted) {
         Navigator.of(context).pop();
-        showSnack(context, t('Өшірілді'));
+        // «Өшірілді» ЕМЕС: қазақшада ол «жойылды» дегенді де, «сөндірілді»
+        // дегенді де білдіреді, ал сол бір кілт баптаулардағы қосқыш үшін
+        // де қолданылып, орысшаға дұрыс аударылмай қалатын. Хабарландыру
+        // ЖОЙЫЛАДЫ — сондықтан «Жойылды».
+        showSnack(context, t('Жойылды'));
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
