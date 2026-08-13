@@ -781,19 +781,35 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   /// Камера бір рет НАҚТЫ өлшемдермен кадрланды ма.
   bool _framed = false;
 
+  /// Жол геометриясы OSRM-нен СҰРАЛЫП жатыр ма. Бұрын мұндай күй болмайтын:
+  /// қашықтық белгісіз кезде тақырып жолағы да, төменгі жолақ та бірдей
+  /// «Маршрут» деп тұратын — бір беттегі бір сөздің екі рет қайталануы әрі
+  /// «есептеліп жатыр ма, әлде мәлімет жоқ па?» деген белгісіздік.
+  bool _loading = false;
+
   @override
   void initState() {
     super.initState();
-    if (widget.routePoints.isEmpty) _loadRoute();
+    if (widget.routePoints.isEmpty) {
+      _loading = true;
+      _loadRoute();
+    }
   }
 
   Future<void> _loadRoute() async {
     final r = await Geo.routeVia([widget.from, ...widget.stops, widget.to]);
-    if (!mounted || r.points.length < 2) return;
+    if (!mounted) return;
+    // Желі жоқ / OSRM жауап бермеді — «есептелуде» деп мәңгі тұрып қалмауы
+    // үшін күйді МІНДЕТТІ түрде жабамыз.
+    if (r.points.length < 2) {
+      setState(() => _loading = false);
+      return;
+    }
     setState(() {
       _points = r.points;
       _km ??= r.distanceKm;
       _min = r.durationMin;
+      _loading = false;
     });
     // Нақты жол геометриясы A→B тіктөртбұрышынан ШЫҒЫП кетуі мүмкін
     // (айналма жол, көпір, тұйық көше) — сол себепті геометрия келгенде
@@ -966,22 +982,16 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: Gz.cardShadow,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.route_rounded,
-                                size: 15, color: Gz.blue),
-                            const SizedBox(width: 6),
-                            Text(
-                              t('Маршрут'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13.5,
-                                height: 1.1,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
+                        // Иконка ӘДЕЙІ жоқ: маршрут белгісі төменгі жолақта
+                        // тұр, оны бір бетте екі рет қайталау — шу.
+                        child: Text(
+                          t('Маршрут'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13.5,
+                            height: 1.1,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                       ),
                       const Spacer(),
@@ -1105,8 +1115,24 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(Icons.route_rounded,
-                                        size: 17, color: Gz.blue),
+                                    // Есептеліп жатқанда — тірі индикатор.
+                                    // Өлшемі иконкамен БІРДЕЙ (17×17), сол
+                                    // себепті жол «секірмейді».
+                                    SizedBox(
+                                      width: 17,
+                                      height: 17,
+                                      child: _loading
+                                          ? const Padding(
+                                              padding: EdgeInsets.all(1.5),
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Gz.blue,
+                                              ),
+                                            )
+                                          : const Icon(Icons.route_rounded,
+                                              size: 17, color: Gz.blue),
+                                    ),
                                     const SizedBox(width: 7),
                                     Expanded(
                                       child: Text(
@@ -1188,7 +1214,13 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     );
   }
 
-  /// «12.4 км · ~18 мин» — тізім жабық тұрғанда да негізгі сан көрінеді.
+  /// «12.4 км · ≈18 мин» — тізім жабық тұрғанда да негізгі сан көрінеді.
+  ///
+  /// ҚАЙТАЛАМАУ ЕРЕЖЕСІ. Аялдама САНЫ тек тізім ЖАБЫҚ тұрғанда қосылады:
+  /// ашық тұрғанда аялдамалардың өзі дәл астында нөмірленіп тізіліп тұр,
+  /// «+2 аялдама» деп қайта жазу — сол беттегі сол ақпараттың екінші рет
+  /// қайталануы. Дерек мүлде болмағанда да «Маршрут» деп жазбаймыз — ол
+  /// сөз жоғарғы жолақта тұр.
   String _summary() {
     final parts = <String>[];
     if (_km != null && _km! > 0) {
@@ -1197,10 +1229,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     if (_min != null && _min! > 0) {
       parts.add('≈ ${_min!.round()} ${t('мин')}');
     }
-    if (widget.stops.isNotEmpty) {
+    if (!_sheetOpen && widget.stops.isNotEmpty) {
       parts.add('+${widget.stops.length} ${t('аялдама')}');
     }
-    return parts.isEmpty ? t('Маршрут') : parts.join(' · ');
+    if (parts.isNotEmpty) return parts.join(' · ');
+    return _loading ? t('Жол есептелуде…') : t('Қашықтық белгісіз');
   }
 
   Widget _leg(Widget mark, String label, String? value) => Padding(
