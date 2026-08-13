@@ -638,6 +638,10 @@ class RouteMap extends StatelessWidget {
                   options: MapOptions(
                     initialCenter: flat ? from : const LatLng(48.02, 66.9),
                     initialZoom: flat ? 15 : 5,
+                    // Тайл жүктелгенше көрінетін фон — толық экрандағы
+                    // картамен БІРДЕЙ. Әдепкі сұрғылт (0xFFE0E0E0) ақ
+                    // карточканың ішінде «сынған сурет» болып көрінетін.
+                    backgroundColor: Gz.bg,
                     initialCameraFit: flat
                         ? null
                         : CameraFit.bounds(
