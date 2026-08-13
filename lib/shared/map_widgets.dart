@@ -9,9 +9,9 @@ import '../core/lang.dart';
 import '../core/theme.dart';
 
 TileLayer osmTileLayer() => TileLayer(
-  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  userAgentPackageName: 'kz.gazelgo.app',
-);
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'kz.gazelgo.app',
+    );
 
 /// Түстің ЖАРЫҚ сыңары — градиенттің үстіңгі шеті («жарық жақ»).
 Color _lighten(Color c, double a) => Color.lerp(c, Colors.white, a)!;
@@ -105,20 +105,17 @@ class MapPin extends StatelessWidget {
   /// Алу нүктесі (A) — ақ сақиналы дөңгелек + солғын ореол.
   /// Тамшыдан ӘДЕЙІ ЖЕҢІЛ көрінеді: «бастау» соңғы нүктемен таласпауы керек.
   const MapPin.origin({super.key, this.size = 28, this.color = Gz.green})
-    : kind = MapPinKind.origin,
-      number = null,
-      label = null,
-      icon = null;
+      : kind = MapPinKind.origin,
+        number = null,
+        label = null,
+        icon = null;
 
   /// Аралық аялдама — ішінде нөмірі бар тамшы.
-  const MapPin.stop(
-    this.number, {
-    super.key,
-    this.size = 26,
-    this.color = Gz.violet,
-  }) : kind = MapPinKind.stop,
-       label = null,
-       icon = null;
+  const MapPin.stop(this.number,
+      {super.key, this.size = 26, this.color = Gz.violet})
+      : kind = MapPinKind.stop,
+        label = null,
+        icon = null;
 
   /// Соңғы нүкте (B) — әдепкіде ішінде ақ «финиш» шаршысы бар тамшы.
   /// Қаласаңыз [icon] («ту») немесе [label] («B») беруге болады.
@@ -128,8 +125,8 @@ class MapPin extends StatelessWidget {
     this.color = Gz.red,
     this.icon,
     this.label,
-  }) : kind = MapPinKind.destination,
-       number = null;
+  })  : kind = MapPinKind.destination,
+        number = null;
 
   /// Орындаушының тірі орны. Тамшы ЕМЕС — тамшы «орынды» білдіреді, ал
   /// қозғалып жүрген көлік — орын емес, объект.
@@ -138,9 +135,9 @@ class MapPin extends StatelessWidget {
     this.size = 38,
     this.color = Gz.blue,
     this.icon = Icons.local_shipping_rounded,
-  }) : kind = MapPinKind.vehicle,
-       number = null,
-       label = null;
+  })  : kind = MapPinKind.vehicle,
+        number = null,
+        label = null;
 
   /// Тамшының ЖАЛПЫ биіктігі басының диаметріне қатысты:
   /// r (басының үсті) + r·√2 (центрден ұшқа дейін) = d·(0.5 + √½) ≈ 1.2071·d.
@@ -151,15 +148,14 @@ class MapPin extends StatelessWidget {
 
   /// Бұрылған контейнердің ішінде «таза төмен» болып шығатын ығысу.
   /// (dy·√½, dy·√½) векторы +45°-қа бұрылғанда дәл (0, dy) болады.
-  static Offset _down(double dy) =>
-      Offset(dy * math.sqrt1_2, dy * math.sqrt1_2);
+  static Offset _down(double dy) => Offset(dy * math.sqrt1_2, dy * math.sqrt1_2);
 
   @override
   Widget build(BuildContext context) => switch (kind) {
-    MapPinKind.origin => _origin(),
-    MapPinKind.vehicle => _vehicle(),
-    MapPinKind.stop || MapPinKind.destination => _teardrop(),
-  };
+        MapPinKind.origin => _origin(),
+        MapPinKind.vehicle => _vehicle(),
+        MapPinKind.stop || MapPinKind.destination => _teardrop(),
+      };
 
   // ── ТАМШЫ (аялдама / соңғы нүкте) ────────────────────────────────────
   Widget _teardrop() {
@@ -219,7 +215,11 @@ class MapPin extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [_lighten(color, 0.22), color, _deepen(color, 0.12)],
+                  colors: [
+                    _lighten(color, 0.22),
+                    color,
+                    _deepen(color, 0.12),
+                  ],
                   stops: const [0.0, 0.55, 1.0],
                 ),
                 borderRadius: BorderRadius.only(
@@ -396,15 +396,16 @@ Marker pointMarker(
   IconData? icon,
   int? number,
   double size = 30,
-}) => Marker(
-  point: p,
-  width: size,
-  height: MapPin.heightFor(size),
-  alignment: Alignment.topCenter,
-  child: number == null
-      ? MapPin.destination(size: size, color: color, icon: icon)
-      : MapPin.stop(number, size: size, color: color),
-);
+}) =>
+    Marker(
+      point: p,
+      width: size,
+      height: MapPin.heightFor(size),
+      alignment: Alignment.topCenter,
+      child: number == null
+          ? MapPin.destination(size: size, color: color, icon: icon)
+          : MapPin.stop(number, size: size, color: color),
+    );
 
 /// A нүктесінің белгісі — ақ сақиналы жасыл НЫСАНА (тамшы емес: бастау
 /// нүктесі соңғы нүктеден жеңіл көрінуі керек).
@@ -427,13 +428,14 @@ Marker executorLiveMarker(
   Color color = Gz.blue,
   IconData icon = Icons.local_shipping_rounded,
   double size = 38,
-}) => Marker(
-  point: p,
-  width: size,
-  height: size,
-  alignment: Alignment.center,
-  child: MapPin.vehicle(size: size, color: color, icon: icon),
-);
+}) =>
+    Marker(
+      point: p,
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      child: MapPin.vehicle(size: size, color: color, icon: icon),
+    );
 
 /// Экранның дәл ортасында тұратын пин (мекенжай таңдау экрандары үшін).
 ///
@@ -486,10 +488,7 @@ class MapCenterPin extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   scale: busy ? 0.88 : 1,
                   child: MapPin.destination(
-                    size: size,
-                    color: color,
-                    icon: icon,
-                  ),
+                      size: size, color: color, icon: icon),
                 ),
                 SizedBox(height: h),
               ],
@@ -508,13 +507,13 @@ class MapCenterPin extends StatelessWidget {
 /// Маршрут сызығын салады: астында ақ «контур», үстінде көк сызық.
 /// Қою тайлдарда (орман, су) жалғыз көк сызық жоғалып кететін.
 List<Polyline> _routeLines(List<LatLng> points) => [
-  Polyline(
-    points: points,
-    strokeWidth: 7,
-    color: Colors.white.withValues(alpha: 0.9),
-  ),
-  Polyline(points: points, strokeWidth: 4.5, color: Gz.blue),
-];
+      Polyline(
+        points: points,
+        strokeWidth: 7,
+        color: Colors.white.withValues(alpha: 0.9),
+      ),
+      Polyline(points: points, strokeWidth: 4.5, color: Gz.blue),
+    ];
 
 /// Маршруттың барлық белгісі. РЕТІ МАҢЫЗДЫ: тығыз тұрған нүктелерде
 /// соңғы нүкте (B) аялдамалардың үстінде, ал орындаушы — бәрінен де
@@ -525,13 +524,14 @@ List<Marker> _routeMarkers({
   required List<LatLng> stops,
   required List<Marker> extra,
   double scale = 1,
-}) => [
-  originMarker(from, size: 28 * scale),
-  for (var i = 0; i < stops.length; i++)
-    pointMarker(stops[i], color: Gz.violet, number: i + 1, size: 27 * scale),
-  pointMarker(to, color: Gz.red, size: 32 * scale),
-  ...extra,
-];
+}) =>
+    [
+      originMarker(from, size: 28 * scale),
+      for (var i = 0; i < stops.length; i++)
+        pointMarker(stops[i], color: Gz.violet, number: i + 1, size: 27 * scale),
+      pointMarker(to, color: Gz.red, size: 32 * scale),
+      ...extra,
+    ];
 
 /// Камера теңшеуі. Барлық нүкте БІР жерде болса (мыс. `from == to`, немесе
 /// клиент әлі жеткізу нүктесін таңдамаған) шектің ауданы НӨЛ болады да,
@@ -599,21 +599,19 @@ class RouteMap extends StatelessWidget {
   });
 
   void _open(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RouteMapScreen(
-          from: from,
-          to: to,
-          stops: stops,
-          routePoints: routePoints,
-          extraMarkers: extraMarkers,
-          fromLabel: fromLabel,
-          toLabel: toLabel,
-          stopLabels: stopLabels,
-          distanceKm: distanceKm,
-        ),
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => RouteMapScreen(
+        from: from,
+        to: to,
+        stops: stops,
+        routePoints: routePoints,
+        extraMarkers: extraMarkers,
+        fromLabel: fromLabel,
+        toLabel: toLabel,
+        stopLabels: stopLabels,
+        distanceKm: distanceKm,
       ),
-    );
+    ));
   }
 
   @override
@@ -649,9 +647,8 @@ class RouteMap extends StatelessWidget {
                             // қалатын еді.
                             padding: const EdgeInsets.all(48),
                           ),
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.none,
-                    ),
+                    interactionOptions:
+                        const InteractionOptions(flags: InteractiveFlag.none),
                   ),
                   children: [
                     osmTileLayer(),
@@ -692,11 +689,8 @@ class RouteMap extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.open_in_full_rounded,
-                          size: 14,
-                          color: Gz.ink,
-                        ),
+                        const Icon(Icons.open_in_full_rounded,
+                            size: 14, color: Gz.ink),
                         const SizedBox(width: 6),
                         Text(
                           t('Картаны ашу'),
@@ -767,7 +761,7 @@ class RouteMapScreen extends StatefulWidget {
 class _RouteMapScreenState extends State<RouteMapScreen> {
   final _map = MapController();
 
-  /// Төменгі картаның НАҚТЫ биіктігін өлшейтін кілт. Бұрын басқару
+  /// Төменгі панельдің НАҚТЫ биіктігін өлшейтін кілт. Бұрын басқару
   /// батырмалары мен камера шегінісі «236 / 230» деген ҚОЛМЕН табылған
   /// сандарға сүйенетін. Ұзын мекенжай екі жолға сынғанда, аялдама
   /// қосылғанда немесе жүйелік қаріп 1.25-ке ұлғайғанда панель биіктей
@@ -831,11 +825,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   double get _sheetTop => 10 + MediaQuery.paddingOf(context).bottom + _sheetH;
 
   List<LatLng> get _all => [
-    widget.from,
-    ...widget.stops,
-    widget.to,
-    for (final m in widget.extraMarkers) m.point,
-  ];
+        widget.from,
+        ...widget.stops,
+        widget.to,
+        for (final m in widget.extraMarkers) m.point,
+      ];
 
   /// Бүкіл маршрут кадрға сыятындай етіп камераны қайта теңшейді.
   void _fit() {
@@ -844,18 +838,16 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       _map.move(widget.from, 15);
       return;
     }
-    _map.fitCamera(
-      CameraFit.bounds(
-        // Тек A/B емес, ЖОЛДЫҢ ӨЗІ де қамтылады.
-        bounds: LatLngBounds.fromPoints([..._all, ..._points]),
-        padding: EdgeInsets.fromLTRB(
-          44,
-          MediaQuery.paddingOf(context).top + 76,
-          44,
-          _sheetTop + 24,
-        ),
+    _map.fitCamera(CameraFit.bounds(
+      // Тек A/B емес, ЖОЛДЫҢ ӨЗІ де қамтылады.
+      bounds: LatLngBounds.fromPoints([..._all, ..._points]),
+      padding: EdgeInsets.fromLTRB(
+        44,
+        MediaQuery.paddingOf(context).top + 76,
+        44,
+        _sheetTop + 24,
       ),
-    );
+    ));
   }
 
   void _zoom(double delta) {
@@ -874,12 +866,12 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     return Scaffold(
       backgroundColor: Gz.bg,
       // ⚠️ SizedBox.expand МІНДЕТТІ. `Scaffold` өз `body`-іне БОС (loose)
-      // биіктік шектеуін береді, ал `Stack` мұндайда өзінің ПОЗИЦИЯЛАНБАҒАН
-      // балаларының өлшеміне жиырылады. Мұндағы жалғыз позицияланбаған бала —
-      // жоғарғы жолақ, сол себепті бүкіл экран ≈108 px-ке қысылып, карта
-      // жіңішке жолаққа айналатын да, `bottom: 10` панелі экранның ЖОҒАРЫСЫНА
-      // шығып кететін. Экранның қалғанын Scaffold фоны толтыратын — «карта
-      // ашылмайды» деген қате нақ осы болатын.
+      // биіктік шектеуін береді, ал `Stack` мұндайда өзінің
+      // ПОЗИЦИЯЛАНБАҒАН балаларының өлшеміне жиырылады. Мұндағы жалғыз
+      // позицияланбаған бала — жоғарғы жолақ, сол себепті бүкіл экран
+      // ≈100 px-ке қысылып, карта жіңішке жолаққа айналатын да, `bottom: 10`
+      // панелі экранның ЖОҒАРЫСЫНА шығып кететін. Экранның қалғанын Scaffold
+      // фоны толтыратын — «карта ашылмайды» деген қате нақ осы болатын.
       body: SizedBox.expand(
         child: Stack(
           children: [
@@ -928,7 +920,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
 
             // ── ЖОҒАРҒЫ ПЕРДЕ ──────────────────────────────────────────
             // Қою тайлдың (орман, су, түнгі аудан) үстінде ақ батырмалар
-            // «қалқып» кетпеуі үшін жұмсақ ақ градиент. Түртуді ұстамайды.
+            // «еріп» кетпеуі үшін жұмсақ градиент. Түртуді ұстамайды.
             Positioned(
               top: 0,
               left: 0,
@@ -968,9 +960,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
+                            horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
                           color: Gz.surface,
                           borderRadius: BorderRadius.circular(20),
@@ -979,11 +969,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.route_rounded,
-                              size: 15,
-                              color: Gz.blue,
-                            ),
+                            const Icon(Icons.route_rounded,
+                                size: 15, color: Gz.blue),
                             const SizedBox(width: 6),
                             Text(
                               t('Маршрут'),
@@ -1054,10 +1041,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
               bottom: ctrlBottom,
               child: IgnorePointer(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Gz.surface.withValues(alpha: 0.82),
                     borderRadius: BorderRadius.circular(9),
@@ -1087,7 +1072,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   curve: Curves.easeInOut,
                   alignment: Alignment.bottomCenter,
                   child: Container(
-                    // Биіктік ӨЛШЕНЕТІН қорап — [_measureSheet] қараңыз.
+                    // Биіктігі ӨЛШЕНЕТІН қорап — [_measureSheet] қараңыз.
                     key: _sheetKey,
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
@@ -1120,11 +1105,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(
-                                      Icons.route_rounded,
-                                      size: 17,
-                                      color: Gz.blue,
-                                    ),
+                                    const Icon(Icons.route_rounded,
+                                        size: 17, color: Gz.blue),
                                     const SizedBox(width: 7),
                                     Expanded(
                                       child: Text(
@@ -1140,9 +1122,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                       ),
                                     ),
                                     AnimatedRotation(
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
+                                      duration:
+                                          const Duration(milliseconds: 200),
                                       turns: _sheetOpen ? 0 : 0.5,
                                       child: const Icon(
                                         Icons.keyboard_arrow_down_rounded,
@@ -1169,16 +1150,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   const SizedBox(height: 6),
-                                  _leg(
-                                    const MapPin.origin(size: 18),
-                                    t('Қайдан'),
-                                    widget.fromLabel,
-                                  ),
-                                  for (
-                                    var i = 0;
-                                    i < widget.stops.length;
-                                    i++
-                                  ) ...[
+                                  _leg(const MapPin.origin(size: 18),
+                                      t('Қайдан'), widget.fromLabel),
+                                  for (var i = 0;
+                                      i < widget.stops.length;
+                                      i++) ...[
                                     _connector(),
                                     _leg(
                                       MapPin.stop(i + 1, size: 18),
@@ -1228,84 +1204,85 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   }
 
   Widget _leg(Widget mark, String label, String? value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(
-      children: [
-        SizedBox(width: 20, child: Center(child: mark)),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label.toUpperCase(), style: Gz.label),
-              const SizedBox(height: 1),
-              Text(
-                value == null || value.isEmpty ? '—' : value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1.3,
-                  letterSpacing: -0.1,
-                ),
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            SizedBox(width: 20, child: Center(child: mark)),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label.toUpperCase(), style: Gz.label),
+                  const SizedBox(height: 1),
+                  Text(
+                    value == null || value.isEmpty ? '—' : value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 
   Widget _connector() => Padding(
-    padding: const EdgeInsets.only(left: 9),
-    child: Container(
-      width: 2,
-      height: 12,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(1),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Gz.border, Gz.border.withValues(alpha: 0.35)],
+        padding: const EdgeInsets.only(left: 9),
+        child: Container(
+          width: 2,
+          height: 12,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(1),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Gz.border, Gz.border.withValues(alpha: 0.35)],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   /// Капсула ішіндегі бір басу аймағы (зум блогының жартысы).
   Widget _tap(IconData icon, VoidCallback onTap) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(11),
-        child: Icon(icon, size: 20, color: Gz.ink),
-      ),
-    ),
-  );
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(11),
+            child: Icon(icon, size: 20, color: Gz.ink),
+          ),
+        ),
+      );
 
   /// Картаның үстінде тұратын дөңгелек батырма.
   Widget _round({
     required IconData icon,
     required VoidCallback onTap,
     Color? tint,
-  }) => Container(
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      boxShadow: Gz.cardShadow,
-    ),
-    child: Material(
-      color: tint ?? Gz.surface,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(11),
-          child: Icon(icon, size: 20, color: Gz.ink),
+  }) =>
+      Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: Gz.cardShadow,
         ),
-      ),
-    ),
-  );
+        child: Material(
+          color: tint ?? Gz.surface,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(11),
+              child: Icon(icon, size: 20, color: Gz.ink),
+            ),
+          ),
+        ),
+      );
 }

@@ -34,17 +34,12 @@ class AddressPickerScreen extends StatefulWidget {
     this.city,
   });
 
-  static Future<PickedAddress?> pick(
-    BuildContext context, {
-    required String title,
-    LatLng? initial,
-    String? city,
-  }) {
+  static Future<PickedAddress?> pick(BuildContext context,
+      {required String title, LatLng? initial, String? city}) {
     return Navigator.of(context).push<PickedAddress>(
       MaterialPageRoute(
-        builder: (_) =>
-            AddressPickerScreen(title: title, initial: initial, city: city),
-      ),
+          builder: (_) =>
+              AddressPickerScreen(title: title, initial: initial, city: city)),
     );
   }
 
@@ -59,8 +54,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   Timer? _debounce;
   Timer? _moveDebounce;
   List<GeoPlace> _results = [];
-  String _rawAddress =
-      ''; // геокодер қайтарған «шикі» атау (түзетуді анықтау үшін)
+  String _rawAddress = ''; // геокодер қайтарған «шикі» атау (түзетуді анықтау үшін)
   bool _corrected = false; // маңайдағы клиент түзетуі қолданылды ма
   String? _centerCity;
   LatLng _center = Geo.almaty;
@@ -162,8 +156,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   void _selectNearby(GeoPlace p) {
     FocusScope.of(context).unfocus();
     final settlement = _centerCity;
-    final needsSettlement =
-        settlement != null &&
+    final needsSettlement = settlement != null &&
         settlement.isNotEmpty &&
         !Geo.sameCity(settlement, widget.city);
     setState(() {
@@ -187,10 +180,9 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
         Text(
           t('Осы жерде — түртіп таңдаңыз:'),
           style: const TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w800,
-            color: Gz.textSecondary,
-          ),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: Gz.textSecondary),
         ),
         const SizedBox(height: 6),
         SizedBox(
@@ -212,8 +204,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     color: active ? Gz.yellow : Gz.bg,
                     borderRadius: BorderRadius.circular(17),
                     border: Border.all(
-                      color: active ? Gz.yellowDark : Gz.border,
-                    ),
+                        color: active ? Gz.yellowDark : Gz.border),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -227,9 +218,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
+                              fontSize: 12.5, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -285,193 +274,173 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       // `Scaffold` өз `body`-іне БОС (loose) биіктік шектеуін береді, ал
-      // `Stack` мұндайда позицияланбаған балаларының өлшеміне жиырылып
-      // қалады. Қазір карта мен орталық пин экранды өздері толтырып тұр,
+      // `Stack` мұндайда өзінің ПОЗИЦИЯЛАНБАҒАН балаларының өлшеміне
+      // жиырылады. Қазір карта мен орталық пин экранды өздері толтырып тұр,
       // бірақ біреуін `Positioned` етіп өзгертсе — бүкіл экран бір жолаққа
-      // қысылып қалар еді (RouteMapScreen-де нақ солай болған). Тығыз
-      // шектеу қойып, сол қатерді мүлде жоямыз.
-      body: SizedBox.expand(
-        child: Stack(
-          children: [
-            FlutterMap(
-              mapController: _map,
-              options: MapOptions(
-                initialCenter: _center,
-                initialZoom: 14,
-                onPositionChanged: (camera, hasGesture) {
-                  _center = camera.center;
-                  // Картаны клиент ӨЗ ҚОЛЫМЕН жылжытты — демек жаңа жерді
-                  // іздеп жатыр, ескі атауды ұстап тұрудың қажеті жоқ.
-                  if (hasGesture) _addrLocked = false;
-                  _moveDebounce?.cancel();
-                  _moveDebounce = Timer(
-                    const Duration(milliseconds: 400),
-                    _resolveCenter,
-                  );
-                },
-              ),
-              children: [osmTileLayer()],
+      // қысылып қалар еді (RouteMapScreen-де нақ солай болған). `expand`
+      // позицияланбаған балаларға ТЫҒЫЗ шектеу беріп, сол қатерді жояды.
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          FlutterMap(
+            mapController: _map,
+            options: MapOptions(
+              initialCenter: _center,
+              initialZoom: 14,
+              onPositionChanged: (camera, hasGesture) {
+                _center = camera.center;
+                // Картаны клиент ӨЗ ҚОЛЫМЕН жылжытты — демек жаңа жерді
+                // іздеп жатыр, ескі атауды ұстап тұрудың қажеті жоқ.
+                if (hasGesture) _addrLocked = false;
+                _moveDebounce?.cancel();
+                _moveDebounce = Timer(
+                    const Duration(milliseconds: 400), _resolveCenter);
+              },
             ),
-            // Орталық пин. Ұшы картаның центріне ДӘЛ түседі ([MapCenterPin]
-            // биіктігіне тең бос орынмен теңгереді) — бұрынғы «bottom: 38»
-            // жуықтауының орнына нақты есеп, сол себепті таңдалған нүкте мен
-            // анықталған мекенжай айырылмайды.
-            MapCenterPin(color: Gz.red, size: 36, busy: _resolving),
-            // іздеу өрісі
-            Positioned(
-              top: 12,
-              left: 12,
-              right: 12,
-              child: Column(
-                children: [
-                  Material(
-                    elevation: 3,
-                    borderRadius: BorderRadius.circular(14),
-                    child: TextField(
-                      controller: _search,
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: t('Адрес іздеу…'),
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _search.text.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _search.clear();
-                                  setState(() => _results = []);
-                                },
-                              ),
+            children: [osmTileLayer()],
+          ),
+          // Орталық пин. Ұшы картаның центріне ДӘЛ түседі ([MapCenterPin]
+          // биіктігіне тең бос орынмен теңгереді) — бұрынғы «bottom: 38»
+          // жуықтауының орнына нақты есеп, сол себепті таңдалған нүкте мен
+          // анықталған мекенжай айырылмайды.
+          MapCenterPin(color: Gz.red, size: 36, busy: _resolving),
+          // іздеу өрісі
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Column(
+              children: [
+                Material(
+                  elevation: 3,
+                  borderRadius: BorderRadius.circular(14),
+                  child: TextField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: t('Адрес іздеу…'),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _results = []);
+                              },
+                            ),
+                    ),
+                  ),
+                ),
+                if (_results.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    decoration: BoxDecoration(
+                      color: Gz.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 10)
+                      ],
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: _results.length,
+                      separatorBuilder: (_, i) => const Divider(height: 1),
+                      itemBuilder: (_, i) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.place_outlined, size: 20),
+                        title: Text(_results[i].name,
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        onTap: () => _selectPlace(_results[i]),
                       ),
                     ),
                   ),
-                  if (_results.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      decoration: BoxDecoration(
-                        color: Gz.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 10),
-                        ],
-                      ),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.zero,
-                        itemCount: _results.length,
-                        separatorBuilder: (_, i) => const Divider(height: 1),
-                        itemBuilder: (_, i) => ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.place_outlined, size: 20),
-                          title: Text(
-                            _results[i].name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () => _selectPlace(_results[i]),
-                        ),
+              ],
+            ),
+          ),
+          // менің локациям
+          Positioned(
+            right: 14,
+            bottom: 150,
+            child: FloatingActionButton.small(
+              heroTag: 'myloc',
+              backgroundColor: Gz.surface,
+              foregroundColor: Gz.ink,
+              onPressed: _goToMyLocation,
+              child: const Icon(Icons.my_location),
+            ),
+          ),
+          // төменгі панель
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 16,
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(Gz.radius),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _addr,
+                      textCapitalization: TextCapitalization.sentences,
+                      onChanged: (_) => _addrLocked = true,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.location_on,
+                            color: Gz.red, size: 20),
+                        hintText: _resolving ? t('Анықталуда…') : t('Мекенжай аты'),
+                        labelText: t('Осы жердің аты (түзетуге болады)'),
                       ),
                     ),
-                ],
-              ),
-            ),
-            // менің локациям
-            Positioned(
-              right: 14,
-              bottom: 150,
-              child: FloatingActionButton.small(
-                heroTag: 'myloc',
-                backgroundColor: Gz.surface,
-                foregroundColor: Gz.ink,
-                onPressed: _goToMyLocation,
-                child: const Icon(Icons.my_location),
-              ),
-            ),
-            // төменгі панель
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 16,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(Gz.radius),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextField(
-                        controller: _addr,
-                        textCapitalization: TextCapitalization.sentences,
-                        onChanged: (_) => _addrLocked = true,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          prefixIcon: const Icon(
-                            Icons.location_on,
-                            color: Gz.red,
-                            size: 20,
-                          ),
-                          hintText: _resolving
-                              ? t('Анықталуда…')
-                              : t('Мекенжай аты'),
-                          labelText: t('Осы жердің аты (түзетуге болады)'),
-                        ),
-                      ),
-                      if (_centerCity != null &&
-                          !Geo.sameCity(_centerCity, widget.city)) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              size: 14,
-                              color: Gz.blue,
-                            ),
-                            const SizedBox(width: 5),
-                            Expanded(
-                              child: Text(
-                                '${t('Елді мекен:')} $_centerCity',
-                                style: const TextStyle(
+                    if (_centerCity != null &&
+                        !Geo.sameCity(_centerCity, widget.city)) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              size: 14, color: Gz.blue),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              '${t('Елді мекен:')} $_centerCity',
+                              style: const TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
-                                  color: Gz.blue,
-                                ),
-                              ),
+                                  color: Gz.blue),
                             ),
-                          ],
-                        ),
-                      ],
-                      _nearbyStrip(),
-                      const SizedBox(height: 6),
-                      Text(
-                        _corrected
-                            ? t(
-                                'Бұл маңайдағы атау бұрын клиенттер арқылы түзетілген.',
-                              )
-                            : t(
-                                'Картадағы белгі дұрыс емес пе? Атын түзетіңіз — осы '
-                                'нүктеге сол атпен сақталады, қаладағы басқа жерге '
-                                'ауыспайды.',
-                              ),
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: _corrected ? Gz.green : Gz.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: _resolving ? null : _confirmSave,
-                        child: Text(t('Осы жерді таңдау')),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
+                    _nearbyStrip(),
+                    const SizedBox(height: 6),
+                    Text(
+                      _corrected
+                          ? t('Бұл маңайдағы атау бұрын клиенттер арқылы түзетілген.')
+                          : t('Картадағы белгі дұрыс емес пе? Атын түзетіңіз — осы '
+                              'нүктеге сол атпен сақталады, қаладағы басқа жерге '
+                              'ауыспайды.'),
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: _corrected ? Gz.green : Gz.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _resolving ? null : _confirmSave,
+                      child: Text(t('Осы жерді таңдау')),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
