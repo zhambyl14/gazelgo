@@ -363,7 +363,7 @@ class _ListingSheetState extends State<_ListingSheet> {
               icon: const Icon(Icons.call, size: 20),
               // Жазуға нөмір де кіреді («Позвонить · +7 700 123 45 67»):
               // иконкамен бірге тар экранға сыймай екінші жолға түсетін.
-              label: BtnLabel('${t('Қоңырау шалу')} · $phone'),
+              label: BtnLabel('${t('Қоңырау шалу')} · ${Phone.dial(phone)}'),
             ),
             const SizedBox(height: 6),
             Text(

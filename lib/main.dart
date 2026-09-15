@@ -309,6 +309,7 @@ class _RoleRouter extends ConsumerWidget {
         if (p == null) {
           return _RetryScreen(onRetry: () => ref.invalidate(myProfileProvider));
         }
+        unawaited(Push.init());
         // Сенім деңгейі бойынша бұғатталған аккаунт (0024) — модератордан
         // басқа ешкім қосымшаға мүлдем кіре алмайды.
         if (p.isBlocked && p.role != 'moderator') {

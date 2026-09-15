@@ -24,6 +24,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class Push {
   static bool _initStarted = false;
+  static bool _firebaseReady = false;
+  static Future<void>? _initFuture;
   static bool _ready = false;
   static int _fgId = 100; // foreground локал уведомлениелердің өспелі id-і
 
@@ -47,19 +49,38 @@ class Push {
     if (kIsWeb || !FirebaseOpts.isConfigured) return;
     // Бастапқы баптау бір рет қана, ал ТОКЕН СИНХРОНЫ әр кіруде қайталанады
     // (төменде) — сол себепті ерте `return` жасамаймыз.
-    if (_initStarted) {
+    if (_firebaseReady) {
       await syncToken();
       return;
     }
-    _initStarted = true;
+
+    final running = _initFuture;
+    if (running != null) {
+      await running;
+      return;
+    }
+
+    final future = _initInternal();
+    _initFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_initFuture, future)) _initFuture = null;
+    }
+  }
+
+  static Future<void> _initInternal() async {
     try {
       await Firebase.initializeApp(options: FirebaseOpts.currentPlatform);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Push: Firebase initialization failed: $e');
       // Firebase жобасы толық бапталмаған/платформа қолдамайды — өшірулі
       // қалады, қосымша бұзылмайды.
       return;
     }
 
+    _initStarted = true;
+    _firebaseReady = true;
     final messaging = FirebaseMessaging.instance;
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -116,7 +137,9 @@ class Push {
       // жете алмайды, ал қосымша ішіндегі резерв уведомлениелер де
       // өшірулі тұрып, пайдаланушы ЕШТЕҢЕ алмай қалатын еді.
       _ready = true;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Push: save_push_token RPC failed: $e');
+    }
   }
 
   /// Аккаунттан шыққанда токенді серверден өшіру: әйтпесе бұл құрылғыға
@@ -160,6 +183,8 @@ class Push {
   static Future<void> _saveToken(String token) async {
     try {
       await Repo.savePushToken(token, defaultTargetPlatform.name);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Push: refreshed token RPC failed: $e');
+    }
   }
 }
