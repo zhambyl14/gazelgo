@@ -23,6 +23,11 @@ void main() {
     expect(Phone.pretty('87001234567'), '+7 700 123 45 67');
   });
 
+  test('Phone.dial uses the local Kazakhstan dialing prefix', () {
+    expect(Phone.dial('77001234567'), '87001234567');
+    expect(Phone.dial('7001234567'), '87001234567');
+  });
+
   test('Phone.emailOf builds the synthetic email', () {
     expect(Phone.emailOf('7001234567'), '77001234567@phone.gazelgo.kz');
     expect(Phone.emailOf('bad'), isNull);

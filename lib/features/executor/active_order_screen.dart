@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -38,7 +39,10 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   String? _lastStatus;
 
   static const _trackableStatuses = {
-    'accepted', 'arrived', 'loading', 'in_transit'
+    'accepted',
+    'arrived',
+    'loading',
+    'in_transit',
   };
 
   @override
@@ -53,7 +57,9 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       final live = s['live_tracking'];
       if (live is Map && live['enabled'] == true) {
         _locTimer = Timer.periodic(
-            const Duration(seconds: 20), (_) => _pushLocationIfActive());
+          const Duration(seconds: 20),
+          (_) => _pushLocationIfActive(),
+        );
       }
     } catch (_) {}
   }
@@ -74,7 +80,8 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   // «arrived → loading» әдейі ЖОҚ: тиеуді енді КЛИЕНТ растайды (0027).
   // Орындаушы «Келдім» дегеннен кейін клиенттің растауын күтеді, содан соң
   // ғана «Жолға шықтық» батырмасы (loading → in_transit) көрінеді.
-  static (String, String, IconData)? _nextFor(String status) => switch (status) {
+  static (String, String, IconData)? _nextFor(String status) =>
+      switch (status) {
         'accepted' => ('arrived', t('Келдім'), Icons.location_on),
         'loading' => ('in_transit', t('Жолға шықтық'), Icons.local_shipping),
         'in_transit' => ('completed', t('Заказды аяқтау'), Icons.check_circle),
@@ -87,8 +94,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       _reviewShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          maybeShowReviewDialog(context,
-              orderId: o.id, title: 'Клиентті бағалаңыз'); // t() ReviewPrompt ішінде
+          maybeShowReviewDialog(
+            context,
+            orderId: o.id,
+            title: 'Клиентті бағалаңыз',
+          ); // t() ReviewPrompt ішінде
         }
       });
     }
@@ -96,7 +106,10 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 
   /// Геолокация + жақындықты тексереді. Қажет болмаса — true.
   Future<bool> _checkProximity(
-      BuildContext context, String nextStatus, Order o) async {
+    BuildContext context,
+    String nextStatus,
+    Order o,
+  ) async {
     // «Келдім» → A нүктесіне жақын; «Аяқтау» → B нүктесіне жақын
     LatLng? target;
     String farErr = '';
@@ -114,14 +127,14 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       if (context.mounted) await _showLocationNeeded(context);
       return false;
     }
-    final dist =
-        Geo.haversineKm(LatLng(pos.latitude, pos.longitude), target);
+    final dist = Geo.haversineKm(LatLng(pos.latitude, pos.longitude), target);
     if (dist > _proximityKm) {
       if (context.mounted) {
         showSnack(
-            context,
-            '${errText(farErr)} (${dist.toStringAsFixed(1)} ${t('км қашықтық')})',
-            error: true);
+          context,
+          '${errText(farErr)} (${dist.toStringAsFixed(1)} ${t('км қашықтық')})',
+          error: true,
+        );
       }
       return false;
     }
@@ -139,10 +152,13 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t('Геолокация керек')),
-        content: Text(t(
+        content: Text(
+          t(
             '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
             '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
-            'қосыңыз.')),
+            'қосыңыз.',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -186,9 +202,13 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(fmtT(o.finalPrice),
-                          style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w900)),
+                      child: Text(
+                        fmtT(o.finalPrice),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                     StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
@@ -228,8 +248,10 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                       if (o.comment.isNotEmpty)
                         InfoRow(t('Түсініктеме'), o.comment),
                       if (o.distanceKm > 0)
-                        InfoRow(t('Қашықтық'),
-                            '${o.distanceKm.toStringAsFixed(1)} км'),
+                        InfoRow(
+                          t('Қашықтық'),
+                          '${o.distanceKm.toStringAsFixed(1)} км',
+                        ),
                     ],
                   ),
                 ),
@@ -241,21 +263,25 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                 // Заказ тоқтатылса — клиенттің нөмірі/хабарласу батырмасы
                 // көрсетілмейді (байланыс тоқтатылған заказда сақталмайды).
                 _ClientCard(
-                    clientId: o.clientId, showCall: o.status != 'cancelled'),
+                  clientId: o.clientId,
+                  showCall: o.status != 'cancelled',
+                ),
                 if (o.status == 'cancelled') ...[
                   const SizedBox(height: 10),
                   SectionCard(
-                    child: Row(children: [
-                      const Icon(Icons.info_outline, color: Gz.red),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          (o.cancelReason?.isNotEmpty ?? false)
-                              ? '${t('Заказ тоқтатылды. Себебі:')} ${o.cancelReason}'
-                              : t('Заказ тоқтатылды'),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Gz.red),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            (o.cancelReason?.isNotEmpty ?? false)
+                                ? '${t('Заказ тоқтатылды. Себебі:')} ${o.cancelReason}'
+                                : t('Заказ тоқтатылды'),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                 ],
                 if (o.isActive) ...[
@@ -281,14 +307,20 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                         Expanded(
                           child: Text(
                             o.vehicleType == VehicleType.taxi
-                                ? t('Клиенттің «Отырғызу басталды» деп '
+                                ? t(
+                                    'Клиенттің «Отырғызу басталды» деп '
                                     'растауын күтіңіз. Растаған соң «Жолға '
-                                    'шықтық» батырмасы шығады.')
-                                : t('Клиенттің «Тиеу басталды» деп растауын '
+                                    'шықтық» батырмасы шығады.',
+                                  )
+                                : t(
+                                    'Клиенттің «Тиеу басталды» деп растауын '
                                     'күтіңіз. Растаған соң «Жолға шықтық» '
-                                    'батырмасы шығады.'),
+                                    'батырмасы шығады.',
+                                  ),
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -302,8 +334,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                     color: o.status == 'in_transit' ? Gz.green : null,
                     onPressed: () async {
                       // A/B нүктесіне жақындықты тексеру
-                      final ok =
-                          await _checkProximity(context, next.$1, o);
+                      final ok = await _checkProximity(context, next.$1, o);
                       if (!ok) return;
                       try {
                         await Repo.orderAdvance(o.id, next.$1);
@@ -312,8 +343,10 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                             Repo.deleteOrderPhotos(o.photos);
                           }
                           if (context.mounted) {
-                            showSnack(context,
-                                '${t('Заказ аяқталды! Табысыңызға')} ${fmtT(o.finalPrice)} ${t('қосылды')} 🎉');
+                            showSnack(
+                              context,
+                              '${t('Заказ аяқталды! Табысыңызға')} ${fmtT(o.finalPrice)} ${t('қосылды')} 🎉',
+                            );
                           }
                         }
                       } catch (e) {
@@ -325,24 +358,28 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   ),
                 if (o.status == 'completed') ...[
                   SectionCard(
-                    child: Row(children: [
-                      const Icon(Icons.check_circle, color: Gz.green),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(t('Заказ сәтті аяқталды'))),
-                    ]),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Gz.green),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(t('Заказ сәтті аяқталды'))),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 10),
                   ReviewPrompt(
-                      orderId: o.id,
-                      title: 'Клиентті бағалаңыз'), // t() ReviewPrompt ішінде
+                    orderId: o.id,
+                    title: 'Клиентті бағалаңыз',
+                  ), // t() ReviewPrompt ішінде
                 ],
                 // Орындаушы тек «қабылданды» кезеңінде (келмей тұрып) бас тарта алады
                 if (o.status == 'accepted') ...[
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        foregroundColor: Gz.red,
-                        side: const BorderSide(color: Gz.red)),
+                      foregroundColor: Gz.red,
+                      side: const BorderSide(color: Gz.red),
+                    ),
                     onPressed: () => _cancel(context, o.id),
                     icon: const Icon(Icons.close),
                     label: Text(t('Бас тарту')),
@@ -364,7 +401,9 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   Future<void> _navigate(double lat, double lng) async {
     if (!kIsWeb) {
       try {
-        final dgis = Uri.parse('dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat');
+        final dgis = Uri.parse(
+          'dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat',
+        );
         if (await canLaunchUrl(dgis)) {
           await launchUrl(dgis);
           return;
@@ -388,9 +427,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   ];
 
   Future<void> _cancel(BuildContext context, String orderId) async {
-    final reason = await pickCancelReason(context,
-        title: t('Заказдан бас тарту'),
-        presets: [for (final r in _execCancelReasons) t(r)]);
+    final reason = await pickCancelReason(
+      context,
+      title: t('Заказдан бас тарту'),
+      presets: [for (final r in _execCancelReasons) t(r)],
+    );
     if (reason == null || !context.mounted) return;
     try {
       await Repo.cancelOrder(orderId, reason);
@@ -437,28 +478,31 @@ class _NavToggle extends StatelessWidget {
         children: [
           Expanded(
             child: _NavHalf(
-                icon: Icons.trip_origin,
-                color: Gz.green,
-                label: compact ? 'A' : t('A навигация'),
-                onTap: onA),
+              icon: Icons.trip_origin,
+              color: Gz.green,
+              label: compact ? 'A' : t('A навигация'),
+              onTap: onA,
+            ),
           ),
           for (var i = 0; i < onStops.length; i++) ...[
             Container(width: 1.4, color: Gz.border),
             Expanded(
               child: _NavHalf(
-                  icon: Icons.adjust,
-                  color: Gz.violet,
-                  label: '${i + 1}',
-                  onTap: onStops[i]),
+                icon: Icons.adjust,
+                color: Gz.violet,
+                label: '${i + 1}',
+                onTap: onStops[i],
+              ),
             ),
           ],
           Container(width: 1.4, color: Gz.border),
           Expanded(
             child: _NavHalf(
-                icon: Icons.location_on,
-                color: Gz.red,
-                label: compact ? 'B' : t('B навигация'),
-                onTap: onB),
+              icon: Icons.location_on,
+              color: Gz.red,
+              label: compact ? 'B' : t('B навигация'),
+              onTap: onB,
+            ),
           ),
         ],
       ),
@@ -497,7 +541,9 @@ class _NavHalfState extends State<_NavHalf> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 130),
         curve: Curves.easeOut,
-        color: _pressed ? widget.color.withValues(alpha: 0.1) : Colors.transparent,
+        color: _pressed
+            ? widget.color.withValues(alpha: 0.1)
+            : Colors.transparent,
         child: Center(
           child: AnimatedScale(
             scale: _pressed ? 0.9 : 1,
@@ -508,11 +554,14 @@ class _NavHalfState extends State<_NavHalf> {
               children: [
                 Icon(widget.icon, size: 17, color: widget.color),
                 const SizedBox(width: 7),
-                Text(widget.label,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: widget.color)),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: widget.color,
+                  ),
+                ),
               ],
             ),
           ),
@@ -537,40 +586,61 @@ class _ClientCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              InitialsAvatar(p?.fullName ?? '?',
-                  radius: 22, imageUrl: p?.avatarUrl),
+              InitialsAvatar(
+                p?.fullName ?? '?',
+                radius: 22,
+                imageUrl: p?.avatarUrl,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t('Клиент'),
-                        style: const TextStyle(
-                            color: Gz.textSecondary, fontSize: 12)),
-                    Text(p?.fullName ?? '…',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15.5)),
+                    Text(
+                      t('Клиент'),
+                      style: const TextStyle(
+                        color: Gz.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      p?.fullName ?? '…',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15.5,
+                      ),
+                    ),
                     // Орындаушы КЛИЕНТТІ көреді → клиенттік рейтинг/рейс
                     // (қос рөл, 0046: ол адамның орындаушылық бағасы бөлек).
                     if (p != null)
-                      Row(children: [
-                        RatingStars(p.ratingAs('client'),
-                            count: p.ratingCountAs('client'), size: 12),
-                        if (p.tripsAs('client') > 0)
-                          Text('  · ${p.tripsAs('client')} ${t('рейс')}',
+                      Row(
+                        children: [
+                          RatingStars(
+                            p.ratingAs('client'),
+                            count: p.ratingCountAs('client'),
+                            size: 12,
+                          ),
+                          if (p.tripsAs('client') > 0)
+                            Text(
+                              '  · ${p.tripsAs('client')} ${t('рейс')}',
                               style: const TextStyle(
-                                  fontSize: 11.5, color: Gz.textSecondary)),
-                      ]),
+                                fontSize: 11.5,
+                                color: Gz.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
               if (showCall && p != null && p.phone.isNotEmpty)
                 IconButton.filled(
                   style: IconButton.styleFrom(
-                      backgroundColor: Gz.green,
-                      foregroundColor: Colors.white),
+                    backgroundColor: Gz.green,
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: () =>
-                      launchUrl(Uri(scheme: 'tel', path: p.phone)),
+                      launchUrl(Uri(scheme: 'tel', path: Phone.dial(p.phone))),
                   icon: const Icon(Icons.call),
                 ),
             ],

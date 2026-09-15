@@ -88,10 +88,11 @@ async function handle(threadId: string) {
 
   const { data: thread } = await admin
     .from("support_threads")
-    .select("id, user_id, status, order_id")
+    .select("id, user_id, status, order_id, human_takeover")
     .eq("id", threadId)
     .maybeSingle();
   if (!thread || thread.status !== "open") return { skipped: "THREAD_NOT_OPEN" };
+  if (thread.human_takeover === true) return { skipped: "HUMAN_TAKEOVER" };
 
   // Профиль мен сөйлесу тарихы эскалацияға ДА керек («күте тұрыңыз» қай
   // тілде жазылады және ол бұрын жазылып қойған ба) — сол себепті екеуі де

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -60,7 +61,7 @@ class _ListingSheetState extends State<_ListingSheet> {
   }
 
   Future<void> _call(String phone) async {
-    final ok = await launchUrl(Uri(scheme: 'tel', path: phone));
+    final ok = await launchUrl(Uri(scheme: 'tel', path: Phone.dial(phone)));
     if (!ok && mounted) {
       showSnack(context, t('Қоңырау шалу мүмкін болмады'), error: true);
     }
@@ -80,8 +81,10 @@ class _ListingSheetState extends State<_ListingSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              t('Шағымыңыз модераторға жіберіледі. Ол хабарландыруды тексеріп, '
-                  'қажет болса өшіреді.'),
+              t(
+                'Шағымыңыз модераторға жіберіледі. Ол хабарландыруды тексеріп, '
+                'қажет болса өшіреді.',
+              ),
               style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -276,7 +279,10 @@ class _ListingSheetState extends State<_ListingSheet> {
           children: [
             _chip(Icons.location_city_outlined, l.city),
             if (l.durationDays > 0)
-              _chip(Icons.event_repeat, '${l.durationDays} ${t('күндік жұмыс')}'),
+              _chip(
+                Icons.event_repeat,
+                '${l.durationDays} ${t('күндік жұмыс')}',
+              ),
             if (l.mine && l.views != null)
               _chip(
                 Icons.visibility_outlined,
@@ -361,8 +367,10 @@ class _ListingSheetState extends State<_ListingSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              t('Келісім тікелей екеуіңіздің араңызда болады — Tasu бұл '
-                  'хабарландыруға делдал емес. Алдын ала ақша аудармаңыз.'),
+              t(
+                'Келісім тікелей екеуіңіздің араңызда болады — Tasu бұл '
+                'хабарландыруға делдал емес. Алдын ала ақша аудармаңыз.',
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
             ),
@@ -375,10 +383,7 @@ class _ListingSheetState extends State<_ListingSheet> {
           TextButton.icon(
             onPressed: () => _report(l),
             icon: const Icon(Icons.flag_outlined, size: 18, color: Gz.red),
-            label: Text(
-              t('Шағымдану'),
-              style: const TextStyle(color: Gz.red),
-            ),
+            label: Text(t('Шағымдану'), style: const TextStyle(color: Gz.red)),
           ),
         ],
 
@@ -435,13 +440,11 @@ class _ListingSheetState extends State<_ListingSheet> {
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: () => _delete(l),
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 18,
-              color: Gz.red,
+            icon: const Icon(Icons.delete_outline, size: 18, color: Gz.red),
+            label: Text(
+              t('Біржола өшіру'),
+              style: const TextStyle(color: Gz.red),
             ),
-            label: Text(t('Біржола өшіру'),
-                style: const TextStyle(color: Gz.red)),
           ),
         ],
       ],

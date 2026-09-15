@@ -33,6 +33,13 @@ class Phone {
         '${d.substring(7, 9)} ${d.substring(9, 11)}';
   }
 
+  /// Ұялы оператордың жергілікті қоңырау форматы: `7XXXXXXXXXX` →
+  /// `8XXXXXXXXXX`. База мен авторизациядағы қалыпты форматқа тимейміз.
+  static String dial(String raw) {
+    final d = normalize(raw);
+    return d == null ? raw : '8${d.substring(1)}';
+  }
+
   /// Supabase-тегі синтетикалық email (нормаланған нөмірден).
   static String? emailOf(String raw) {
     final d = normalize(raw);
