@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import '../support/chat_view.dart';
 import 'order_admin.dart';
 import 'trust_actions.dart';
 

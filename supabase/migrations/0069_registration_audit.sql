@@ -82,3 +82,35 @@ end;
 $$;
 
 grant execute on function public.mod_registration_drafts() to authenticated;
+
+-- Жабық чат тарихын модератор көруі үшін суреттерді бірден өшірмейміз.
+-- 30 күннен ескі архивтік файлдар ғана тазаланады; мәтіндік хабарламалар
+-- support_threads/support_messages ішінде сақтала береді.
+create or replace function public.mod_pending_support_images()
+returns text[]
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_paths text[];
+begin
+  if auth.uid() is null or not public.is_moderator() then raise exception 'FORBIDDEN'; end if;
+  select coalesce(array_agg(m.image_path), '{}') into v_paths
+  from public.support_messages m
+  join public.support_threads t on t.id = m.thread_id
+  where t.status = 'closed'
+    and t.images_cleaned = false
+    and t.closed_at < now() - interval '30 days'
+    and m.image_path is not null;
+
+  update public.support_threads t
+  set images_cleaned = true
+  where t.status = 'closed'
+    and t.images_cleaned = false
+    and t.closed_at < now() - interval '30 days';
+  return v_paths;
+end;
+$$;
+
+grant execute on function public.mod_pending_support_images() to authenticated;
