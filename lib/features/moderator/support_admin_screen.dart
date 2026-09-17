@@ -145,8 +145,9 @@ class _ModeratorChatScreen extends StatelessWidget {
                   await Repo.supportClose(thread.id);
                   if (context.mounted) Navigator.of(context).pop();
                 } catch (e) {
-                  if (context.mounted)
+                  if (context.mounted) {
                     showSnack(context, errText(e), error: true);
+                  }
                 }
               },
               icon: const Icon(Icons.check, size: 18),

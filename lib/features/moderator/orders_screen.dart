@@ -80,8 +80,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
             child: FutureBuilder<List<Order>>(
               future: _future,
               builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting)
+                if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 final q = _search.text.trim().toLowerCase();
                 final rows = (snap.data ?? []).where((o) {
                   final statusMatch = switch (_status) {
@@ -94,7 +95,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           .toLowerCase();
                   return statusMatch && (q.isEmpty || haystack.contains(q));
                 }).toList();
-                if (rows.isEmpty)
+                if (rows.isEmpty) {
                   return ListView(
                     children: const [
                       SizedBox(height: 110),
@@ -104,10 +105,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                     ],
                   );
+                }
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                   itemCount: rows.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, index) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
                       _OrderAdminTile(order: rows[i], onChanged: _reload),
                 );

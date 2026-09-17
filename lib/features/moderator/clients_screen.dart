@@ -114,7 +114,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                   itemCount: rows.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, index) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
                       _ClientTile(profile: rows[i], onChanged: _reload),
                 );
@@ -370,8 +370,9 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              if (orders.isEmpty)
+              if (orders.isEmpty) {
                 return const _HintTile(text: 'Бұл клиент әлі заказ бермеген');
+              }
               return Column(
                 children: [
                   for (final o in orders.take(8)) ...[
@@ -401,8 +402,9 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              if (threads.isEmpty)
+              if (threads.isEmpty) {
                 return const _HintTile(text: 'Қолдау чаты жоқ');
+              }
               return Column(
                 children: [
                   for (final thread in threads)
@@ -586,20 +588,22 @@ class _RegistrationDraftsScreenState extends State<RegistrationDraftsScreen> {
       child: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting)
+          if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
           final rows = snap.data ?? const <Map<String, dynamic>>[];
-          if (rows.isEmpty)
+          if (rows.isEmpty) {
             return ListView(
               children: const [
                 SizedBox(height: 120),
                 _HintTile(text: 'Белсенді тіркелу draft-тері жоқ'),
               ],
             );
+          }
           return ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, index) => const SizedBox(height: 8),
             itemBuilder: (_, i) {
               final r = rows[i];
               final completed = r['completed_at'] != null;
