@@ -591,6 +591,14 @@ class _RegistrationDraftsScreenState extends State<RegistrationDraftsScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snap.hasError) {
+            return ListView(
+              children: [
+                const SizedBox(height: 120),
+                LoadErrorState(onRetry: _reload),
+              ],
+            );
+          }
           final rows = snap.data ?? const <Map<String, dynamic>>[];
           if (rows.isEmpty) {
             return ListView(

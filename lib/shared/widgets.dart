@@ -787,6 +787,55 @@ class EmptyState extends StatelessWidget {
   }
 }
 
+/// Дерек шынымен бос болған және сұрау орындалмай қалған жағдайларды
+/// шатастырмау үшін қолданылатын қайта жүктеу күйі. Бұл экранда қате кодын
+/// көрсетпейді: техникалық мәлімет қолданушыға пайдасыз, ал әрекет түсінікті.
+class LoadErrorState extends StatelessWidget {
+  final VoidCallback onRetry;
+  final String title;
+  final String subtitle;
+
+  const LoadErrorState({
+    super.key,
+    required this.onRetry,
+    this.title = 'Деректерді жүктеу мүмкін болмады',
+    this.subtitle = 'Интернетті тексеріп, қайта көріңіз.',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 44, color: Gz.red),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Gz.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Қайталау'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// A → … → B адрес бағаны.
 ///
 /// [stops] — АРАЛЫҚ аялдамалар (0047): «Қайдан» мен «Қайда» арасында

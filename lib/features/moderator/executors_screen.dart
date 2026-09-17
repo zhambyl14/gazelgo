@@ -20,11 +20,18 @@ class ExecutorsScreen extends StatefulWidget {
 class _ExecutorsScreenState extends State<ExecutorsScreen> {
   String? _status;
   late Future<List<ExecutorProfile>> _future = Repo.executorsByStatus(_status);
+  late Future<List<Map<String, dynamic>>> _drafts =
+      Repo.modRegistrationDrafts();
+
+  bool get _showDrafts => _status == 'drafts';
 
   void _reload() {
-    final f = Repo.executorsByStatus(_status);
     setState(() {
-      _future = f;
+      if (_showDrafts) {
+        _drafts = Repo.modRegistrationDrafts();
+      } else {
+        _future = Repo.executorsByStatus(_status);
+      }
     });
   }
 
@@ -43,6 +50,7 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
                 ('pending', t('Күтуде')),
                 ('rejected', t('Қабылданбаған')),
                 ('blocked', t('Бұғатталған')),
+                ('drafts', 'Тіркелуді аяқтамағандар'),
               ]) ...[
                 ChoiceChip(
                   label: Text(label),
@@ -66,36 +74,166 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async => _reload(),
-            child: FutureBuilder<List<ExecutorProfile>>(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final rows = snap.data ?? [];
-                if (rows.isEmpty) {
-                  return ListView(
-                    children: [
-                      const SizedBox(height: 100),
-                      EmptyState(
-                        icon: Icons.people_outline,
-                        title: t('Тізім бос'),
-                      ),
-                    ],
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: rows.length,
-                  separatorBuilder: (_, i) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      _ExecutorTile(ep: rows[i], onChanged: _reload),
-                );
-              },
-            ),
+            child: _showDrafts
+                ? FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _drafts,
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snap.hasError) {
+                        return ListView(
+                          children: [
+                            const SizedBox(height: 100),
+                            LoadErrorState(onRetry: _reload),
+                          ],
+                        );
+                      }
+                      final rows = (snap.data ?? const <Map<String, dynamic>>[])
+                          .where(
+                            (row) =>
+                                row['role'] == 'executor' &&
+                                row['completed_at'] == null,
+                          )
+                          .toList();
+                      if (rows.isEmpty) {
+                        return ListView(
+                          children: const [
+                            SizedBox(height: 100),
+                            EmptyState(
+                              icon: Icons.how_to_reg_outlined,
+                              title: 'Аяқталмаған тіркелу жоқ',
+                            ),
+                          ],
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: rows.length,
+                        separatorBuilder: (_, i) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) => _ExecutorDraftTile(row: rows[i]),
+                      );
+                    },
+                  )
+                : FutureBuilder<List<ExecutorProfile>>(
+                    future: _future,
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snap.hasError) {
+                        return ListView(
+                          children: [
+                            const SizedBox(height: 100),
+                            LoadErrorState(onRetry: _reload),
+                          ],
+                        );
+                      }
+                      final rows = snap.data ?? [];
+                      if (rows.isEmpty) {
+                        return ListView(
+                          children: [
+                            const SizedBox(height: 100),
+                            EmptyState(
+                              icon: Icons.people_outline,
+                              title: t('Тізім бос'),
+                            ),
+                          ],
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: rows.length,
+                        separatorBuilder: (_, i) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) =>
+                            _ExecutorTile(ep: rows[i], onChanged: _reload),
+                      );
+                    },
+                  ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Аккаунт ашу не орындаушы өтінімін толтыру кезінде тоқтаған адам.
+/// Бұл жолдар [executor_profiles]-ке әлі түспеген, сондықтан негізгі тізімнен
+/// бөлек көрсетіледі.
+class _ExecutorDraftTile extends StatelessWidget {
+  final Map<String, dynamic> row;
+  const _ExecutorDraftTile({required this.row});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (row['full_name'] as String?)?.trim();
+    final phone = (row['phone'] as String?)?.trim();
+    final data = row['data'] is Map
+        ? Map<String, dynamic>.from(row['data'] as Map)
+        : const <String, dynamic>{};
+    final vehicle = data['vehicle'] is Map
+        ? Map<String, dynamic>.from(data['vehicle'] as Map)
+        : const <String, dynamic>{};
+    final entered = <String>[
+      if ((data['city'] as String?)?.isNotEmpty == true) data['city'] as String,
+      if ((data['vehicle_type'] as String?)?.isNotEmpty == true)
+        data['vehicle_type'] as String,
+      if ((vehicle['brand'] as String?)?.isNotEmpty == true)
+        vehicle['brand'] as String,
+      if ((vehicle['plate'] as String?)?.isNotEmpty == true)
+        vehicle['plate'] as String,
+    ];
+    final rawDate = row['last_seen_at'];
+    final lastSeen = rawDate is DateTime
+        ? rawDate
+        : DateTime.tryParse(rawDate?.toString() ?? '');
+
+    return SectionCard(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: Gz.bg,
+            child: Icon(Icons.pending_actions, color: Gz.yellowDark),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name?.isNotEmpty == true ? name! : 'Аты енгізілмеген',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                if (phone?.isNotEmpty == true)
+                  Text(phone!, style: const TextStyle(color: Gz.textSecondary)),
+                const SizedBox(height: 4),
+                Text(
+                  'Тоқтаған жері: ${row['stage_label'] ?? 'Белгісіз'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (entered.isNotEmpty)
+                  Text(
+                    'Енгізгені: ${entered.join(' · ')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Gz.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                Text(
+                  'Соңғы белсенділік: ${lastSeen == null ? '—' : fmtDate(lastSeen)}',
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

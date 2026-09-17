@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -33,14 +34,18 @@ class _PickedDoc {
 
 class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _form = GlobalKey<FormState>();
-  late final _brand =
-      TextEditingController(text: widget.existing?.vehicleBrand ?? 'ГАЗель');
-  late final _model =
-      TextEditingController(text: widget.existing?.vehicleModel ?? '');
+  late final _brand = TextEditingController(
+    text: widget.existing?.vehicleBrand ?? 'ГАЗель',
+  );
+  late final _model = TextEditingController(
+    text: widget.existing?.vehicleModel ?? '',
+  );
   late final _year = TextEditingController(
-      text: widget.existing?.vehicleYear?.toString() ?? '');
-  late final _plate =
-      TextEditingController(text: widget.existing?.vehiclePlate ?? '');
+    text: widget.existing?.vehicleYear?.toString() ?? '',
+  );
+  late final _plate = TextEditingController(
+    text: widget.existing?.vehiclePlate ?? '',
+  );
   late String? _city = widget.existing?.city;
   late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
   late VehicleType _vehicleType =
@@ -50,13 +55,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _selfie = _PickedDoc();
 
   // Құжаттар
-  final _license = _PickedDoc();          // жүргізуші куәлігі (права)
-  final _licenseSelfie = _PickedDoc();     // правамен селфи
-  final _idDoc = _PickedDoc();             // жеке куәлік (ҚР азаматына)
-  final _idSelfie = _PickedDoc();          // куәлікпен селфи
-  final _passport = _PickedDoc();          // шетел паспорты (шетел азаматына)
-  final _passportSelfie = _PickedDoc();    // паспортпен селфи
-  final _techPassport = _PickedDoc();      // көліктің техпаспорты (міндетті)
+  final _license = _PickedDoc(); // жүргізуші куәлігі (права)
+  final _licenseSelfie = _PickedDoc(); // правамен селфи
+  final _idDoc = _PickedDoc(); // жеке куәлік (ҚР азаматына)
+  final _idSelfie = _PickedDoc(); // куәлікпен селфи
+  final _passport = _PickedDoc(); // шетел паспорты (шетел азаматына)
+  final _passportSelfie = _PickedDoc(); // паспортпен селфи
+  final _techPassport = _PickedDoc(); // көліктің техпаспорты (міндетті)
   final _techPassportSelfie = _PickedDoc(); // техпаспортпен фото (міндетті)
 
   // Көлік фотолары (4 таңбаланған)
@@ -66,6 +71,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _vehLeft = _PickedDoc();
 
   final _picker = ImagePicker();
+  Timer? _draftTimer;
 
   @override
   void initState() {
@@ -90,15 +96,31 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       if (ph.length > 2) _vehRight.existingPath = ph[2];
       if (ph.length > 3) _vehLeft.existingPath = ph[3];
     }
+    // Жаңа орындаушы өтінімі қай жерге дейін толтырылғанын модератор көре
+    // алады. Қайта жіберіліп жатқан ескі өтінімді "аяқталмаған" деп қоспаймыз.
+    if (widget.existing == null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _saveApplicationProgress(),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
     _brand.dispose();
     _model.dispose();
     _year.dispose();
     _plate.dispose();
     super.dispose();
+  }
+
+  void _scheduleProgressSave() {
+    _draftTimer?.cancel();
+    _draftTimer = Timer(
+      const Duration(milliseconds: 700),
+      _saveApplicationProgress,
+    );
   }
 
   /// Құжат/көлік фотосы ТЕК камерамен түсіріледі (галереядан таңдау жоқ) —
@@ -107,14 +129,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   /// бірақ галереядан кез келген файлды таңдауды болдырмайды.
   Future<Uint8List?> _pick() async {
     final file = await _picker.pickImage(
-        source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
+      source: ImageSource.camera,
+      imageQuality: 70,
+      maxWidth: 1600,
+    );
     if (file == null) return null;
     return file.readAsBytes();
   }
 
   Future<void> _pickDoc(_PickedDoc doc) async {
     final bytes = await _pick();
-    if (bytes != null) setState(() => doc.bytes = bytes);
+    if (bytes != null) {
+      setState(() => doc.bytes = bytes);
+      _saveApplicationProgress();
+    }
   }
 
   Future<void> _pickCity() async {
@@ -127,7 +155,99 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       ),
       builder: (_) => const CityPickerSheet(),
     );
-    if (picked != null && mounted) setState(() => _city = picked);
+    if (picked != null && mounted) {
+      setState(() => _city = picked);
+      _saveApplicationProgress();
+    }
+  }
+
+  Future<void> _saveApplicationProgress({bool completed = false}) async {
+    final userId = Repo.uid;
+    if (widget.existing != null || userId == null) return;
+
+    final profile = ref.read(myProfileProvider).value;
+    final vehiclePhotos = [
+      _vehFront,
+      _vehBack,
+      _vehRight,
+      _vehLeft,
+    ].where((doc) => doc.isSet).length;
+    final hasVehicleInfo =
+        _city != null ||
+        _model.text.trim().isNotEmpty ||
+        _year.text.trim().isNotEmpty ||
+        _plate.text.trim().isNotEmpty;
+    final hasDocs =
+        _selfie.isSet ||
+        _license.isSet ||
+        _licenseSelfie.isSet ||
+        _idDoc.isSet ||
+        _idSelfie.isSet ||
+        _passport.isSet ||
+        _passportSelfie.isSet ||
+        _techPassport.isSet ||
+        _techPassportSelfie.isSet ||
+        vehiclePhotos > 0;
+    final year = int.tryParse(_year.text.trim());
+    final ready =
+        _missing == null &&
+        _brand.text.trim().isNotEmpty &&
+        _plate.text.trim().length >= 4 &&
+        year != null &&
+        year >= 1980 &&
+        year <= DateTime.now().year + 1;
+    final stage = completed || ready
+        ? 3
+        : hasDocs
+        ? 2
+        : hasVehicleInfo
+        ? 1
+        : 0;
+    final stageLabel = completed
+        ? 'Орындаушы өтінімі жіберілді'
+        : ready
+        ? 'Жіберуге дайын'
+        : hasDocs
+        ? 'Құжаттар мен фотолар'
+        : hasVehicleInfo
+        ? 'Қала және көлік деректері'
+        : 'Өтінімді бастады';
+    try {
+      await Repo.saveRegistrationDraft(
+        draftKey: 'executor-application-$userId',
+        role: 'executor',
+        stage: stage,
+        stageLabel: stageLabel,
+        fullName: profile?.fullName,
+        phone: profile?.phone,
+        data: {
+          'flow': 'executor_application',
+          'city': _city,
+          'vehicle_type': _vehicleType.name,
+          'vehicle': {
+            'brand': _brand.text.trim(),
+            'model': _model.text.trim(),
+            'year': _year.text.trim(),
+            'plate': _plate.text.trim(),
+          },
+          'documents': {
+            'profile_selfie': _selfie.isSet,
+            'license': _license.isSet,
+            'license_selfie': _licenseSelfie.isSet,
+            'identity': _isForeign ? _passport.isSet : _idDoc.isSet,
+            'identity_selfie': _isForeign
+                ? _passportSelfie.isSet
+                : _idSelfie.isSet,
+            'tech_passport': _techPassport.isSet,
+            'tech_passport_selfie': _techPassportSelfie.isSet,
+            'vehicle_photos': vehiclePhotos,
+          },
+        },
+        completed: completed,
+      );
+    } catch (_) {
+      // Аудит жазбасы негізгі өтінімді тоқтатпауы керек.
+    }
   }
 
   /// Өтінім жіберуге дайын емес болса — НЕ жетпейтіні (батырманың астында).
@@ -160,39 +280,62 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (!_selfie.isSet) {
-      showSnack(context, t('Профиліңізге өз селфиіңізді түсіріңіз'),
-          error: true);
+      showSnack(
+        context,
+        t('Профиліңізге өз селфиіңізді түсіріңіз'),
+        error: true,
+      );
       return;
     }
     if (_city == null || _city!.trim().isEmpty) {
-      showSnack(context, t('Қай қалада жұмыс істейтініңізді таңдаңыз'),
-          error: true);
+      showSnack(
+        context,
+        t('Қай қалада жұмыс істейтініңізді таңдаңыз'),
+        error: true,
+      );
       return;
     }
     if (!_license.isSet || !_licenseSelfie.isSet) {
-      showSnack(context, t('Жүргізуші куәлігі мен онымен селфиді жүктеңіз'),
-          error: true);
+      showSnack(
+        context,
+        t('Жүргізуші куәлігі мен онымен селфиді жүктеңіз'),
+        error: true,
+      );
       return;
     }
     if (!_isForeign && (!_idDoc.isSet || !_idSelfie.isSet)) {
-      showSnack(context, t('Жеке куәлік пен онымен селфиді жүктеңіз'),
-          error: true);
+      showSnack(
+        context,
+        t('Жеке куәлік пен онымен селфиді жүктеңіз'),
+        error: true,
+      );
       return;
     }
     if (_isForeign && (!_passport.isSet || !_passportSelfie.isSet)) {
-      showSnack(context, t('Шетел паспорты мен онымен селфиді жүктеңіз'),
-          error: true);
+      showSnack(
+        context,
+        t('Шетел паспорты мен онымен селфиді жүктеңіз'),
+        error: true,
+      );
       return;
     }
     if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
-      showSnack(context, t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
-          error: true);
+      showSnack(
+        context,
+        t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
+        error: true,
+      );
       return;
     }
-    if (!_vehFront.isSet || !_vehBack.isSet || !_vehRight.isSet ||
+    if (!_vehFront.isSet ||
+        !_vehBack.isSet ||
+        !_vehRight.isSet ||
         !_vehLeft.isSet) {
-      showSnack(context, t('Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)'),
-          error: true);
+      showSnack(
+        context,
+        t('Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)'),
+        error: true,
+      );
       return;
     }
     try {
@@ -215,8 +358,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       final idPath = !_isForeign ? await up(_idDoc, 'id') : null;
       final idSelfie = !_isForeign ? await up(_idSelfie, 'id_selfie') : null;
       final passportPath = _isForeign ? await up(_passport, 'passport') : null;
-      final passportSelfie =
-          _isForeign ? await up(_passportSelfie, 'passport_selfie') : null;
+      final passportSelfie = _isForeign
+          ? await up(_passportSelfie, 'passport_selfie')
+          : null;
       final techPath = await up(_techPassport, 'tech_passport');
       final techSelfie = await up(_techPassportSelfie, 'tech_passport_selfie');
       final photos = <String>[];
@@ -272,11 +416,16 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           await Repo.setExecutorCity(_city!.trim());
         } catch (_) {}
       }
+      await _saveApplicationProgress(completed: true);
       ref.invalidate(myExecutorProfileProvider);
       ref.invalidate(myProfileProvider);
       if (mounted) {
-        showSnack(context,
-            isDocsResponse ? t('Жіберілді — модератор тексереді') : t('Жіберілді'));
+        showSnack(
+          context,
+          isDocsResponse
+              ? t('Жіберілді — модератор тексереді')
+              : t('Жіберілді'),
+        );
         if (Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
     } catch (e) {
@@ -334,12 +483,14 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             ),
             clipBehavior: Clip.antiAlias,
             child: doc.bytes != null
-                ? Image.memory(doc.bytes!,
+                ? Image.memory(
+                    doc.bytes!,
                     fit: BoxFit.cover,
-                    cacheWidth:
-                        (56 * MediaQuery.devicePixelRatioOf(context)).round(),
-                    cacheHeight:
-                        (56 * MediaQuery.devicePixelRatioOf(context)).round())
+                    cacheWidth: (56 * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                    cacheHeight: (56 * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                  )
                 : Icon(
                     doc.existingPath != null
                         ? Icons.check_circle
@@ -354,18 +505,27 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t(title),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(
+                  t(title),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
                 if (hint != null)
-                  Text(t(hint),
-                      style: const TextStyle(
-                          fontSize: 11.5, color: Gz.textSecondary)),
+                  Text(
+                    t(hint),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
                 Text(
                   doc.isSet ? t('Жүктелді ✓') : t('Фото қажет'),
                   style: TextStyle(
-                      fontSize: 12,
-                      color: doc.isSet ? Gz.green : Gz.textSecondary),
+                    fontSize: 12,
+                    color: doc.isSet ? Gz.green : Gz.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -400,14 +560,15 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     // Экран ЛЕНТАНЫҢ ҮСТІНЕ ашылған болса (0063 — өтінім енді мәжбүрлі
     // емес) қарапайым «артқа» көрсеткіші бар, шығатын жол бұрыннан
     // табылады: екінші батырма тек шатастырады әрі рөл АУЫСТЫРЫП жібереді.
-    final canReturnToClient = !resubmit &&
+    final canReturnToClient =
+        !resubmit &&
         !Navigator.of(context).canPop() &&
         (ref.watch(myProfileProvider).value?.hasClientRole ?? false);
     return Scaffold(
       appBar: AppBar(
-        title: Text(resubmit
-            ? t('Өтінімді қайта жіберу')
-            : t('Орындаушы өтінімі')),
+        title: Text(
+          resubmit ? t('Өтінімді қайта жіберу') : t('Орындаушы өтінімі'),
+        ),
         // Тек ИКОНКА түсініксіз болатын: клиент рөлінен келген адам
         // «шыққым келсе қайсысын басам?» деп тұрып қалатын. Енді АЙҚЫН
         // ЖАЗУЫ бар түйме — не болатыны бірден оқылады.
@@ -427,7 +588,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 label: BtnLabel(
                   t('Клиентке'),
                   style: const TextStyle(
-                      fontSize: 13.5, fontWeight: FontWeight.w800),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             )
@@ -464,17 +627,24 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.info_outline,
-                                size: 18, color: Gz.yellowDark),
+                            const Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color: Gz.yellowDark,
+                            ),
                             const SizedBox(width: 9),
                             Expanded(
                               child: Text(
-                                t('Орындаушы болу үшін осы өтінімді '
-                                    'толтырыңыз. Асығыс болмасаңыз — кейін '
-                                    'де толтыруға болады, деректеріңіз '
-                                    'жоғалмайды.'),
+                                t(
+                                  'Орындаушы болу үшін осы өтінімді '
+                                  'толтырыңыз. Асығыс болмасаңыз — кейін '
+                                  'де толтыруға болады, деректеріңіз '
+                                  'жоғалмайды.',
+                                ),
                                 style: const TextStyle(
-                                    fontSize: 12.5, height: 1.4),
+                                  fontSize: 12.5,
+                                  height: 1.4,
+                                ),
                               ),
                             ),
                           ],
@@ -504,44 +674,70 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(children: [
-                          const Icon(Icons.assignment_late, color: Gz.red, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(t('Модератор мынаны жаңартуды сұрады:'),
-                                style: const TextStyle(fontWeight: FontWeight.w800)),
-                          ),
-                        ]),
-                        const SizedBox(height: 6),
-                        ...widget.existing!.docsUpdateFields.map((f) => Padding(
-                              padding: const EdgeInsets.only(top: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.assignment_late,
+                              color: Gz.red,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
                               child: Text(
-                                  '•  ${ExecutorProfile.docFieldLabel(f)}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                            )),
+                                t('Модератор мынаны жаңартуды сұрады:'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ...widget.existing!.docsUpdateFields.map(
+                          (f) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '•  ${ExecutorProfile.docFieldLabel(f)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                         if (widget.existing!.docsUpdateComment?.isNotEmpty ==
                             true) ...[
                           const SizedBox(height: 6),
-                          Text('«${widget.existing!.docsUpdateComment}»',
-                              style: const TextStyle(
-                                  color: Gz.textSecondary,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13)),
+                          Text(
+                            '«${widget.existing!.docsUpdateComment}»',
+                            style: const TextStyle(
+                              color: Gz.textSecondary,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
-                Text(t('Қай қалада жұмыс істейсіз?'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Қай қалада жұмыс істейсіз?'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  t('Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
-                  'шығатын межгород) көресіз.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  t(
+                    'Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
+                    'шығатын межгород) көресіз.',
+                  ),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
@@ -550,56 +746,82 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 14),
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: Gz.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: _city == null ? Gz.border : Gz.green,
-                          width: _city == null ? 1.2 : 1.6),
+                        color: _city == null ? Gz.border : Gz.green,
+                        width: _city == null ? 1.2 : 1.6,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.location_city_outlined,
-                            color: _city == null ? Gz.textSecondary : Gz.green),
+                        Icon(
+                          Icons.location_city_outlined,
+                          color: _city == null ? Gz.textSecondary : Gz.green,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             _city ?? t('Қаланы таңдаңыз'),
                             style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                color:
-                                    _city == null ? Gz.textSecondary : Gz.ink),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: _city == null ? Gz.textSecondary : Gz.ink,
+                            ),
                           ),
                         ),
-                        const Icon(Icons.chevron_right,
-                            color: Gz.textSecondary),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Gz.textSecondary,
+                        ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(t('Профиль суретіңіз'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Профиль суретіңіз'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  t('Бетіңіз анық көрінетін селфи түсіріңіз — бұл сурет '
-                      'профиліңізде көрсетіледі.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  t(
+                    'Бетіңіз анық көрінетін селфи түсіріңіз — бұл сурет '
+                    'профиліңізде көрсетіледі.',
+                  ),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                _docTile(t('Профиль селфиі'), _selfie,
-                    hint: t('Камерамен өз бетіңізді түсіріңіз')),
+                _docTile(
+                  t('Профиль селфиі'),
+                  _selfie,
+                  hint: t('Камерамен өз бетіңізді түсіріңіз'),
+                ),
                 const SizedBox(height: 20),
-                Text(t('Көлік түрі'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Көлік түрі'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   t('Тек осы түрдегі заказдарды көресіз'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 // «Такси» түрі тізімге модератор сол бөлімді ҚОСҚАНДА ғана
@@ -609,37 +831,53 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   types: (ref.watch(taxiEnabledProvider).value ?? false)
                       ? VehicleType.values
                       : kCargoVehicleTypes,
-                  onChanged: (v) => setState(() => _vehicleType = v),
+                  onChanged: (v) {
+                    setState(() => _vehicleType = v);
+                    _saveApplicationProgress();
+                  },
                 ),
                 const SizedBox(height: 20),
-                Text(t('Көлік туралы'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Көлік туралы'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(
-                    child: TextFormField(
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
                       controller: _brand,
-                      decoration: InputDecoration(labelText: t('Маркасы')),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? t('Қажет') : null,
+                      onChanged: (_) => _scheduleProgressSave(),
+                      onEditingComplete: _saveApplicationProgress,
+                        decoration: InputDecoration(labelText: t('Маркасы')),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? t('Қажет') : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
                       controller: _model,
-                      decoration: InputDecoration(labelText: t('Моделі')),
+                      onChanged: (_) => _scheduleProgressSave(),
+                      onEditingComplete: _saveApplicationProgress,
+                        decoration: InputDecoration(labelText: t('Моделі')),
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _year,
+                  onChanged: (_) => _scheduleProgressSave(),
+                  onEditingComplete: _saveApplicationProgress,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                      labelText: t('Көлік шығарылған жыл'),
-                      hintText: t('Мысалы: 2015')),
+                    labelText: t('Көлік шығарылған жыл'),
+                    hintText: t('Мысалы: 2015'),
+                  ),
                   validator: (v) {
                     final y = int.tryParse(v?.trim() ?? '');
                     if (y == null || y < 1980 || y > DateTime.now().year + 1) {
@@ -651,27 +889,41 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _plate,
+                  onChanged: (_) => _scheduleProgressSave(),
+                  onEditingComplete: _saveApplicationProgress,
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
-                      labelText: t('Мемлекеттік нөмір'),
-                      hintText: '123 ABC 02'),
+                    labelText: t('Мемлекеттік нөмір'),
+                    hintText: '123 ABC 02',
+                  ),
                   validator: (v) => (v == null || v.trim().length < 4)
                       ? t('Мемлекеттік нөмір қажет')
                       : null,
                 ),
                 const SizedBox(height: 20),
-                Text(t('Құжаттар'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Құжаттар'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 _docTile(t('Жүргізуші куәлігі (права)'), _license),
                 const SizedBox(height: 8),
-                _docTile(t('Правамен селфи'), _licenseSelfie,
-                    hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи')),
+                _docTile(
+                  t('Правамен селфи'),
+                  _licenseSelfie,
+                  hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                ),
                 const SizedBox(height: 16),
-                Text(t('Азаматтық'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Азаматтық'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 // Тақырып «Азаматтық» болғандықтан чиптерде ҚЫСҚА атау
                 // жеткілікті: бұрын «Басқа ел азаматымын» (орысша «Я
@@ -683,7 +935,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       child: _citizenChip(
                         label: t('Қазақстан'),
                         selected: !_isForeign,
-                        onTap: () => setState(() => _isForeign = false),
+                        onTap: () {
+                          setState(() => _isForeign = false);
+                          _saveApplicationProgress();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -691,7 +946,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       child: _citizenChip(
                         label: t('Басқа ел'),
                         selected: _isForeign,
-                        onTap: () => setState(() => _isForeign = true),
+                        onTap: () {
+                          setState(() => _isForeign = true);
+                          _saveApplicationProgress();
+                        },
                       ),
                     ),
                   ],
@@ -700,41 +958,76 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 if (!_isForeign) ...[
                   _docTile(t('Жеке куәлік (удостоверение)'), _idDoc),
                   const SizedBox(height: 8),
-                  _docTile(t('Куәлікпен селфи'), _idSelfie,
-                      hint: t('Куәлікті қолыңызға ұстап, бетіңіз көрінетін селфи')),
+                  _docTile(
+                    t('Куәлікпен селфи'),
+                    _idSelfie,
+                    hint: t(
+                      'Куәлікті қолыңызға ұстап, бетіңіз көрінетін селфи',
+                    ),
+                  ),
                 ] else ...[
                   _docTile(t('Шетел паспорты'), _passport),
                   const SizedBox(height: 8),
-                  _docTile(t('Паспортпен селфи'), _passportSelfie,
-                      hint: t('Паспортты қолыңызға ұстап, бетіңіз көрінетін селфи')),
+                  _docTile(
+                    t('Паспортпен селфи'),
+                    _passportSelfie,
+                    hint: t(
+                      'Паспортты қолыңызға ұстап, бетіңіз көрінетін селфи',
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 8),
-                _docTile(t('Көліктің техпаспорты'), _techPassport,
-                    hint: t('Көлік құжаты (СРТС) — азаматтыққа қарамай қажет')),
+                _docTile(
+                  t('Көліктің техпаспорты'),
+                  _techPassport,
+                  hint: t('Көлік құжаты (СРТС) — азаматтыққа қарамай қажет'),
+                ),
                 const SizedBox(height: 8),
-                _docTile(t('Техпаспортпен фото'), _techPassportSelfie,
-                    hint: t('Техпаспортты қолыңызға ұстап түсіріңіз')),
+                _docTile(
+                  t('Техпаспортпен фото'),
+                  _techPassportSelfie,
+                  hint: t('Техпаспортты қолыңызға ұстап түсіріңіз'),
+                ),
                 const SizedBox(height: 20),
-                Text(t('Көлік фотолары'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Көлік фотолары'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                _docTile(t('Алдынан (гос нөмір көрінсін)'), _vehFront,
-                    hint: t('Көліктің алды, нөмірі анық көрінуі керек')),
+                _docTile(
+                  t('Алдынан (гос нөмір көрінсін)'),
+                  _vehFront,
+                  hint: t('Көліктің алды, нөмірі анық көрінуі керек'),
+                ),
                 const SizedBox(height: 8),
-                _docTile(t('Артынан (гос нөмір көрінсін)'), _vehBack,
-                    hint: t('Көліктің арты, нөмірі анық көрінуі керек')),
+                _docTile(
+                  t('Артынан (гос нөмір көрінсін)'),
+                  _vehBack,
+                  hint: t('Көліктің арты, нөмірі анық көрінуі керек'),
+                ),
                 const SizedBox(height: 8),
-                _docTile(t('Оң жағынан'), _vehRight,
-                    hint: t('Көлікке қарап тұрсаңыз — оң бүйірі')),
+                _docTile(
+                  t('Оң жағынан'),
+                  _vehRight,
+                  hint: t('Көлікке қарап тұрсаңыз — оң бүйірі'),
+                ),
                 const SizedBox(height: 8),
-                _docTile(t('Сол жағынан'), _vehLeft,
-                    hint: t('Көлікке қарап тұрсаңыз — сол бүйірі')),
+                _docTile(
+                  t('Сол жағынан'),
+                  _vehLeft,
+                  hint: t('Көлікке қарап тұрсаңыз — сол бүйірі'),
+                ),
                 const SizedBox(height: 24),
                 // Барлық құжат жүктелмейінше батырма СҰР күйде тұрады
                 // (жүктелсе — сары), астында НЕ жетпейтіні жазылады:
@@ -748,14 +1041,17 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 8),
                 Text(
                   _missing ??
-                      t('Модератор 24 сағат ішінде қарайды. Жіберу арқылы '
-                          '18 жасқа толғаныңызды және құжаттарыңыздың '
-                          'модерацияда өңделуіне келісіміңізді растайсыз.'),
+                      t(
+                        'Модератор 24 сағат ішінде қарайды. Жіберу арқылы '
+                        '18 жасқа толғаныңызды және құжаттарыңыздың '
+                        'модерацияда өңделуіне келісіміңізді растайсыз.',
+                      ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _missing == null ? Gz.textSecondary : Gz.red,
-                    fontWeight:
-                        _missing == null ? FontWeight.w400 : FontWeight.w700,
+                    fontWeight: _missing == null
+                        ? FontWeight.w400
+                        : FontWeight.w700,
                     fontSize: 12.5,
                   ),
                 ),
@@ -810,7 +1106,9 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-                color: Gz.border, borderRadius: BorderRadius.circular(2)),
+              color: Gz.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -828,15 +1126,20 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
           Expanded(
             child: _filtered.isEmpty
                 ? Center(
-                    child: Text(t('Табылмады'),
-                        style: const TextStyle(color: Gz.textSecondary)))
+                    child: Text(
+                      t('Табылмады'),
+                      style: const TextStyle(color: Gz.textSecondary),
+                    ),
+                  )
                 : ListView.separated(
                     controller: scroll,
                     itemCount: _filtered.length,
                     separatorBuilder: (_, i) => const Divider(height: 1),
                     itemBuilder: (_, i) => ListTile(
-                      leading: const Icon(Icons.location_city_outlined,
-                          color: Gz.textSecondary),
+                      leading: const Icon(
+                        Icons.location_city_outlined,
+                        color: Gz.textSecondary,
+                      ),
                       title: Text(_filtered[i]),
                       onTap: () => Navigator.of(context).pop(_filtered[i]),
                     ),
