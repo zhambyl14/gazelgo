@@ -6,6 +6,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../support/chat_view.dart';
+import 'clients_screen.dart';
 import 'order_admin.dart';
 
 /// Модератор жағы: барлық қолдау тредтері + әр тредке жауап беру.
@@ -30,12 +31,12 @@ class _SupportAdminScreenState extends State<SupportAdminScreen> {
       stream: Repo.allThreadsStream(),
       builder: (context, snap) {
         final threads = snap.data ?? [];
-        if (snap.connectionState == ConnectionState.waiting && threads.isEmpty) {
+        if (snap.connectionState == ConnectionState.waiting &&
+            threads.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
         if (threads.isEmpty) {
-          return EmptyState(
-              icon: Icons.forum_outlined, title: t('Чат жоқ'));
+          return EmptyState(icon: Icons.forum_outlined, title: t('Чат жоқ'));
         }
         return ListView.separated(
           padding: const EdgeInsets.all(12),
@@ -62,8 +63,10 @@ class _ThreadTile extends StatelessWidget {
         return Card(
           child: ListTile(
             leading: InitialsAvatar(p?.fullName ?? '?', imageUrl: p?.avatarUrl),
-            title: Text(p?.fullName ?? '…',
-                style: const TextStyle(fontWeight: FontWeight.w800)),
+            title: Text(
+              p?.fullName ?? '…',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
             subtitle: Text(
               '${_roleLabel(p?.role)} · ${fmtDate(thread.lastMsgAt)}',
               style: const TextStyle(fontSize: 12.5),
@@ -73,31 +76,40 @@ class _ThreadTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: (thread.isOpen ? Gz.green : Gz.textSecondary)
                         .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(thread.isOpen ? t('Ашық') : t('Жабық'),
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: thread.isOpen ? Gz.green : Gz.textSecondary)),
+                  child: Text(
+                    thread.isOpen ? t('Ашық') : t('Жабық'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: thread.isOpen ? Gz.green : Gz.textSecondary,
+                    ),
+                  ),
                 ),
                 if (waiting)
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
-                    child: Icon(Icons.mark_chat_unread,
-                        size: 16, color: Gz.red),
+                    child: Icon(
+                      Icons.mark_chat_unread,
+                      size: 16,
+                      color: Gz.red,
+                    ),
                   ),
               ],
             ),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) =>
-                  _ModeratorChatScreen(thread: thread, user: p),
-            )),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _ModeratorChatScreen(thread: thread, user: p),
+              ),
+            ),
           ),
         );
       },
@@ -105,10 +117,10 @@ class _ThreadTile extends StatelessWidget {
   }
 
   String _roleLabel(String? r) => switch (r) {
-        'executor' => t('Орындаушы'),
-        'moderator' => t('Модератор'),
-        _ => t('Клиент'),
-      };
+    'executor' => t('Орындаушы'),
+    'moderator' => t('Модератор'),
+    _ => t('Клиент'),
+  };
 }
 
 /// Модератордың бір чатты ашатын экраны. AI-кеңесші (қолмен басатын
@@ -126,24 +138,25 @@ class _ModeratorChatScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(user?.fullName ?? t('Чат')),
         actions: [
-          TextButton.icon(
-            onPressed: () async {
-              try {
-                await Repo.supportClose(thread.id);
-                if (context.mounted) Navigator.of(context).pop();
-              } catch (e) {
-                if (context.mounted) {
-                  showSnack(context, errText(e), error: true);
+          if (thread.isOpen)
+            TextButton.icon(
+              onPressed: () async {
+                try {
+                  await Repo.supportClose(thread.id);
+                  if (context.mounted) Navigator.of(context).pop();
+                } catch (e) {
+                  if (context.mounted)
+                    showSnack(context, errText(e), error: true);
                 }
-              }
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: Text(t('Аяқтау')),
-          ),
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: Text(t('Аяқтау')),
+            ),
         ],
       ),
       body: Column(
         children: [
+          if (user != null) _ModeratorUserContext(profile: user!),
           if (thread.orderId != null)
             _OrderContextBar(orderId: thread.orderId!),
           Expanded(
@@ -163,14 +176,80 @@ class _ModeratorChatScreen extends StatelessWidget {
   }
 }
 
+class _ModeratorUserContext extends StatelessWidget {
+  final Profile profile;
+  const _ModeratorUserContext({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Order>>(
+      future: Repo.modOrdersOf(profile.id),
+      builder: (context, snap) {
+        final orders = snap.data ?? const <Order>[];
+        return Material(
+          color: Gz.surface,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
+            child: Row(
+              children: [
+                InitialsAvatar(
+                  profile.fullName,
+                  radius: 22,
+                  imageUrl: profile.avatarUrl,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.fullName.isEmpty
+                            ? 'Аты көрсетілмеген'
+                            : profile.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        '${profile.phone} · ${orders.length} заказ · Trust ${profile.trustScore}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Gz.textSecondary,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (profile.role == 'client')
+                  IconButton(
+                    tooltip: 'Толық профиль',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ClientDetailScreen(profile: profile),
+                      ),
+                    ),
+                    icon: const Icon(Icons.open_in_new, size: 19),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Чат қай заказ бойынша екенін көрсетеді + модератор әрекеттері.
 class _OrderContextBar extends StatelessWidget {
   final String orderId;
   const _OrderContextBar({required this.orderId});
 
   Future<Order?> _load() async {
-    final m =
-        await Repo.c.from('orders').select().eq('id', orderId).maybeSingle();
+    final m = await Repo.c
+        .from('orders')
+        .select()
+        .eq('id', orderId)
+        .maybeSingle();
     return m == null ? null : Order.fromMap(m);
   }
 
@@ -195,30 +274,33 @@ class _OrderContextBar extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${fmtT(o.displayPrice)} · '
-                            '${statusLabel(o.status, vehicleType: o.vehicleType)}',
+                        '${statusLabel(o.status, vehicleType: o.vehicleType)}',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
                 ),
-                Text('${o.fromDisplay} → ${o.toDisplay}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 12, color: Gz.textSecondary)),
+                Text(
+                  '${o.fromDisplay} → ${o.toDisplay}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                ),
                 const SizedBox(height: 6),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        foregroundColor: Gz.ink,
-                        side: const BorderSide(color: Gz.border)),
-                    onPressed: () =>
-                        showOrderAdminSheet(context, orderId),
+                      minimumSize: const Size(0, 38),
+                      foregroundColor: Gz.ink,
+                      side: const BorderSide(color: Gz.border),
+                    ),
+                    onPressed: () => showOrderAdminSheet(context, orderId),
                     icon: const Icon(Icons.tune, size: 16),
-                    label: Text(t('Заказды басқару (статус, тоқтату…)'),
-                        style: const TextStyle(fontSize: 12.5)),
+                    label: Text(
+                      t('Заказды басқару (статус, тоқтату…)'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
                   ),
                 ),
               ],
@@ -228,5 +310,4 @@ class _OrderContextBar extends StatelessWidget {
       },
     );
   }
-
 }

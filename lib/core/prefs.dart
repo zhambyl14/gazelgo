@@ -29,6 +29,23 @@ class Prefs {
     await p.setString(_kLanguage, v);
   }
 
+  static const _kRegistrationDraft = 'registration_draft_key';
+
+  static Future<String?> registrationDraftKey() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kRegistrationDraft);
+  }
+
+  static Future<void> setRegistrationDraftKey(String value) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kRegistrationDraft, value);
+  }
+
+  static Future<void> clearRegistrationDraftKey() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_kRegistrationDraft);
+  }
+
   static const _kLegalConfirms = 'client_legal_confirms';
 
   /// «Жүгім заңды» белгісін клиент қанша рет ҚОЛМЕН қойды. Алғашқы

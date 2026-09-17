@@ -8,6 +8,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'listings_admin_screen.dart';
+import 'moderator_shell.dart';
 
 /// Модератордың «Шолу» табы: бүкіл платформаның бір беттегі суреті —
 /// қанша клиент/орындаушы бар, қазір қанша заказ онлайн, оның нешеуін
@@ -88,6 +89,8 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
         children: [
+          _quickAccess(),
+          const SizedBox(height: 12),
           // ================= ЗАКАЗДАР =================
           _section(t('Заказдар'), t('Дәл қазіргі жағдай')),
           Row(
@@ -159,25 +162,19 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           ),
           const SizedBox(height: 10),
           if (waitingByVehicle.isNotEmpty)
-            _breakdown(
-              t('Күтіп тұрғандар — көлік түрі бойынша'),
-              [
-                for (final e in waitingByVehicle)
-                  (
-                    vehicleTypeFrom(e['vehicle_type'] as String?).label,
-                    (e['count'] as num).toInt(),
-                  ),
-              ],
-            ),
+            _breakdown(t('Күтіп тұрғандар — көлік түрі бойынша'), [
+              for (final e in waitingByVehicle)
+                (
+                  vehicleTypeFrom(e['vehicle_type'] as String?).label,
+                  (e['count'] as num).toInt(),
+                ),
+            ]),
           if (waitingByCity.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _breakdown(
-              t('Күтіп тұрғандар — қала бойынша'),
-              [
-                for (final e in waitingByCity)
-                  ('${e['city']}', (e['count'] as num).toInt()),
-              ],
-            ),
+            _breakdown(t('Күтіп тұрғандар — қала бойынша'), [
+              for (final e in waitingByCity)
+                ('${e['city']}', (e['count'] as num).toInt()),
+            ]),
           ],
 
           // ================= ПАЙДАЛАНУШЫЛАР =================
@@ -260,12 +257,14 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: (boardOn ? Gz.green : Gz.textSecondary)
-                  .withValues(alpha: 0.1),
+              color: (boardOn ? Gz.green : Gz.textSecondary).withValues(
+                alpha: 0.1,
+              ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: (boardOn ? Gz.green : Gz.textSecondary)
-                    .withValues(alpha: 0.35),
+                color: (boardOn ? Gz.green : Gz.textSecondary).withValues(
+                  alpha: 0.35,
+                ),
               ),
             ),
             child: Row(
@@ -290,10 +289,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                 ),
                 Text(
                   t('Баптаулар табынан'),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Gz.textSecondary,
-                  ),
+                  style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
                 ),
               ],
             ),
@@ -377,9 +373,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
               subtitle: Text(t('Толығырақ көру · күдіктісін өшіру')),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const ListingsAdminScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ListingsAdminScreen()),
               ),
             ),
           ),
@@ -390,18 +384,42 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
             t('Күтіп тұрған жұмыс'),
             t('Модератордың назарын қажет ететіндер'),
           ),
-          _todo(t('Жаңа өтінімдер'), _n('applications_pending'),
-              Icons.assignment_outlined, Gz.blue),
-          _todo(t('Құжат жаңартулары'), _n('docs_review_pending'),
-              Icons.description_outlined, Gz.violet),
-          _todo(t('Баланс толтырулары'), _n('topups_pending'),
-              Icons.account_balance_wallet_outlined, Gz.yellowDark),
-          _todo(t('Ашық шағымдар'), _n('reports_open'),
-              Icons.flag_outlined, Gz.red),
-          _todo(t('Хабарландыруға шағымдар'), _n('listing_reports_open'),
-              Icons.report_gmailerrorred_outlined, Gz.red),
-          _todo(t('Ашық қолдау чаттары'), _n('support_open'),
-              Icons.support_agent, Gz.green),
+          _todo(
+            t('Жаңа өтінімдер'),
+            _n('applications_pending'),
+            Icons.assignment_outlined,
+            Gz.blue,
+          ),
+          _todo(
+            t('Құжат жаңартулары'),
+            _n('docs_review_pending'),
+            Icons.description_outlined,
+            Gz.violet,
+          ),
+          _todo(
+            t('Баланс толтырулары'),
+            _n('topups_pending'),
+            Icons.account_balance_wallet_outlined,
+            Gz.yellowDark,
+          ),
+          _todo(
+            t('Ашық шағымдар'),
+            _n('reports_open'),
+            Icons.flag_outlined,
+            Gz.red,
+          ),
+          _todo(
+            t('Хабарландыруға шағымдар'),
+            _n('listing_reports_open'),
+            Icons.report_gmailerrorred_outlined,
+            Gz.red,
+          ),
+          _todo(
+            t('Ашық қолдау чаттары'),
+            _n('support_open'),
+            Icons.support_agent,
+            Gz.green,
+          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -468,6 +486,47 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
       ),
     );
   }
+
+  Widget _quickAccess() => SectionCard(
+    padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _quickButton(
+          'Клиенттер',
+          Icons.people_outline,
+          Gz.blue,
+          ModeratorShell.tabClients,
+        ),
+        _quickButton(
+          'Орындаушылар',
+          Icons.local_shipping_outlined,
+          Gz.ink,
+          ModeratorShell.tabExecutors,
+        ),
+        _quickButton(
+          'Барлық заказ',
+          Icons.receipt_long_outlined,
+          Gz.violet,
+          ModeratorShell.tabOrders,
+        ),
+        _quickButton(
+          'Қолдау чаты',
+          Icons.support_agent,
+          Gz.green,
+          ModeratorShell.tabSupport,
+        ),
+      ],
+    ),
+  );
+
+  Widget _quickButton(String label, IconData icon, Color color, int tab) =>
+      OutlinedButton.icon(
+        onPressed: () => ModeratorShell.openTab(tab),
+        icon: Icon(icon, size: 17, color: color),
+        label: Text(label, style: TextStyle(color: color, fontSize: 12)),
+      );
 
   /// Атау → сан жолдарының шағын тізімі (бөліністер үшін).
   Widget _breakdown(String title, List<(String, int)> rows) {
@@ -545,18 +604,13 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: count > 0
-                  ? color.withValues(alpha: 0.14)
-                  : Gz.bg,
+              color: count > 0 ? color.withValues(alpha: 0.14) : Gz.bg,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(

@@ -4,10 +4,12 @@ import '../../core/lang.dart';
 import '../../shared/widgets.dart';
 import 'app_settings_screen.dart';
 import 'applications_screen.dart';
+import 'clients_screen.dart';
 import 'executors_screen.dart';
 import 'line_screen.dart';
 import 'news_admin_screen.dart';
 import 'overview_screen.dart';
+import 'orders_screen.dart';
 import 'reports_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
@@ -28,6 +30,8 @@ class ModeratorShell extends StatefulWidget {
   static const int tabVehicles = 7;
   static const int tabNews = 8;
   static const int tabSettings = 9;
+  static const int tabClients = 10;
+  static const int tabOrders = 11;
 
   /// Қойындыға өту сұранысы (push-хабарламаны басқанда).
   ///
@@ -47,9 +51,11 @@ class ModeratorShell extends StatefulWidget {
 
 class _ModeratorShellState extends State<ModeratorShell>
     with SingleTickerProviderStateMixin {
-  static const _tabCount = 10;
-  late final TabController _tabs =
-      TabController(length: _tabCount, vsync: this);
+  static const _tabCount = 12;
+  late final TabController _tabs = TabController(
+    length: _tabCount,
+    vsync: this,
+  );
 
   @override
   void initState() {
@@ -98,18 +104,24 @@ class _ModeratorShellState extends State<ModeratorShell>
             icon: const Icon(Icons.logout),
           ),
         ],
-        bottom: TabBar(controller: _tabs, isScrollable: true, tabs: [
-          Tab(text: t('Шолу')),
-          Tab(text: t('Линия')),
-          Tab(text: t('Өтінімдер')),
-          Tab(text: t('Толтырулар')),
-          Tab(text: t('Орындаушылар')),
-          Tab(text: t('Қолдау')),
-          Tab(text: t('Хабарламалар')),
-          Tab(text: t('Көліктер')),
-          Tab(text: t('Жаңалықтар')),
-          Tab(text: t('Баптаулар')),
-        ]),
+        bottom: TabBar(
+          controller: _tabs,
+          isScrollable: true,
+          tabs: [
+            Tab(text: t('Шолу')),
+            Tab(text: t('Линия')),
+            Tab(text: t('Өтінімдер')),
+            Tab(text: t('Толтырулар')),
+            Tab(text: t('Орындаушылар')),
+            Tab(text: t('Қолдау')),
+            Tab(text: t('Хабарламалар')),
+            Tab(text: t('Көліктер')),
+            Tab(text: t('Жаңалықтар')),
+            Tab(text: t('Баптаулар')),
+            Tab(text: t('Клиенттер')),
+            Tab(text: t('Заказдар')),
+          ],
+        ),
       ),
       body: TabBarView(
         controller: _tabs,
@@ -124,6 +136,8 @@ class _ModeratorShellState extends State<ModeratorShell>
           VehicleTypesScreen(),
           NewsAdminScreen(),
           AppSettingsScreen(),
+          ClientsScreen(),
+          OrdersScreen(),
         ],
       ),
     );

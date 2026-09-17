@@ -46,9 +46,10 @@ String statusLabel(String s, {VehicleType? vehicleType}) => switch (s) {
   'searching' => t('Іздеуде'),
   'accepted' => t('Қабылданды · жолда'),
   'arrived' => t('Орындаушы келді'),
-  'loading' => vehicleType == VehicleType.taxi
-      ? t('Отырғызу жүріп жатыр')
-      : t('Тиеу жүріп жатыр'),
+  'loading' =>
+    vehicleType == VehicleType.taxi
+        ? t('Отырғызу жүріп жатыр')
+        : t('Тиеу жүріп жатыр'),
   'in_transit' => t('Тасымалдауда'),
   'completed' => t('Аяқталды'),
   'cancelled' => t('Бас тартылды'),
@@ -67,6 +68,7 @@ class Profile {
   final String fullName;
   final String phone;
   final String? avatarUrl;
+  final DateTime? createdAt;
 
   /// БЕЛСЕНДІ рөлдің рейтингі (сервер айна ретінде ұстайды).
   final double rating;
@@ -102,6 +104,7 @@ class Profile {
       fullName = m['full_name'] as String? ?? '',
       phone = m['phone'] as String? ?? '',
       avatarUrl = m['avatar_url'] as String?,
+      createdAt = _dt(m['created_at']),
       rating = _d(m['rating']),
       ratingCount = _i(m['rating_count']),
       trips = _i(m['trips']),
@@ -113,7 +116,8 @@ class Profile {
       hasClientRole =
           m['has_client_role'] as bool? ?? (m['role'] as String?) != 'executor',
       hasExecutorRole =
-          m['has_executor_role'] as bool? ?? (m['role'] as String?) == 'executor',
+          m['has_executor_role'] as bool? ??
+          (m['role'] as String?) == 'executor',
       clientRating = _d(m['client_rating']),
       clientRatingCount = _i(m['client_rating_count']),
       clientTrips = _i(m['client_trips']),
@@ -407,19 +411,20 @@ class Order {
   /// Салыстыру [Geo.sameCity] арқылы — ол әкімшілік жұрнақтарды («Тараз
   /// қаласы» / «Тараз қалалық әкімшілігі») бір қала деп таниды, сол
   /// себепті жай Set қолданылмайды.
-  bool get intercity => distinctCities([
-    fromCity,
-    ...stops.map((s) => s.city),
-    toCity,
-  ]).length > 1;
+  bool get intercity =>
+      distinctCities([fromCity, ...stops.map((s) => s.city), toCity]).length >
+      1;
 
   String get fromDisplay => _cityAddr(fromCity, fromAddress);
   String get toDisplay => _cityAddr(toCity, toAddress);
 
   /// Маршруттың БАРЛЫҚ нүктесі көрсетуге дайын күйде: алу → аялдамалар →
   /// жеткізу. Экрандар осыны айналдырып, тізім/карта салады.
-  List<String> get routeDisplay =>
-      [fromDisplay, ...stops.map((s) => s.display), toDisplay];
+  List<String> get routeDisplay => [
+    fromDisplay,
+    ...stops.map((s) => s.display),
+    toDisplay,
+  ];
 
   /// Аралық аялдамасы бар ма (UI «+N аялдама» деп белгілеу үшін).
   bool get hasStops => stops.isNotEmpty;
@@ -831,8 +836,7 @@ class NewsLayout {
   });
 
   factory NewsLayout.fromMap(Map<String, dynamic>? m) {
-    double d(dynamic v, double fallback) =>
-        v is num ? v.toDouble() : fallback;
+    double d(dynamic v, double fallback) => v is num ? v.toDouble() : fallback;
     return NewsLayout(
       textX: d(m?['tx'], 0.5).clamp(0.0, 1.0),
       textY: d(m?['ty'], 0.5).clamp(0.0, 1.0),
@@ -985,8 +989,7 @@ class NewsStory {
   bool get hasLink => linkUrl.isNotEmpty;
 
   /// Мерзімі әлі БАСТАЛМАҒАН (модератор кейінге жоспарлаған).
-  bool get isScheduled =>
-      startsAt != null && startsAt!.isAfter(DateTime.now());
+  bool get isScheduled => startsAt != null && startsAt!.isAfter(DateTime.now());
 
   /// Мерзімі ӨТКЕН — қолданушыға енді көрінбейді.
   bool get isExpired =>
@@ -1058,7 +1061,9 @@ class AppConfig {
       kaspiName: payment?['kaspi_name'] as String? ?? 'Tasu',
       minTopup: _i(payment?['min_topup'] ?? 500),
       kaspiTopupUrl: payment?['kaspi_topup_url'] as String? ?? '',
-      durationMode: tariffs?['duration_mode'] == 'rolling' ? 'rolling' : 'fixed',
+      durationMode: tariffs?['duration_mode'] == 'rolling'
+          ? 'rolling'
+          : 'fixed',
       durationHours: _i(tariffs?['duration_hours'] ?? 12),
       ordersPerShift: _i(tariffs?['orders_per_shift'] ?? 10),
     );
@@ -1255,4 +1260,4 @@ String tariffDefinitionText(AppConfig cfg) =>
     '${t('Ұзақтығы')} — ${tariffDurationLabel(cfg)}, '
     '${t('ауысымда')} — ${tariffOrdersLabel(cfg)}. '
     '${t('Ауысым аяқталса не лимитке жетсеңіз — тариф жабылады, '
-        'қайтадан сатып аласыз.')}';
+    'қайтадан сатып аласыз.')}';

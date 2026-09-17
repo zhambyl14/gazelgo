@@ -31,8 +31,10 @@ class Repo {
 
   /// Telegram верификация статусын сұрайды (0026) — {verified, phone}.
   static Future<Map<String, dynamic>> tgCheckVerification(String token) async {
-    final res =
-        await c.rpc('tg_check_verification', params: {'p_token': token});
+    final res = await c.rpc(
+      'tg_check_verification',
+      params: {'p_token': token},
+    );
     return Map<String, dynamic>.from(res as Map);
   }
 
@@ -44,17 +46,18 @@ class Repo {
     required String phone,
   }) async {
     try {
-      final res = await c.functions.invoke('reset-password', body: {
-        'tg_token': tgToken,
-        'new_password': newPassword,
-      });
+      final res = await c.functions.invoke(
+        'reset-password',
+        body: {'tg_token': tgToken, 'new_password': newPassword},
+      );
       final data = res.data;
       if (data is Map && data['error'] != null) {
         throw Exception(data['error'].toString());
       }
     } on FunctionException catch (e) {
       final d = e.details;
-      if (d is Map && d['error'] != null) throw Exception(d['error'].toString());
+      if (d is Map && d['error'] != null)
+        throw Exception(d['error'].toString());
       throw Exception('SERVER_ERROR');
     }
     final n = Phone.normalize(phone);
@@ -72,12 +75,15 @@ class Repo {
     final email = Phone.emailOf(phone);
     if (n == null || email == null) throw Exception('BAD_PHONE');
     try {
-      await c.functions.invoke('signup', body: {
-        'password': password,
-        'full_name': fullName.trim(),
-        'role': role,
-        'tg_token': tgToken,
-      });
+      await c.functions.invoke(
+        'signup',
+        body: {
+          'password': password,
+          'full_name': fullName.trim(),
+          'role': role,
+          'tg_token': tgToken,
+        },
+      );
     } on FunctionException catch (e) {
       final d = e.details;
       if (d is Map && d['error'] != null) {
@@ -87,14 +93,22 @@ class Repo {
       }
       // функция табылмады/рұқсат жоқ (404, 401...) — тікелей тіркелеміз
       await _directSignUp(
-          email: email, password: password, fullName: fullName,
-          phone: n, role: role);
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: n,
+        role: role,
+      );
     } catch (e) {
       if (e.toString().contains('EMAIL_CONFIRM_REQUIRED')) rethrow;
       // желі қатесі т.б. — тікелей тіркелуді көреміз
       await _directSignUp(
-          email: email, password: password, fullName: fullName,
-          phone: n, role: role);
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: n,
+        role: role,
+      );
     }
     await signInPhone(n, password);
   }
@@ -109,11 +123,7 @@ class Repo {
     final res = await c.auth.signUp(
       email: email,
       password: password,
-      data: {
-        'full_name': fullName.trim(),
-        'phone': phone,
-        'role': role,
-      },
+      data: {'full_name': fullName.trim(), 'phone': phone, 'role': role},
     );
     if (res.session == null) {
       // Supabase-те "Confirm email" қосулы — сессия берілмеді
@@ -138,11 +148,10 @@ class Repo {
 
   /// FCM push-токенін сақтайды (0019 миграциясы) — қосымша жабық болса да
   /// жеткізілетін хабарландырулар үшін (мыс. модераторға жаңа өтінім).
-  static Future<void> savePushToken(String token, String platform) =>
-      c.rpc('save_push_token', params: {
-        'p_token': token,
-        'p_platform': platform,
-      });
+  static Future<void> savePushToken(String token, String platform) => c.rpc(
+    'save_push_token',
+    params: {'p_token': token, 'p_platform': platform},
+  );
 
   /// Аккаунттан шыққанда осы құрылғының токенін өшіреді (0045) — әйтпесе
   /// телефон ескі иесінің push-ын ала береді.
@@ -156,10 +165,7 @@ class Repo {
   /// Күдікті жүк туралы модераторға дереу хабарлайды (0021 миграциясы) —
   /// заказдың нақты қатысушысы (клиент не орындаушы) ғана жібере алады.
   static Future<void> reportOrder(String orderId, String reason) =>
-      c.rpc('report_order', params: {
-        'p_order': orderId,
-        'p_reason': reason,
-      });
+      c.rpc('report_order', params: {'p_order': orderId, 'p_reason': reason});
 
   /// Жеңіл эвристикалық «тексеру қажет» флагы (0022) — модераторға ғана.
   static Future<Map<String, dynamic>> orderFraudFlags(String orderId) async {
@@ -169,41 +175,46 @@ class Repo {
 
   /// Модератордың «Хабарламалар» тізімі (0024) — соңғылары бірінші.
   static Stream<List<OrderReport>> openReportsStream() => _poll(() async {
-        final rows = await c
-            .from('order_reports')
-            .select()
-            .order('created_at', ascending: false)
-            .limit(100);
-        return (rows as List)
-            .map((m) => OrderReport.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 6));
+    final rows = await c
+        .from('order_reports')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(100);
+    return (rows as List)
+        .map((m) => OrderReport.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }, every: const Duration(seconds: 6));
 
   /// Хабарламаны «қаралды/елеусіз қалдырылды» деп белгілеу (0024).
   static Future<void> modSetReportStatus(String reportId, String status) =>
-      c.rpc('mod_set_report_status',
-          params: {'p_report': reportId, 'p_status': status});
+      c.rpc(
+        'mod_set_report_status',
+        params: {'p_report': reportId, 'p_status': status},
+      );
 
   /// Пайдаланушының сенім деңгейін қолмен түзету (0024, тек модератор).
   static Future<int> modAdjustTrustScore(
-      String userId, int delta, String reason) async {
-    final res = await c.rpc('mod_adjust_trust_score', params: {
-      'p_user': userId,
-      'p_delta': delta,
-      'p_reason': reason,
-    });
+    String userId,
+    int delta,
+    String reason,
+  ) async {
+    final res = await c.rpc(
+      'mod_adjust_trust_score',
+      params: {'p_user': userId, 'p_delta': delta, 'p_reason': reason},
+    );
     return (Map<String, dynamic>.from(res as Map)['trust_score'] as num)
         .toInt();
   }
 
   /// Аккаунтты қолмен блоктау/блоктан шығару (0024, тек модератор).
   static Future<void> modSetAccountBlocked(
-          String userId, bool blocked, String reason) =>
-      c.rpc('mod_set_account_blocked', params: {
-        'p_user': userId,
-        'p_blocked': blocked,
-        'p_reason': reason,
-      });
+    String userId,
+    bool blocked,
+    String reason,
+  ) => c.rpc(
+    'mod_set_account_blocked',
+    params: {'p_user': userId, 'p_blocked': blocked, 'p_reason': reason},
+  );
 
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
@@ -228,8 +239,7 @@ class Repo {
   static Future<Profile?> myProfile() async {
     final id = uid;
     if (id == null) return null;
-    final m =
-        await c.from('profiles').select().eq('id', id).maybeSingle();
+    final m = await c.from('profiles').select().eq('id', id).maybeSingle();
     return m == null ? null : Profile.fromMap(m);
   }
 
@@ -238,13 +248,101 @@ class Repo {
     return m == null ? null : Profile.fromMap(m);
   }
 
+  // ================= MODERATOR WORKSPACE =================
+  /// Барлық клиенттер. Moderator RLS policy барлық profile өрістерін оқуға
+  /// рұқсат береді, сондықтан тізімде жасырын қысқартылған профиль жоқ.
+  static Future<List<Profile>> modClients() async {
+    final rows = await c
+        .from('profiles')
+        .select()
+        .eq('role', 'client')
+        .order('created_at', ascending: false)
+        .limit(500);
+    return (rows as List)
+        .map((m) => Profile.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  /// Платформадағы барлық заказдар — архивті қоса.
+  static Future<List<Order>> modAllOrders() async {
+    final rows = await c
+        .from('orders')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(500);
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  static Future<List<Order>> modOrdersOf(
+    String userId, {
+    bool asExecutor = false,
+  }) async {
+    final rows = await c
+        .from('orders')
+        .select()
+        .eq(asExecutor ? 'executor_id' : 'client_id', userId)
+        .order('created_at', ascending: false)
+        .limit(100);
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  static Future<List<SupportThread>> modThreadsOf(String userId) async {
+    final rows = await c
+        .from('support_threads')
+        .select()
+        .eq('user_id', userId)
+        .order('last_msg_at', ascending: false)
+        .limit(100);
+    return (rows as List)
+        .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  /// Анонимді тіркелу draft-тері: пароль/құпия деректер ешқашан сақталмайды.
+  static Future<void> saveRegistrationDraft({
+    required String draftKey,
+    required String role,
+    required int stage,
+    required String stageLabel,
+    String? fullName,
+    String? phone,
+    Map<String, dynamic> data = const {},
+    bool completed = false,
+  }) => c.rpc(
+    'save_registration_draft',
+    params: {
+      'p_draft_key': draftKey,
+      'p_role': role,
+      'p_stage': stage,
+      'p_stage_label': stageLabel,
+      'p_full_name': fullName,
+      'p_phone': phone,
+      'p_data': data,
+      'p_completed': completed,
+    },
+  );
+
+  static Future<List<Map<String, dynamic>>> modRegistrationDrafts() async {
+    final rows = await c.rpc('mod_registration_drafts');
+    return (rows as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
+  }
+
   static Future<void> updateProfile({String? fullName, String? phone}) async {
     final id = uid;
     if (id == null) return;
-    await c.from('profiles').update({
-      if (fullName != null) 'full_name': fullName.trim(),
-      if (phone != null) 'phone': phone.trim(),
-    }).eq('id', id);
+    await c
+        .from('profiles')
+        .update({
+          if (fullName != null) 'full_name': fullName.trim(),
+          if (phone != null) 'phone': phone.trim(),
+        })
+        .eq('id', id);
   }
 
   /// Аватарды жаңарту: жаңасын жүктеп, ескісін өшіреді.
@@ -261,10 +359,15 @@ class Repo {
     oldUrl = prof?['avatar_url'] as String?;
 
     final path = '$id/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await c.storage.from('avatars').uploadBinary(
+    await c.storage
+        .from('avatars')
+        .uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/jpeg',
+          ),
         );
     final publicUrl = c.storage.from('avatars').getPublicUrl(path);
     await c.from('profiles').update({'avatar_url': publicUrl}).eq('id', id);
@@ -335,7 +438,8 @@ class Repo {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final data = {
-      'vehicle_size': 'small', // өлшем ескерілмейді (кестеде not-null болғандықтан)
+      'vehicle_size':
+          'small', // өлшем ескерілмейді (кестеде not-null болғандықтан)
       'vehicle_type': vehicleType.db,
       'vehicle_brand': brand.trim(),
       'vehicle_model': model.trim(),
@@ -357,9 +461,11 @@ class Repo {
       // ескі құжат жолдарын жинап, жаңасына сай еместерін өшіреміз
       final old = await c
           .from('executor_profiles')
-          .select('status, id_doc_path, license_path, id_selfie_path, '
-              'license_selfie_path, passport_path, passport_selfie_path, '
-              'tech_passport_path, tech_passport_selfie_path, vehicle_photos')
+          .select(
+            'status, id_doc_path, license_path, id_selfie_path, '
+            'license_selfie_path, passport_path, passport_selfie_path, '
+            'tech_passport_path, tech_passport_selfie_path, vehicle_photos',
+          )
           .eq('user_id', id)
           .maybeSingle();
       final newPaths = <String?>{
@@ -388,16 +494,17 @@ class Repo {
           final p = old[k] as String?;
           if (p != null && !newPaths.contains(p)) oldPaths.add(p);
         }
-        for (final p in (old['vehicle_photos'] as List?)?.cast<String>() ?? const []) {
+        for (final p
+            in (old['vehicle_photos'] as List?)?.cast<String>() ?? const []) {
           if (!newPaths.contains(p)) oldPaths.add(p);
         }
       }
       // қабылданбаған болса → pending; расталған болса статус өзгермейді
       final wasRejected = old?['status'] == 'rejected';
-      await c.from('executor_profiles').update({
-        ...data,
-        if (wasRejected) 'status': 'pending',
-      }).eq('user_id', id);
+      await c
+          .from('executor_profiles')
+          .update({...data, if (wasRejected) 'status': 'pending'})
+          .eq('user_id', id);
       // модератор сұранымын өшіру
       try {
         await c.rpc('clear_docs_request');
@@ -458,25 +565,23 @@ class Repo {
 
   /// Модератор баптауды өзгертеді (тариф бағасы, Kaspi деректері, мәжбүрлі
   /// жаңарту талабы) — SQL-сыз, 0030 миграциясы.
-  static Future<void> modUpdateSetting(String key, Map<String, dynamic> value) =>
-      c.rpc('mod_update_setting', params: {'p_key': key, 'p_value': value});
+  static Future<void> modUpdateSetting(
+    String key,
+    Map<String, dynamic> value,
+  ) => c.rpc('mod_update_setting', params: {'p_key': key, 'p_value': value});
 
   // ================= КӨЛІК ТҮРЛЕРІНІҢ КАТАЛОГЫ (0050) =================
   /// Клиент/орындаушы көретін БЕЛСЕНДІ түрлер (такси өшірулі болса —
   /// такси мен доставкасыз). [VehicleCatalog.load] осыны шақырады.
   static Future<List<Map<String, dynamic>>> vehicleCatalog() async {
     final rows = await c.rpc('vehicle_catalog');
-    return [
-      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
-    ];
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 
   /// Модератордың ТОЛЫҚ тізімі — өшірулі түрлерін де қоса.
   static Future<List<Map<String, dynamic>>> modVehicleTypes() async {
     final rows = await c.rpc('mod_vehicle_types');
-    return [
-      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
-    ];
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 
   /// Түрді қосу не өзгерту. `null` берілген өріс ӨЗГЕРМЕЙДІ (жаңа түрде
@@ -492,17 +597,20 @@ class Repo {
     bool? isTaxi,
     bool? active,
   }) async {
-    final res = await c.rpc('mod_save_vehicle_type', params: {
-      'p_code': code,
-      'p_label_kk': labelKk,
-      'p_label_ru': labelRu,
-      'p_desc_kk': descKk,
-      'p_desc_ru': descRu,
-      'p_icon_url': iconUrl,
-      'p_emoji': emoji,
-      'p_is_taxi': isTaxi,
-      'p_active': active,
-    });
+    final res = await c.rpc(
+      'mod_save_vehicle_type',
+      params: {
+        'p_code': code,
+        'p_label_kk': labelKk,
+        'p_label_ru': labelRu,
+        'p_desc_kk': descKk,
+        'p_desc_ru': descRu,
+        'p_icon_url': iconUrl,
+        'p_emoji': emoji,
+        'p_is_taxi': isTaxi,
+        'p_active': active,
+      },
+    );
     return Map<String, dynamic>.from(res as Map);
   }
 
@@ -522,10 +630,15 @@ class Repo {
   /// қалмайды. Қайтарады: көпшілікке ашық сілтеме.
   static Future<String> uploadVehicleIcon(String code, Uint8List png) async {
     final path = '$code/${DateTime.now().millisecondsSinceEpoch}.png';
-    await c.storage.from('vehicle-icons').uploadBinary(
+    await c.storage
+        .from('vehicle-icons')
+        .uploadBinary(
           path,
           png,
-          fileOptions: const FileOptions(upsert: true, contentType: 'image/png'),
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/png',
+          ),
         );
     return c.storage.from('vehicle-icons').getPublicUrl(path);
   }
@@ -533,17 +646,20 @@ class Repo {
   // ================= RPC wrappers =================
   static Future<Map<String, dynamic>> buyTariff(String kind) async =>
       Map<String, dynamic>.from(
-          await c.rpc('buy_tariff', params: {'p_kind': kind}) as Map);
+        await c.rpc('buy_tariff', params: {'p_kind': kind}) as Map,
+      );
 
-  static Future<ExecutorStats> executorStats() async =>
-      ExecutorStats.fromMap(
-          Map<String, dynamic>.from(await c.rpc('executor_stats') as Map));
+  static Future<ExecutorStats> executorStats() async => ExecutorStats.fromMap(
+    Map<String, dynamic>.from(await c.rpc('executor_stats') as Map),
+  );
 
   /// Орындаушы статистикасы — тікелей байланыс (polling, ~4с).
-  static Stream<ExecutorStats> executorStatsStream() => _poll(() async =>
-      ExecutorStats.fromMap(
-          Map<String, dynamic>.from(await c.rpc('executor_stats') as Map)),
-      every: const Duration(seconds: 4));
+  static Stream<ExecutorStats> executorStatsStream() => _poll(
+    () async => ExecutorStats.fromMap(
+      Map<String, dynamic>.from(await c.rpc('executor_stats') as Map),
+    ),
+    every: const Duration(seconds: 4),
+  );
 
   /// Орындаушы линияға кіру/шығуы (жаңа заказ хабарламалары үшін).
   static Future<void> setOnLine(bool value) =>
@@ -564,35 +680,40 @@ class Repo {
     List<String> photos = const [],
     String? fromCity,
     String? toCity,
+
     /// Аралық аялдамалар (0047) — алу мен ақырғы жеткізу АРАСЫНДАҒЫ
     /// нүктелер, клиент қосқан РЕТПЕН. Сервер тексеріп, тазалап сақтайды
     /// (`clean_order_stops`): шектен асса `TOO_MANY_STOPS`.
     List<OrderStop> stops = const [],
+
     /// Алдын ала тапсырыс (0060) — заказ дәл осы уақытта ғана орындаушыға
     /// көрінеді. `null` — әдеттегідей «дәл қазір». Фича баптауда өшулі
     /// болса сервер бұны елеусіз қалдырады (қате шықпайды).
     DateTime? scheduledAt,
   }) async {
-    final res = await c.rpc('create_order', params: {
-      'p_type': 'bidding',
-      'p_stops': stops.map((s) => s.toMap()).toList(),
-      'p_from_address': fromAddress,
-      'p_from_lat': fromLat,
-      'p_from_lng': fromLng,
-      'p_to_address': toAddress,
-      'p_to_lat': toLat,
-      'p_to_lng': toLng,
-      'p_distance_km': distanceKm,
-      'p_cargo': cargo,
-      'p_comment': comment,
-      'p_size': 'small', // өлшем ескерілмейді (кері үйлесімділік үшін)
-      'p_client_price': clientPrice,
-      'p_photos': photos,
-      'p_from_city': fromCity,
-      'p_to_city': toCity,
-      'p_vehicle_type': vehicleType.db,
-      'p_scheduled_at': scheduledAt?.toIso8601String(),
-    });
+    final res = await c.rpc(
+      'create_order',
+      params: {
+        'p_type': 'bidding',
+        'p_stops': stops.map((s) => s.toMap()).toList(),
+        'p_from_address': fromAddress,
+        'p_from_lat': fromLat,
+        'p_from_lng': fromLng,
+        'p_to_address': toAddress,
+        'p_to_lat': toLat,
+        'p_to_lng': toLng,
+        'p_distance_km': distanceKm,
+        'p_cargo': cargo,
+        'p_comment': comment,
+        'p_size': 'small', // өлшем ескерілмейді (кері үйлесімділік үшін)
+        'p_client_price': clientPrice,
+        'p_photos': photos,
+        'p_from_city': fromCity,
+        'p_to_city': toCity,
+        'p_vehicle_type': vehicleType.db,
+        'p_scheduled_at': scheduledAt?.toIso8601String(),
+      },
+    );
     return (res as Map)['id'] as String;
   }
 
@@ -600,9 +721,10 @@ class Repo {
   static Future<String> uploadOrderPhoto(Uint8List bytes, int index) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
-    final path =
-        '$id/${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
-    await c.storage.from('orders').uploadBinary(
+    final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
+    await c.storage
+        .from('orders')
+        .uploadBinary(
           path,
           bytes,
           // upsert=false: жол әрқашан бірегей (timestamp), қайшылық болмайды.
@@ -620,8 +742,10 @@ class Repo {
   /// Нүктенің маңайында клиенттер бұрын түзеткен атау бар ма (болса — соны).
   static Future<String?> nearbyAddress(double lat, double lng) async {
     try {
-      final r = await c.rpc('nearby_address',
-          params: {'p_lat': lat, 'p_lng': lng});
+      final r = await c.rpc(
+        'nearby_address',
+        params: {'p_lat': lat, 'p_lng': lng},
+      );
       if (r is String && r.trim().isNotEmpty) return r;
       return null;
     } catch (_) {
@@ -631,10 +755,15 @@ class Repo {
 
   /// Клиент нүктенің атын түзетсе — сол координатаға сақтау (кейін ұсыну үшін).
   static Future<void> saveAddressCorrection(
-      double lat, double lng, String label) async {
+    double lat,
+    double lng,
+    String label,
+  ) async {
     try {
-      await c.rpc('save_address_correction',
-          params: {'p_lat': lat, 'p_lng': lng, 'p_label': label});
+      await c.rpc(
+        'save_address_correction',
+        params: {'p_lat': lat, 'p_lng': lng, 'p_label': label},
+      );
     } catch (_) {}
   }
 
@@ -649,18 +778,16 @@ class Repo {
   static Future<void> rejectOffer(String offerId) =>
       c.rpc('reject_offer', params: {'p_offer': offerId});
 
-  static Future<void> updateOrderPrice(String orderId, int price) =>
-      c.rpc('update_order_price', params: {
-        'p_order': orderId,
-        'p_price': price,
-      });
+  static Future<void> updateOrderPrice(String orderId, int price) => c.rpc(
+    'update_order_price',
+    params: {'p_order': orderId, 'p_price': price},
+  );
 
   static Future<void> placeOffer(String orderId, int price, String message) =>
-      c.rpc('place_offer', params: {
-        'p_order': orderId,
-        'p_price': price,
-        'p_message': message,
-      });
+      c.rpc(
+        'place_offer',
+        params: {'p_order': orderId, 'p_price': price, 'p_message': message},
+      );
 
   static Future<void> withdrawOffer(String offerId) =>
       c.rpc('withdraw_offer', params: {'p_offer': offerId});
@@ -674,18 +801,19 @@ class Repo {
   static Future<void> cancelOrder(String orderId, String reason) =>
       c.rpc('cancel_order', params: {'p_order': orderId, 'p_reason': reason});
 
-  static Future<void> submitReview(String orderId, int rating, String comment) =>
-      c.rpc('submit_review', params: {
-        'p_order': orderId,
-        'p_rating': rating,
-        'p_comment': comment,
-      });
+  static Future<void> submitReview(
+    String orderId,
+    int rating,
+    String comment,
+  ) => c.rpc(
+    'submit_review',
+    params: {'p_order': orderId, 'p_rating': rating, 'p_comment': comment},
+  );
 
-  static Future<void> requestTopup(int amount, String? receiptPath) =>
-      c.rpc('request_topup', params: {
-        'p_amount': amount,
-        'p_receipt_path': receiptPath,
-      });
+  static Future<void> requestTopup(int amount, String? receiptPath) => c.rpc(
+    'request_topup',
+    params: {'p_amount': amount, 'p_receipt_path': receiptPath},
+  );
 
   // ================= КЛИЕНТ ФИЧАЛАРЫ (0060) =================
 
@@ -700,26 +828,31 @@ class Repo {
   /// тексереді.
   static Future<Map<String, dynamic>> trackOrder(String token) async =>
       Map<String, dynamic>.from(
-          await c.rpc('track_order', params: {'p_token': token}) as Map);
+        await c.rpc('track_order', params: {'p_token': token}) as Map,
+      );
 
   /// Орындаушы ағымдағы GPS нүктесін жібереді (белсенді заказы болса
   /// серверде сол заказға байланады). Тыныш сәтсіздікке шыдайды — GPS
   /// уақытша жоқ болса белсенді заказ экраны сынбауы керек.
   static Future<void> updateExecutorLocation(double lat, double lng) async {
     try {
-      await c.rpc('update_executor_location',
-          params: {'p_lat': lat, 'p_lng': lng});
+      await c.rpc(
+        'update_executor_location',
+        params: {'p_lat': lat, 'p_lng': lng},
+      );
     } catch (_) {}
   }
 
   /// Клиент өз заказының орындаушысының орнын polling арқылы қадағалайды.
   static Stream<Map<String, dynamic>?> orderExecutorLocationStream(
-          String orderId) =>
-      _poll(() async {
-        final res = await c.rpc('get_order_executor_location',
-            params: {'p_order_id': orderId});
-        return res == null ? null : Map<String, dynamic>.from(res as Map);
-      }, every: const Duration(seconds: 12));
+    String orderId,
+  ) => _poll(() async {
+    final res = await c.rpc(
+      'get_order_executor_location',
+      params: {'p_order_id': orderId},
+    );
+    return res == null ? null : Map<String, dynamic>.from(res as Map);
+  }, every: const Duration(seconds: 12));
 
   /// Жаттыққа шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
   /// қорғаныс). Сыйақы (орындаушыға баланс/клиентке санақ) шақырылған
@@ -741,20 +874,24 @@ class Repo {
 
   // ---- moderator ----
   static Future<void> modSetExecutorStatus(
-          String userId, String status, String comment) =>
-      c.rpc('mod_set_executor_status', params: {
-        'p_user': userId,
-        'p_status': status,
-        'p_comment': comment,
-      });
+    String userId,
+    String status,
+    String comment,
+  ) => c.rpc(
+    'mod_set_executor_status',
+    params: {'p_user': userId, 'p_status': status, 'p_comment': comment},
+  );
 
-  static Future<void> modReviewTopup(String id, bool approve, String note,
-      {String? receiptPath}) async {
-    await c.rpc('mod_review_topup', params: {
-      'p_topup': id,
-      'p_approve': approve,
-      'p_note': note,
-    });
+  static Future<void> modReviewTopup(
+    String id,
+    bool approve,
+    String note, {
+    String? receiptPath,
+  }) async {
+    await c.rpc(
+      'mod_review_topup',
+      params: {'p_topup': id, 'p_approve': approve, 'p_note': note},
+    );
     // чек суреті қаралып біткен соң қажет емес — орынды босатамыз
     if (receiptPath != null) {
       try {
@@ -766,8 +903,8 @@ class Repo {
   /// Жабылған қолдау тредтерінің суреттерін тазалау (модератор ғана).
   static Future<void> cleanupSupportImages() async {
     try {
-      final paths =
-          (await c.rpc('mod_pending_support_images') as List).cast<String>();
+      final paths = (await c.rpc('mod_pending_support_images') as List)
+          .cast<String>();
       if (paths.isNotEmpty) {
         await c.storage.from('support').remove(paths);
       }
@@ -775,18 +912,21 @@ class Repo {
   }
 
   static Future<void> modRequestDocs(
-          String userId, List<String> fields, String comment) =>
-      c.rpc('mod_request_docs', params: {
-        'p_user': userId,
-        'p_fields': fields,
-        'p_comment': comment,
-      });
+    String userId,
+    List<String> fields,
+    String comment,
+  ) => c.rpc(
+    'mod_request_docs',
+    params: {'p_user': userId, 'p_fields': fields, 'p_comment': comment},
+  );
 
   static Future<void> modApproveDocs(String userId) =>
       c.rpc('mod_approve_docs', params: {'p_user': userId});
 
-  static Future<void> modRejectDocs(String userId, String comment) =>
-      c.rpc('mod_reject_docs', params: {'p_user': userId, 'p_comment': comment});
+  static Future<void> modRejectDocs(String userId, String comment) => c.rpc(
+    'mod_reject_docs',
+    params: {'p_user': userId, 'p_comment': comment},
+  );
 
   /// Орындаушының тек сұралған құжаттарды жаңартуы (ревьюге түседі).
   /// Нақты ауыстырылған өрістердің ЕСКІ файлдары Storage-тан да өшіріледі
@@ -802,17 +942,20 @@ class Repo {
     String? techPassportSelfiePath,
     List<String>? photos,
   }) async {
-    final res = await c.rpc('submit_docs_update', params: {
-      'p_id_doc': idDocPath,
-      'p_license': licensePath,
-      'p_tech': techPassportPath,
-      'p_photos': photos,
-      'p_id_selfie': idSelfiePath,
-      'p_license_selfie': licenseSelfiePath,
-      'p_passport': passportPath,
-      'p_passport_selfie': passportSelfiePath,
-      'p_tech_selfie': techPassportSelfiePath,
-    });
+    final res = await c.rpc(
+      'submit_docs_update',
+      params: {
+        'p_id_doc': idDocPath,
+        'p_license': licensePath,
+        'p_tech': techPassportPath,
+        'p_photos': photos,
+        'p_id_selfie': idSelfiePath,
+        'p_license_selfie': licenseSelfiePath,
+        'p_passport': passportPath,
+        'p_passport_selfie': passportSelfiePath,
+        'p_tech_selfie': techPassportSelfiePath,
+      },
+    );
     final oldPaths = (res as List?)?.cast<String>() ?? const [];
     if (oldPaths.isNotEmpty) {
       try {
@@ -834,24 +977,23 @@ class Repo {
         .toList();
   }
 
-  static Future<void> modCancelOrder(String orderId, String reason) =>
-      c.rpc('mod_cancel_order', params: {
-        'p_order': orderId,
-        'p_reason': reason,
-      });
+  static Future<void> modCancelOrder(String orderId, String reason) => c.rpc(
+    'mod_cancel_order',
+    params: {'p_order': orderId, 'p_reason': reason},
+  );
 
   static Future<void> modReopenOrder(String orderId) =>
       c.rpc('mod_reopen_order', params: {'p_order': orderId});
 
   static Future<Map<String, dynamic>> modExecutorSummary(String userId) async =>
       Map<String, dynamic>.from(
-          await c.rpc('mod_executor_summary', params: {'p_user': userId}) as Map);
+        await c.rpc('mod_executor_summary', params: {'p_user': userId}) as Map,
+      );
 
-  static Future<void> modSetOrderStatus(String orderId, String status) =>
-      c.rpc('mod_set_order_status', params: {
-        'p_order': orderId,
-        'p_status': status,
-      });
+  static Future<void> modSetOrderStatus(String orderId, String status) => c.rpc(
+    'mod_set_order_status',
+    params: {'p_order': orderId, 'p_status': status},
+  );
 
   static Future<Map<String, dynamic>> modLineStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_line_stats') as Map);
@@ -875,21 +1017,29 @@ class Repo {
   }
 
   // ================= SUPPORT CHAT =================
-  static Future<String> supportSend(String body,
-          {String? imagePath, String? orderId}) async =>
-      (await c.rpc('support_send', params: {
-        'p_body': body,
-        'p_image_path': imagePath,
-        'p_order_id': orderId,
-      })) as String;
+  static Future<String> supportSend(
+    String body, {
+    String? imagePath,
+    String? orderId,
+  }) async =>
+      (await c.rpc(
+            'support_send',
+            params: {
+              'p_body': body,
+              'p_image_path': imagePath,
+              'p_order_id': orderId,
+            },
+          ))
+          as String;
 
-  static Future<void> supportReply(String threadId, String body,
-          {String? imagePath}) =>
-      c.rpc('support_reply', params: {
-        'p_thread': threadId,
-        'p_body': body,
-        'p_image_path': imagePath,
-      });
+  static Future<void> supportReply(
+    String threadId,
+    String body, {
+    String? imagePath,
+  }) => c.rpc(
+    'support_reply',
+    params: {'p_thread': threadId, 'p_body': body, 'p_image_path': imagePath},
+  );
 
   static Future<void> supportClose(String threadId) =>
       c.rpc('support_close', params: {'p_thread': threadId});
@@ -899,7 +1049,9 @@ class Repo {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final path = '$id/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await c.storage.from('support').uploadBinary(
+    await c.storage
+        .from('support')
+        .uploadBinary(
           path,
           bytes,
           // upsert=false: жол бірегей — «ON CONFLICT DO UPDATE» шақырмай,
@@ -960,21 +1112,23 @@ class Repo {
   }
 
   static Stream<List<SupportThread>> allThreadsStream() => _poll(() async {
-        final rows = await c
-            .from('support_threads')
-            .select()
-            .order('last_msg_at', ascending: false);
-        return (rows as List)
-            .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      });
+    final rows = await c
+        .from('support_threads')
+        .select()
+        .order('last_msg_at', ascending: false);
+    return (rows as List)
+        .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  });
 
   // ================= STREAMS (polling — realtime-ге тәуелсіз, тұрақты) =================
 
   /// Периодты сұраныс стримі. Қате болса соңғы мәнді сақтап, қайта сұрайды —
   /// осылайша 4G-де realtime channelError болмайды.
-  static Stream<T> _poll<T>(Future<T> Function() fetch,
-      {Duration every = const Duration(seconds: 4)}) async* {
+  static Stream<T> _poll<T>(
+    Future<T> Function() fetch, {
+    Duration every = const Duration(seconds: 4),
+  }) async* {
     while (true) {
       try {
         yield await fetch();
@@ -1013,11 +1167,12 @@ class Repo {
           .select()
           .eq('executor_id', id)
           .inFilter('status', const [
-        'accepted',
-        'arrived',
-        'loading',
-        'in_transit'
-      ]).order('accepted_at');
+            'accepted',
+            'arrived',
+            'loading',
+            'in_transit',
+          ])
+          .order('accepted_at');
       return (rows as List)
           .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
           .toList();
@@ -1025,23 +1180,19 @@ class Repo {
   }
 
   static Stream<Order?> orderStream(String orderId) => _poll(() async {
-        final m = await c
-            .from('orders')
-            .select()
-            .eq('id', orderId)
-            .maybeSingle();
-        return m == null ? null : Order.fromMap(m);
-      }, every: const Duration(seconds: 3));
+    final m = await c.from('orders').select().eq('id', orderId).maybeSingle();
+    return m == null ? null : Order.fromMap(m);
+  }, every: const Duration(seconds: 3));
 
   /// §6/§5 Лента: орындаушының қаласы мен маршрутына сай заказдар (RPC).
   /// Қала фильтрі, өлшем сәйкестігі, межгород маршруты — бәрі серверде
   /// `executor_feed` ішінде (бір ғана логика көзі).
   static Stream<List<Order>> executorFeedStream() => _poll(() async {
-        final rows = await c.rpc('executor_feed');
-        return (rows as List)
-            .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 4));
+    final rows = await c.rpc('executor_feed');
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }, every: const Duration(seconds: 4));
 
   /// §6 Орындаушының тіркелген қаласын орнату/жаңарту.
   static Future<void> setExecutorCity(String city) =>
@@ -1053,15 +1204,15 @@ class Repo {
       c.rpc('set_order_push_enabled', params: {'p_enabled': enabled});
 
   static Stream<List<Offer>> offersStream(String orderId) => _poll(() async {
-        final rows = await c
-            .from('offers')
-            .select()
-            .eq('order_id', orderId)
-            .order('created_at');
-        return (rows as List)
-            .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 3));
+    final rows = await c
+        .from('offers')
+        .select()
+        .eq('order_id', orderId)
+        .order('created_at');
+    return (rows as List)
+        .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
+  }, every: const Duration(seconds: 3));
 
   static Stream<ExecutorProfile?> myExecutorProfileStream() {
     final id = uid;
@@ -1204,14 +1355,17 @@ class Repo {
     int durationDays = 0,
     List<String> photos = const [],
   }) async {
-    final res = await c.rpc('create_listing', params: {
-      'p_vehicle_type': vehicleType.db,
-      'p_city': city,
-      'p_body': body,
-      'p_price_text': priceText,
-      'p_duration_days': durationDays,
-      'p_photos': photos,
-    });
+    final res = await c.rpc(
+      'create_listing',
+      params: {
+        'p_vehicle_type': vehicleType.db,
+        'p_city': city,
+        'p_body': body,
+        'p_price_text': priceText,
+        'p_duration_days': durationDays,
+        'p_photos': photos,
+      },
+    );
     return res as String;
   }
 
@@ -1230,16 +1384,18 @@ class Repo {
     required VehicleType vehicleType,
     required String city,
     int durationDays = 0,
-  }) =>
-      c.rpc('repost_listing', params: {
-        'p_id': id,
-        'p_photos': photos,
-        'p_body': body,
-        'p_price_text': priceText,
-        'p_vehicle_type': vehicleType.db,
-        'p_city': city,
-        'p_duration_days': durationDays,
-      });
+  }) => c.rpc(
+    'repost_listing',
+    params: {
+      'p_id': id,
+      'p_photos': photos,
+      'p_body': body,
+      'p_price_text': priceText,
+      'p_vehicle_type': vehicleType.db,
+      'p_city': city,
+      'p_duration_days': durationDays,
+    },
+  );
 
   static Future<void> deleteListing(String id) =>
       c.rpc('delete_listing', params: {'p_id': id});
@@ -1249,7 +1405,9 @@ class Repo {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
-    await c.storage.from('listings').uploadBinary(
+    await c.storage
+        .from('listings')
+        .uploadBinary(
           path,
           bytes,
           // upsert=false: жол timestamp арқылы бірегей — UPDATE саясаты
@@ -1269,7 +1427,10 @@ class Repo {
 
   /// Модераторға хабарландырулар тізімі. [status]: active | expired | null.
   static Future<List<Listing>> modListings(String? status) async {
-    final rows = await c.rpc('mod_listings', params: {'p_status': status ?? ''});
+    final rows = await c.rpc(
+      'mod_listings',
+      params: {'p_status': status ?? ''},
+    );
     return (rows as List)
         .map((m) => Listing.fromMap(Map<String, dynamic>.from(m)))
         .toList();
@@ -1279,15 +1440,18 @@ class Repo {
   /// Күдікті хабарландыру туралы модераторға шағым жіберу. Бір адам бір
   /// хабарландыруға бір ғана ашық шағым бере алады ('ALREADY_REPORTED').
   static Future<String> reportListing(String listingId, String reason) async =>
-      (await c.rpc('report_listing', params: {
-        'p_listing': listingId,
-        'p_reason': reason,
-      })) as String;
+      (await c.rpc(
+            'report_listing',
+            params: {'p_listing': listingId, 'p_reason': reason},
+          ))
+          as String;
 
   /// Модераторға шағымдар тізімі. [status]: open | closed | '' (барлығы).
   static Future<List<ListingReport>> modListingReports(String status) async {
-    final rows =
-        await c.rpc('mod_listing_reports', params: {'p_status': status});
+    final rows = await c.rpc(
+      'mod_listing_reports',
+      params: {'p_status': status},
+    );
     return (rows as List)
         .map((m) => ListingReport.fromMap(Map<String, dynamic>.from(m)))
         .toList();
@@ -1296,8 +1460,10 @@ class Repo {
   /// Модератордың шешімі. [action]: 'delete' (хабарландыруды өшіру, сол
   /// хабарландырудың барлық ашық шағымы жабылады) | 'keep' (елеусіз қалдыру).
   static Future<void> modResolveListingReport(String id, String action) =>
-      c.rpc('mod_resolve_listing_report',
-          params: {'p_id': id, 'p_action': action});
+      c.rpc(
+        'mod_resolve_listing_report',
+        params: {'p_id': id, 'p_action': action},
+      );
 
   // ================= ЖАҢАЛЫҚТАР · СТОРИС (0066) =================
   /// Бөлім қосулы ма (модератор Баптаулардан басқарады). Желі қатесінде
@@ -1470,7 +1636,9 @@ class Repo {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$name';
-    await c.storage.from('docs').uploadBinary(
+    await c.storage
+        .from('docs')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(
@@ -1500,7 +1668,9 @@ class Repo {
     final id = uid;
     if (id == null) throw Exception('AUTH');
     final path = '$id/${DateTime.now().millisecondsSinceEpoch}_$name';
-    await c.storage.from('docs').uploadBinary(
+    await c.storage
+        .from('docs')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(
@@ -1517,7 +1687,10 @@ class Repo {
   /// сол тізіммен САЛЫСТЫРАДЫ. Қайтаратыны:
   /// `{parsed, inserted, skipped, checked, missing, missing_rows}`.
   static Future<Map<String, dynamic>> importKaspiStatement(String path) async {
-    final res = await c.functions.invoke('kaspi-statement', body: {'path': path});
+    final res = await c.functions.invoke(
+      'kaspi-statement',
+      body: {'path': path},
+    );
     final data = res.data;
     if (data is Map) return Map<String, dynamic>.from(data);
     throw Exception('STATEMENT_FAILED');
@@ -1529,9 +1702,7 @@ class Repo {
     int days = 30,
   }) async {
     final rows = await c.rpc('topup_reconciliation', params: {'p_days': days});
-    return [
-      for (final r in rows as List) Map<String, dynamic>.from(r as Map),
-    ];
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 
   // ================= БОНУС БАҒДАРЛАМАСЫ (0059) =================
@@ -1569,7 +1740,8 @@ class Repo {
 
 // ================= RIVERPOD PROVIDERS =================
 final authStateProvider = StreamProvider<AuthState>(
-    (ref) => Supabase.instance.client.auth.onAuthStateChange);
+  (ref) => Supabase.instance.client.auth.onAuthStateChange,
+);
 
 final myProfileProvider = FutureProvider<Profile?>((ref) {
   ref.watch(authStateProvider);
@@ -1591,13 +1763,13 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
   );
 });
 
-final executorStatsProvider =
-    FutureProvider<ExecutorStats>((ref) => Repo.executorStats());
+final executorStatsProvider = FutureProvider<ExecutorStats>(
+  (ref) => Repo.executorStats(),
+);
 
 /// Хабарландырулар тақтасы қосулы ма (0043). Модератор Баптаулардан
 /// қосқанда/өшіргенде `ref.invalidate(boardEnabledProvider)` шақырылады.
-final boardEnabledProvider =
-    FutureProvider<bool>((ref) => Repo.boardEnabled());
+final boardEnabledProvider = FutureProvider<bool>((ref) => Repo.boardEnabled());
 
 /// «Такси» бөлімі қосулы ма (0046). Модератор Баптаулардан қосқанда/
 /// өшіргенде `ref.invalidate(taxiEnabledProvider)` шақырылады.
@@ -1605,8 +1777,7 @@ final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
 
 /// «ЖАҢА» белгілері көрінсін бе (0058) — фича ескіргенде модератор
 /// Баптаулардан әрқайсысын бөлек алып тастайды.
-final newBadgesProvider =
-    FutureProvider<NewBadges>((ref) => Repo.newBadges());
+final newBadgesProvider = FutureProvider<NewBadges>((ref) => Repo.newBadges());
 
 /// «Жаңалықтар» бөлімі қосулы ма (0066). Модератор Баптаулардан
 /// қосқанда/өшіргенде `ref.invalidate(newsEnabledProvider)` шақырылады.
@@ -1623,34 +1794,36 @@ final newsFeedProvider = FutureProvider<List<NewsStory>>((ref) {
 /// Құрылғыда «көрілген» деп белгіленген стористер (0066). Сервердегі
 /// белгінің ҮСТІНЕ қосылады: гесте сервер белгісі мүлдем болмайды, ал
 /// желі үзілсе де сақина жыпылықтап тұрмайды.
-final newsSeenLocalProvider =
-    FutureProvider<Set<String>>((ref) => Prefs.seenNews());
+final newsSeenLocalProvider = FutureProvider<Set<String>>(
+  (ref) => Prefs.seenNews(),
+);
 
 /// Толық app_settings карта (0060) — жаңа клиент фичаларының (алдын ала
 /// тапсырыс, тірі трекинг, бөлісу, реферал, қайталау) `enabled`
 /// жалаушаларын оқу үшін. `app_settings` RLS-і кез келген authenticated
 /// пайдаланушыға оқуға ашық (Kaspi/тариф баптаулары да солай оқылады),
 /// сол себепті бөлек RPC қажет емес — тікелей кесте оқылады.
-final appSettingsProvider =
-    FutureProvider<Map<String, dynamic>>((ref) => Repo.settings());
+final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
+  (ref) => Repo.settings(),
+);
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.
-final executorStatsStreamProvider =
-    StreamProvider.autoDispose<ExecutorStats>(
-        (ref) => Repo.executorStatsStream());
+final executorStatsStreamProvider = StreamProvider.autoDispose<ExecutorStats>(
+  (ref) => Repo.executorStatsStream(),
+);
 
 /// Бонус прогресі (0059). `autoDispose` — тыңдаушы қалмаса polling тоқтайды.
 /// Бағдарлама өшірулі болса стрим «off» күйін қайтарады да, ешбір экран
 /// қосымша сұраныс жасамайды.
-final executorBonusStreamProvider =
-    StreamProvider.autoDispose<BonusInfo>(
-        (ref) => Repo.executorBonusStream());
+final executorBonusStreamProvider = StreamProvider.autoDispose<BonusInfo>(
+  (ref) => Repo.executorBonusStream(),
+);
 
 /// Орындаушы лентасы (§5/§6). Riverpod стримді КЭШТЕЙДІ — сондықтан статистика
 /// әр 4 сек жаңарғанда бет қайта құрылса да, лента стримі қайта жазылмайды
 /// (әйтпесе әр рефреште ресетке түсіп, автообновление «жоғалатын»).
 /// `autoDispose` — ешкім тыңдамай қалса polling тоқтайды.
-final executorFeedStreamProvider =
-    StreamProvider.autoDispose<List<Order>>(
-        (ref) => Repo.executorFeedStream());
+final executorFeedStreamProvider = StreamProvider.autoDispose<List<Order>>(
+  (ref) => Repo.executorFeedStream(),
+);

@@ -74,11 +74,15 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
                 }
                 final rows = snap.data ?? [];
                 if (rows.isEmpty) {
-                  return ListView(children: [
-                    const SizedBox(height: 100),
-                    EmptyState(
-                        icon: Icons.people_outline, title: t('Тізім бос')),
-                  ]);
+                  return ListView(
+                    children: [
+                      const SizedBox(height: 100),
+                      EmptyState(
+                        icon: Icons.people_outline,
+                        title: t('Тізім бос'),
+                      ),
+                    ],
+                  );
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.all(12),
@@ -102,17 +106,17 @@ class _ExecutorTile extends StatelessWidget {
   const _ExecutorTile({required this.ep, required this.onChanged});
 
   Color get _statusColor => switch (ep.status) {
-        'approved' => Gz.green,
-        'pending' => Gz.blue,
-        _ => Gz.red,
-      };
+    'approved' => Gz.green,
+    'pending' => Gz.blue,
+    _ => Gz.red,
+  };
 
   String get _statusLabel => switch (ep.status) {
-        'approved' => t('Расталған'),
-        'pending' => t('Күтуде'),
-        'rejected' => t('Қабылданбаған'),
-        _ => t('Бұғатталған'),
-      };
+    'approved' => t('Расталған'),
+    'pending' => t('Күтуде'),
+    'rejected' => t('Қабылданбаған'),
+    _ => t('Бұғатталған'),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -122,87 +126,108 @@ class _ExecutorTile extends StatelessWidget {
         children: [
           Expanded(
             child: InkWell(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ExecutorDetailScreen(ep: ep))),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => ExecutorDetailScreen(ep: ep)),
+              ),
               child: FutureBuilder<Profile?>(
-              future: Repo.profileOf(ep.userId),
-              builder: (context, snap) {
-                final p = snap.data;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(p?.fullName ?? '…',
+                future: Repo.profileOf(ep.userId),
+                builder: (context, snap) {
+                  final p = snap.data;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              p?.fullName ?? '…',
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14.5)),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                              ),
+                            ),
                           ),
-                          child: Text(_statusLabel,
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _statusColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              _statusLabel,
                               style: TextStyle(
-                                  color: _statusColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    // Екі жол да ДИНАМИКАЛЫҚ (көлік атауы, нөмір, қала,
-                    // сомалар) — ұзындығы алдын ала белгісіз. Тізім
-                    // карточкалары бірдей биіктікте тұруы үшін екеуі де
-                    // бір жолда: сыймаса кішірейеді.
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: BtnLabel(
-                        '${ep.vehicleTitle} · ${ep.vehiclePlate}'
-                        '${ep.city != null ? ' · ${ep.city}' : ''}',
-                        style: const TextStyle(
-                            color: Gz.textSecondary, fontSize: 12),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: BtnLabel(
-                        '${t('Баланс')}: ${fmtT(ep.balance)} · '
-                        '${t('Табыс')}: ${fmtT(ep.totalEarned)}',
-                        style: const TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (ep.busyOrderId != null)
-                      Container(
-                        margin: const EdgeInsets.only(top: 3),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Gz.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(t('🚚 Заказ орындауда'),
-                            style: const TextStyle(
+                                color: _statusColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: Gz.green)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    // Модератор орындаушылар тізімін көреді → орындаушылық
-                    // рейтинг (қос рөл, 0046).
-                    if (p != null)
-                      RatingStars(p.ratingAs('executor'),
-                          count: p.ratingCountAs('executor'), size: 12),
-                  ],
-                );
-              },
-            ),
+                      const SizedBox(height: 3),
+                      // Екі жол да ДИНАМИКАЛЫҚ (көлік атауы, нөмір, қала,
+                      // сомалар) — ұзындығы алдын ала белгісіз. Тізім
+                      // карточкалары бірдей биіктікте тұруы үшін екеуі де
+                      // бір жолда: сыймаса кішірейеді.
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: BtnLabel(
+                          '${ep.vehicleTitle} · ${ep.vehiclePlate}'
+                          '${ep.city != null ? ' · ${ep.city}' : ''}',
+                          style: const TextStyle(
+                            color: Gz.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: BtnLabel(
+                          '${t('Баланс')}: ${fmtT(ep.balance)} · '
+                          '${t('Табыс')}: ${fmtT(ep.totalEarned)}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (ep.busyOrderId != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Gz.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            t('🚚 Заказ орындауда'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Gz.green,
+                            ),
+                          ),
+                        ),
+                      // Модератор орындаушылар тізімін көреді → орындаушылық
+                      // рейтинг (қос рөл, 0046).
+                      if (p != null)
+                        RatingStars(
+                          p.ratingAs('executor'),
+                          count: p.ratingCountAs('executor'),
+                          size: 12,
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
           PopupMenuButton<String>(
@@ -210,18 +235,23 @@ class _ExecutorTile extends StatelessWidget {
             itemBuilder: (_) => [
               if (ep.status == 'approved')
                 PopupMenuItem(
-                    value: 'request_docs',
-                    child: Text(t('Құжат жаңартуды сұрау'))),
+                  value: 'request_docs',
+                  child: Text(t('Құжат жаңартуды сұрау')),
+                ),
               if (ep.status == 'approved')
                 PopupMenuItem(
-                    value: 'block',
-                    child: Text(t('Бұғаттау'),
-                        style: const TextStyle(color: Gz.red))),
+                  value: 'block',
+                  child: Text(
+                    t('Бұғаттау'),
+                    style: const TextStyle(color: Gz.red),
+                  ),
+                ),
               if (ep.status == 'blocked')
                 PopupMenuItem(
-                    value: 'unblock', child: Text(t('Бұғаттан шығару'))),
-              PopupMenuItem(
-                  value: 'balance', child: Text(t('Баланс түзету'))),
+                  value: 'unblock',
+                  child: Text(t('Бұғаттан шығару')),
+                ),
+              PopupMenuItem(value: 'balance', child: Text(t('Баланс түзету'))),
             ],
           ),
         ],
@@ -235,7 +265,8 @@ class _ExecutorTile extends StatelessWidget {
         case 'request_docs':
           final res = await showDialog<(List<String>, String)>(
             context: context,
-            builder: (ctx) => _RequestDocsDialog(isForeign: ep.isForeignCitizen),
+            builder: (ctx) =>
+                _RequestDocsDialog(isForeign: ep.isForeignCitizen),
           );
           if (res == null) return;
           if (res.$1.isEmpty) {
@@ -257,13 +288,15 @@ class _ExecutorTile extends StatelessWidget {
               content: TextField(controller: c, autofocus: true),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(t('Болдырмау'))),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(t('Болдырмау')),
+                ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: Gz.red,
-                      foregroundColor: Colors.white,
-                      shadowColor: const Color(0x59DC2626)),
+                    backgroundColor: Gz.red,
+                    foregroundColor: Colors.white,
+                    shadowColor: const Color(0x59DC2626),
+                  ),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: Text(t('Бұғаттау')),
                 ),
@@ -289,7 +322,8 @@ class _ExecutorTile extends StatelessWidget {
                     autofocus: true,
                     keyboardType: TextInputType.text,
                     decoration: InputDecoration(
-                        hintText: t('Сома (теріс болса шегеріледі)')),
+                      hintText: t('Сома (теріс болса шегеріледі)'),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -300,22 +334,27 @@ class _ExecutorTile extends StatelessWidget {
               ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(t('Болдырмау'))),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(t('Болдырмау')),
+                ),
                 FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(t('Сақтау'))),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(t('Сақтау')),
+                ),
               ],
             ),
           );
           if (ok != true) return;
           final amount = int.tryParse(c.text.trim());
           if (amount == null || amount == 0) return;
-          await Repo.c.rpc('mod_adjust_balance', params: {
-            'p_user': ep.userId,
-            'p_amount': amount,
-            'p_note': note.text,
-          });
+          await Repo.c.rpc(
+            'mod_adjust_balance',
+            params: {
+              'p_user': ep.userId,
+              'p_amount': amount,
+              'p_note': note.text,
+            },
+          );
       }
       onChanged();
     } catch (e) {
@@ -338,13 +377,13 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
   final _comment = TextEditingController();
 
   List<(String, String)> get _options => [
-        widget.isForeign
-            ? ('passport', t('Шетел паспорты'))
-            : ('id', t('Жеке куәлік')),
-        ('license', t('Жүргізуші куәлігі')),
-        ('tech', t('Техпаспорт')),
-        ('photos', t('Көлік фотолары')),
-      ];
+    widget.isForeign
+        ? ('passport', t('Шетел паспорты'))
+        : ('id', t('Жеке куәлік')),
+    ('license', t('Жүргізуші куәлігі')),
+    ('tech', t('Техпаспорт')),
+    ('photos', t('Көлік фотолары')),
+  ];
 
   @override
   void dispose() {
@@ -378,14 +417,16 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
           TextField(
             controller: _comment,
             decoration: InputDecoration(
-                hintText: t('Түсініктеме (мыс: анық емес, ескірген)')),
+              hintText: t('Түсініктеме (мыс: анық емес, ескірген)'),
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(t('Болдырмау'))),
+          onPressed: () => Navigator.pop(context),
+          child: Text(t('Болдырмау')),
+        ),
         FilledButton(
           onPressed: () =>
               Navigator.pop(context, (_fields.toList(), _comment.text)),
@@ -419,12 +460,19 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          ),
           const SizedBox(height: 2),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.w900, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -444,22 +492,36 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
               SectionCard(
                 child: Row(
                   children: [
-                    InitialsAvatar(p?.fullName ?? '?',
-                        radius: 26, imageUrl: p?.avatarUrl),
+                    InitialsAvatar(
+                      p?.fullName ?? '?',
+                      radius: 26,
+                      imageUrl: p?.avatarUrl,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(p?.fullName ?? '…',
-                              style: const TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.w800)),
-                          Text(p?.phone ?? '',
-                              style: const TextStyle(
-                                  color: Gz.textSecondary, fontSize: 13)),
+                          Text(
+                            p?.fullName ?? '…',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            p?.phone ?? '',
+                            style: const TextStyle(
+                              color: Gz.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
                           if (p != null)
-                            RatingStars(p.ratingAs('executor'),
-                                count: p.ratingCountAs('executor'), size: 13),
+                            RatingStars(
+                              p.ratingAs('executor'),
+                              count: p.ratingCountAs('executor'),
+                              size: 13,
+                            ),
                         ],
                       ),
                     ),
@@ -480,42 +542,74 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                   }
                   return Column(
                     children: [
-                      Row(children: [
-                        Expanded(
-                            child: _statTile(t('Бүгін'),
-                                '${s['today']} ${t('заказ')}', Gz.green)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _statTile(t('7 күн'),
-                                '${s['week']} ${t('заказ')}', Gz.blue)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _statTile(t('Барлығы'),
-                                '${s['total']} ${t('заказ')}', Gz.ink)),
-                      ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statTile(
+                              t('Бүгін'),
+                              '${s['today']} ${t('заказ')}',
+                              Gz.green,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statTile(
+                              t('7 күн'),
+                              '${s['week']} ${t('заказ')}',
+                              Gz.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statTile(
+                              t('Барлығы'),
+                              '${s['total']} ${t('заказ')}',
+                              Gz.ink,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
-                      Row(children: [
-                        Expanded(
-                            child: _statTile(t('Белсенді'),
-                                '${s['active']}', Gz.violet)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _statTile(t('Бас тартқан'),
-                                '${s['cancelled']}', Gz.red)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _statTile(t('Бүгінгі табыс'),
-                                fmtT(s['earned_today'] as num?), Gz.green)),
-                      ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statTile(
+                              t('Белсенді'),
+                              '${s['active']}',
+                              Gz.violet,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statTile(
+                              t('Бас тартқан'),
+                              '${s['cancelled']}',
+                              Gz.red,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statTile(
+                              t('Бүгінгі табыс'),
+                              fmtT(s['earned_today'] as num?),
+                              Gz.green,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   );
                 },
               ),
               if (ep.busyOrderId != null) ...[
                 const SizedBox(height: 12),
-                Text(t('Қазіргі заказы'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(
+                  t('Қазіргі заказы'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 FutureBuilder<Order?>(
                   future: Repo.orderById(ep.busyOrderId!),
@@ -524,21 +618,71 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     if (o == null) return const SizedBox.shrink();
                     return OrderCard(
                       order: o,
-                      onTap: () =>
-                          showOrderAdminSheet(context, o.id,
-                              onChanged: () => setState(() {})),
+                      onTap: () => showOrderAdminSheet(
+                        context,
+                        o.id,
+                        onChanged: () => setState(() {}),
+                      ),
                     );
                   },
                 ),
               ],
               const SizedBox(height: 12),
+              Text(
+                t('Заказ тарихы және қабылдағандары'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<List<Order>>(
+                future: Repo.modOrdersOf(ep.userId, asExecutor: true),
+                builder: (context, snap) {
+                  final orders = snap.data ?? const <Order>[];
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (orders.isEmpty) {
+                    return SectionCard(
+                      child: Text(
+                        t('Әзірге қабылдаған заказ жоқ'),
+                        style: const TextStyle(color: Gz.textSecondary),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final o in orders.take(10)) ...[
+                        OrderCard(
+                          order: o,
+                          onTap: () => showOrderAdminSheet(
+                            context,
+                            o.id,
+                            onChanged: () => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t('Көлік'),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15)),
+                    Text(
+                      t('Көлік'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                     InfoRow(t('Маркасы'), ep.vehicleTitle),
@@ -552,79 +696,121 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Text(t('Құжаттар'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(
+                    t('Құжаттар'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Gz.bg,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      ep.isForeignCitizen ? t('Шетел азаматы') : t('ҚР азаматы'),
+                      ep.isForeignCitizen
+                          ? t('Шетел азаматы')
+                          : t('ҚР азаматы'),
                       style: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
+              Row(
+                children: [
+                  Expanded(
                     child: DocImage(
-                        path: ep.licensePath, label: t('Жүргізуші куәлігі'))),
-                const SizedBox(width: 8),
-                Expanded(
+                      path: ep.licensePath,
+                      label: t('Жүргізуші куәлігі'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
                     child: DocImage(
-                        path: ep.licenseSelfiePath, label: t('Правамен селфи'))),
-              ]),
+                      path: ep.licenseSelfiePath,
+                      label: t('Правамен селфи'),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               if (!ep.isForeignCitizen)
-                Row(children: [
-                  Expanded(
+                Row(
+                  children: [
+                    Expanded(
                       child: DocImage(
-                          path: ep.idDocPath, label: t('Жеке куәлік'))),
-                  const SizedBox(width: 8),
-                  Expanded(
+                        path: ep.idDocPath,
+                        label: t('Жеке куәлік'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: DocImage(
-                          path: ep.idSelfiePath, label: t('Куәлікпен селфи'))),
-                ])
+                        path: ep.idSelfiePath,
+                        label: t('Куәлікпен селфи'),
+                      ),
+                    ),
+                  ],
+                )
               else
-                Row(children: [
-                  Expanded(
+                Row(
+                  children: [
+                    Expanded(
                       child: DocImage(
-                          path: ep.passportPath, label: t('Шетел паспорты'))),
+                        path: ep.passportPath,
+                        label: t('Шетел паспорты'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DocImage(
+                        path: ep.passportSelfiePath,
+                        label: t('Паспортпен селфи'),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: DocImage(
+                      path: ep.techPassportPath,
+                      label: t('Техпаспорт'),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                      child: DocImage(
-                          path: ep.passportSelfiePath,
-                          label: t('Паспортпен селфи'))),
-                ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
                     child: DocImage(
-                        path: ep.techPassportPath, label: t('Техпаспорт'))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: DocImage(
-                        path: ep.techPassportSelfiePath,
-                        label: t('Техпаспортпен фото'))),
-              ]),
+                      path: ep.techPassportSelfiePath,
+                      label: t('Техпаспортпен фото'),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               if (p != null)
                 OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ReviewsScreen(
-                      userId: p.id,
-                      name: p.fullName,
-                      rating: p.ratingAs('executor'),
-                      ratingCount: p.ratingCountAs('executor'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReviewsScreen(
+                        userId: p.id,
+                        name: p.fullName,
+                        rating: p.ratingAs('executor'),
+                        ratingCount: p.ratingCountAs('executor'),
+                      ),
                     ),
-                  )),
+                  ),
                   icon: const Icon(Icons.star_outline),
                   label: Text(t('Пікірлерді қарау')),
                 ),

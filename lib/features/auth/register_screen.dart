@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/lang.dart';
 import '../../core/name_guard.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/telegram_verify.dart';
@@ -30,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _role = 'client';
   bool _obscure = true;
   bool _agree = false;
+  String _draftKey = '';
 
   /// Жаттыққа шақыру коды (0061) — міндетті емес, тіркелгеннен КЕЙІН
   /// авторизацияланған сессиямен `redeemReferralCode` шақырылады
@@ -40,9 +42,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    _draftKey =
+        'draft-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(this)}';
+    _restoreDraftKey();
     Repo.referralEnabled().then((v) {
       if (mounted) setState(() => _referralEnabled = v);
     });
+  }
+
+  Future<void> _restoreDraftKey() async {
+    final saved = await Prefs.registrationDraftKey();
+    if (!mounted) return;
+    if (saved == null || saved.isEmpty) {
+      await Prefs.setRegistrationDraftKey(_draftKey);
+    } else {
+      setState(() => _draftKey = saved);
+    }
+  }
+
+  Future<void> _saveDraft({bool completed = false}) async {
+    if (_draftKey.isEmpty) return;
+    try {
+      await Repo.saveRegistrationDraft(
+        draftKey: _draftKey,
+        role: _role,
+        stage: completed ? 3 : _step,
+        stageLabel: completed
+            ? 'Тіркелу аяқталды'
+            : switch (_step) {
+                0 => 'Рөл және аты-жөні',
+                1 => 'Құпиясөз және келісім',
+                _ => 'Телефонды Telegram арқылы растау',
+              },
+        fullName: _name.text,
+        phone: _verifiedPhone,
+        data: {
+          'role': _role,
+          'terms_agreed': _agree,
+          'referral_entered': _referralCode.text.trim().isNotEmpty,
+        },
+        completed: completed,
+      );
+    } catch (_) {
+      // Аудит сервистік функция: ол тіркелудің өзіне кедергі болмауы тиіс.
+    }
   }
 
   // Telegram верификация күйі (TelegramVerify виджеті толтырады)
@@ -50,11 +93,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _verifiedPhone; // расталған нөмір (7XXXXXXXXXX)
 
   late final TapGestureRecognizer _termsTap = TapGestureRecognizer()
-    ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const LegalScreen(initialTab: 0)));
+    ..onTap = () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LegalScreen(initialTab: 0)));
   late final TapGestureRecognizer _privacyTap = TapGestureRecognizer()
-    ..onTap = () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const LegalScreen(initialTab: 1)));
+    ..onTap = () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LegalScreen(initialTab: 1)));
 
   @override
   void dispose() {
@@ -90,9 +135,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return false;
     }
     if (!_agree) {
-      showSnack(context,
-          t('Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет'),
-          error: true);
+      showSnack(
+        context,
+        t('Пайдаланушы келісімі мен Құпиялылық саясатына келісу қажет'),
+        error: true,
+      );
       return false;
     }
     return true;
@@ -104,7 +151,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       1 => _validateStep2(),
       _ => true,
     };
-    if (ok && _step < _stepCount - 1) setState(() => _step++);
+    if (ok && _step < _stepCount - 1) {
+      setState(() => _step++);
+      _saveDraft();
+    }
   }
 
   bool _back() {
@@ -115,9 +165,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// Тіркелу — нөмір Telegram-мен расталған соң ғана.
   Future<void> _register() async {
+    _saveDraft();
     if (_verifiedPhone == null || _tgToken == null) {
-      showSnack(context, t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
-          error: true);
+      showSnack(
+        context,
+        t('Алдымен нөміріңізді Telegram арқылы растаңыз'),
+        error: true,
+      );
       return;
     }
     try {
@@ -144,6 +198,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (mounted) showSnack(context, errText(e), error: true);
         }
       }
+      await _saveDraft(completed: true);
+      await Prefs.clearRegistrationDraftKey();
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -162,20 +218,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
             color: selected ? Gz.yellow : Gz.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: selected ? Gz.yellowDark : Gz.border, width: 1.4),
+              color: selected ? Gz.yellowDark : Gz.border,
+              width: 1.4,
+            ),
           ),
           child: Column(
             children: [
               Icon(icon, size: 30, color: Gz.ink),
               const SizedBox(height: 8),
-              Text(t(title),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 14.5)),
+              Text(
+                t(title),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                ),
+              ),
               const SizedBox(height: 3),
-              Text(t(subtitle),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 11.5, color: Gz.textSecondary)),
+              Text(
+                t(subtitle),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
+              ),
             ],
           ),
         ),
@@ -184,21 +247,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _stepDots() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    const labels = ['Рөл және профиль', 'Қауіпсіздік', 'Растау'];
+    return Column(
       children: [
-        for (var i = 0; i < _stepCount; i++) ...[
-          if (i > 0) const SizedBox(width: 6),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: i == _step ? 22 : 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: i <= _step ? Gz.ink : Gz.border,
-              borderRadius: BorderRadius.circular(4),
-            ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < _stepCount; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: i == _step ? 22 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: i <= _step ? Gz.ink : Gz.border,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${_step + 1}/$_stepCount · ${labels[_step]}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Gz.textSecondary,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
           ),
-        ],
+        ),
       ],
     );
   }
@@ -208,17 +286,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
       key: const ValueKey('step1'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t('Кім ретінде тіркелесіз?'),
-            style:
-                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text(
+          t('Кім ретінде тіркелесіз?'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        ),
         const SizedBox(height: 10),
-        Row(children: [
-          _roleCard('client', Icons.person_outline, 'Клиент',
-              'Көлік шақырамын'),
-          const SizedBox(width: 10),
-          _roleCard('executor', Icons.local_shipping_outlined, 'Орындаушы',
-              'Көлігіммен жұмыс істеймін'),
-        ]),
+        Row(
+          children: [
+            _roleCard(
+              'client',
+              Icons.person_outline,
+              'Клиент',
+              'Көлік шақырамын',
+            ),
+            const SizedBox(width: 10),
+            _roleCard(
+              'executor',
+              Icons.local_shipping_outlined,
+              'Орындаушы',
+              'Көлігіммен жұмыс істеймін',
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         // Қос рөл (0046): таңдау «мәңгілік» емес екенін бірден айтамыз —
         // адамдар осы қадамда ұзақ ойланып қалмауы үшін.
@@ -229,8 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Expanded(
               child: Text(
                 t('Екінші рөлді кейін де қосасыз'),
-                style: const TextStyle(
-                    fontSize: 12, color: Gz.textSecondary),
+                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ),
           ],
@@ -262,9 +350,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       key: const ValueKey('step2'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t('Құпиясөз орнатыңыз'),
-            style:
-                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text(
+          t('Құпиясөз орнатыңыз'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        ),
         const SizedBox(height: 10),
         TextFormField(
           controller: _password,
@@ -275,8 +364,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             hintText: t('Құпиясөз (кемінде 6 таңба)'),
             prefixIcon: const Icon(Icons.lock_outline),
             suffixIcon: IconButton(
-              icon: Icon(
-                  _obscure ? Icons.visibility_off : Icons.visibility),
+              icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
               onPressed: () => setState(() => _obscure = !_obscure),
             ),
           ),
@@ -301,24 +389,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
           label: Text.rich(
             TextSpan(
               style: const TextStyle(
-                  fontSize: 12.5, height: 1.45, color: Gz.textSecondary),
+                fontSize: 12.5,
+                height: 1.45,
+                color: Gz.textSecondary,
+              ),
               children: [
                 TextSpan(
                   text: t('Пайдаланушы келісімі'),
                   recognizer: _termsTap,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Gz.ink,
-                      decoration: TextDecoration.underline),
+                    fontWeight: FontWeight.w800,
+                    color: Gz.ink,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
                 TextSpan(text: t(' және ')),
                 TextSpan(
                   text: t('Құпиялылық саясаты'),
                   recognizer: _privacyTap,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Gz.ink,
-                      decoration: TextDecoration.underline),
+                    fontWeight: FontWeight.w800,
+                    color: Gz.ink,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
                 TextSpan(text: t(' — таныстым, келісемін')),
               ],
@@ -326,21 +419,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         const SizedBox(height: 18),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton(
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
                 onPressed: () => setState(() => _step--),
-                child: BtnLabel(t('Артқа'))),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: FilledButton(
-              onPressed: _step2Ready ? _next : null,
-              child: BtnLabel(t('Келесі')),
+                child: BtnLabel(t('Артқа')),
+              ),
             ),
-          ),
-        ]),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: FilledButton(
+                onPressed: _step2Ready ? _next : null,
+                child: BtnLabel(t('Келесі')),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -350,9 +446,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       key: const ValueKey('step3'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t('Телефоныңызды растаңыз'),
-            style:
-                const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text(
+          t('Телефоныңызды растаңыз'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        ),
         const SizedBox(height: 10),
         TelegramVerify(
           onVerified: (token, phone) => setState(() {
@@ -383,8 +480,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (_role == 'executor') ...[
           const SizedBox(height: 12),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF8DE),
               borderRadius: BorderRadius.circular(13),
@@ -393,15 +489,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline,
-                    size: 17, color: Color(0xFFB58900)),
+                const Icon(
+                  Icons.info_outline,
+                  size: 17,
+                  color: Color(0xFFB58900),
+                ),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    t('Тіркелген соң көлік деректері мен құжаттарды '
-                        'толтырасыз — модератор тексереді.'),
+                    t(
+                      'Тіркелген соң көлік деректері мен құжаттарды '
+                      'толтырасыз — модератор тексереді.',
+                    ),
                     style: const TextStyle(
-                        color: Color(0xFF8A6D00), fontSize: 12, height: 1.45),
+                      color: Color(0xFF8A6D00),
+                      fontSize: 12,
+                      height: 1.45,
+                    ),
                   ),
                 ),
               ],
@@ -455,9 +559,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         opacity: anim,
                         child: SlideTransition(
                           position: Tween<Offset>(
-                                  begin: const Offset(0.04, 0),
-                                  end: Offset.zero)
-                              .animate(anim),
+                            begin: const Offset(0.04, 0),
+                            end: Offset.zero,
+                          ).animate(anim),
                           child: child,
                         ),
                       ),
