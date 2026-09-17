@@ -159,6 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _back() {
     if (_step == 0) return true; // экраннан шығуға рұқсат
+    _saveDraft();
     setState(() => _step--);
     return false;
   }
@@ -210,7 +211,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final selected = _role == role;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _role = role),
+        onTap: () {
+          setState(() => _role = role);
+          _saveDraft();
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.all(14),
@@ -334,6 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             prefixIcon: const Icon(Icons.badge_outlined),
           ),
           onFieldSubmitted: (_) => _next(),
+          onEditingComplete: _saveDraft,
         ),
         const SizedBox(height: 20),
         // Аты жазылмайынша батырма СҰР — қосымшадағы ортақ ереже.

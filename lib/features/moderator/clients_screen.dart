@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
-import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';

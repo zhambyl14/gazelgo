@@ -255,7 +255,8 @@ class Repo {
     final rows = await c
         .from('profiles')
         .select()
-        .eq('role', 'client')
+        .eq('has_client_role', true)
+        .neq('role', 'moderator')
         .order('created_at', ascending: false)
         .limit(500);
     return (rows as List)
