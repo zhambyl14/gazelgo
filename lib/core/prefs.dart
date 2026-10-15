@@ -1,8 +1,50 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Құрылғыдағы жеңіл баптаулар (SharedPreferences). Қазір: орындаушының
 /// жаңа заказ уведомлениелерін қосу/өшіру таңдауы.
 class Prefs {
+  // ── Профиль кэші (тек СУЫҚ ІСКЕ ҚОСУ үшін) ───────────────────────────
+  // Қосымша ашылғанда соңғы белгілі профиль бірден көрсетіледі де, сервер
+  // жауабы фонда келіп, оны жаңартады. Кілтке uid қосылады — бір құрылғыда
+  // аккаунт ауысса, бөтен профиль ешқашан көрсетілмейді.
+  static String _kProfile(String uid) => 'cache_profile_$uid';
+  static String _kExecProfile(String uid) => 'cache_exec_profile_$uid';
+
+  static Future<Map<String, dynamic>?> cachedProfile(String uid) =>
+      _readJson(_kProfile(uid));
+  static Future<void> setCachedProfile(String uid, Map<String, dynamic>? m) =>
+      _writeJson(_kProfile(uid), m);
+  static Future<Map<String, dynamic>?> cachedExecProfile(String uid) =>
+      _readJson(_kExecProfile(uid));
+  static Future<void> setCachedExecProfile(
+    String uid,
+    Map<String, dynamic>? m,
+  ) => _writeJson(_kExecProfile(uid), m);
+
+  static Future<Map<String, dynamic>?> _readJson(String key) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(key);
+      if (raw == null) return null;
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _writeJson(String key, Map<String, dynamic>? m) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (m == null) {
+        await p.remove(key);
+      } else {
+        await p.setString(key, jsonEncode(m));
+      }
+    } catch (_) {}
+  }
+
   static const _kOrderNotify = 'executor_order_notify';
 
   /// Орындаушыға жаңа заказ уведомлениелері қосулы ма? (әдепкі — қосулы)

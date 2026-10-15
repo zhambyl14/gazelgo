@@ -25,13 +25,18 @@ class UpdateGate extends StatefulWidget {
 }
 
 class _UpdateGateState extends State<UpdateGate> {
-  bool _checked = false;
+  /// Тексеру ҚОСЫМШАНЫ КҮТТІРМЕЙДІ: бұрын сервер жауап бергенше бүкіл
+  /// қосымша орнына спиннер тұратын (ашылуға бір желі айналымы, вебте
+  /// version.json үшін тағы бір айналым қосылатын). Енді қосымша бірден
+  /// ашылады; нұсқа ескі болып шықса ғана жаңарту экраны шығады.
+  bool _checked = true;
   Map<String, dynamic>? _blockInfo; // null = бұғатталмаған
 
   @override
   void initState() {
     super.initState();
-    _check();
+    // Вебте әрқашан серверден соңғы нұсқа жүктеледі — тексерудің мәні жоқ.
+    if (!kIsWeb) _check();
   }
 
   Future<void> _check() async {

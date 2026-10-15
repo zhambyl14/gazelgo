@@ -265,6 +265,9 @@ class _NotConfigured extends StatelessWidget {
   }
 }
 
+/// [AuthGate] қай пайдаланушы үшін бір реттік баптауды жасап қойды.
+String? _bootstrappedUid;
+
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
@@ -281,14 +284,22 @@ class AuthGate extends ConsumerWidget {
         // клиенттің басты беті ашылады, заказды толық толтыра алады. Аккаунт тек
         // «Шақыру» басылғанда немесе профильге кіргенде сұралады.
         if (session == null) return const ClientShell(guest: true);
-        // Push-токенді тіркеу — қосымша толық жабық тұрғанда да
-        // хабарландыру жеткізілуі үшін. Firebase бапталмаса — үнсіз өтеді.
-        // `init()` енді әр кіруде токенді АҒЫМДАҒЫ пайдаланушыға қайта
-        // тіркейді (бір телефонда аккаунт ауысса, ескі иесінің push-ы
-        // жаңа иесіне келмеуі үшін), ал `Lang.syncToServer()` push тілін
-        // серверге жеткізеді.
-        unawaited(Push.init());
-        unawaited(Lang.syncToServer());
+        // Пайдаланушыға БІР РЕТ (аккаунт ауысса — қайтадан):
+        //  * push-токенді АҒЫМДАҒЫ пайдаланушыға тіркеу (бір телефонда
+        //    аккаунт ауысса, ескі иесінің push-ы жаңа иесіне келмеуі үшін);
+        //  * push тілін серверге жеткізу;
+        //  * орындаушы профилін профильмен ҚАТАР жүктей бастау (бұрын
+        //    профиль келгеннен кейін ғана сұралатын — ашылуға тағы бір
+        //    желі айналымы қосылатын).
+        // Бұрын бұлар AuthGate-тің ӘР build-інде (әр токен жаңаруында)
+        // қайталанатын — артық желі сұраулары.
+        final uid = session.user.id;
+        if (_bootstrappedUid != uid) {
+          _bootstrappedUid = uid;
+          unawaited(Push.init());
+          unawaited(Lang.syncToServer());
+          ref.read(myExecutorProfileProvider);
+        }
         return const _RoleRouter();
       },
     );
@@ -302,7 +313,10 @@ class _RoleRouter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(myProfileProvider);
 
+    // Қайта жүктеу кезінде (invalidate, аккаунт деректері жаңарғанда)
+    // бұрынғы мән КӨРСЕТІЛЕ береді — бүкіл қосымша splash-қа ауыспайды.
     return profile.when(
+      skipLoadingOnReload: true,
       loading: () => const _Splash(),
       error: (e, st) =>
           _RetryScreen(onRetry: () => ref.invalidate(myProfileProvider)),
@@ -310,7 +324,6 @@ class _RoleRouter extends ConsumerWidget {
         if (p == null) {
           return _RetryScreen(onRetry: () => ref.invalidate(myProfileProvider));
         }
-        unawaited(Push.init());
         // Сенім деңгейі бойынша бұғатталған аккаунт (0024) — модератордан
         // басқа ешкім қосымшаға мүлдем кіре алмайды.
         if (p.isBlocked && p.role != 'moderator') {
@@ -337,6 +350,7 @@ class _ExecutorRouter extends ConsumerWidget {
     final ep = ref.watch(myExecutorProfileProvider);
 
     return ep.when(
+      skipLoadingOnReload: true,
       loading: () => const _Splash(),
       error: (e, st) => _RetryScreen(
         onRetry: () => ref.invalidate(myExecutorProfileProvider),

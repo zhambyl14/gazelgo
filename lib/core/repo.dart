@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -242,7 +243,30 @@ class Repo {
     final id = uid;
     if (id == null) return null;
     final m = await c.from('profiles').select().eq('id', id).maybeSingle();
+    unawaited(Prefs.setCachedProfile(id, m));
     return m == null ? null : Profile.fromMap(m);
+  }
+
+  /// Құрылғыда сақталған соңғы профиль (суық іске қосуда бірден көрсету
+  /// үшін). Жоқ не бүлінген болса — `null`.
+  static Future<Profile?> cachedProfile(String id) async {
+    final m = await Prefs.cachedProfile(id);
+    if (m == null) return null;
+    try {
+      return Profile.fromMap(m);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<ExecutorProfile?> cachedExecutorProfile(String id) async {
+    final m = await Prefs.cachedExecProfile(id);
+    if (m == null) return null;
+    try {
+      return ExecutorProfile.fromMap(m);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<Profile?> profileOf(String id) async {
@@ -406,6 +430,7 @@ class Repo {
         .select()
         .eq('user_id', id)
         .maybeSingle();
+    unawaited(Prefs.setCachedExecProfile(id, m));
     return m == null ? null : ExecutorProfile.fromMap(m);
   }
 
@@ -567,8 +592,10 @@ class Repo {
   static Future<String> supportWhatsApp() async {
     try {
       final res = await c.rpc('support_contact');
-      final n = (res is Map ? '${res['whatsapp'] ?? ''}' : '')
-          .replaceAll(RegExp(r'\D'), '');
+      final n = (res is Map ? '${res['whatsapp'] ?? ''}' : '').replaceAll(
+        RegExp(r'\D'),
+        '',
+      );
       if (n.length >= 10) return n;
     } catch (_) {}
     return Env.supportWhatsApp;
@@ -1759,14 +1786,70 @@ final authStateProvider = StreamProvider<AuthState>(
   (ref) => Supabase.instance.client.auth.onAuthStateChange,
 );
 
-final myProfileProvider = FutureProvider<Profile?>((ref) {
-  ref.watch(authStateProvider);
-  return Repo.myProfile();
+/// Кірген пайдаланушының id-і (кірмеген — `null`).
+///
+/// Профиль провайдерлері [authStateProvider]-ге емес, ОСЫҒАН тәуелді.
+/// Supabase токенді жаңартқан сайын (шамамен сағат сайын, қосымшаға қайта
+/// оралғанда) жаңа AuthState келеді, бірақ id сол күйі қалады — Riverpod
+/// бірдей мәнді тәуелділерге жібермейді. Бұрын әр токен жаңаруында профиль
+/// қайта сұралып, `_RoleRouter` бүкіл қосымшаны splash-қа ауыстыратын:
+/// ашық тұрған экран (лента, карта) басынан қайта салынатын.
+final authUidProvider = Provider<String?>((ref) {
+  final auth = ref.watch(authStateProvider);
+  return auth.valueOrNull?.session?.user.id ??
+      Supabase.instance.client.auth.currentUser?.id;
 });
 
-final myExecutorProfileProvider = FutureProvider<ExecutorProfile?>((ref) {
-  ref.watch(authStateProvider);
-  return Repo.myExecutorProfile();
+/// Суық іске қосу (қосымшаның алғашқы ашылуы) әлі өтпеді ме — тек сол
+/// сәтте кэштелген профиль бірден беріледі. Кейінгі жүктеулер (invalidate,
+/// аккаунт ауысуы) ӘРҚАШАН серверден: «күйін тексеру» сияқты ағындар
+/// ескі мәнді алмауы керек.
+bool _profileColdStart = true;
+bool _execProfileColdStart = true;
+
+/// Менің профилім. Қосымша ашылғанда — алдымен құрылғыдағы соңғы белгілі
+/// профиль (желіні күтпей, бірден дұрыс экран ашылады), сосын сервердегі
+/// жаңасы. Кэш болып, сервер жауап бермесе (желі жоқ) — кэш қалады.
+final myProfileProvider = StreamProvider<Profile?>((ref) async* {
+  final id = ref.watch(authUidProvider);
+  if (id == null) {
+    yield null;
+    return;
+  }
+  if (_profileColdStart) {
+    _profileColdStart = false;
+    final cached = await Repo.cachedProfile(id);
+    if (cached != null) {
+      yield cached;
+      try {
+        yield await Repo.myProfile();
+      } catch (_) {}
+      return;
+    }
+  }
+  yield await Repo.myProfile();
+});
+
+final myExecutorProfileProvider = StreamProvider<ExecutorProfile?>((
+  ref,
+) async* {
+  final id = ref.watch(authUidProvider);
+  if (id == null) {
+    yield null;
+    return;
+  }
+  if (_execProfileColdStart) {
+    _execProfileColdStart = false;
+    final cached = await Repo.cachedExecutorProfile(id);
+    if (cached != null) {
+      yield cached;
+      try {
+        yield await Repo.myExecutorProfile();
+      } catch (_) {}
+      return;
+    }
+  }
+  yield await Repo.myExecutorProfile();
 });
 
 final appConfigProvider = FutureProvider<AppConfig>((ref) async {
