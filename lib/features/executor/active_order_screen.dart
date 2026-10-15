@@ -288,6 +288,11 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                     onNavigate: o.isActive ? _navigate : null,
                   ),
                 ),
+                // Заказ құны — маршрут пен навигация батырмаларынан КЕЙІН:
+                // жолда орындаушыға ең алдымен «қазір не істеймін / қайда
+                // барамын» керек, ақы — есеп айырысқанда ғана.
+                const SizedBox(height: 10),
+                _TripPriceCard(order: o),
                 if (ExecOrderNotes.hasContent(o)) ...[
                   const SizedBox(height: 10),
                   ExecOrderNotes(order: o),
@@ -371,8 +376,9 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 //  BAҒА + САПАР ПРОГРЕСІ
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Экранның басындағы қою «hero» карточка: заказ құны, көлік түрі,
-/// қашықтық және сапардың кезеңдер жолағы ([_TripStepper]).
+/// Экранның басындағы қою «hero» карточка: көлік түрі, қашықтық және
+/// сапардың кезеңдер жолағы ([_TripStepper]). Заказ құны мұнда ЕМЕС —
+/// ол маршрут пен навигациядан кейін, [_TripPriceCard]-та тұрады.
 ///
 /// Статус чипі әдейі ЖОҚ: кезеңдер жолағы қай қадамда тұрғанын әлдеқайда
 /// айқын көрсетеді — екеуі қатар тұрса, бір ақпарат екі рет қайталанар еді.
@@ -383,11 +389,6 @@ class _TripHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final meta = <(IconData, String)>[
-      if (o.distanceKm > 0)
-        (Icons.straighten_rounded, '${o.distanceKm.toStringAsFixed(1)} км'),
-      if (o.intercity) (Icons.alt_route_rounded, t('Қалааралық')),
-    ];
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
@@ -398,66 +399,20 @@ class _TripHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t('Заказ құны'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.62),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        fmtT(o.displayPrice),
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          height: 1.15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.6,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _HeroChip(
+                icon: o.vehicleType == VehicleType.taxi
+                    ? Icons.local_taxi_rounded
+                    : Icons.local_shipping_rounded,
+                text: o.vehicleType.label,
+                strong: true,
               ),
-              const SizedBox(width: 10),
-              // Ені шектеулі: баға (Expanded) қалған кеңістікті толық алады.
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 140),
-                child: _HeroChip(
-                  icon: o.vehicleType == VehicleType.taxi
-                      ? Icons.local_taxi_rounded
-                      : Icons.local_shipping_rounded,
-                  text: o.vehicleType.label,
-                  strong: true,
-                ),
-              ),
+              for (final m in _tripMeta(o)) _HeroChip(icon: m.$1, text: m.$2),
             ],
           ),
-          if (meta.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final m in meta) _HeroChip(icon: m.$1, text: m.$2),
-              ],
-            ),
-          ],
           if (o.status != 'cancelled') ...[
             const SizedBox(height: 18),
             _TripStepper(
@@ -465,6 +420,74 @@ class _TripHero extends StatelessWidget {
               taxi: o.vehicleType == VehicleType.taxi,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Сапардың қысқа сипаттамасы (қашықтық, қалааралық) — hero чиптері үшін.
+List<(IconData, String)> _tripMeta(Order o) => [
+  if (o.distanceKm > 0)
+    (Icons.straighten_rounded, Geo.formatDistance(o.distanceKm)),
+  if (o.intercity) (Icons.alt_route_rounded, t('Қалааралық')),
+];
+
+/// Заказ құны — маршрут пен навигация батырмаларының АСТЫНДА.
+class _TripPriceCard extends StatelessWidget {
+  final Order order;
+  const _TripPriceCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Gz.yellow.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.payments_rounded,
+              color: Gz.yellowDeep,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              t('Заказ құны'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Gz.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                fmtT(order.displayPrice),
+                maxLines: 1,
+                style: const TextStyle(
+                  color: Gz.ink,
+                  fontSize: 24,
+                  height: 1.1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
