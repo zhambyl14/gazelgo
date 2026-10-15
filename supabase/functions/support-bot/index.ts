@@ -124,6 +124,18 @@ async function handle(threadId: string) {
     return { escalated: "LIMIT" };
   }
 
+  // Сәлемдесу / рахмет — модельсіз, ДАЙЫН мәтінмен. Бұрын «сәлем» деген
+  // сайын модель жауап құрастыратын да, қазақшада қате жіберетін
+  // («Сәлеметсізсіз», «қолсымшасын»). Дайын мәтін әрі қатесіз, әрі тез.
+  const lastMsg = msgs[msgs.length - 1];
+  if (lastMsg?.sender_role === "user") {
+    const quick = quickReply(lastMsg.body ?? "", user?.lang, msgs);
+    if (quick) {
+      await sayInChat(threadId, quick);
+      return { ok: true, reply: quick, quick: true };
+    }
+  }
+
   let orderInfo = "";
   if (thread.order_id) {
     const { data: o } = await admin
@@ -147,6 +159,9 @@ async function handle(threadId: string) {
   // Қосымша туралы білім базасы + модератор баптауының ТІРІ күйі. Мұнсыз
   // бот жаңа фичаларды «білмейтін» (төмендегі KB түсініктемесін қара).
   const knowledge = await buildKnowledge(cfg);
+  // Пайдаланушының НАҚТЫ күйі: бот «өтініміңіз тексеруде», «балансыңыз
+  // 0 ₸», «соңғы заказыңыз іздеуде» деп нақты жауап бере алуы үшін.
+  const facts = await userFacts(thread.user_id, user?.role);
 
   const roleLabel = user?.role === "executor" ? "орындаушы" : "клиент";
   const transcript = msgs
@@ -163,6 +178,8 @@ ${knowledge}
 
 Пайдаланушы: ${user?.full_name ?? "белгісіз"} (${roleLabel})
 ${orderInfo}
+USER FACTS (live data about THIS user — use it to answer concretely):
+${facts}
 
 Сөйлесу тарихы (ескіден жаңаға):
 ${transcript}
@@ -180,7 +197,7 @@ ${transcript}
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.3,
+          temperature: 0.2,
           responseMimeType: "application/json",
           responseSchema: REPLY_SCHEMA,
         },
@@ -339,6 +356,219 @@ async function escalate(
 }
 
 // ============================================================================
+// Дайын жауаптар — сәлемдесу мен рахметке модель шақырылмайды
+// ============================================================================
+const GREET_CORE = new Set([
+  "салем", "сәлем", "салам", "сәлеметсіз", "салеметсиз", "салеметсіз",
+  "сәлеметсиз", "сәлеметсізбе", "салеметсизбе", "салеметсізбе",
+  "саламатсыз", "сәлематсыз", "ассалаумағалейкум", "ассалаумалейкум",
+  "ассаламуалейкум", "ассалаумаликум", "қайырлы", "здравствуйте",
+  "здраствуйте", "привет", "добрый", "доброе", "hi", "hello",
+]);
+const GREET_EXTRA = new Set([
+  "бе", "ба", "күн", "таң", "кеш", "день", "вечер", "утро", "қалайсыз",
+  "қалай", "жағдай", "как", "дела", "ау",
+]);
+const THANKS_CORE = new Set([
+  "рахмет", "рақмет", "рахмат", "рахметт", "спасибо", "благодарю", "спс",
+  "ок", "окей", "ok", "түсіндім", "түсінікті", "понятно", "ясно",
+]);
+const THANKS_EXTRA = new Set([
+  "көп", "үлкен", "сізге", "большое", "вам", "жарайды", "жақсы", "хорошо",
+]);
+const RU_WORDS = new Set([
+  "здравствуйте", "здраствуйте", "привет", "добрый", "доброе", "спасибо",
+  "благодарю", "понятно", "ясно", "хорошо", "как", "что", "почему", "не",
+  "я", "мне", "у", "меня", "можно", "нет", "да",
+]);
+
+function tokens(text: string): string[] {
+  return text.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/)
+    .filter(Boolean);
+}
+
+/// Пайдаланушы қай тілде жазды: қазақ әріптері → kk; орысша сөз → ru;
+/// әйтпесе профиль тілі.
+function detectLang(text: string, profileLang?: string | null): "kk" | "ru" {
+  if (/[әғқңөұүһі]/i.test(text)) return "kk";
+  if (tokens(text).some((w) => RU_WORDS.has(w))) return "ru";
+  return profileLang === "ru" ? "ru" : "kk";
+}
+
+function onlyWords(ws: string[], core: Set<string>, extra: Set<string>) {
+  return ws.length > 0 && ws.length <= 5 && ws.some((w) => core.has(w)) &&
+    ws.every((w) => core.has(w) || extra.has(w));
+}
+
+const GREET_KK = "Сәлеметсіз бе! Қандай мәселе бойынша көмек керек? "
+  + "Қысқаша жазыңыз — мысалы: тіркелу, заказ, баланс, тариф.";
+const GREET_RU = "Здравствуйте! С каким вопросом помочь? Напишите коротко — "
+  + "например: регистрация, заказ, баланс, тариф.";
+const THANKS_KK = "Оқасы жоқ! Тағы сұрақ болса, осында жазыңыз.";
+const THANKS_RU = "Пожалуйста! Если появятся вопросы — пишите сюда.";
+
+function quickReply(
+  text: string,
+  profileLang: string | null | undefined,
+  msgs: Msg[],
+): string | null {
+  const ws = tokens(text);
+  const ru = detectLang(text, profileLang) === "ru";
+  if (onlyWords(ws, GREET_CORE, GREET_EXTRA)) {
+    // Қолдау бұрын сәлемдесіп қойған болса — қайта сәлемдеспейміз.
+    const greeted = msgs.some((m) =>
+      m.sender_role !== "user" && (m.body === GREET_KK || m.body === GREET_RU)
+    );
+    if (greeted) {
+      return ru
+        ? "Слушаем вас — опишите, пожалуйста, вопрос."
+        : "Тыңдап тұрмыз — мәселеңізді қысқаша жазыңыз.";
+    }
+    return ru ? GREET_RU : GREET_KK;
+  }
+  if (onlyWords(ws, THANKS_CORE, THANKS_EXTRA)) {
+    return ru ? THANKS_RU : THANKS_KK;
+  }
+  return null;
+}
+
+// ============================================================================
+// Пайдаланушының НАҚТЫ күйі (өтінім, баланс, тариф, соңғы заказ)
+// ============================================================================
+const EXEC_STATUS: Record<string, string> = {
+  pending: "ТЕКСЕРУДЕ (модератор әлі қарап жатыр)",
+  approved: "РАСТАЛҒАН",
+  rejected: "ҚАБЫЛДАНБАҒАН",
+  blocked: "БҰҒАТТАЛҒАН",
+};
+const TOPUP_STATUS: Record<string, string> = {
+  pending: "КҮТУДЕ (әлі тексерілмеген)",
+  approved: "РАСТАЛДЫ",
+  rejected: "ҚАБЫЛДАНБАДЫ",
+};
+const ORDER_STATUS: Record<string, string> = {
+  searching: "орындаушы іздеуде",
+  accepted: "қабылданды",
+  arrived: "орындаушы келді",
+  loading: "тиеу",
+  in_transit: "жолда",
+  completed: "аяқталды",
+  cancelled: "болдырылмады",
+  expired: "мерзімі өтті (ешкім алмады)",
+};
+
+function fmtTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("ru-RU", {
+      timeZone: "Asia/Almaty",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+async function userFacts(
+  userId: string,
+  role: string | null | undefined,
+): Promise<string> {
+  const out: string[] = [];
+  try {
+    const { data: p } = await admin
+      .from("profiles")
+      .select("role, has_client_role, has_executor_role, blocked_at, block_reason")
+      .eq("id", userId)
+      .maybeSingle();
+    if (p?.blocked_at) {
+      out.push(`· Аккаунт БҰҒАТТАЛҒАН${p.block_reason ? `: ${p.block_reason}` : ""}`);
+    }
+    const roles = [
+      p?.has_client_role ? "клиент" : null,
+      p?.has_executor_role ? "орындаушы" : null,
+    ].filter(Boolean).join(", ");
+    out.push(
+      `· Белсенді рөл: ${p?.role === "executor" ? "орындаушы" : "клиент"}`
+        + `${roles ? `; ашылған рөлдер: ${roles}` : ""}`,
+    );
+
+    const { data: ep } = await admin
+      .from("executor_profiles")
+      .select("status, moderation_comment, docs_update_requested, "
+        + "docs_update_comment, balance, vehicle_type, city, order_push_enabled")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (ep) {
+      out.push(
+        `· Орындаушы өтінімі: ${EXEC_STATUS[ep.status] ?? ep.status}`
+          + `${ep.moderation_comment ? ` (модератор пікірі: ${ep.moderation_comment})` : ""}`,
+      );
+      if (ep.docs_update_requested) {
+        out.push(
+          `· Модератор құжатты ЖАҢАРТУДЫ сұраған`
+            + `${ep.docs_update_comment ? `: ${ep.docs_update_comment}` : ""}`,
+        );
+      }
+      out.push(
+        `· Баланс: ${ep.balance ?? 0} ₸; көлік түрі: ${ep.vehicle_type ?? "—"}; `
+          + `қала: ${ep.city ?? "—"}; жаңа заказ хабарламасы: `
+          + `${ep.order_push_enabled === false ? "ӨШІРУЛІ" : "қосулы"}`,
+      );
+      const { data: ts } = await admin
+        .from("tariff_sessions")
+        .select("expires_at, orders_left, is_trial")
+        .eq("executor_id", userId)
+        .gt("expires_at", new Date().toISOString())
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      out.push(
+        ts
+          ? `· Белсенді тариф: БАР, ${fmtTime(ts.expires_at)} дейін; қалған заказ: `
+            + `${ts.is_trial ? "сынақ тарифі" : ts.orders_left}`
+          : "· Белсенді тариф: ЖОҚ (ұсыныс беру үшін тариф алу керек)",
+      );
+      const { data: tr } = await admin
+        .from("topup_requests")
+        .select("amount, status, note, created_at")
+        .eq("executor_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (tr) {
+        out.push(
+          `· Соңғы толтыру сұранымы: ${tr.amount} ₸, `
+            + `${TOPUP_STATUS[tr.status] ?? tr.status}`
+            + `${tr.note ? ` (себебі: ${tr.note})` : ""}, ${fmtTime(tr.created_at)}`,
+        );
+      }
+    } else if (role === "executor" || p?.has_executor_role) {
+      out.push("· Орындаушы өтінімі: ӘЛІ ТОЛТЫРЫЛМАҒАН");
+    }
+
+    const { data: o } = await admin
+      .from("orders")
+      .select("status, from_address, to_address, created_at")
+      .eq("client_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (o) {
+      out.push(
+        `· Клиент ретінде соңғы заказы: ${ORDER_STATUS[o.status] ?? o.status}, `
+          + `${o.from_address} → ${o.to_address}, ${fmtTime(o.created_at)}`,
+      );
+    }
+  } catch (e) {
+    console.error("USER_FACTS_ERROR", e);
+  }
+  return out.length ? out.join("\n") : "· (мәлімет жоқ)";
+}
+
+// ============================================================================
 // БІЛІМ БАЗАСЫ — қосымшаның НАҚТЫ мүмкіндіктері
 // ============================================================================
 // Бұрын промптта тек ТАҚЫРЫП ТІЗІМІ тұратын («заказ, тариф, баланс…»), ал
@@ -354,8 +584,9 @@ async function escalate(
 // ол осының СОҢЫНА қосылады.
 const FEATURES_KB = `
 РӨЛДЕР. Бір аккаунт әрі КЛИЕНТ, әрі ОРЫНДАУШЫ бола алады. Ауысу —
-sidebar-дағы (логотип түймесі) «Рөлді ауыстыру» арқылы. Орындаушы рөлі
-бірінші рет ашылғанда өтінім (көлік түрі + құжаттар) толтырылады.
+мәзірдегі (жоғарғы сол жақтағы логотип) «Орындаушыға ауысу» / «Клиентке
+ауысу» арқылы. Орындаушы рөлі бірінші рет ашылғанда («Орындаушы болу»)
+өтінім (көлік түрі + құжаттар) толтырылады.
 
 КЛИЕНТ ЖАҒЫ
 · Заказ беру: қайдан→қайда, көлік түрі, жүк сипаттамасы, өз бағасын қоюы
@@ -376,8 +607,9 @@ sidebar-дағы (логотип түймесі) «Рөлді ауыстыру»
   бөгеледі: ол үшін өтінім расталуы + белсенді тариф керек.
 · Тариф = бір АУЫСЫМ, ішінде шектеулі заказ саны. Балансынан сатып
   алынады. Ауысым бітсе не заказ саны таусылса — жаңасын алады.
-· Баланс: Kaspi арқылы толтырылады, чек/түбіртек Telegram боты арқылы
-  тексеріледі. Ақша тек тариф алуға жұмсалады.
+· Баланс: Kaspi арқылы толтырылады, чек скриншоты қосымшада «Баланс»
+  бетінде тіркеледі, содан кейін тексеріледі. Ақша тек тариф алуға
+  жұмсалады.
 · Қала ережесі: ҚАЛА ІШІНДЕГІ заказды тек сол қаладағы орындаушы алады;
   ҚАЛААРАЛЫҚ заказды кез келген қаладағы орындаушы ала алады.
 · Табыс: күндік/айлық есеп профильде.
@@ -388,6 +620,44 @@ sidebar-дағы (логотип түймесі) «Рөлді ауыстыру»
   (көлік/жүк/қызмет) жариялайды, шағымдануға болады.
 · Қолдау чаты — осы чат. Тіл: қазақша/орысша, профильден ауысады.
 · Аккаунтты өшіру, құпиялылық саясаты — профиль → Баптаулар.
+
+ЖИІ МӘСЕЛЕЛЕР ЖӘНЕ НАҚТЫ ШЕШІМІ (қадамдарды осы түймелер атымен бер)
+· Тіркеле алмаймын / нөмір расталмайды: нөмір SMS-пен емес, Telegram
+  арқылы расталады (тегін). «Тіркелу» → «Telegram арқылы растау» →
+  Telegram-да ботты ашып «Start» → «📱 Нөмірімді бөлісу». Сосын қосымшаға
+  оралыңыз — «Нөмір расталды» шығады, шықпаса «Қайта тексеру». Telegram
+  жоқ болса — алдымен «Telegram орнату». Сілтеме ашылмаса: Telegram-да
+  @tasuappbot ботын тауып, экрандағы кодты (/start …) жіберіңіз.
+· Құпиясөзді ұмыттым: кіру бетінде «Құпиясөзді ұмыттыңыз ба?» → Telegram
+  арқылы растау → жаңа құпиясөз (кемінде 6 таңба) → «Құпиясөзді жаңарту».
+· Кіре алмаймын: нөмір дұрыс па (+7 7XX…), құпиясөз кемінде 6 таңба.
+  Болмаса — «Құпиясөзді ұмыттыңыз ба?».
+· Балансты толтыру (орындаушы): «Баланс» → соманы жазу → «Kaspi-мен
+  төлеу» → Kaspi-де төлеу → чек скриншотын тіркеу → «Сұраным жіберу».
+  Тексерілген соң баланс толады. Күйі «Толтыру сұранымдары» тізімінде:
+  «Күтуде» / «Расталды» / «Қабылданбады».
+· Баланс толмады: «Толтыру сұранымдары»-нан күйін қараңыз. «Қабылданбады»
+  болса — себебі жазылады, дұрыс чекпен қайта жіберіңіз. «Күтуде» ұзақ
+  тұрса (бірнеше сағат) — адам қарауы керек.
+· Ұсыныс бере алмаймын (орындаушы): өтінім РАСТАЛҒАН болуы және белсенді
+  ТАРИФ болуы керек. Тариф балансынан сатып алынады.
+· Заказыма ешкім ұсыныс бермейді (клиент): көлік түрі дұрыс таңдалғанын
+  тексеріңіз, бағаны сәл көтеріп көріңіз. Жаңа заказ туралы сай
+  орындаушыларға хабарлама кетеді — бірнеше минут күтіңіз.
+· Хабарламалар келмейді: телефон баптауларында Tasu-ға хабарлама рұқсаты
+  қосулы болсын, қосымшаны толық жауып қайта ашыңыз. Орындаушы: басты
+  беттің жоғарғы жолағындағы «Уведомление» қосқышы қосулы болсын. Сайт
+  нұсқасы: кіргеннен кейін төменгі «Іске қосу» батырмасын басыңыз;
+  iPhone-да алдымен Safari-де «Бөлісу» → «Басты экранға қосу», сосын
+  сол белгішеден ашыңыз.
+· Адрес табылмайды: іздеу жолына көше мен үй нөмірін жазыңыз (мыс.
+  «Абая 15»). Тізімде болмаса — «Осыны қолдану» не «Картадан белгілеу» →
+  пинді дәл жерге апарып «Осы жерді таңдау».
+· Өтінім қабылданбады / құжат сұралды: модератор пікірін оқып, құжатты
+  түзетіп «Өтінімді қайта жіберу».
+· Рөл ауыстыру: мәзір (жоғарғы сол жақтағы логотип) → «Орындаушыға
+  ауысу» / «Клиентке ауысу». Орындаушы рөлі әлі ашылмаса — «Орындаушы
+  болу».
 `;
 
 // Модератор баптауының ТІРІ күйі — қосулы/өшірулі фича туралы дұрыс
@@ -398,7 +668,7 @@ async function buildKnowledge(cfg: Record<string, unknown>): Promise<string> {
     .in("key", [
       "listings", "taxi", "bonus", "repeat_order", "pricing_hint",
       "scheduled_orders", "live_tracking", "share_trip", "referral",
-      "tariffs",
+      "tariffs", "payment",
     ]);
   const s: Record<string, Rec> = {};
   for (const r of (rows ?? []) as { key: string; value: unknown }[]) {
@@ -452,6 +722,7 @@ async function buildKnowledge(cfg: Record<string, unknown>): Promise<string> {
         + `Бонус тек БАЛАНСҚА түседі, қолма-қол шешіп алынбайды.`
       : `· Орындаушы бонус бағдарламасы: ӨШІРУЛІ`,
     `· Бір ауысымдағы заказ саны: ${num("tariffs", "orders_per_shift", 10)}`,
+    `· Балансты ең аз толтыру сомасы: ${num("payment", "min_topup", 500)} ₸`,
   ];
 
   const extra = typeof cfg.knowledge === "string" ? cfg.knowledge.trim() : "";
@@ -503,10 +774,16 @@ Tasu question). Out of scope includes, among others: general knowledge,
 news, weather, politics, religion, medicine, law unrelated to Tasu, maths
 or homework, programming, other companies or apps, translation, writing
 or rewriting text for the user, jokes, and personal chit-chat.
-For an out-of-scope message: reply with ONE short polite sentence saying
-you only help with Tasu and inviting their Tasu question, and set
-"needs_human": false. Such messages must NEVER be escalated — a human has
-nothing to add to them either.
+For an out-of-scope message reply with EXACTLY this sentence (in the user's
+language) and set "needs_human": false:
+  KK: «Кешіріңіз, мен тек Tasu қосымшасы бойынша көмектесемін. Қосымша туралы сұрағыңыз болса, жазыңыз.»
+  RU: «Извините, я помогаю только по приложению Tasu. Если есть вопрос по приложению — напишите.»
+Such messages must NEVER be escalated — a human has nothing to add to them.
+
+UNCLEAR messages (random letters, a single word, "?", something you cannot
+understand) are NOT out of scope: ask what the problem is in ONE short
+sentence, e.g. KK «Қандай мәселе бойынша көмек керек? Қысқаша жазыңыз.» /
+RU «Подскажите, с чем нужна помощь? Опишите коротко.»
 
 ABSOLUTE RULES:
 1. You have NO authority to change an order's status, issue a refund, block
@@ -537,7 +814,21 @@ ABSOLUTE RULES:
 7. Write "reasoning" ALWAYS IN KAZAKH, regardless of the user's language —
    it is shown only to the (Kazakh-speaking) moderator team, never to the
    user. Keep it to one short sentence: what the user wants and why you
-   escalated (or why you answered directly).`;
+   escalated (or why you answered directly).
+8. SOLVE THE ACTUAL PROBLEM. When the user describes a problem, give the
+   fix as 1-4 short numbered steps, naming buttons/screens EXACTLY as
+   written in KNOWLEDGE, in «» quotes. Never invent a button, screen or
+   rule that KNOWLEDGE does not mention. Use USER FACTS to be specific:
+   e.g. if the application is rejected, quote the moderator's comment; if
+   there is no active tariff, say that is why offers are blocked; if the
+   last top-up is pending/rejected, say so. Do not add generic filler
+   ("we are always happy to help", "thank you for contacting us").
+9. LANGUAGE QUALITY. Write correct, natural, simple Kazakh (or Russian) —
+   short sentences, no spelling mistakes. Use these exact terms in Kazakh:
+   «қосымша» (the app — never «қолданба» or «қолсымша»), «заказ»,
+   «орындаушы», «клиент», «тариф», «баланс», «құпиясөз», «өтінім»,
+   «хабарлама». If you greet, write exactly «Сәлеметсіз бе!» — but do NOT
+   greet at all if support already greeted earlier in the transcript.`;
 
 const REPLY_SCHEMA = {
   type: "OBJECT",
