@@ -707,7 +707,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 const SizedBox(height: 6),
                                 _EditableAddr(
                                   mark: RoutePointMark.stop(i + 1),
-                                  label: t('Қайда'),
+                                  label: '${t('Аялдама')} ${i + 1}',
                                   value: _stops[i].address,
                                   onTap: () => _editStop(i),
                                   onRemove: () => _removeStop(i),
@@ -1196,7 +1196,7 @@ class _EditableAddr extends StatelessWidget {
                   ),
                   Text(
                     value,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 
 import 'firebase_options.dart';
 import 'notify.dart';
@@ -97,6 +100,11 @@ class Push {
       // Firebase жобасы толық бапталмаған/платформа қолдамайды — өшірулі
       // қалады, қосымша бұзылмайды.
       return;
+    }
+
+    if (!_lifecycleAttached) {
+      _lifecycleAttached = true;
+      WidgetsBinding.instance.addObserver(_PushLifecycle());
     }
 
     final messaging = FirebaseMessaging.instance;
@@ -217,12 +225,13 @@ class Push {
           return;
         }
       }
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
+      final token = await _fetchToken();
+      if (token == null) throw StateError('FCM token is null');
       // `_saveToken` қатені жұтады — мұнда тікелей шақырамыз, сәтсіз болса
       // төмендегі `_ready` орнатылмай, резерв уведомлениелер қосулы қалады.
       await Repo.savePushToken(token, _platformName);
       _syncedUid = uid;
+      _retryAttempt = 0;
       // Токен нақты сақталған соң ғана «push жұмыс істейді» деп есептейміз:
       // әйтпесе (Play Services жоқ, желі жоқ т.б.) сервер бұл құрылғыға
       // жете алмайды, ал қосымша ішіндегі резерв уведомлениелер де
@@ -230,7 +239,60 @@ class Push {
       _ready = true;
     } catch (e) {
       debugPrint('Push: token sync failed: $e');
+      _scheduleRetry();
     }
+  }
+
+  /// iOS-та FCM токенін APNs токенінсіз алу мүмкін емес, ал APNs токені
+  /// қосымша ашылғаннан кейін бірнеше секундта ғана келеді — `getToken()`
+  /// содан бұрын шақырылса `apns-token-not-set` қатесімен құлайды. Бұрын
+  /// осы қате жұтылып, қайталанбайтын: iPhone-да токен серверге мүлдем
+  /// тіркелмей, push келмей қалатын (нақты табылған ақау). Сондықтан
+  /// APNs токенін 20 секундқа дейін күтеміз.
+  static Future<String?> _fetchToken() async {
+    final messaging = FirebaseMessaging.instance;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      for (var i = 0; i < 20; i++) {
+        String? apns;
+        try {
+          apns = await messaging.getAPNSToken();
+        } catch (_) {}
+        if (apns != null) break;
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+    }
+    return messaging.getToken();
+  }
+
+  static bool _lifecycleAttached = false;
+  static int _retryAttempt = 0;
+  static Timer? _retryTimer;
+
+  /// Токенді тіркеу сәтсіз болса (желі жоқ, APNs кешікті) — қайта
+  /// байқаймыз: 10 с, 30 с, 90 с, 5 мин, 15 мин.
+  static void _scheduleRetry() {
+    const delays = [10, 30, 90, 300, 900];
+    if (_retryAttempt >= delays.length) return;
+    _retryTimer?.cancel();
+    final wait = Duration(seconds: delays[_retryAttempt++]);
+    _retryTimer = Timer(wait, () => unawaited(syncToken()));
+  }
+
+  static DateTime? _lastResume;
+
+  /// Қосымша фоннан оралғанда токенді серверге қайта бекітеді (кемінде
+  /// 10 минут сайын): сервер ескірген токенді өшірсе не желі үзілсе де,
+  /// келесі ашылғанда push қайта қалпына келеді.
+  static void onAppResumed() {
+    if (!_initStarted) return;
+    final now = DateTime.now();
+    final last = _lastResume;
+    if (last != null && now.difference(last) < const Duration(minutes: 10)) {
+      return;
+    }
+    _lastResume = now;
+    _syncedUid = null;
+    unawaited(syncToken());
   }
 
   /// Аккаунттан шыққанда токенді серверден өшіру: әйтпесе бұл құрылғыға
@@ -277,5 +339,13 @@ class Push {
     } catch (e) {
       debugPrint('Push: refreshed token RPC failed: $e');
     }
+  }
+}
+
+/// Қосымша фоннан оралғанда токенді қайта бекітеді ([Push.onAppResumed]).
+class _PushLifecycle with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) Push.onAppResumed();
   }
 }
