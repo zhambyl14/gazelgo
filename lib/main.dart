@@ -24,7 +24,10 @@ import 'features/client/track_screen.dart';
 import 'features/executor/balance_screen.dart';
 import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
-import 'features/moderator/moderator_shell.dart';
+// Модератор панелі (~10 мың жол + `image` пакеті) — КЕЙІНГЕ ҚАЛДЫРЫЛЫП
+// жүктеледі: вебте клиент/орындаушы оны мүлдем жүктемейді (main.dart.js
+// кішірейеді → ашылу жылдамырақ). Мобильде loadLibrary() бірден аяқталады.
+import 'features/moderator/moderator_shell.dart' deferred as moderator;
 import 'features/support/support_screen.dart';
 import 'shared/portrait_frame.dart';
 import 'shared/update_gate.dart';
@@ -107,13 +110,13 @@ void _navigateFromData(Map<String, dynamic> data) {
   } else if (type == 'support_reply') {
     screen = const SupportScreen();
   } else if (type == 'support_message') {
-    ModeratorShell.openTab(ModeratorShell.tabSupport);
+    _openModeratorTab(() => moderator.ModeratorShell.tabSupport);
     return;
   } else if (type == 'new_application') {
-    ModeratorShell.openTab(ModeratorShell.tabApplications);
+    _openModeratorTab(() => moderator.ModeratorShell.tabApplications);
     return;
   } else if (type == 'new_topup') {
-    ModeratorShell.openTab(ModeratorShell.tabTopups);
+    _openModeratorTab(() => moderator.ModeratorShell.tabTopups);
     return;
   } else if (type == 'topup_approved' || type == 'topup_rejected') {
     // Орындаушыға: балансы толды не өтінімі қабылданбады (0051). Бұған дейін
@@ -130,6 +133,32 @@ void _navigateFromData(Map<String, dynamic> data) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => target));
   });
+}
+
+/// Модератор кітапханасын бір рет жүктеу (кейінге қалдырылған импорт).
+final Future<void> _moderatorLib = moderator.loadLibrary();
+
+/// Модератор панелінің қойындысын ашу — кітапхана жүктелгеннен КЕЙІН
+/// (кейінге қалдырылған кітапхананың мүшесіне ерте қатынау қате береді,
+/// сол себепті индекс closure арқылы кейін оқылады).
+void _openModeratorTab(int Function() tab) {
+  _moderatorLib.then((_) => moderator.ModeratorShell.openTab(tab()));
+}
+
+/// Модератор панелі — кітапхана жүктелгенше splash.
+class _ModeratorLoader extends StatelessWidget {
+  const _ModeratorLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _moderatorLib,
+      builder: (context, snap) =>
+          snap.connectionState == ConnectionState.done && !snap.hasError
+          ? moderator.ModeratorShell()
+          : const _Splash(),
+    );
+  }
 }
 
 Future<void> main() async {
@@ -331,7 +360,7 @@ class _RoleRouter extends ConsumerWidget {
         }
         switch (p.role) {
           case 'moderator':
-            return const ModeratorShell();
+            return const _ModeratorLoader();
           case 'executor':
             return const _ExecutorRouter();
           default:
