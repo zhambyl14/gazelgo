@@ -52,7 +52,7 @@ flutter_launcher_icons:
     generate: true
   remove_alpha_ios: true
   image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#FFC400"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/icon_fg.png"
 
 # Splash БАПТАУЫ — пакеттің өзі ӘДЕЙІ dev_dependencies-те ЖОҚ.

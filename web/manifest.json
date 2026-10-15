@@ -3,7 +3,7 @@
     "short_name": "Tasu",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#FFC400",
+    "background_color": "#FFFFFF",
     "theme_color": "#FFC400",
     "description": "Tasu — жүк тасымалы және спецтехника платформасы.",
     "orientation": "portrait-primary",
