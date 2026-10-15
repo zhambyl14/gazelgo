@@ -279,9 +279,23 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   /// Таңдалған қала мен оның маңындағы нәтижелерді ғана қалдырады.
   /// (Бұрын дәл қала аты талап етілетін — сондықтан «Луговой, Абая» деп
   /// іздегенде тізім әрқашан бос болатын.)
-  List<GeoPlace> _inSelectedArea(List<GeoPlace> res) => res
-      .where((e) => Geo.sameCity(e.city, _city) || _pointInArea(e.point))
-      .toList();
+  ///
+  /// Таңдалған ҚАЛАНЫҢ ӨЗІНДЕГІ нәтижелер — алдымен; маңайдағы ауылдардың
+  /// нәтижелері (Алматыда «Абая 15» деп іздегенде Талғар, Қарғалы,
+  /// Панфилово… «улица Абая, 15») қаладағы нәтиже бар болса 3-ке дейін
+  /// қысқартылады — әйтпесе олар тізімді толтырып, дұрысын көмеді.
+  List<GeoPlace> _inSelectedArea(List<GeoPlace> res) {
+    final inArea = res
+        .where((e) => Geo.sameCity(e.city, _city) || _pointInArea(e.point))
+        .toList();
+    final own = inArea
+        .where((e) => e.city == null || Geo.sameCity(e.city, _city))
+        .toList();
+    final around = inArea
+        .where((e) => e.city != null && !Geo.sameCity(e.city, _city))
+        .toList();
+    return [...own, ...(own.isEmpty ? around : around.take(3))];
+  }
 
   /// Адрестің басындағы қала атауын алып тастайды («Тараз, Абая, 5» →
   /// «Абая, 5»), қала өрісінде онсыз да сол қала тұрғанда қайталанбауы үшін.
@@ -442,34 +456,30 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     final text = _search.text.trim();
     final city = _city;
     if (text.length < 2 || city == null) return;
-    LatLng? point = _results.isNotEmpty ? _results.first.point : null;
-    if (point == null) {
-      setState(() => _loading = true);
-      try {
-        final res = _inSelectedArea(
-          await Geo.searchStreet(city: city, street: text, near: _cityPoint),
-        );
-        point = res.isNotEmpty ? res.first.point : null;
-      } on GeoSearchException {
-        // Іздеу істемей тұр — нүктені картадан белгілеуге өтеміз (төменде).
-      }
-      if (mounted) setState(() => _loading = false);
-    }
-    if (!mounted) return;
-    if (point != null) {
-      Navigator.of(context).pop(PickedAddress(text, point, city));
-      return;
-    }
-    // Аймақ ішінен дәл табылмады → басқа облысты ЕШҚАШАН ұсынбаймыз,
-    // тек картадан дәл жерді белгілетеміз (жазған мәтін адрес болып қалады).
+    // Нүктені ЕШҚАШАН үнсіз алмаймыз: бұрын тізімнің бірінші нәтижесі
+    // алынатын, ал ол жиі БАСҚА көше болатын («Абая 15» → Көкқайнардағы
+    // Мәмбетов 15) — заказ қате жерге түсетін. Енді карта ең ықтимал
+    // жерде (терілген көшеге сәйкес нәтиже, болмаса қала ортасы) ашылады
+    // да, клиент пинді растайды. Жазған мәтіні адрес болып қалады.
+    final pq = Geo.parseStreetQuery(text);
+    final match = pq.key == null
+        ? null
+        : _results.where((p) => Geo.placeMatches(p, pq.key!)).firstOrNull;
+    await _confirmOnMap(text, match?.point ?? _center);
+  }
+
+  /// Нүктені картадан растату (адрес мәтіні — [label], өзгермейді).
+  Future<void> _confirmOnMap(String label, LatLng? at) async {
+    final city = _city;
+    FocusScope.of(context).unfocus();
     final picked = await AddressPickerScreen.pick(
       context,
-      title: '${t('Картадан белгілеңіз:')} $text',
+      title: '${t('Картадан белгілеңіз:')} $label',
       city: city,
-      initial: _center,
+      initial: at ?? _center,
     );
     if (picked == null || !mounted) return;
-    await _use(PickedAddress(text, picked.point, picked.city));
+    await _use(PickedAddress(label, picked.point, picked.city ?? city));
   }
 
   /// Табылған мекенжайды «Үй»/«Жұмыс» етіп сақтау (таңдамай-ақ).
@@ -793,12 +803,9 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
             icon: Icons.edit_location_alt_rounded,
             iconColor: Gz.green,
             title: '${t('Осыны қолдану')}: «$query»',
-            // Бұрын әрқашан «картадан белгілейсіз» делінетін, ал тізім
-            // толы болса бірінші нәтиженің нүктесі үнсіз алынатын — сөз бен
-            // іс сәйкес келмейтін.
-            subtitle: _results.isNotEmpty
-                ? t('Нүкте — тізімдегі бірінші нәтижеден')
-                : t('Картадан дәл жерін белгілейсіз'),
+            // Нүкте әрқашан картадан расталады — тізімдегі бөтен көшенің
+            // нүктесі үнсіз алынбайды.
+            subtitle: t('Картадан дәл жерін белгілейсіз'),
             onTap: _useTyped,
             strong: true,
           ),
@@ -814,19 +821,27 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
         r.city != null && r.city!.isNotEmpty && !Geo.sameCity(r.city, _city);
     final label = other ? '${r.city}, ${r.name}' : r.name;
     final picked = PickedAddress(label, r.point, _city);
+    // Көше табылды, бірақ үй нөмірі картада жоқ — нүкте көшенің бір
+    // жерінде тұр, сондықтан картадан растатамыз.
+    final approx = r.kind == Geo.kStreetApprox;
     // Бірдей «Абая, 5» әртүрлі аудандарда кездеседі — аудан атын
     // қосымша жолға жазамыз, клиент дұрысын таңдай алуы үшін.
     final district = r.district;
-    final sub = [
-      if (other) r.city,
-      if (district != null && !label.contains(district)) district,
-    ].whereType<String>().join(' · ');
+    final sub = approx
+        ? t('Үй картада жоқ — нүктені картадан растайсыз')
+        // Ауыл аты тақырыпта тұр («Талғар, улица Абая, 15») — астында
+        // қайталамаймыз, тек аудан (бар болса).
+        : (district != null &&
+                  !label.contains(district) &&
+                  !Geo.sameCity(district, r.city)
+              ? district
+              : '');
     return _row(
-      icon: Icons.place_rounded,
-      iconColor: Gz.red,
+      icon: approx ? Icons.edit_location_alt_rounded : Icons.place_rounded,
+      iconColor: approx ? Gz.blue : Gz.red,
       title: label,
       subtitle: sub.isEmpty ? null : sub,
-      onTap: () => _use(picked),
+      onTap: () => approx ? _confirmOnMap(label, r.point) : _use(picked),
       // Жаңа мекенжайды таңдамай-ақ «Үй»/«Жұмыс» етіп сақтауға болады.
       trailing: IconButton(
         tooltip: t('Сақтау'),

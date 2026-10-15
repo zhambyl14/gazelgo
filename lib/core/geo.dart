@@ -87,7 +87,118 @@ class Geo {
       safe(_searchFree('$s, $city', near: bias)),
     ]);
     if (res[0] == null && res[1] == null) throw const GeoSearchException();
-    return dedupePlaces([...?res[0], ...?res[1]]);
+    var merged = dedupePlaces([...?res[0], ...?res[1]]);
+
+    // Клиент көшені ОРЫСША, қысқа жазады («Абая 15»), ал картада ол
+    // қазақша («Абай даңғылы»), орысшасы тек «проспект Абая» түрінде
+    // сақталған. Сол себепті Nominatim «Абая 15» деп басқа көшені (ескі
+    // аты «Абая» болған Көкқайнардағы Мәмбетов көшесін) тауып беретін —
+    // заказ ҚАТЕ жерге түсетін. Нәтиже терілген көшеге сәйкес келмесе,
+    // «проспект …» / «улица …» нұсқаларымен қосымша іздейміз.
+    final pq = parseStreetQuery(s);
+    bool strong(GeoPlace p) => pq.key != null && placeMatches(p, pq.key!);
+    if (pq.key != null && !pq.hasStreetWord && !merged.any(strong)) {
+      final extra = await Future.wait([
+        safe(_searchFree('проспект $s, $city', near: bias)),
+        safe(_searchFree('улица $s, $city', near: bias)),
+      ]);
+      merged = dedupePlaces([...?extra[0], ...?extra[1], ...merged]);
+    }
+
+    // Сәйкес нәтижелер — тізімнің БАСЫНДА.
+    final good = merged.where(strong).toList();
+    final rest = merged.where((p) => !strong(p)).toList();
+    final out = [...good, ...rest];
+
+    // Үй нөмірі картада жоқ (Қазақстанда жиі), бірақ көшенің өзі табылды —
+    // «Көше, нөмір» деп ұсынамыз; таңдағанда нүкте картадан РАСТАЛАДЫ.
+    final number = pq.number;
+    if (number != null &&
+        !good.any((p) => _foldKey(p.name).contains(_foldKey(number)))) {
+      final street = good.where((p) => _streetKinds.contains(p.kind));
+      if (street.isNotEmpty) {
+        final st = street.first;
+        out.insert(
+          0,
+          GeoPlace(
+            name: '${st.name}, $number',
+            point: st.point,
+            city: st.city,
+            district: st.district,
+            kind: kStreetApprox,
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
+  /// [searchStreet] нәтижесіндегі «көше табылды, үй нөмірі картада жоқ»
+  /// жолының түрі — таңдалғанда нүкте картадан расталуы керек.
+  static const kStreetApprox = 'street_approx';
+
+  static const _streetKinds = {
+    'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential',
+    'unclassified', 'living_street', 'pedestrian', 'service', 'road',
+  };
+
+  static const _streetWords = {
+    'ул', 'улица', 'көшесі', 'көше', 'проспект', 'пр', 'просп', 'даңғылы',
+    'мкр', 'микрорайон', 'шағынаудан', 'ықшамаудан', 'переулок', 'пер',
+    'бульвар', 'шоссе', 'тас', 'жолы', 'тұйық', 'тупик', 'проезд', 'мөлтек',
+  };
+
+  /// Іздеу мәтінін талдайды: көше атының «кілті» (салыстыру үшін), үй
+  /// нөмірі және «көше/даңғыл» сияқты сөз бар-жоғы.
+  static ({String? key, String? number, bool hasStreetWord}) parseStreetQuery(
+    String q,
+  ) {
+    String? number;
+    var hasStreetWord = false;
+    String? word;
+    for (final raw in q.toLowerCase().split(RegExp(r'[\s,.]+'))) {
+      if (raw.isEmpty) continue;
+      if (number == null &&
+          RegExp(r'^\d+[а-яәғқңөұүһіa-z]?(/\d+)?$').hasMatch(raw)) {
+        number = raw;
+        continue;
+      }
+      if (_streetWords.contains(raw)) {
+        hasStreetWord = true;
+        continue;
+      }
+      final letters = _foldKey(raw);
+      if (word == null && letters.length >= 3) word = letters;
+    }
+    String? key;
+    if (word != null) {
+      // Орысша септік жалғауы әр түрлі болады («Абая», «Абаю»…) — тек
+      // түбірдің басын салыстырамыз: 3–5 әріп.
+      var n = word.length - 1;
+      if (n > 5) n = 5;
+      if (n < 3) n = 3;
+      key = word.substring(0, n > word.length ? word.length : n);
+    }
+    return (key: key, number: number, hasStreetWord: hasStreetWord);
+  }
+
+  /// Нәтиже терілген көшеге сәйкес пе (қазақ/орыс әріптерін бірдей санап).
+  static bool placeMatches(GeoPlace p, String key) =>
+      _foldKey('${p.name} ${p.district ?? ''}').contains(key);
+
+  /// Салыстыруға арналған «жиналған» түр: кіші әріп, қазақ әріптері орыс
+  /// баламасына, әріп пен цифрдан басқасы алынады.
+  static String _foldKey(String s) {
+    const map = {
+      'ә': 'а', 'ғ': 'г', 'қ': 'к', 'ң': 'н', 'ө': 'о', 'ұ': 'у', 'ү': 'у',
+      'һ': 'х', 'і': 'и', 'ё': 'е', 'й': 'и', 'ы': 'и', 'ь': '', 'ъ': '',
+    };
+    final b = StringBuffer();
+    for (final ch in s.toLowerCase().split('')) {
+      final m = map[ch] ?? ch;
+      if (RegExp(r'[a-zа-я0-9/]').hasMatch(m)) b.write(m);
+    }
+    return b.toString();
   }
 
   /// Елді мекен іздеу (қала/кент/ауыл/станция) — қала таңдау парағы үшін.
@@ -245,17 +356,21 @@ class Geo {
 
   /// Бірдей атау + бірдей маңдағы нүктелерді біріктіреді (екі сұраныстың
   /// нәтижесі қосылғанда қосарлануы мүмкін).
+  ///
+  /// «Бірдей» = атауы бірдей ЖӘНЕ 300 м-ден жақын: картада бір үйдің бірнеше
+  /// нысаны болады (ғимарат, банкомат, кіреберіс…) — бұрын тізімде
+  /// «Төле би көшесі, 59» үш рет қатар тұратын.
   static List<GeoPlace> dedupePlaces(List<GeoPlace> src) {
-    final seen = <String>{};
     final out = <GeoPlace>[];
     for (final p in src) {
-      if (p.name.trim().isEmpty) continue;
-      final key =
-          '${p.name.trim().toLowerCase()}|'
-          '${p.point.latitude.toStringAsFixed(3)},'
-          '${p.point.longitude.toStringAsFixed(3)}';
-      if (!seen.add(key)) continue;
-      out.add(p);
+      final name = p.name.trim().toLowerCase();
+      if (name.isEmpty) continue;
+      final dup = out.any(
+        (q) =>
+            q.name.trim().toLowerCase() == name &&
+            haversineKm(q.point, p.point) < 0.3,
+      );
+      if (!dup) out.add(p);
     }
     return out;
   }
