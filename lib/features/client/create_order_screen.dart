@@ -518,6 +518,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return;
     }
     try {
+      // Маршрут шамамен ғана есептелген болса (OSRM уақытша жауап бермеді —
+      // түзу қашықтық × 1.3), жарияламас бұрын НАҚТЫ жолды бір рет қайта
+      // сұраймыз: заказдың қашықтығы мен бағасы шамалау емес, нақты болсын.
+      var finalRoute = route;
+      if (!route.onRoad) {
+        final retry = await Geo.routeVia(_points.map((p) => p.point).toList());
+        if (retry.onRoad) {
+          finalRoute = retry;
+          if (mounted) setState(() => _route = retry);
+        }
+      }
       // фотоларды алдын ала жүктейміз
       final photoPaths = <String>[];
       for (var i = 0; i < _photos.length; i++) {
@@ -531,7 +542,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         toAddress: _to.address,
         toLat: _to.point.latitude,
         toLng: _to.point.longitude,
-        distanceKm: double.parse(route.distanceKm.toStringAsFixed(2)),
+        distanceKm: double.parse(finalRoute.distanceKm.toStringAsFixed(2)),
         cargo: cargoText,
         comment: _comment.text,
         clientPrice: clientPrice,
