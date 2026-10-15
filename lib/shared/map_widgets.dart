@@ -678,6 +678,11 @@ List<Polyline> _routeLines(List<LatLng> points, {required bool onRoad}) {
   ];
 }
 
+/// [_routeLines]-тың ашық нұсқасы — өз картасын салатын экрандар үшін
+/// (мыс. клиенттің іздеу экраны): маршрут барлық жерде БІРДЕЙ көрінеді.
+List<Polyline> routePolylines(List<LatLng> points, {required bool onRoad}) =>
+    _routeLines(points, onRoad: onRoad);
+
 /// Жол геометриясы жоқ кезде нүктелерді жұмсақ ДОҒАМЕН қосады (әр бөлік —
 /// квадраттық Безье қисығы, ортасынан кесінді ұзындығының 16%-ына
 /// ауытқиды).

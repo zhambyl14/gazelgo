@@ -3,47 +3,236 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
+import '../../core/lang.dart';
+import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../../shared/vehicle_picker.dart' show vehicleIcon;
 
 // ═══════════════════════════════════════════════════════════════════════
-//  «КӨЛІК ІЗДЕП ЖАТЫРМЫЗ» — КӨРНЕКІ БӨЛШЕКТЕР (Yandex Go үлгісі)
+//  «ОРЫНДАУШЫ ІЗДЕП ЖАТЫРМЫЗ» — TASU СТИЛІНДЕГІ КӨРНЕКІ БӨЛШЕКТЕР
 // ═══════════════════════════════════════════════════════════════════════
 //
-// Мұнда тек КӨРІНІС тұр: радар, «~N мин» пині, жүгіретін жолақ, панель
-// бөлшектері. Заказдың деректі, стримдер, бас тарту/ұсыныс логикасы —
-// order_detail_screen.dart ішінде. Әр анимациялы виджетте БІР ғана
-// AnimationController бар әрі ол RepaintBoundary ішінде салынады —
-// карта не панель қайта салынғанда анимация оларды қоса сүйретпейді.
+// Біздің тіл — брендтің сары-қара түсі мен логотип-пин:
+//   * картада алу нүктесінде Tasu логотип-пині тұрады, оның ұшынан
+//     «жерге» сары толқындар таралады (ашылу экранындағы анимациямен
+//     бірдей — қосымшаның өз «қолтаңбасы»);
+//   * панельдің басында сары карточка: таңдалған көлік түрі «жолмен»
+//     жүріп келе жатыр (жүк тасымалы қосымшасының өз бейнесі);
+//   * жалған «~N мин» болжамы ЖОҚ — бидинг жүйесінде орындаушы қашан
+//     жауап беретінін ешкім білмейді, сол себепті тек нақты ақпарат:
+//     өткен уақыт пен келген ұсыныстар.
+//
+// Мұнда тек КӨРІНІС тұр. Заказдың деректері, стримдер, бас тарту/ұсыныс
+// логикасы — order_detail_screen.dart ішінде. Әр анимациялы виджетте БІР
+// ғана AnimationController бар әрі ол RepaintBoundary ішінде салынады.
 
-/// Алу нүктесінің айналасындағы «радар» — бірінен соң бірі кеңейіп,
-/// өшіп отыратын концентрлі шеңберлер («іздеп жатырмыз» әсері).
+/// Алу нүктесіндегі Tasu маягы: логотип-пин + оның ұшынан таралатын сары
+/// эллипс-толқындар (перспективадағы «жер» әсері) + жұмсақ көлеңке.
 ///
-/// Өлшемі ПИКСЕЛЬМЕН берілген (картаның масштабына тәуелсіз): карта
-/// жақындатылса да, алыстатылса да радар бірдей көрінеді.
-class SearchRadar extends StatefulWidget {
-  final double size;
-  final Color color;
+/// Қорап [width]×[height]; координата — қораптың ДӘЛ ортасы (Marker-де
+/// `Alignment.center`), пиннің ұшы да сол нүктеде тұрады. Өлшемі
+/// ПИКСЕЛЬМЕН — картаның масштабына тәуелсіз.
+///
+/// [active] = false (жоспарланған тапсырыс әлі ізделмейді) — толқын да,
+/// секіру де жоқ, тек тыныш пин.
+class TasuPickupBeacon extends StatefulWidget {
+  final bool active;
+  const TasuPickupBeacon({super.key, this.active = true});
 
-  /// Бір уақытта көрінетін толқын саны.
-  final int waves;
-
-  const SearchRadar({
-    super.key,
-    this.size = 230,
-    this.color = Gz.blue,
-    this.waves = 3,
-  });
+  static const width = 190.0;
+  static const height = 150.0;
 
   @override
-  State<SearchRadar> createState() => _SearchRadarState();
+  State<TasuPickupBeacon> createState() => _TasuPickupBeaconState();
 }
 
-class _SearchRadarState extends State<SearchRadar>
+class _TasuPickupBeaconState extends State<TasuPickupBeacon>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2800),
-  )..repeat();
+    duration: const Duration(milliseconds: 2600),
+  );
+
+  static const _logoH = 46.0;
+  static const _logoW = _logoH * 826 / 1013;
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(TasuPickupBeacon old) {
+    super.didUpdateWidget(old);
+    if (old.active != widget.active) _sync();
+  }
+
+  void _sync() {
+    // Жүйеде «анимацияны азайту» қосулы болса — тыныш пин.
+    final reduce = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
+    if (widget.active && !reduce) {
+      _c.repeat();
+    } else {
+      _c.stop();
+      _c.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  /// Пиннің шағын секіруі: цикл басында (0..0.22) көтеріліп, қонады.
+  static double _hop(double t) {
+    if (t > 0.22) return 0;
+    return math.sin(t / 0.22 * math.pi);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = Image.asset(
+      'assets/icon/tasu_logo.png',
+      height: _logoH,
+      width: _logoW,
+      filterQuality: FilterQuality.medium,
+    );
+    return RepaintBoundary(
+      child: SizedBox(
+        width: TasuPickupBeacon.width,
+        height: TasuPickupBeacon.height,
+        child: AnimatedBuilder(
+          animation: _c,
+          child: logo,
+          builder: (context, pin) {
+            final hop = widget.active ? _hop(_c.value) : 0.0;
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _BeaconGroundPainter(
+                      t: _c.value,
+                      waves: widget.active,
+                      lift: hop,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: (TasuPickupBeacon.width - _logoW) / 2,
+                  top: TasuPickupBeacon.height / 2 - _logoH - 9 * hop,
+                  child: pin!,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Пиннің астындағы «жер»: көлеңке-эллипс және үш сары толқын.
+class _BeaconGroundPainter extends CustomPainter {
+  final double t;
+  final bool waves;
+  final double lift;
+  _BeaconGroundPainter({
+    required this.t,
+    required this.waves,
+    required this.lift,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    if (waves) {
+      for (var i = 0; i < 3; i++) {
+        final k = Curves.easeOut.transform((t + i / 3) % 1);
+        final w = 16 + (size.width - 20) * k;
+        final rect = Rect.fromCenter(center: c, width: w, height: w * 0.34);
+        final fade = 1 - k;
+        canvas.drawOval(
+          rect,
+          Paint()..color = Gz.yellow.withValues(alpha: 0.16 * fade),
+        );
+        canvas.drawOval(
+          rect,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = Gz.yellowDark.withValues(alpha: 0.7 * fade),
+        );
+      }
+    }
+    final s = 1 - lift * 0.35;
+    canvas.drawOval(
+      Rect.fromCenter(center: c, width: 20 * s, height: 7 * s),
+      Paint()
+        ..color = Gz.ink.withValues(alpha: 0.28 * s)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BeaconGroundPainter old) =>
+      old.t != t || old.waves != waves || old.lift != lift;
+}
+
+/// Сары карточкадағы «жол»: қою жолақ, ортасында сары үзік белгі, үстінде
+/// таңдалған көлік түрі солдан оңға қарай үздіксіз жүріп өтеді.
+///
+/// [moving] = false — көлік жолдың ортасында тұрып қалады (анимация жоқ).
+class SearchRoadStrip extends StatefulWidget {
+  final VehicleType vehicle;
+  final bool moving;
+  const SearchRoadStrip({super.key, required this.vehicle, this.moving = true});
+
+  @override
+  State<SearchRoadStrip> createState() => _SearchRoadStripState();
+}
+
+class _SearchRoadStripState extends State<SearchRoadStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 4200),
+  );
+
+  static const _iconSize = 38.0;
+  static const _height = 50.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(SearchRoadStrip old) {
+    super.didUpdateWidget(old);
+    if (old.moving != widget.moving) _sync();
+  }
+
+  void _sync() {
+    final reduce = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
+    if (widget.moving && !reduce) {
+      _c.repeat();
+    } else {
+      _c.stop();
+      _c.value = 0.5;
+    }
+  }
 
   @override
   void dispose() {
@@ -53,80 +242,213 @@ class _SearchRadarState extends State<SearchRadar>
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: RepaintBoundary(
-        child: CustomPaint(
-          size: Size.square(widget.size),
-          painter: _RadarPainter(_c, widget.color, widget.waves),
+    // Тек ОҢҒА қарайтын сурет: қосымшаның PNG-лері (кабинасы оң жақта)
+    // немесе Material жүк көлігі. Эмодзи (🚐) көп платформада СОЛҒА қарайды —
+    // оңға «кері жүріп» бара жатқандай көрінер еді.
+    final png = widget.vehicle.pngAsset;
+    final Widget icon = png != null
+        ? Image.asset(png, width: _iconSize, height: _iconSize)
+        : Icon(
+            widget.vehicle.isTaxiCategory
+                ? Icons.local_taxi_rounded
+                : Icons.local_shipping_rounded,
+            size: _iconSize - 2,
+            color: Gz.ink,
+          );
+    return RepaintBoundary(
+      child: SizedBox(
+        height: _height,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final w = box.maxWidth;
+            return AnimatedBuilder(
+              animation: _c,
+              child: icon,
+              builder: (context, child) {
+                final t = _c.value;
+                // Көлік кадрдың сыртынан кіріп, сыртына шығады; шеттерде
+                // біртіндеп пайда болып/жоғалады.
+                final x = -_iconSize + (w + _iconSize) * t;
+                final edge = math.min(t, 1 - t);
+                final opacity = (edge / 0.12).clamp(0.0, 1.0);
+                // Жолдың сәл «дірілі» — қозғалыс сезімі.
+                final bump = math.sin(t * math.pi * 14).abs() * 1.2;
+                return Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 2,
+                      height: 10,
+                      child: CustomPaint(
+                        painter: _RoadPainter(offset: widget.moving ? t : 0),
+                      ),
+                    ),
+                    Positioned(
+                      left: x,
+                      bottom: 9 + bump,
+                      child: Opacity(opacity: opacity, child: child),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _RadarPainter extends CustomPainter {
-  final Animation<double> anim;
-  final Color color;
-  final int waves;
-
-  _RadarPainter(this.anim, this.color, this.waves) : super(repaint: anim);
+/// Қою жол жолағы + ортасында жылжымалы сары үзік белгі.
+class _RoadPainter extends CustomPainter {
+  final double offset;
+  _RoadPainter({required this.offset});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final maxR = size.shortestSide / 2;
-    // Ортадағы тұрақты солғын дақ — толқындар «осы нүктеден» шығады.
-    canvas.drawCircle(
-      c,
-      maxR * 0.16,
-      Paint()..color = color.withValues(alpha: 0.12),
+    final r = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(size.height / 2),
     );
-    for (var i = 0; i < waves; i++) {
-      final p = (anim.value + i / waves) % 1.0;
-      final r = maxR * (0.12 + 0.88 * Curves.easeOutCubic.transform(p));
-      // Кеңейген сайын өшеді: шеті ешқашан «кесіліп» қалмайды.
-      final fade = math.pow(1 - p, 1.4).toDouble();
-      canvas.drawCircle(
-        c,
-        r,
-        Paint()..color = color.withValues(alpha: 0.16 * fade),
-      );
-      canvas.drawCircle(
-        c,
-        r,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4
-          ..color = color.withValues(alpha: 0.5 * fade),
-      );
+    canvas.drawRRect(r, Paint()..color = Gz.ink);
+    const dash = 10.0, gap = 9.0;
+    final y = size.height / 2;
+    final p = Paint()
+      ..color = Gz.yellow
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    // Белгі көліктің қарсы бағытында сырғиды — көлік алға жылжып бара
+    // жатқандай көрінеді.
+    final shift = -(offset * 600) % (dash + gap);
+    for (var x = shift + 6; x < size.width - 6; x += dash + gap) {
+      final a = math.max(x, 6.0);
+      final b = math.min(x + dash, size.width - 6);
+      if (b > a) canvas.drawLine(Offset(a, y), Offset(b, y), p);
     }
   }
 
   @override
-  bool shouldRepaint(_RadarPainter old) =>
-      old.anim != anim || old.color != color || old.waves != waves;
+  bool shouldRepaint(_RoadPainter old) => old.offset != offset;
 }
 
-/// Алу нүктесі — ақ өзекті көк сақина (Yandex Go-дағы «мен осындамын»).
-class SearchPickupDot extends StatelessWidget {
-  final double size;
+/// Панельдің басындағы күй карточкасы (Tasu сары түсінде).
+///
+/// [badge] — тақырыптың алдындағы белгі (ұсыныс саны); [trailing] —
+/// оң жақтағы элемент (уақыт); [bottom] — карточканың астыңғы бөлігі
+/// (жол анимациясы немесе жоспарланған уақыт).
+class SearchStatusCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget? badge;
+  final Widget? trailing;
+  final Widget? bottom;
+
+  /// Карточка түсі: әдепкіде брендтің сарысы; жоспарланған тапсырыста —
+  /// күлгін реңк.
   final Color color;
-  const SearchPickupDot({super.key, this.size = 18, this.color = Gz.blue});
+  const SearchStatusCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    this.trailing,
+    this.bottom,
+    this.color = Gz.yellow,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: color, width: size * 0.26),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33101828),
-            blurRadius: 4,
-            offset: Offset(0, 1.5),
+        color: color,
+        borderRadius: BorderRadius.circular(Gz.radius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (badge != null) ...[badge!, const SizedBox(width: 8)],
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    height: 1.15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+              if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.3,
+              fontWeight: FontWeight.w500,
+              color: Gz.ink.withValues(alpha: 0.72),
+            ),
+          ),
+          if (bottom != null) ...[const SizedBox(height: 6), bottom!],
+        ],
+      ),
+    );
+  }
+}
+
+/// Өткен уақыт белгісі: қара пилюля, ішінде сағат және «04:27».
+/// Секунд сайын тек ОСЫ мәтін қайта салынады — бүкіл экран емес.
+class SearchTimerChip extends StatelessWidget {
+  final ValueListenable<int> seconds;
+  const SearchTimerChip({super.key, required this.seconds});
+
+  static String format(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    final mm = m.toString().padLeft(2, '0');
+    final ss = sec.toString().padLeft(2, '0');
+    return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+      decoration: BoxDecoration(
+        color: Gz.ink,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.schedule_rounded, size: 14, color: Gz.yellow),
+          const SizedBox(width: 4),
+          ValueListenableBuilder<int>(
+            valueListenable: seconds,
+            builder: (_, s, _) => Text(
+              format(s),
+              maxLines: 1,
+              textScaler: TextScaler.noScaling,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                // Сандар «билемеуі» үшін — әр цифрдың ені бірдей.
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
           ),
         ],
       ),
@@ -134,222 +456,155 @@ class SearchPickupDot extends StatelessWidget {
   }
 }
 
-/// Соңғы нүкте — қара шаршы (маршрут «осында тоқтайды»).
-class SearchDestinationSquare extends StatelessWidget {
-  final double size;
-
-  /// Картада — ақ контурмен (тайлдан үзіліп тұруы үшін), тізімде — контурсыз.
-  final bool outlined;
-  const SearchDestinationSquare({
-    super.key,
-    this.size = 16,
-    this.outlined = true,
-  });
+/// Ұсыныс саны — қара дөңгелек белгі (сары карточканың үстінде анық).
+class SearchCountBadge extends StatelessWidget {
+  final int count;
+  const SearchCountBadge(this.count, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      constraints: const BoxConstraints(minWidth: 26),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Gz.ink,
-        borderRadius: BorderRadius.circular(size * 0.22),
-        border: outlined ? Border.all(color: Colors.white, width: 2.5) : null,
-        boxShadow: outlined
-            ? const [
-                BoxShadow(
-                  color: Color(0x33101828),
-                  blurRadius: 4,
-                  offset: Offset(0, 1.5),
-                ),
-              ]
-            : null,
+        borderRadius: BorderRadius.circular(13),
       ),
-    );
-  }
-}
-
-/// Аралық аялдама — ақ өзекті сұр сақина (алу нүктесі мен соңғы нүктеден
-/// әдейі әлсіз: маршруттың басы мен соңы басым көрінуі керек).
-class SearchStopDot extends StatelessWidget {
-  final double size;
-  const SearchStopDot({super.key, this.size = 13});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: Gz.textSecondary, width: size * 0.26),
-      ),
-    );
-  }
-}
-
-/// Алу нүктесінің ҮСТІНДЕ тұратын пин: түрлі-түсті шаршыда айналып тұрған
-/// доға (іздеу жүріп жатыр) + ақ капсулада «~N мин». Астында — нүктеге
-/// түсетін жіңішке «сабақ».
-///
-/// [label] `null` болса тек белгі көрінеді (мыс. жоспарланған тапсырыс —
-/// уақыты панельде жазылған, оны екі рет қайталамаймыз).
-class SearchEtaPill extends StatelessWidget {
-  final String? label;
-  final Color color;
-
-  /// `true` — ішінде айналып тұрған доға; `false` — [icon].
-  final bool spinning;
-  final IconData icon;
-
-  /// Сабақтың астындағы бос орын — нүктенің радиусы (сабақ нүктеге дәл
-  /// тиіп тұруы үшін).
-  final double bottomGap;
-
-  const SearchEtaPill({
-    super.key,
-    this.label,
-    this.color = Gz.blue,
-    this.spinning = true,
-    this.icon = Icons.schedule_rounded,
-    this.bottomGap = 9,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      alignment: Alignment.center,
-      child: spinning
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: RepaintBoundary(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  strokeCap: StrokeCap.round,
-                  color: Colors.white,
-                ),
-              ),
-            )
-          : Icon(icon, size: 18, color: Colors.white),
-    );
-    return IgnorePointer(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.fromLTRB(5, 5, label == null ? 5 : 13, 5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: Gz.liftShadow,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  badge,
-                  if (label != null) ...[
-                    const SizedBox(width: 9),
-                    Text(
-                      label!,
-                      maxLines: 1,
-                      textScaler: TextScaler.noScaling,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        height: 1.1,
-                        letterSpacing: -0.2,
-                        color: Gz.ink,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Container(
-              width: 2.5,
-              height: 10,
-              decoration: BoxDecoration(
-                color: Gz.ink.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            SizedBox(height: bottomGap),
-          ],
+      child: Text(
+        '$count',
+        textScaler: TextScaler.noScaling,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: Gz.yellow,
         ),
       ),
     );
   }
 }
 
-/// Жіңішке «шексіз» жолақ: ашық жолдың бойымен көк кесінді жүгіреді.
-/// Іздеу ТОҚТАМАҒАНЫН көрсетеді (пайыз жоқ — қашан табылатыны белгісіз).
-class SearchProgressBar extends StatefulWidget {
-  final Color color;
-  final double height;
-  const SearchProgressBar({super.key, this.color = Gz.blue, this.height = 4});
-
-  @override
-  State<SearchProgressBar> createState() => _SearchProgressBarState();
-}
-
-class _SearchProgressBarState extends State<SearchProgressBar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+/// Баға карточкасы: көлік түрінің суреті мен атауы, сапар сипаттамасы,
+/// клиенттің бағасы және «Бағаны көтеру» батырмасы.
+class SearchPriceCard extends StatelessWidget {
+  final VehicleType vehicle;
+  final String meta;
+  final String price;
+  final VoidCallback? onRaise;
+  const SearchPriceCard({
+    super.key,
+    required this.vehicle,
+    required this.meta,
+    required this.price,
+    this.onRaise,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        size: Size(double.infinity, widget.height),
-        painter: _BarPainter(_c, widget.color),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Gz.yellow.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: vehicleIcon(vehicle, size: 34),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        color: Gz.ink,
+                      ),
+                    ),
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Gz.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 140),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        price,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          height: 1.1,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.4,
+                          color: Gz.ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    t('Сіздің бағаңыз'),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (onRaise != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRaise,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: Gz.ink,
+                side: const BorderSide(color: Gz.yellowDark, width: 1.4),
+              ),
+              icon: const Icon(Icons.trending_up_rounded, size: 20),
+              label: Text(t('Бағаны көтеру')),
+            ),
+          ],
+        ],
       ),
     );
   }
-}
-
-class _BarPainter extends CustomPainter {
-  final Animation<double> anim;
-  final Color color;
-  _BarPainter(this.anim, this.color) : super(repaint: anim);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = Radius.circular(size.height / 2);
-    final track = RRect.fromRectAndRadius(Offset.zero & size, r);
-    canvas.drawRRect(track, Paint()..color = color.withValues(alpha: 0.14));
-    canvas.save();
-    canvas.clipRRect(track);
-    final seg = size.width * 0.34;
-    final x =
-        -seg + (size.width + seg) * Curves.easeInOut.transform(anim.value);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(x, 0, seg, size.height), r),
-      Paint()..color = color,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_BarPainter old) => old.anim != anim || old.color != color;
 }
 
 /// Картаның үстіндегі дөңгелек ақ батырма (артқа, бөлісу).
@@ -398,249 +653,12 @@ class SearchSheetHandle extends StatelessWidget {
       child: Container(
         width: 40,
         height: 5,
-        margin: const EdgeInsets.only(top: 8, bottom: 14),
+        margin: const EdgeInsets.only(top: 8, bottom: 12),
         decoration: BoxDecoration(
           color: Gz.disabledBg,
           borderRadius: BorderRadius.circular(3),
         ),
       ),
-    );
-  }
-}
-
-/// Іздеу басталғаннан бергі уақыт: «04:27» (сағаттан асса «1:04:27»).
-/// Секунд сайын тек ОСЫ мәтін қайта салынады — бүкіл экран емес.
-class SearchElapsedText extends StatelessWidget {
-  final ValueListenable<int> seconds;
-  final TextStyle? style;
-  const SearchElapsedText({super.key, required this.seconds, this.style});
-
-  static String format(int s) {
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    final mm = m.toString().padLeft(2, '0');
-    final ss = sec.toString().padLeft(2, '0');
-    return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: seconds,
-      builder: (_, s, _) => Text(
-        format(s),
-        maxLines: 1,
-        style: (style ?? const TextStyle()).copyWith(
-          // Сандар «билемеуі» үшін — әр цифрдың ені бірдей.
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      ),
-    );
-  }
-}
-
-/// Ұсыныс саны — сары дөңгелек белгі.
-class SearchCountBadge extends StatelessWidget {
-  final int count;
-  const SearchCountBadge(this.count, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 24),
-      height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Gz.yellow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        '$count',
-        textScaler: TextScaler.noScaling,
-        style: const TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w900,
-          color: Gz.ink,
-        ),
-      ),
-    );
-  }
-}
-
-/// Маршрут карточкасы (ашық сұр): көк сақина → аялдамалар → қара шаршы.
-class SearchRouteCard extends StatelessWidget {
-  final String from;
-  final String to;
-  final List<String> stops;
-  const SearchRouteCard({
-    super.key,
-    required this.from,
-    required this.to,
-    this.stops = const [],
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <Widget>[
-      _row(const SearchPickupDot(size: 14), from),
-      for (final s in stops) ...[_divider(), _row(const SearchStopDot(), s)],
-      _divider(),
-      _row(const SearchDestinationSquare(size: 13, outlined: false), to),
-    ];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: Gz.surfaceAlt,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Gz.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: rows,
-      ),
-    );
-  }
-
-  Widget _row(Widget mark, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
-      children: [
-        SizedBox(width: 18, child: Center(child: mark)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text.isEmpty ? '—' : text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-              letterSpacing: -0.1,
-              color: Gz.ink,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _divider() =>
-      const Divider(height: 1, thickness: 1, indent: 30, color: Gz.border);
-}
-
-/// Төлем жолы: ақша иконкасы + «Қолма-қол не аударым» (астында көлік түрі)
-/// + оң жақта баға.
-class SearchPaymentRow extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String price;
-  const SearchPaymentRow({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.price,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget row(double maxW) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Gz.tint(Gz.green),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.payments_outlined, color: Gz.green),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Gz.ink,
-                  ),
-                ),
-                if (subtitle.isNotEmpty)
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: Gz.textSecondary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Үлкен сома (межгород, 1 000 000+ ₸) тар экранда сызықтан
-          // шықпайды — енінің жартысынан аспайды, сыймаса кішірейеді.
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxW * 0.45),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(
-                price,
-                maxLines: 1,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 19,
-                  letterSpacing: -0.4,
-                  color: Gz.ink,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    return LayoutBuilder(builder: (_, box) => row(box.maxWidth));
-  }
-}
-
-/// Үлкен ашық сұр батырма (панельдің ең астында: «Күте алмаймын»).
-class SearchSoftButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  const SearchSoftButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: Gz.disabledBg,
-        foregroundColor: Gz.ink,
-        minimumSize: const Size.fromHeight(54),
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(
-          fontFamily: Gz.fontFamily,
-          fontWeight: FontWeight.w800,
-          fontSize: 16,
-        ),
-      ),
-      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
