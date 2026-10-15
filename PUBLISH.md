@@ -104,6 +104,28 @@ flutter build appbundle --release   # Play Store үшін .aab
 - [ ] Data safety: локация (заказ үшін), фото (құжаттар), email/телефон (аккаунт)
 - [ ] Internal testing → тексеру → Production
 
+## 1.5 Ағымдағы релиз: 1.0.5 (24) — 2026-10-16
+
+- **Android**: `build/app/outputs/bundle/release/app-release.aab` дайын
+  (Tasu upload кілтімен қол қойылған, R8 қосулы). Play Console →
+  Production/Internal testing → «Create new release» → осы `.aab`.
+  Қайта жинау: `flutter build appbundle --release` (JDK 17 —
+  `C:\Users\taraz\tools\jdk17\…`, `flutter config --jdk-dir` арқылы тіркелген).
+- **iOS (Mac-та)**: жоба дайын — bundle id `kz.gazelgo.app`, Team
+  `YB4ZSPBN7D`, Push entitlement (`aps-environment = production`) барлық
+  конфигурацияда, iOS 15.0+, иконка қара фонда (альфасыз).
+  ```bash
+  flutter pub get
+  cd ios && pod install && cd ..
+  flutter build ipa --release
+  # build/ios/ipa/*.ipa → Transporter не Xcode Organizer арқылы App Store Connect-ке
+  ```
+  Нұсқа мен build нөмірі `pubspec.yaml`-дан (`1.0.5+24`) алынады — App
+  Store-дағы соңғы build нөмірінен ҮЛКЕН болуы керек.
+- **App Review үшін**: App Store Connect → App Review Information-ға
+  тұрақты тест аккаунттарын (клиент + расталған орындаушы) жазыңыз —
+  бұрынғы reject (2.1) себебі осы еді.
+
 ## 2. iOS (кейін, Mac табылғанда)
 
 - Apple Developer аккаунты ($99/жыл), Xcode
