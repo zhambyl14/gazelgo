@@ -21,6 +21,9 @@ import 'feed_screen.dart';
 /// Орындаушының басты беті — клиенттегідей бір экранды дизайн:
 /// негізгі мазмұн = заказдар лентасы, жоғарыда шағын басқару жолағы
 /// (баланс, линия/тариф) «бұрыштарда» тұрады. Табыс профильдің ішінде.
+/// Жоғарғы жолақ элементтерінің ортақ биіктігі.
+const double _barH = 44;
+
 class ExecutorHomeScreen extends ConsumerWidget {
   const ExecutorHomeScreen({super.key});
 
@@ -42,8 +45,9 @@ class ExecutorHomeScreen extends ConsumerWidget {
             Column(
               children: [
                 // жоғарғы жолақ: лого (sidebar) + уведомление + баланс
+                // Үшеуі БІРДЕЙ биіктікте (44): жолақ ықшам әрі тегіс.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                   child: Row(
                     children: [
                       // Логотип — sidebar ашатын батырма: профиль, баланс,
@@ -52,6 +56,7 @@ class ExecutorHomeScreen extends ConsumerWidget {
                       // тұр — түйме екені бірден көрінеді.
                       Builder(
                         builder: (ctx) => LogoMenuButton(
+                          size: _barH,
                           onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),
@@ -64,15 +69,23 @@ class ExecutorHomeScreen extends ConsumerWidget {
                       // Тек РАСТАЛҒАН орындаушыда: өтінімі қаралып жатқан
                       // адамға жаңа заказ хабары әлі келмейді.
                       if (ep != null && ep.status == 'approved')
-                        const Expanded(child: _OrderNotifyToggle())
+                        const Expanded(
+                          child: SizedBox(
+                            height: _barH,
+                            child: _OrderNotifyToggle(),
+                          ),
+                        )
                       else
                         const Spacer(),
                       const SizedBox(width: 8),
-                      _BalancePill(
-                        balance: s?.balance,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const BalanceScreen(),
+                      SizedBox(
+                        height: _barH,
+                        child: _BalancePill(
+                          balance: s?.balance,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const BalanceScreen(),
+                            ),
                           ),
                         ),
                       ),
@@ -103,7 +116,7 @@ class ExecutorHomeScreen extends ConsumerWidget {
             ),
             // Sidebar-ды табуға көмектесетін тұтқа мен алғашқы нұсқау (0059).
             const DrawerEdgeHandle(),
-            const DrawerHintOverlay(top: 84),
+            const DrawerHintOverlay(top: 68),
           ],
         ),
       ),
@@ -133,7 +146,7 @@ class _BalancePill extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 7, 7, 7),
+            padding: const EdgeInsets.fromLTRB(10, 0, 8, 0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -276,111 +289,70 @@ class _LineControlBar extends ConsumerWidget {
         : perShift;
     final used = (total - s.ordersLeft).clamp(0, total);
 
-    // Тариф белсенді — толық ені бар «Тариф пен баланс» түймесі.
-    // Уведомление тумблері бұдан былай ЖОҒАРҒЫ ЖОЛАҚТА, баланстың сол
-    // жағында тұрады ([ExecutorHomeScreen]) — мұнда бөлек жол алмайды.
-    return Column(
-      children: [
-        Material(
-          color: Gz.surface,
-          elevation: 0,
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () => _openTariffs(context),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                // «Бәрі дұрыс» күйі — карта ЖАСЫЛ реңкке аздап боялады:
-                // ақ карточкалардың арасында бірден көзге түседі.
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Gz.tint(Gz.greenBright, 0.10), Gz.surface],
+    // Тариф белсенді — ЫҚШАМ бір қатарлы жолақ (бұрын екі қатарлы үлкен
+    // жасыл карточка еді — заказдар лентасының орнын алып тұратын).
+    // Жасыл түс — тек «белсенді» белгісінде, фон ақ.
+    final progress = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
+    return Material(
+      color: Gz.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _openTariffs(context),
+        child: Container(
+          height: 46,
+          padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Gz.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Gz.greenBright,
+                  shape: BoxShape.circle,
                 ),
-                border: Border.all(color: Gz.green.withValues(alpha: 0.35)),
-                boxShadow: Gz.cardShadow,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: Gz.tint(Gz.greenBright, 0.16),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_rounded,
-                          color: Gz.green,
-                          size: 17,
-                        ),
-                      ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t('Тариф пен баланс'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                height: 1.25,
-                                letterSpacing: -0.25,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              '${t('Белсенді')} · ${_tariffLabel(s, total)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Gz.green,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: Gz.textTertiary,
-                      ),
-                    ],
+              const SizedBox(width: 9),
+              Flexible(
+                child: Text(
+                  '${t('Белсенді')} · ${_tariffLabel(s, total)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    letterSpacing: -0.2,
                   ),
-                  // Ауысым лимитінің прогресі — «қанша заказ қалды» деген
-                  // сұрақ санды оқымай-ақ көзге түседі. Лимит бітсе тариф
-                  // жабылады, сол себепті таусылуға жақындағанда түсі
-                  // ескертетін сарыға ауысады.
-                  if (total > 0) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: (used / total).clamp(0.0, 1.0),
-                        minHeight: 7,
-                        backgroundColor: Gz.tint(Gz.greenBright, 0.18),
-                        valueColor: AlwaysStoppedAnimation(
-                          s.ordersLeft <= 2 ? Gz.amber : Gz.greenBright,
-                        ),
+                ),
+              ),
+              if (total > 0) ...[
+                const SizedBox(width: 10),
+                // Ауысым лимитінің прогресі — таусылуға жақындағанда сарыға
+                // ауысады (лимит бітсе тариф жабылады).
+                SizedBox(
+                  width: 56,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: Gz.tint(Gz.greenBright, 0.18),
+                      valueColor: AlwaysStoppedAnimation(
+                        s.ordersLeft <= 2 ? Gz.amber : Gz.greenBright,
                       ),
                     ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
+                ),
+              ],
+              const Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 

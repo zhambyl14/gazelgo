@@ -58,6 +58,24 @@ String _when(DateTime d) {
 String _km(double km) =>
     '${km < 10 ? km.toStringAsFixed(1) : km.round()} ${t('км')}';
 
+/// Сапардың ШАМАЛАС ұзақтығы (минут): қала ішінде ~28 км/сағ (кептеліс,
+/// бағдаршам) + 3 мин тоқтау, қалааралықта ~70 км/сағ. Нақты есеп емес —
+/// карточкада әрқашан «≈» белгісімен көрсетіледі.
+int _tripMinutes(Order o) {
+  final speed = o.intercity ? 70.0 : 28.0;
+  return (o.distanceKm / speed * 60).round() + (o.intercity ? 0 : 3);
+}
+
+/// «≈ 25 мин», «≈ 2 сағ 10 мин».
+String _duration(int min) {
+  if (min < 60) return '≈ $min ${t('мин')}';
+  final h = min ~/ 60, m = min % 60;
+  return m == 0 ? '≈ $h ${t('сағ')}' : '≈ $h ${t('сағ')} $m ${t('мин')}';
+}
+
+/// Лента сүзгісі (қойындылар).
+enum _FeedFilter { all, city, intercity }
+
 /// Орындаушыдан алу нүктесіне дейінгі тік қашықтық (км). GPS жоқ — null.
 double? _pickupKm(Position? p, Order o) => p == null
     ? null
@@ -94,6 +112,9 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// кешігіп «бос» тұрмауы үшін.
   Set<String>? _known;
 
+  /// Таңдалған қойынды: барлығы / қала ішінде / қалааралық.
+  _FeedFilter _filter = _FeedFilter.all;
+
   @override
   void initState() {
     super.initState();
@@ -104,6 +125,10 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   }
 
   Future<void> _manualRefresh() async {
+    // Орындаушы қозғалып кеткен болуы мүмкін — «жақын» реті жаңа орынмен.
+    Geo.currentPosition().then((p) {
+      if (mounted && p != null) setState(() => _pos = p);
+    });
     ref.invalidate(executorStatsStreamProvider);
     ref.invalidate(executorFeedStreamProvider);
     ref.invalidate(myExecutorProfileProvider);
@@ -137,69 +162,90 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
         // (0053). Ұсыныс беру құқығы (тариф/мақұлдау) заказды басқанда
         // `_openOrder` ішінде тексеріледі.
         //
-        // РЕТІ (үш өлшем қосынды балл ретінде, басымдығы: жаңа → жақын →
-        // қымбат): ескі заказ бәрібір алынып қойылған болуы мүмкін,
-        // сондықтан ЖАҢАЛЫҒЫ ең салмақты. Одан кейін ЖАҚЫНДЫҒЫ (GPS
-        // рұқсаты болса — нақты қашықтық, болмаса — маршрут ұзындығы:
-        // қысқа сапарлар «жақынырақ» болып есептеледі). Соңында БАҒАСЫ.
-        final eligible = [...feedAsync.value ?? const <Order>[]];
-        final maxPrice = eligible.isEmpty
-            ? 1
-            : eligible
-                  .map((o) => o.displayPrice ?? 0)
-                  .reduce((a, b) => a > b ? a : b)
-                  .clamp(1, 1 << 30);
-        double scoreOf(Order o) {
+        // РЕТІ: ЖАҢА әрі ЖАҚЫН заказ ең жоғарыда. Әр заказға «ескілік»
+        // балы: жарияланғаннан бергі минут + алу нүктесіне дейінгі әр км үшін
+        // 3 минут (GPS рұқсаты болса). Яғни 2 км жердегі 1 минуттық заказ
+        // (1 + 6 = 7) 10 км жердегі жаңа ғана шыққан заказдан (0 + 30)
+        // жоғары тұрады, ал жарты сағат бұрынғы заказ — жақын болса да
+        // төмен түседі (оны бәрібір біреу алып қойған болуы мүмкін). GPS жоқ
+        // болса — тек жаңалығы бойынша.
+        final all = [...feedAsync.value ?? const <Order>[]];
+        double rankOf(Order o) {
           final ageMin = o.createdAt == null
-              ? 999.0
+              ? 9999.0
               : DateTime.now().difference(o.createdAt!).inSeconds / 60.0;
-          final freshness = (1 - ageMin / 180).clamp(0.0, 1.0);
-
-          final double proximity;
-          if (_pos != null) {
-            final km = Geo.haversineKm(
-              LatLng(_pos!.latitude, _pos!.longitude),
-              LatLng(o.fromLat, o.fromLng),
-            );
-            proximity = (1 - km / 50).clamp(0.0, 1.0);
-          } else {
-            proximity = (1 - o.distanceKm / 50).clamp(0.0, 1.0);
-          }
-
-          final price = ((o.displayPrice ?? 0) / maxPrice).clamp(0.0, 1.0);
-
-          return freshness * 0.5 + proximity * 0.3 + price * 0.2;
+          final km = _pickupKm(_pos, o);
+          return ageMin + (km == null ? 0 : km * 3);
         }
 
-        eligible.sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
+        all.sort((a, b) => rankOf(a).compareTo(rankOf(b)));
+        final cityCount = all.where((o) => !o.intercity).length;
+        final interCount = all.length - cityCount;
+        final eligible = switch (_filter) {
+          _FeedFilter.all => all,
+          _FeedFilter.city => all.where((o) => !o.intercity).toList(),
+          _FeedFilter.intercity => all.where((o) => o.intercity).toList(),
+        };
 
         final ids = {for (final o in eligible) o.id};
         final firstLoad = _known == null;
         final fresh = firstLoad ? ids : ids.difference(_known!);
         _known = ids;
 
-        if (eligible.isEmpty) {
+        final tabs = _FeedTabs(
+          value: _filter,
+          all: all.length,
+          city: cityCount,
+          intercity: interCount,
+          onChanged: (f) => setState(() => _filter = f),
+        );
+
+        if (all.isEmpty) {
           return _refreshable([
             const Padding(
               padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
               child: BonusStrip(),
             ),
-            const SizedBox(height: 72),
-            EmptyState(
-              icon: Icons.radar_rounded,
-              title: t('Әзірге заказ жоқ'),
-              subtitle: t('Жаңа заказдар осы жерде автоматты пайда болады.'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 24, 12, 0),
+              child: _FeedEmpty(
+                title: t('Әзірге заказ жоқ'),
+                subtitle: t('Жаңа заказдар осы жерде автоматты пайда болады.'),
+                onRefresh: _manualRefresh,
+              ),
             ),
-            _refreshButton(),
           ]);
         }
 
-        return RefreshIndicator(
+        if (eligible.isEmpty) {
+          return Column(
+            children: [
+              tabs,
+              Expanded(
+                child: _refreshable([
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+                    child: _FeedEmpty(
+                      title: t('Бұл бөлімде заказ жоқ'),
+                      subtitle: t(
+                        'Басқа қойындыны ашыңыз немесе жаңа заказдарды '
+                        'күтіңіз.',
+                      ),
+                      onRefresh: _manualRefresh,
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+          );
+        }
+
+        final list = RefreshIndicator(
           color: Gz.ink,
           onRefresh: _manualRefresh,
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             // 0-элемент — бонус жолағы (0059). Бағдарлама өшірулі болса ол
             // `SizedBox.shrink` қайтарады, сол себепті лента баяғы қалпында.
             itemCount: eligible.length + 1,
@@ -223,6 +269,12 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
               );
             },
           ),
+        );
+        return Column(
+          children: [
+            tabs,
+            Expanded(child: list),
+          ],
         );
       },
     );
@@ -459,6 +511,147 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
 /// Әр заказ үшін БІР-АҚ рет ойналады ([played] жиыны): тізімді айналдырып
 /// қайта оралғанда немесе стрим жаңарғанда карточкалар қайта секірмейді.
 /// Алғашқы жүктелуде алғашқы бірнеше карточка сатылап (stagger) кіреді.
+/// Лента қойындылары: «Барлығы / Қала / Қалааралық» — әрқайсысында
+/// заказ саны. Тізімнің ҮСТІНДЕ бекітулі тұрады (айналдырғанда кетпейді).
+class _FeedTabs extends StatelessWidget {
+  final _FeedFilter value;
+  final int all;
+  final int city;
+  final int intercity;
+  final ValueChanged<_FeedFilter> onChanged;
+  const _FeedTabs({
+    required this.value,
+    required this.all,
+    required this.city,
+    required this.intercity,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(_FeedFilter f, String label, int n) {
+      final on = value == f;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onChanged(f),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? Gz.ink : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  '$label · $n',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: on ? Colors.white : Gz.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Row(
+        children: [
+          tab(_FeedFilter.all, t('Барлығы'), all),
+          tab(_FeedFilter.city, t('Қала'), city),
+          tab(_FeedFilter.intercity, t('Қалааралық'), intercity),
+        ],
+      ),
+    );
+  }
+}
+
+/// Бос күй — бір блокта: иллюстрация (сары дөңгелектегі радар), түсінікті
+/// мәтін және «Жаңарту» батырмасы. Заказ карточкаларымен бірдей ақ
+/// карточка — екі күй бір-біріне үйлеседі.
+class _FeedEmpty extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Future<void> Function() onRefresh;
+  const _FeedEmpty({
+    required this.title,
+    required this.subtitle,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 26, 20, 20),
+      decoration: BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.circular(_cardRadius),
+        border: Border.all(color: Gz.border),
+        boxShadow: Gz.cardShadow,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: Gz.tint(Gz.yellow, 0.22),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.radar_rounded, size: 38, color: Gz.ink),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              color: Gz.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.4,
+              color: Gz.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh_rounded, size: 19),
+              label: Text(t('Жаңарту')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Entrance extends StatefulWidget {
   final String id;
   final int index;
@@ -560,6 +753,8 @@ class _FeedCard extends StatelessWidget {
         ),
       if (o.distanceKm > 0)
         _Pill(icon: Icons.route_rounded, text: _km(o.distanceKm)),
+      if (o.distanceKm > 0)
+        _Pill(icon: Icons.timer_outlined, text: _duration(_tripMinutes(o))),
       if (o.fromCity != null && o.toCity != null)
         _Pill(
           icon: o.intercity ? Icons.alt_route : Icons.location_city_outlined,
@@ -757,7 +952,7 @@ class _CardCta extends StatelessWidget {
         children: [
           Flexible(
             child: BtnLabel(
-              t('Ұсыныс беру'),
+              t('Қабылдау'),
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
