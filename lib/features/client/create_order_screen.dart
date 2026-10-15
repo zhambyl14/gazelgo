@@ -702,7 +702,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           from: _from.point,
                           to: _to.point,
                           stops: _stops.map((s) => s.point).toList(),
-                          routePoints: route?.points ?? const [],
+                          // Тек НАҚТЫ жол геометриясы беріледі; шамалау
+                          // (түзу) болса RouteMap жолды өзі қайта сұрайды.
+                          routePoints: (route?.onRoad ?? false)
+                              ? route!.points
+                              : const [],
                           height: 190,
                           fromLabel: _from.address,
                           toLabel: _to.address,

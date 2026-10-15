@@ -634,16 +634,77 @@ Marker myLocationMarker(LatLng p, {double size = 18}) => Marker(
 //  МАРШРУТ КАРТАСЫ
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Маршрут сызығын салады: астында ақ «контур», үстінде көк сызық.
-/// Қою тайлдарда (орман, су) жалғыз көк сызық жоғалып кететін.
-List<Polyline> _routeLines(List<LatLng> points) => [
-  Polyline(
-    points: points,
-    strokeWidth: 7,
-    color: Colors.white.withValues(alpha: 0.9),
-  ),
-  Polyline(points: points, strokeWidth: 4.5, color: Gz.blue),
-];
+/// Маршрут сызығы — Tasu стилі: қою «асфальт» жолақ, ортасында брендтің
+/// сары үзік «жол белгісі», астында ақ контур (сызық кез келген тайлдан —
+/// су, орман, қою көше — бөлініп тұрады) және жұмсақ көлеңке.
+///
+/// [onRoad] = false — нақты жол геометриясы ЖОҚ (OSRM уақытша жауап
+/// бермеді): нүктелер [_arcPoints] доғасымен, ақ жолақтағы ҮЗІК сызықпен
+/// салынады — «бұл тек бағыт, нақты жол емес» деген айқын белгі. Бұрын
+/// мұндайда «үп-түзу» көк сызық тұратын: әрі қатқыл көрінетін, әрі
+/// «осы жолмен жүреді» деген жалған әсер беретін.
+List<Polyline> _routeLines(List<LatLng> points, {required bool onRoad}) {
+  if (!onRoad) {
+    final arc = _arcPoints(points);
+    return [
+      Polyline(
+        points: arc,
+        strokeWidth: 7,
+        color: Colors.white.withValues(alpha: 0.95),
+      ),
+      Polyline(
+        points: arc,
+        strokeWidth: 3.4,
+        color: Gz.ink,
+        pattern: StrokePattern.dashed(segments: const [9, 7]),
+      ),
+    ];
+  }
+  return [
+    Polyline(
+      points: points,
+      strokeWidth: 11,
+      color: Gz.ink.withValues(alpha: 0.10),
+    ),
+    Polyline(points: points, strokeWidth: 8.5, color: Colors.white),
+    Polyline(points: points, strokeWidth: 5.6, color: Gz.ink),
+    Polyline(
+      points: points,
+      strokeWidth: 1.5,
+      color: Gz.yellow,
+      pattern: StrokePattern.dashed(segments: const [6, 6]),
+    ),
+  ];
+}
+
+/// Жол геометриясы жоқ кезде нүктелерді жұмсақ ДОҒАМЕН қосады (әр бөлік —
+/// квадраттық Безье қисығы, ортасынан кесінді ұзындығының 16%-ына
+/// ауытқиды).
+///
+/// Доға жергілікті ЖАЗЫҚ координатада есептеледі (бойлық cos(ендік)-ке
+/// көбейтіледі) — әйтпесе солтүстікте (Астана ≈51°) доға қисайып,
+/// «жайылып» кететін.
+List<LatLng> _arcPoints(List<LatLng> pts) {
+  if (pts.length < 2) return List.of(pts);
+  final out = <LatLng>[pts.first];
+  for (var i = 0; i + 1 < pts.length; i++) {
+    final a = pts[i], b = pts[i + 1];
+    final k = math.cos((a.latitude + b.latitude) / 2 * math.pi / 180);
+    final ax = a.longitude * k, ay = a.latitude;
+    final bx = b.longitude * k, by = b.latitude;
+    final dx = bx - ax, dy = by - ay;
+    final cx = (ax + bx) / 2 - dy * 0.16;
+    final cy = (ay + by) / 2 + dx * 0.16;
+    const n = 28;
+    for (var j = 1; j <= n; j++) {
+      final t = j / n, u = 1 - t;
+      final x = u * u * ax + 2 * u * t * cx + t * t * bx;
+      final y = u * u * ay + 2 * u * t * cy + t * t * by;
+      out.add(LatLng(y, k.abs() < 1e-9 ? x : x / k));
+    }
+  }
+  return out;
+}
 
 /// Маршруттың барлық белгісі. РЕТІ МАҢЫЗДЫ: тығыз тұрған нүктелерде
 /// соңғы нүкте (B) аялдамалардың үстінде, ал орындаушы — бәрінен де
@@ -684,7 +745,7 @@ bool _degenerate(List<LatLng> pts) {
 /// қозғалысын өзіне тартып алады да, бет айналдырылмай қалады — жиі
 /// кездесетін әрі өте ыңғайсыз қате. Сол себепті inDrive/Yandex Go/Uber
 /// сияқты: ішкі карта — АЛДЫН АЛА КӨРІНІС, ал нақты қарау толық экранда.
-class RouteMap extends StatelessWidget {
+class RouteMap extends StatefulWidget {
   final LatLng from;
   final LatLng to;
 
@@ -727,19 +788,109 @@ class RouteMap extends StatelessWidget {
     this.distanceKm,
   });
 
+  @override
+  State<RouteMap> createState() => _RouteMapState();
+}
+
+/// [RouteMap]-тың күйі: нақты ЖОЛ геометриясын OSRM-нен өзі сұрайды
+/// ([RouteMap.routePoints] берілмесе) және жауап келгенде камераны жолдың
+/// өзіне қайта кадрлайды (айналма жол A→B тіктөртбұрышынан шығып кетуі
+/// мүмкін). [Geo.routeVia] кэштейді — лента, заказ беті, толық экран бір
+/// маршрутты бір-ақ рет сұрайды.
+class _RouteMapState extends State<RouteMap> {
+  final _map = MapController();
+  bool _ready = false;
+
+  /// Нақты жол нүктелері (бос — әзірге жоқ, доға салынады).
+  late List<LatLng> _road = widget.routePoints;
+
+  List<LatLng> get _waypoints => [widget.from, ...widget.stops, widget.to];
+
+  List<LatLng> get _linePoints =>
+      _road.isNotEmpty ? _road : _arcPoints(_waypoints);
+
+  /// Камера қамтуы тиіс нүктелер: белгілер + сызықтың өзі.
+  List<LatLng> get _boundsPoints => [
+    ..._waypoints,
+    for (final m in widget.extraMarkers) m.point,
+    ..._linePoints,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRoad();
+  }
+
+  @override
+  void didUpdateWidget(RouteMap old) {
+    super.didUpdateWidget(old);
+    final moved =
+        old.from != widget.from ||
+        old.to != widget.to ||
+        !_sameList(old.stops, widget.stops) ||
+        !_sameList(old.routePoints, widget.routePoints);
+    if (moved) {
+      _road = widget.routePoints;
+      _loadRoad();
+      _fit();
+    }
+  }
+
+  static bool _sameList(List<LatLng> a, List<LatLng> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void _loadRoad() {
+    if (_road.isNotEmpty || _degenerate(_waypoints)) return;
+    final asked = _waypoints;
+    Geo.routeVia(asked).then((r) {
+      // Сұрау жүріп жатқанда мекенжай ауысқан болса — ескі жауап керек емес.
+      if (!mounted || !r.onRoad || !_sameList(asked, _waypoints)) return;
+      setState(() => _road = r.points);
+      _fit();
+    });
+  }
+
+  void _onReady() {
+    _ready = true;
+    // Жол карта дайын болғанша келіп үлгерген болса — енді кадрлаймыз.
+    if (_road.isNotEmpty) _fit();
+  }
+
+  void _fit() {
+    if (!_ready || !mounted) return;
+    final pts = _boundsPoints;
+    if (_degenerate(pts)) {
+      _map.move(widget.from, 15);
+      return;
+    }
+    _map.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(pts),
+        padding: const EdgeInsets.all(48),
+      ),
+    );
+  }
+
   void _open(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RouteMapScreen(
-          from: from,
-          to: to,
-          stops: stops,
-          routePoints: routePoints,
-          extraMarkers: extraMarkers,
-          fromLabel: fromLabel,
-          toLabel: toLabel,
-          stopLabels: stopLabels,
-          distanceKm: distanceKm,
+          from: widget.from,
+          to: widget.to,
+          stops: widget.stops,
+          routePoints: _road,
+          extraMarkers: widget.extraMarkers,
+          fromLabel: widget.fromLabel,
+          toLabel: widget.toLabel,
+          stopLabels: widget.stopLabels,
+          distanceKm: widget.distanceKm,
         ),
       ),
     );
@@ -747,8 +898,8 @@ class RouteMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = [from, ...stops, to, for (final m in extraMarkers) m.point];
-    final points = routePoints.isEmpty ? [from, ...stops, to] : routePoints;
+    final from = widget.from;
+    final all = _boundsPoints;
     final flat = _degenerate(all);
     // Картаның айналасында ЖИЕК бар: ақ карточкаға тікелей жапсырылған
     // тайл суреті «жамау» болып көрінетін — жіңішке жиек оны нақты
@@ -760,13 +911,15 @@ class RouteMap extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
-        height: height,
+        height: widget.height,
         child: Stack(
           children: [
             Positioned.fill(
               child: IgnorePointer(
                 child: FlutterMap(
+                  mapController: _map,
                   options: MapOptions(
+                    onMapReady: _onReady,
                     initialCenter: flat ? from : const LatLng(48.02, 66.9),
                     initialZoom: flat ? 15 : 5,
                     // Тайл жүктелгенше көрінетін фон — толық экрандағы
@@ -788,35 +941,25 @@ class RouteMap extends StatelessWidget {
                   ),
                   children: [
                     osmTileLayer(),
-                    // Дайын геометрия берілмесе — нақты ЖОЛ маршрутын өзіміз
-                    // сұраймыз (Geo кэштейді, сол себепті қайта салғанда
-                    // серверге бармайды). Жауап келгенше түзу сызық тұрады.
-                    if (routePoints.isEmpty && !flat)
-                      FutureBuilder<GeoRoute>(
-                        future: Geo.routeVia([from, ...stops, to]),
-                        builder: (context, snap) => PolylineLayer(
-                          polylines: _routeLines(
-                            (snap.data?.onRoad ?? false)
-                                ? snap.data!.points
-                                : points,
-                          ),
-                        ),
-                      )
-                    else
-                      PolylineLayer(polylines: _routeLines(points)),
+                    PolylineLayer(
+                      polylines: _routeLines(
+                        _road.isNotEmpty ? _road : _waypoints,
+                        onRoad: _road.isNotEmpty,
+                      ),
+                    ),
                     MarkerLayer(
                       markers: _routeMarkers(
                         from: from,
-                        to: to,
-                        stops: stops,
-                        extra: extraMarkers,
+                        to: widget.to,
+                        stops: widget.stops,
+                        extra: widget.extraMarkers,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            if (expandable) ...[
+            if (widget.expandable) ...[
               // Бүкіл алдын ала көрініс — БІР ҮЛКЕН ТҮЙМЕ.
               Positioned.fill(
                 child: Material(
@@ -955,7 +1098,10 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     if (!mounted) return;
     // Желі жоқ / OSRM жауап бермеді — «есептелуде» деп мәңгі тұрып қалмауы
     // үшін күйді МІНДЕТТІ түрде жабамыз.
-    if (r.points.length < 2) {
+    // Нақты жол табылмаса (желі/OSRM) — шамаланған уақыт пен қашықтықты
+    // НАҚТЫ деп көрсетпейміз (бұрын «≈ 40 км/сағ» бойынша ойдан шығарылған
+    // уақыт шығатын); бағыт доғамен салынады.
+    if (!r.onRoad || r.points.length < 2) {
       setState(() => _loading = false);
       return;
     }
@@ -1030,9 +1176,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSheet());
-    final line = _points.isEmpty
-        ? [widget.from, ...widget.stops, widget.to]
-        : _points;
+    final onRoad = _points.isNotEmpty;
+    final line = onRoad ? _points : [widget.from, ...widget.stops, widget.to];
     final flat = _degenerate(_all);
     final ctrlBottom = _sheetTop + 12;
     return Scaffold(
@@ -1074,7 +1219,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                 ),
                 children: [
                   osmTileLayer(),
-                  PolylineLayer(polylines: _routeLines(line)),
+                  PolylineLayer(polylines: _routeLines(line, onRoad: onRoad)),
                   MarkerLayer(
                     markers: _routeMarkers(
                       from: widget.from,
