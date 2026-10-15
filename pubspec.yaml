@@ -52,7 +52,7 @@ flutter_launcher_icons:
     generate: true
   remove_alpha_ios: true
   image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#16181C"
   adaptive_icon_foreground: "assets/icon/icon_fg.png"
 
 # Splash БАПТАУЫ — пакеттің өзі ӘДЕЙІ dev_dependencies-те ЖОҚ.
@@ -92,7 +92,9 @@ flutter:
 
   assets:
     - assets/vehicles/
-    - assets/icon/
+    # Тек қосымша ішінде қолданылатын логотип; icon/splash суреттері —
+    # тек генераторларға (flutter_launcher_icons / native_splash) арналған.
+    - assets/icon/tasu_logo.png
 
   fonts:
     - family: Rubik
