@@ -47,8 +47,8 @@ Widget vehicleIcon(VehicleType v, {double size = 24, Color? color}) {
           // сай ДЕКОДТАП аламыз (жад үнемдеу, flutter-performance §3).
           : Builder(
               builder: (context) {
-                final px =
-                    (size * MediaQuery.devicePixelRatioOf(context)).round();
+                final px = (size * MediaQuery.devicePixelRatioOf(context))
+                    .round();
                 return Image.network(
                   url,
                   width: size,
@@ -151,8 +151,11 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
             height: 16,
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    size: 14, color: Gz.textSecondary),
+                const Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: Gz.textSecondary,
+                ),
                 const SizedBox(width: 5),
                 Expanded(
                   child: FittedBox(
@@ -212,7 +215,9 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
                 ),
-                boxShadow: sel ? Gz.glow(Gz.yellow, alpha: 0.28, blur: 12) : null,
+                boxShadow: sel
+                    ? Gz.glow(Gz.yellow, alpha: 0.28, blur: 12)
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -383,8 +388,10 @@ class VehicleCategoryTabs extends StatelessWidget {
                 top: -8,
                 right: -4,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1.5,
+                  ),
                   decoration: BoxDecoration(
                     gradient: Gz.brandGradient,
                     borderRadius: BorderRadius.circular(20),

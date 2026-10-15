@@ -79,8 +79,7 @@ class _IconCropScreenState extends State<IconCropScreen> {
   Future<void> _measure() async {
     final d = await decodeImageFromList(widget.source);
     if (!mounted) return;
-    setState(() =>
-        _imageSize = Size(d.width.toDouble(), d.height.toDouble()));
+    setState(() => _imageSize = Size(d.width.toDouble(), d.height.toDouble()));
     d.dispose();
   }
 
@@ -92,9 +91,7 @@ class _IconCropScreenState extends State<IconCropScreen> {
     setState(() => _busy = true);
     try {
       final rect = _sourceRect(size, viewport);
-      final png = await _renderIcon(
-        _CropJob(bytes: widget.source, rect: rect),
-      );
+      final png = await _renderIcon(_CropJob(bytes: widget.source, rect: rect));
       if (!mounted) return;
       Navigator.of(context).pop(png);
     } catch (e) {
@@ -147,8 +144,7 @@ class _IconCropScreenState extends State<IconCropScreen> {
         actions: [
           TextButton(
             onPressed: _busy ? null : _reset,
-            child: Text(t('Қалпына'),
-                style: const TextStyle(color: Gz.yellow)),
+            child: Text(t('Қалпына'), style: const TextStyle(color: Gz.yellow)),
           ),
         ],
       ),
@@ -158,7 +154,8 @@ class _IconCropScreenState extends State<IconCropScreen> {
               builder: (context, c) {
                 // Шаршы терезе — экранның еніне (не биіктігіне) сыятын
                 // ең үлкені, бірақ түсіндірме мен батырмаға орын қалады.
-                final side = math.min(c.maxWidth - 32, c.maxHeight - 190)
+                final side = math
+                    .min(c.maxWidth - 32, c.maxHeight - 190)
                     .clamp(160.0, 420.0);
                 return Column(
                   children: [
@@ -167,9 +164,10 @@ class _IconCropScreenState extends State<IconCropScreen> {
                       t('Керек жерін рамкаға келтіріңіз — қалғаны кесіледі'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600),
+                        color: Colors.white70,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Center(child: _window(side.toDouble(), size)),
@@ -179,14 +177,17 @@ class _IconCropScreenState extends State<IconCropScreen> {
                       child: SizedBox(
                         height: 50,
                         child: FilledButton.icon(
-                          onPressed:
-                              _busy ? null : () => _apply(side.toDouble()),
+                          onPressed: _busy
+                              ? null
+                              : () => _apply(side.toDouble()),
                           icon: _busy
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Gz.ink),
+                                    strokeWidth: 2,
+                                    color: Gz.ink,
+                                  ),
                                 )
                               : const Icon(Icons.check),
                           label: Text(t('Дайын')),
@@ -228,7 +229,10 @@ class _IconCropScreenState extends State<IconCropScreen> {
               ),
             ),
             IgnorePointer(
-              child: CustomPaint(painter: _FramePainter(), size: Size.square(side)),
+              child: CustomPaint(
+                painter: _FramePainter(),
+                size: Size.square(side),
+              ),
             ),
           ],
         ),
@@ -275,8 +279,7 @@ Future<Uint8List> _renderIcon(_CropJob job) async {
   final y1 = math.min(src.height, ry + side);
   if (x1 <= x0 || y1 <= y0) throw Exception('EMPTY_CROP');
 
-  final part = img.copyCrop(src,
-      x: x0, y: y0, width: x1 - x0, height: y1 - y0);
+  final part = img.copyCrop(src, x: x0, y: y0, width: x1 - x0, height: y1 - y0);
   img.compositeImage(
     canvas,
     part,
@@ -308,7 +311,10 @@ Future<Uint8List> _renderIcon(_CropJob job) async {
   );
 
   final out = img.Image(
-      width: kVehicleIconSize, height: kVehicleIconSize, numChannels: 4);
+    width: kVehicleIconSize,
+    height: kVehicleIconSize,
+    numChannels: 4,
+  );
   img.compositeImage(
     out,
     fitted,
@@ -337,8 +343,7 @@ class _CheckerPainter extends CustomPainter {
     for (var y = 0; y < size.height / cell; y++) {
       for (var x = 0; x < size.width / cell; x++) {
         if ((x + y).isEven) {
-          canvas.drawRect(
-              Rect.fromLTWH(x * cell, y * cell, cell, cell), a);
+          canvas.drawRect(Rect.fromLTWH(x * cell, y * cell, cell, cell), a);
         }
       }
     }

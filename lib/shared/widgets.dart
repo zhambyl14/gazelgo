@@ -23,15 +23,15 @@ class BtnLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          text,
-          style: style,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
+    fit: BoxFit.scaleDown,
+    child: Text(
+      text,
+      style: style,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.ellipsis,
+    ),
+  );
 }
 
 /// Басылғанда сәл КІШІРЕЙЕТІН қаптама — «тірі» батырма әсері.
@@ -135,7 +135,9 @@ class _BusyButtonState extends State<BusyButton> {
             width: 22,
             height: 22,
             child: CircularProgressIndicator(
-                strokeWidth: 2.4, color: spinnerColor),
+              strokeWidth: 2.4,
+              color: spinnerColor,
+            ),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
@@ -225,9 +227,11 @@ class GzPrimaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon,
-                        size: 20,
-                        color: enabled ? Gz.ink : Gz.disabledFg),
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: enabled ? Gz.ink : Gz.disabledFg,
+                    ),
                     const SizedBox(width: 9),
                   ],
                   Flexible(
@@ -316,7 +320,9 @@ class ConfirmCheck extends StatelessWidget {
                     Text(
                       t('Автоматты қойылды — қаласаңыз алып тастаңыз'),
                       style: const TextStyle(
-                          fontSize: 11, color: Gz.textSecondary),
+                        fontSize: 11,
+                        color: Gz.textSecondary,
+                      ),
                     ),
                   ],
                 ],
@@ -358,17 +364,17 @@ class RoutePointMark extends StatelessWidget {
 
   /// Алу нүктесі.
   const RoutePointMark.origin({super.key, this.size = 18})
-      : number = null,
-        finish = false;
+    : number = null,
+      finish = false;
 
   /// Ақырғы нүкте (финиш).
   const RoutePointMark.finish({super.key, this.size = 18})
-      : number = null,
-        finish = true;
+    : number = null,
+      finish = true;
 
   /// Аралық аялдама — 1-ден басталатын нөмірмен.
   const RoutePointMark.stop(this.number, {super.key, this.size = 18})
-      : finish = false;
+    : finish = false;
 
   @override
   Widget build(BuildContext context) {
@@ -424,8 +430,11 @@ class AddAddressButton extends StatelessWidget {
                       color: Gz.yellow,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.add_rounded,
-                        size: 15, color: Gz.ink),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 15,
+                      color: Gz.ink,
+                    ),
                   ),
                   const SizedBox(width: 7),
                   BtnLabel(
@@ -543,10 +552,7 @@ class RouteFieldsCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (f.trailing != null) ...[
-              const SizedBox(width: 8),
-              f.trailing!,
-            ],
+            if (f.trailing != null) ...[const SizedBox(width: 8), f.trailing!],
           ],
         ),
       ),
@@ -564,8 +570,9 @@ class SectionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) =>
-      Card(child: Padding(padding: padding, child: child));
+  Widget build(BuildContext context) => Card(
+    child: Padding(padding: padding, child: child),
+  );
 }
 
 class StatusChip extends StatelessWidget {
@@ -574,11 +581,11 @@ class StatusChip extends StatelessWidget {
   const StatusChip(this.status, {super.key, this.vehicleType});
 
   Color get _color => switch (status) {
-        'searching' => Gz.blue,
-        'accepted' || 'arrived' || 'loading' || 'in_transit' => Gz.green,
-        'completed' => Gz.ink,
-        _ => Gz.red,
-      };
+    'searching' => Gz.blue,
+    'accepted' || 'arrived' || 'loading' || 'in_transit' => Gz.green,
+    'completed' => Gz.ink,
+    _ => Gz.red,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -603,10 +610,11 @@ class StatusChip extends StatelessWidget {
           Text(
             statusLabel(status, vehicleType: vehicleType),
             style: TextStyle(
-                color: _color,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-                letterSpacing: 0.1),
+              color: _color,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+              letterSpacing: 0.1,
+            ),
           ),
         ],
       ),
@@ -625,7 +633,11 @@ class RatingStars extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.star_rounded, color: const Color(0xFFF59E0B), size: size + 2),
+        Icon(
+          Icons.star_rounded,
+          color: const Color(0xFFF59E0B),
+          size: size + 2,
+        ),
         const SizedBox(width: 3),
         Text(
           rating <= 0 ? t('жаңа') : rating.toStringAsFixed(1),
@@ -633,8 +645,10 @@ class RatingStars extends StatelessWidget {
         ),
         if (count >= 0) ...[
           const SizedBox(width: 3),
-          Text('($count)',
-              style: TextStyle(color: Gz.textSecondary, fontSize: size * 0.8)),
+          Text(
+            '($count)',
+            style: TextStyle(color: Gz.textSecondary, fontSize: size * 0.8),
+          ),
         ],
       ],
     );
@@ -669,10 +683,11 @@ class InitialsAvatar extends StatelessWidget {
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: TextStyle(
-            color: Gz.yellow,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.2,
-            fontSize: radius * 0.72),
+          color: Gz.yellow,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+          fontSize: radius * 0.72,
+        ),
       ),
     );
     if (imageUrl == null || imageUrl!.isEmpty) return fallback;
@@ -680,14 +695,19 @@ class InitialsAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: Gz.bg,
-      foregroundImage: ResizeImage(NetworkImage(imageUrl!), width: px, height: px),
+      foregroundImage: ResizeImage(
+        NetworkImage(imageUrl!),
+        width: px,
+        height: px,
+      ),
       onForegroundImageError: (_, _) {},
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: TextStyle(
-            color: Gz.textSecondary,
-            fontWeight: FontWeight.w800,
-            fontSize: radius * 0.72),
+          color: Gz.textSecondary,
+          fontWeight: FontWeight.w800,
+          fontSize: radius * 0.72,
+        ),
       ),
     );
   }
@@ -718,44 +738,61 @@ class ProfileBrief extends StatelessWidget {
     final p = profile;
     return Row(
       children: [
-        InitialsAvatar(p?.fullName ?? '?', radius: radius, imageUrl: p?.avatarUrl),
+        InitialsAvatar(
+          p?.fullName ?? '?',
+          radius: radius,
+          imageUrl: p?.avatarUrl,
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(p?.fullName ?? '…',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 14.5)),
+              Text(
+                p?.fullName ?? '…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                ),
+              ),
               Row(
                 children: [
                   RatingStars(
-                      asRole == null
-                          ? (p?.rating ?? 0)
-                          : (p?.ratingAs(asRole!) ?? 0),
-                      count: asRole == null
-                          ? (p?.ratingCount ?? 0)
-                          : (p?.ratingCountAs(asRole!) ?? 0),
-                      size: 12),
+                    asRole == null
+                        ? (p?.rating ?? 0)
+                        : (p?.ratingAs(asRole!) ?? 0),
+                    count: asRole == null
+                        ? (p?.ratingCount ?? 0)
+                        : (p?.ratingCountAs(asRole!) ?? 0),
+                    size: 12,
+                  ),
                   if ((p?.trips ?? 0) > 0) ...[
                     const SizedBox(width: 8),
-                    const Icon(Icons.local_shipping,
-                        size: 12, color: Gz.textSecondary),
+                    const Icon(
+                      Icons.local_shipping,
+                      size: 12,
+                      color: Gz.textSecondary,
+                    ),
                     const SizedBox(width: 2),
-                    Text('${p!.trips}',
-                        style: const TextStyle(
-                            fontSize: 11.5, color: Gz.textSecondary)),
+                    Text(
+                      '${p!.trips}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Gz.textSecondary,
+                      ),
+                    ),
                   ],
                 ],
               ),
               if (subtitle != null)
-                Text(subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 12, color: Gz.textSecondary)),
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                ),
             ],
           ),
         ),
@@ -768,8 +805,12 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
-  const EmptyState(
-      {super.key, required this.icon, required this.title, this.subtitle});
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -804,23 +845,31 @@ class EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 17.5,
-                    fontWeight: FontWeight.w900,
-                    height: 1.3,
-                    letterSpacing: -0.3)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17.5,
+                fontWeight: FontWeight.w900,
+                height: 1.3,
+                letterSpacing: -0.3,
+              ),
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: 7),
               // Ені ШЕКТЕЛГЕН: ұзын сөйлем экранның шетінен шетіне
               // созылмайды — 2-3 қысқа жол болып, көзге әдемі оқылады.
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 320),
-                child: Text(subtitle!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Gz.textSecondary, fontSize: 13.5, height: 1.5)),
+                child: Text(
+                  subtitle!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 13.5,
+                    height: 1.5,
+                  ),
+                ),
               ),
             ],
           ],
@@ -902,46 +951,49 @@ class RouteLine extends StatelessWidget {
     // кеңейтілген микро-жазу. Ол мекенжайдың өзімен ешқашан шатаспайды:
     // көз алдымен қою мекенжайды оқиды, атау «белгі» болып фонда қалады.
     Widget row(Widget lead, String label, String text) => Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(width: 20, child: Center(child: lead)),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label.toUpperCase(), style: Gz.label),
-                  const SizedBox(height: 1),
-                  Text(text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          height: 1.25,
-                          letterSpacing: -0.1)),
-                ],
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(width: 20, child: Center(child: lead)),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label.toUpperCase(), style: Gz.label),
+              const SizedBox(height: 1),
+              Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                  letterSpacing: -0.1,
+                ),
               ),
-            ),
-          ],
-        );
+            ],
+          ),
+        ),
+      ],
+    );
     // Нүктелерді жалғайтын сызық — жоғарыдан төмен солғындайды: маршрут
     // «ағып» бара жатқандай көрінеді.
     Widget connector() => Padding(
-          padding: const EdgeInsets.only(left: 9),
-          child: Container(
-            width: 2,
-            height: 16,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(1),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Gz.border, Gz.border.withValues(alpha: 0.35)],
-              ),
-            ),
+      padding: const EdgeInsets.only(left: 9),
+      child: Container(
+        width: 2,
+        height: 16,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(1),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Gz.border, Gz.border.withValues(alpha: 0.35)],
           ),
-        );
+        ),
+      ),
+    );
     // Аялдамалар НӨМІРЛЕНЕДІ (1, 2 …), ақырғы нүкте — ФИНИШ ТУЫ. Осылайша
     // маршрут «қайдан → 1 → 2 → финиш» болып оқылады.
     return Column(
@@ -950,11 +1002,7 @@ class RouteLine extends StatelessWidget {
         row(const RoutePointMark.origin(), t('Қайдан'), from),
         for (var i = 0; i < stops.length; i++) ...[
           connector(),
-          row(
-            RoutePointMark.stop(i + 1),
-            '${t('Аялдама')} ${i + 1}',
-            stops[i],
-          ),
+          row(RoutePointMark.stop(i + 1), '${t('Аялдама')} ${i + 1}', stops[i]),
         ],
         connector(),
         row(
@@ -975,13 +1023,14 @@ class OrderCard extends StatelessWidget {
   final Widget? footer;
   final bool showMap;
 
-  const OrderCard(
-      {super.key,
-      required this.order,
-      this.onTap,
-      this.trailing,
-      this.footer,
-      this.showMap = false});
+  const OrderCard({
+    super.key,
+    required this.order,
+    this.onTap,
+    this.trailing,
+    this.footer,
+    this.showMap = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1017,8 +1066,7 @@ class OrderCard extends StatelessWidget {
                 RouteMap(
                   from: LatLng(order.fromLat, order.fromLng),
                   to: LatLng(order.toLat, order.toLng),
-                  stops:
-                      order.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                  stops: order.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
                   height: 104,
                   // Тізім ішіндегі карточкада картаны түрту заказдың ӨЗ
                   // бетін ашуы керек — толық экранды карта емес (әйтпесе
@@ -1031,9 +1079,15 @@ class OrderCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(Icons.local_shipping, order.vehicleType.label,
-                      leading: vehicleIcon(order.vehicleType,
-                          size: 14, color: Gz.textSecondary)),
+                  _tag(
+                    Icons.local_shipping,
+                    order.vehicleType.label,
+                    leading: vehicleIcon(
+                      order.vehicleType,
+                      size: 14,
+                      color: Gz.textSecondary,
+                    ),
+                  ),
                   // Аралық аялдама бар заказ (0047) — орындаушы оны БІРДЕН
                   // көруі керек: маршрут ұзағырақ, жұмыс та көбірек.
                   if (order.hasStops)
@@ -1050,7 +1104,10 @@ class OrderCard extends StatelessWidget {
                       order.intercity ? t('Межгород') : t('Қала ішінде'),
                     ),
                   if (order.distanceKm > 0)
-                    _tag(Icons.route, '${order.distanceKm.toStringAsFixed(1)} км'),
+                    _tag(
+                      Icons.route,
+                      '${order.distanceKm.toStringAsFixed(1)} км',
+                    ),
                   if (order.createdAt != null && trailing == null)
                     _tag(Icons.schedule, fmtTime(order.createdAt)),
                 ],
@@ -1062,13 +1119,13 @@ class OrderCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Gz.textSecondary, fontSize: 13, height: 1.45),
+                    color: Gz.textSecondary,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
               ],
-              if (footer != null) ...[
-                const SizedBox(height: 12),
-                footer!,
-              ],
+              if (footer != null) ...[const SizedBox(height: 12), footer!],
             ],
           ),
         ),
@@ -1083,19 +1140,23 @@ class OrderCard extends StatelessWidget {
           color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
           borderRadius: BorderRadius.circular(9),
           border: Border.all(
-              color: color == null ? Gz.border : Gz.tint(color, 0.25)),
+            color: color == null ? Gz.border : Gz.tint(color, 0.25),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             leading ?? Icon(icon, size: 14, color: color ?? Gz.textSecondary),
             const SizedBox(width: 5),
-            Text(text,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: color ?? Gz.ink,
-                    letterSpacing: -0.05,
-                    fontWeight: FontWeight.w700)),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: color ?? Gz.ink,
+                letterSpacing: -0.05,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       );
@@ -1121,21 +1182,25 @@ class InfoRow extends StatelessWidget {
             width: 132,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: BtnLabel(label,
-                  style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 13.5)),
+              child: BtnLabel(
+                label,
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+              ),
             ),
           ),
           const SizedBox(width: 8),
           // Мәні қоюлау әрі қара: атау (солғын) мен мәннің АРАСЫНДАҒЫ айырма
           // көзге бірден түседі — жол «екі баған» болып оқылады.
           Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                    height: 1.4,
-                    color: Gz.ink)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+                height: 1.4,
+                color: Gz.ink,
+              ),
+            ),
           ),
         ],
       ),
@@ -1154,8 +1219,10 @@ class OrderPhotosStrip extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t('Жүк фотолары'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+        Text(
+          t('Жүк фотолары'),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+        ),
         const SizedBox(height: 6),
         SizedBox(
           height: 84,
@@ -1175,21 +1242,25 @@ class OrderPhotosStrip extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(url,
-                      width: 84, height: 84, fit: BoxFit.cover,
-                      cacheWidth:
-                          (84 * MediaQuery.devicePixelRatioOf(context))
-                              .round(),
-                      cacheHeight:
-                          (84 * MediaQuery.devicePixelRatioOf(context))
-                              .round(),
-                      errorBuilder: (_, e, s) => Container(
-                            width: 84,
-                            height: 84,
-                            color: Gz.bg,
-                            child: const Icon(Icons.broken_image,
-                                color: Gz.textSecondary),
-                          )),
+                  child: Image.network(
+                    url,
+                    width: 84,
+                    height: 84,
+                    fit: BoxFit.cover,
+                    cacheWidth: (84 * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                    cacheHeight: (84 * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                    errorBuilder: (_, e, s) => Container(
+                      width: 84,
+                      height: 84,
+                      color: Gz.bg,
+                      child: const Icon(
+                        Icons.broken_image,
+                        color: Gz.textSecondary,
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -1203,8 +1274,11 @@ class OrderPhotosStrip extends StatelessWidget {
 /// Заказ аяқталғанда бағалау терезесін ҚАЛҚЫМАЛЫ (dialog) көрсетеді —
 /// экранның төменінде қалып, көрінбей қалмас үшін. Бұрын бағаланған болса
 /// мүлдем ашылмайды.
-Future<void> maybeShowReviewDialog(BuildContext context,
-    {required String orderId, required String title}) async {
+Future<void> maybeShowReviewDialog(
+  BuildContext context, {
+  required String orderId,
+  required String title,
+}) async {
   try {
     final rows = await Repo.c
         .from('reviews')
@@ -1236,11 +1310,12 @@ class ReviewPrompt extends StatefulWidget {
   final String orderId;
   final String title;
   final VoidCallback? onDone;
-  const ReviewPrompt(
-      {super.key,
-      required this.orderId,
-      this.title = 'Бағалаңыз',
-      this.onDone});
+  const ReviewPrompt({
+    super.key,
+    required this.orderId,
+    this.title = 'Бағалаңыз',
+    this.onDone,
+  });
 
   @override
   State<ReviewPrompt> createState() => _ReviewPromptState();
@@ -1287,19 +1362,23 @@ class _ReviewPromptState extends State<ReviewPrompt> {
     if (!_checked) return const SizedBox.shrink();
     if (_done) {
       return SectionCard(
-        child: Row(children: [
-          const Icon(Icons.check_circle, color: Gz.green),
-          const SizedBox(width: 10),
-          Expanded(child: Text(t('Пікіріңіз үшін рахмет!'))),
-        ]),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Gz.green),
+            const SizedBox(width: 10),
+            Expanded(child: Text(t('Пікіріңіз үшін рахмет!'))),
+          ],
+        ),
       );
     }
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(t(widget.title),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(
+            t(widget.title),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1321,7 +1400,8 @@ class _ReviewPromptState extends State<ReviewPrompt> {
             controller: _comment,
             maxLines: 2,
             decoration: InputDecoration(
-                hintText: t('Пікір жазыңыз (міндетті емес)')),
+              hintText: t('Пікір жазыңыз (міндетті емес)'),
+            ),
           ),
           const SizedBox(height: 12),
           BusyButton(
@@ -1347,8 +1427,8 @@ class _ReviewPromptState extends State<ReviewPrompt> {
   }
 }
 
-/// Үлкен hero-логотип (кіру/сплэш экрандарына): сары дөңгелектелген
-/// тақтайша + көлік белгісі + «Tasu» атауы.
+/// Үлкен hero-логотип (кіру/сплэш экрандарына): мөлдір фондағы сары
+/// логотип-пин + «Tasu» атауы.
 class GazelGoHero extends StatelessWidget {
   final String? subtitle;
   const GazelGoHero({super.key, this.subtitle});
@@ -1358,34 +1438,22 @@ class GazelGoHero extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Жаңа брендтік логотип (өз ішінде «Tasu» жазуы бар) — сол себепті
-        // бөлек мәтіндік жазу қосылмайды.
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            // ЕКІ ҚАБАТТЫ сәуле: тығыз әрі жақын + кең әрі солғын —
-            // логотип беттің үстінде «жүзіп» тұрғандай көрінеді.
-            boxShadow: [
-              BoxShadow(
-                color: Gz.yellow.withValues(alpha: 0.45),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Gz.amber.withValues(alpha: 0.30),
-                blurRadius: 44,
-                offset: const Offset(0, 20),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: Image.asset(
-              'assets/icon/icon.png',
-              width: 108,
-              height: 108,
-              fit: BoxFit.cover,
-            ),
+        // Логотип-пин МӨЛДІР фонда — беттің ақ фонымен бірігіп, тек сары
+        // тамшы мен «T» көрінеді (айналасында шаршы да, жарқыл да жоқ).
+        Image.asset(
+          'assets/icon/tasu_logo.png',
+          height: 112,
+          width: 112 * 826 / 1013,
+          filterQuality: FilterQuality.medium,
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Tasu',
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.6,
+            color: Gz.ink,
           ),
         ),
         if (subtitle != null) ...[
@@ -1398,7 +1466,10 @@ class GazelGoHero extends StatelessWidget {
               subtitle!,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  color: Gz.textSecondary, fontSize: 14, height: 1.5),
+                color: Gz.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -1421,9 +1492,7 @@ class GazelGoHero extends StatelessWidget {
 /// орын қалуы үшін) әрі шрифт 15 — сонда орысша жазулар да толық өлшемінде
 /// бір жолда сыяды (FittedBox қосылмайды → екеуінің шрифті бірдей).
 final ButtonStyle _dialogBtnStyle = ButtonStyle(
-  padding: const WidgetStatePropertyAll(
-    EdgeInsets.symmetric(horizontal: 6),
-  ),
+  padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 6)),
   textStyle: const WidgetStatePropertyAll(
     TextStyle(
       fontSize: 15,
@@ -1468,24 +1537,34 @@ Future<bool> confirmDialog(
                   decoration: BoxDecoration(
                     color: Gz.tint(confirmColor, 0.12),
                     borderRadius: BorderRadius.circular(17),
-                    border: Border.all(color: Gz.tint(confirmColor, 0.22),
-                        width: 1.4),
+                    border: Border.all(
+                      color: Gz.tint(confirmColor, 0.22),
+                      width: 1.4,
+                    ),
                   ),
                   child: Icon(icon, color: confirmColor, size: 27),
                 ),
               ),
               const SizedBox(height: 18),
             ],
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 18.5,
-                    fontWeight: FontWeight.w900,
-                    height: 1.25,
-                    letterSpacing: -0.35)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18.5,
+                fontWeight: FontWeight.w900,
+                height: 1.25,
+                letterSpacing: -0.35,
+              ),
+            ),
             const SizedBox(height: 9),
-            Text(message,
-                style: const TextStyle(
-                    color: Gz.textSecondary, fontSize: 13.5, height: 1.55)),
+            Text(
+              message,
+              style: const TextStyle(
+                color: Gz.textSecondary,
+                fontSize: 13.5,
+                height: 1.55,
+              ),
+            ),
             const SizedBox(height: 24),
             // Екі батырма қатарда — әрқайсысына диалог енінің ЖАРТЫСЫ ғана
             // тиеді (тар телефонда ≈125px). Material-дың әдепкі көлденең
@@ -1518,23 +1597,30 @@ Future<bool> confirmDialog(
                   child: emphasizeCancel
                       ? OutlinedButton(
                           style: _dialogBtnStyle.copyWith(
-                            foregroundColor:
-                                WidgetStatePropertyAll(confirmColor),
-                            side: WidgetStatePropertyAll(BorderSide(
+                            foregroundColor: WidgetStatePropertyAll(
+                              confirmColor,
+                            ),
+                            side: WidgetStatePropertyAll(
+                              BorderSide(
                                 color: confirmColor.withValues(alpha: 0.4),
-                                width: 1.4)),
+                                width: 1.4,
+                              ),
+                            ),
                           ),
                           onPressed: () => Navigator.pop(ctx, true),
                           child: BtnLabel(confirmLabel),
                         )
                       : FilledButton(
                           style: _dialogBtnStyle.copyWith(
-                            backgroundColor:
-                                WidgetStatePropertyAll(confirmColor),
-                            foregroundColor:
-                                const WidgetStatePropertyAll(Colors.white),
+                            backgroundColor: WidgetStatePropertyAll(
+                              confirmColor,
+                            ),
+                            foregroundColor: const WidgetStatePropertyAll(
+                              Colors.white,
+                            ),
                             shadowColor: WidgetStatePropertyAll(
-                                confirmColor.withValues(alpha: 0.35)),
+                              confirmColor.withValues(alpha: 0.35),
+                            ),
                           ),
                           onPressed: () => Navigator.pop(ctx, true),
                           child: BtnLabel(confirmLabel),
@@ -1592,8 +1678,10 @@ class ReportSuspiciousButton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              t('Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
-                  'тартумен шатастырмаңыз — заказдың күйі өзгермейді.'),
+              t(
+                'Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
+                'тартумен шатастырмаңыз — заказдың күйі өзгермейді.',
+              ),
               style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -1601,19 +1689,22 @@ class ReportSuspiciousButton extends StatelessWidget {
               controller: reasonCtrl,
               maxLines: 3,
               decoration: InputDecoration(
-                  hintText: t('Не күдікті көрдіңіз? (міндетті емес)')),
+                hintText: t('Не күдікті көрдіңіз? (міндетті емес)'),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t('Болдырмау')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Gz.red,
-                foregroundColor: Colors.white,
-                shadowColor: const Color(0x59DC2626)),
+              backgroundColor: Gz.red,
+              foregroundColor: Colors.white,
+              shadowColor: const Color(0x59DC2626),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(t('Хабарлау')),
           ),
@@ -1637,8 +1728,10 @@ class ReportSuspiciousButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ListTile(
         leading: const Icon(Icons.report_outlined, color: Gz.red),
-        title: Text(t('Күдікті жағдай туралы хабарлау'),
-            style: const TextStyle(fontWeight: FontWeight.w700, color: Gz.red)),
+        title: Text(
+          t('Күдікті жағдай туралы хабарлау'),
+          style: const TextStyle(fontWeight: FontWeight.w700, color: Gz.red),
+        ),
         subtitle: Text(t('Заңсыз/қауіпті жағдайға күдіктенсеңіз')),
         onTap: () => _report(context),
       ),
@@ -1689,12 +1782,15 @@ class LanguageSwitcher extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: active ? Gz.glow(Gz.yellow, alpha: 0.35, blur: 8) : null,
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
-                color: active ? Gz.ink : Gz.textSecondary)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+            color: active ? Gz.ink : Gz.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -1745,8 +1841,7 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
   }
 
   void _confirm() {
-    final reason =
-        _selected == _other ? _customCtrl.text.trim() : _selected!;
+    final reason = _selected == _other ? _customCtrl.text.trim() : _selected!;
     Navigator.of(context).pop(reason);
   }
 
@@ -1754,7 +1849,8 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -1769,16 +1865,23 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
-                      color: Gz.border,
-                      borderRadius: BorderRadius.circular(2)),
+                    color: Gz.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-              Text(widget.title,
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w900)),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(t('Себебін таңдаңыз'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+              Text(
+                t('Себебін таңдаңыз'),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              ),
               const SizedBox(height: 10),
               for (final p in [...widget.presets, _other])
                 InkWell(
@@ -1797,8 +1900,11 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                            child: Text(t(p),
-                                style: const TextStyle(fontSize: 14))),
+                          child: Text(
+                            t(p),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1811,15 +1917,17 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
                   maxLines: 2,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                      hintText: t('Себебіңізді жазыңыз')),
+                    hintText: t('Себебіңізді жазыңыз'),
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
               FilledButton(
                 style: FilledButton.styleFrom(
-                    backgroundColor: Gz.red,
-                    foregroundColor: Colors.white,
-                    shadowColor: const Color(0x59DC2626)),
+                  backgroundColor: Gz.red,
+                  foregroundColor: Colors.white,
+                  shadowColor: const Color(0x59DC2626),
+                ),
                 onPressed: _canConfirm ? _confirm : null,
                 child: Text(t('Растау')),
               ),
@@ -1841,20 +1949,20 @@ class GazelGoLogo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(size * 0.32),
-          child: Image.asset(
-            'assets/icon/icon.png',
-            width: size * 1.35,
-            height: size * 1.35,
-            fit: BoxFit.cover,
-          ),
+        Image.asset(
+          'assets/icon/tasu_logo.png',
+          height: size * 1.35,
+          width: size * 1.35 * 826 / 1013,
+          filterQuality: FilterQuality.medium,
         ),
-        SizedBox(width: size * 0.34),
+        SizedBox(width: size * 0.3),
         Text(
           'Tasu',
           style: TextStyle(
-              fontSize: size, fontWeight: FontWeight.w900, color: Gz.ink),
+            fontSize: size,
+            fontWeight: FontWeight.w900,
+            color: Gz.ink,
+          ),
         ),
       ],
     );

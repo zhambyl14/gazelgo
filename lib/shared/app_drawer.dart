@@ -61,19 +61,13 @@ class AppDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
               child: Row(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
-                      boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: Image.asset(
-                        'assets/icon/icon.png',
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                      ),
+                  // Мөлдір логотип-пин — фонның түсімен бірігеді (шаршы жоқ).
+                  SizedBox(
+                    width: 44,
+                    height: 48,
+                    child: Image.asset(
+                      'assets/icon/tasu_logo.png',
+                      filterQuality: FilterQuality.medium,
                     ),
                   ),
                   const SizedBox(width: 11),

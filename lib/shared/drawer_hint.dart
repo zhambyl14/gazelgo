@@ -199,10 +199,12 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                t('Логотипті басыңыз немесе сол шеттегі '
-                                    'тұтқадан оңға тартыңыз — профиль, '
-                                    'тапсырыстар, баланс, хабарландырулар '
-                                    'сонда.'),
+                                t(
+                                  'Логотипті басыңыз немесе сол шеттегі '
+                                  'тұтқадан оңға тартыңыз — профиль, '
+                                  'тапсырыстар, баланс, хабарландырулар '
+                                  'сонда.',
+                                ),
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.82),
                                   fontSize: 11.5,
@@ -213,7 +215,11 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.close, color: Colors.white54, size: 18),
+                        const Icon(
+                          Icons.close,
+                          color: Colors.white54,
+                          size: 18,
+                        ),
                       ],
                     ),
                   ),
@@ -255,11 +261,17 @@ class LogoMenuButton extends StatelessWidget {
           shadowColor: Colors.black26,
           child: InkWell(
             onTap: onTap,
-            child: Image.asset(
-              'assets/icon/icon.png',
+            // Ақ батырманың ішінде мөлдір логотип-пин (ақ фонға біріккен).
+            child: SizedBox(
               width: size,
               height: size,
-              fit: BoxFit.cover,
+              child: Padding(
+                padding: EdgeInsets.all(size * 0.14),
+                child: Image.asset(
+                  'assets/icon/tasu_logo.png',
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
             ),
           ),
         ),
@@ -283,11 +295,7 @@ class LogoMenuButton extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.menu_rounded,
-                size: 12,
-                color: Gz.yellow,
-              ),
+              child: const Icon(Icons.menu_rounded, size: 12, color: Gz.yellow),
             ),
           ),
         ),

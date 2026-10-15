@@ -788,7 +788,22 @@ class RouteMap extends StatelessWidget {
                   ),
                   children: [
                     osmTileLayer(),
-                    PolylineLayer(polylines: _routeLines(points)),
+                    // Дайын геометрия берілмесе — нақты ЖОЛ маршрутын өзіміз
+                    // сұраймыз (Geo кэштейді, сол себепті қайта салғанда
+                    // серверге бармайды). Жауап келгенше түзу сызық тұрады.
+                    if (routePoints.isEmpty && !flat)
+                      FutureBuilder<GeoRoute>(
+                        future: Geo.routeVia([from, ...stops, to]),
+                        builder: (context, snap) => PolylineLayer(
+                          polylines: _routeLines(
+                            (snap.data?.onRoad ?? false)
+                                ? snap.data!.points
+                                : points,
+                          ),
+                        ),
+                      )
+                    else
+                      PolylineLayer(polylines: _routeLines(points)),
                     MarkerLayer(
                       markers: _routeMarkers(
                         from: from,

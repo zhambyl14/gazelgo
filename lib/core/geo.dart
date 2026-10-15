@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -138,14 +139,42 @@ class Geo {
   static const kStreetApprox = 'street_approx';
 
   static const _streetKinds = {
-    'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential',
-    'unclassified', 'living_street', 'pedestrian', 'service', 'road',
+    'motorway',
+    'trunk',
+    'primary',
+    'secondary',
+    'tertiary',
+    'residential',
+    'unclassified',
+    'living_street',
+    'pedestrian',
+    'service',
+    'road',
   };
 
   static const _streetWords = {
-    'ул', 'улица', 'көшесі', 'көше', 'проспект', 'пр', 'просп', 'даңғылы',
-    'мкр', 'микрорайон', 'шағынаудан', 'ықшамаудан', 'переулок', 'пер',
-    'бульвар', 'шоссе', 'тас', 'жолы', 'тұйық', 'тупик', 'проезд', 'мөлтек',
+    'ул',
+    'улица',
+    'көшесі',
+    'көше',
+    'проспект',
+    'пр',
+    'просп',
+    'даңғылы',
+    'мкр',
+    'микрорайон',
+    'шағынаудан',
+    'ықшамаудан',
+    'переулок',
+    'пер',
+    'бульвар',
+    'шоссе',
+    'тас',
+    'жолы',
+    'тұйық',
+    'тупик',
+    'проезд',
+    'мөлтек',
   };
 
   /// Іздеу мәтінін талдайды: көше атының «кілті» (салыстыру үшін), үй
@@ -190,8 +219,20 @@ class Geo {
   /// баламасына, әріп пен цифрдан басқасы алынады.
   static String _foldKey(String s) {
     const map = {
-      'ә': 'а', 'ғ': 'г', 'қ': 'к', 'ң': 'н', 'ө': 'о', 'ұ': 'у', 'ү': 'у',
-      'һ': 'х', 'і': 'и', 'ё': 'е', 'й': 'и', 'ы': 'и', 'ь': '', 'ъ': '',
+      'ә': 'а',
+      'ғ': 'г',
+      'қ': 'к',
+      'ң': 'н',
+      'ө': 'о',
+      'ұ': 'у',
+      'ү': 'у',
+      'һ': 'х',
+      'і': 'и',
+      'ё': 'е',
+      'й': 'и',
+      'ы': 'и',
+      'ь': '',
+      'ъ': '',
     };
     final b = StringBuffer();
     for (final ch in s.toLowerCase().split('')) {
@@ -848,8 +889,20 @@ class Geo {
   static String coordLabel(LatLng p) =>
       '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
 
-  /// Маршрут: OSRM демо-сервері, болмаса хаверсин × 1.3.
+  /// Маршрут: OSRM (жолдармен), болмаса хаверсин × 1.3.
   static Future<GeoRoute> route(LatLng from, LatLng to) => routeVia([from, to]);
+
+  /// OSRM серверлері — біріншісі жауап бермесе, келесісі сұралады.
+  /// Екеуі де ашық OSM серверлері (кілтсіз), CORS-ты қолдайды.
+  static const _osrmServers = [
+    'https://router.project-osrm.org/route/v1/driving/',
+    'https://routing.openstreetmap.de/routed-car/route/v1/driving/',
+  ];
+
+  /// Маршрут кэші: бір заказдың картасы (лента, заказ беті, толық экран)
+  /// бірнеше рет салынады — әр жолы серверге қайта бармаймыз. Future
+  /// сақталады, сондықтан қатар келген сұраулар да БІР запросқа бірігеді.
+  static final _routeCache = <String, Future<GeoRoute>>{};
 
   /// Маршрут БІРНЕШЕ нүкте арқылы (аралық аялдамалармен, 0047).
   /// OSRM нүктелерді `;` арқылы қабылдайды әрі оларды БЕРІЛГЕН РЕТПЕН
@@ -857,44 +910,68 @@ class Geo {
   ///
   /// [points] кемінде 2 нүкте болуы шарт; біреу ғана болса нөлдік маршрут
   /// қайтады (қосымша сынбауы үшін).
-  static Future<GeoRoute> routeVia(List<LatLng> points) async {
+  static Future<GeoRoute> routeVia(List<LatLng> points) {
     if (points.length < 2) {
-      return GeoRoute(distanceKm: 0, durationMin: 0, points: points);
-    }
-    try {
-      final coordsPath = points
-          .map((p) => '${p.longitude},${p.latitude}')
-          .join(';');
-      final uri = Uri.parse(
-        'https://router.project-osrm.org/route/v1/driving/$coordsPath'
-        '?overview=full&geometries=geojson',
+      return Future.value(
+        GeoRoute(distanceKm: 0, durationMin: 0, points: points),
       );
-      final res = await http
-          .get(uri, headers: _ua)
-          .timeout(const Duration(seconds: 10));
-      if (res.statusCode == 200) {
+    }
+    final key = points
+        .map(
+          (p) =>
+              '${p.latitude.toStringAsFixed(5)},${p.longitude.toStringAsFixed(5)}',
+        )
+        .join(';');
+    final cached = _routeCache[key];
+    if (cached != null) return cached;
+    if (_routeCache.length > 60) _routeCache.remove(_routeCache.keys.first);
+    final f = _fetchRoute(points).then((r) {
+      // Түзу сызықты шамалау кэште ҚАЛМАЙДЫ — желі қалпына келгенде
+      // келесі сұрау нақты жол геометриясын алуы керек.
+      if (!r.onRoad) _routeCache.remove(key);
+      return r;
+    });
+    _routeCache[key] = f;
+    return f;
+  }
+
+  static Future<GeoRoute> _fetchRoute(List<LatLng> points) async {
+    final coordsPath = points
+        .map((p) => '${p.longitude},${p.latitude}')
+        .join(';');
+    for (final base in _osrmServers) {
+      try {
+        final uri = Uri.parse(
+          '$base$coordsPath?overview=full&geometries=geojson',
+        );
+        // WEB-те User-Agent header-ін ЖІБЕРМЕЙМІЗ: ол «қарапайым емес»
+        // header, браузер алдын ала CORS-сұрау (preflight) жасайды, ал OSRM
+        // серверлері тек X-Requested-With/Content-Type-қа рұқсат береді —
+        // сұрау бұғатталып, маршрут ТҮЗУ СЫЗЫҚ болып қалатын.
+        final res = await http
+            .get(uri, headers: kIsWeb ? null : _ua)
+            .timeout(const Duration(seconds: 8));
+        if (res.statusCode != 200) continue;
         final j = jsonDecode(res.body) as Map<String, dynamic>;
         final routes = j['routes'] as List?;
-        if (routes != null && routes.isNotEmpty) {
-          final r = routes.first as Map<String, dynamic>;
-          final coords = ((r['geometry'] as Map)['coordinates'] as List)
-              .cast<List>();
-          return GeoRoute(
-            distanceKm: (r['distance'] as num).toDouble() / 1000,
-            durationMin: (r['duration'] as num).toDouble() / 60,
-            points: coords
-                .map(
-                  (c) => LatLng(
-                    (c[1] as num).toDouble(),
-                    (c[0] as num).toDouble(),
-                  ),
-                )
-                .toList(),
-          );
-        }
+        if (routes == null || routes.isEmpty) continue;
+        final r = routes.first as Map<String, dynamic>;
+        final coords = ((r['geometry'] as Map)['coordinates'] as List)
+            .cast<List>();
+        return GeoRoute(
+          distanceKm: (r['distance'] as num).toDouble() / 1000,
+          durationMin: (r['duration'] as num).toDouble() / 60,
+          points: coords
+              .map(
+                (c) =>
+                    LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+              )
+              .toList(),
+          onRoad: true,
+        );
+      } catch (_) {
+        // келесі сервер / fallback төменде
       }
-    } catch (_) {
-      // fallback төменде
     }
     // OSRM қолжетімсіз болса — түзу сызық бойынша шамалау (әр аялдама
     // арасындағы бөлікті ҚОСЫП есептейміз, 1.3 — жол қиралығына түзету).
@@ -1036,9 +1113,13 @@ class GeoRoute {
   final double distanceKm;
   final double durationMin;
   final List<LatLng> points;
+
+  /// `true` — нақты жол геометриясы (OSRM); `false` — түзу сызықты шамалау.
+  final bool onRoad;
   GeoRoute({
     required this.distanceKm,
     required this.durationMin,
     required this.points,
+    this.onRoad = false,
   });
 }

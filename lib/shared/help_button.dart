@@ -46,8 +46,11 @@ class _HelpButtonState extends State<HelpButton> {
       ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {}
     if (!ok && mounted) {
-      showSnack(context, '${t('WhatsApp ашылмады. Нөмір:')} +$number',
-          error: true);
+      showSnack(
+        context,
+        '${t('WhatsApp ашылмады. Нөмір:')} +$number',
+        error: true,
+      );
     }
   }
 

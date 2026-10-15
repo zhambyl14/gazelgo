@@ -52,7 +52,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
       _open(); // мобильде бірден ашылады (вебте түйме арқылы ашылады)
       _poll?.cancel();
       _poll = Timer.periodic(
-          const Duration(milliseconds: 2500), (_) => _check());
+        const Duration(milliseconds: 2500),
+        (_) => _check(),
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -82,7 +84,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
       var installed = false;
       try {
         installed = await canLaunchUrl(tg);
-      } catch (_) {/* қате — орнатылмаған деп есептейміз */}
+      } catch (_) {
+        /* қате — орнатылмаған деп есептейміз */
+      }
       if (!mounted) return;
       if (installed) {
         if (_noTg) setState(() => _noTg = false);
@@ -113,7 +117,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
         setState(() => _phone = res['phone'] as String);
         widget.onVerified(t, _phone!);
       }
-    } catch (_) {/* келесі тикте қайталаймыз */}
+    } catch (_) {
+      /* келесі тикте қайталаймыз */
+    }
   }
 
   @override
@@ -134,14 +140,21 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t('Нөмір расталды'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
-                          color: Gz.green)),
-                  Text(Phone.pretty(_phone!),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  Text(
+                    t('Нөмір расталды'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: Gz.green,
+                    ),
+                  ),
+                  Text(
+                    Phone.pretty(_phone!),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -165,15 +178,23 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline,
-                    size: 18, color: Color(0xFFB26A00)),
+                const Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Color(0xFFB26A00),
+                ),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    t('Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
-                        'түймесін басыңыз.'),
+                    t(
+                      'Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
+                      'түймесін басыңыз.',
+                    ),
                     style: const TextStyle(
-                        color: Color(0xFF8A5200), fontSize: 12.5, height: 1.4),
+                      color: Color(0xFF8A5200),
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -221,7 +242,10 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                       ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз')
                       : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
                   style: const TextStyle(
-                      color: Color(0xFF1C5A91), fontSize: 12.5, height: 1.4),
+                    color: Color(0xFF1C5A91),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],
@@ -241,11 +265,14 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.telegram),
-            label: Text(waiting
-                ? t('📲 Telegram-ды ашу')
-                : t('Telegram арқылы растау')),
+            label: Text(
+              waiting ? t('📲 Telegram-ды ашу') : t('Telegram арқылы растау'),
+            ),
           ),
           if (waiting) ...[
             const SizedBox(height: 8),
@@ -253,12 +280,18 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(
-                    width: 13,
-                    height: 13,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
                 const SizedBox(width: 8),
-                Text(t('Растауды күтудеміз…'),
-                    style: const TextStyle(color: Color(0xFF1C5A91), fontSize: 12)),
+                Text(
+                  t('Растауды күтудеміз…'),
+                  style: const TextStyle(
+                    color: Color(0xFF1C5A91),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
             // Веб-те t.me DNS-пен бұғатталуы мүмкін (кейбір желілерде) —
@@ -269,10 +302,15 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               const Divider(height: 1, color: Color(0xFF9DCBF5)),
               const SizedBox(height: 10),
               Text(
-                t('Сілтеме ашылмаса: Telegram-ды қолмен ашып, ботты іздеңіз '
-                    'де, кодты жіберіңіз.'),
+                t(
+                  'Сілтеме ашылмаса: Telegram-ды қолмен ашып, ботты іздеңіз '
+                  'де, кодты жіберіңіз.',
+                ),
                 style: const TextStyle(
-                    color: Color(0xFF1C5A91), fontSize: 12, height: 1.4),
+                  color: Color(0xFF1C5A91),
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 8),
               _CopyRow(label: t('Бот'), value: '@${Env.telegramBot}'),
@@ -309,17 +347,23 @@ class _CopyRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text('$label: ',
-                style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1C5A91))),
+            Text(
+              '$label: ',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1C5A91),
+              ),
+            ),
             Expanded(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontSize: 12.5,
-                      fontFamily: 'monospace',
-                      color: Color(0xFF0F1720))),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontFamily: 'monospace',
+                  color: Color(0xFF0F1720),
+                ),
+              ),
             ),
             const Icon(Icons.copy, size: 15, color: Color(0xFF2B7DC4)),
           ],

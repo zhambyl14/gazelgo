@@ -312,14 +312,11 @@ class _NewsStoryScreenState extends ConsumerState<NewsStoryScreen>
             Row(
               children: [
                 const SizedBox(width: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/icon/icon.png',
-                    width: 26,
-                    height: 26,
-                    fit: BoxFit.cover,
-                  ),
+                Image.asset(
+                  'assets/icon/tasu_logo.png',
+                  height: 26,
+                  width: 26 * 826 / 1013,
+                  filterQuality: FilterQuality.medium,
                 ),
                 const SizedBox(width: 8),
                 Expanded(

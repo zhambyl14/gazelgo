@@ -109,23 +109,26 @@ class _UpdateGateState extends State<UpdateGate> {
                 const SizedBox(height: 24),
                 const Icon(Icons.system_update, size: 56, color: Gz.yellowDark),
                 const SizedBox(height: 16),
-                Text(t('Жаңарту қажет'),
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w900)),
+                Text(
+                  t('Жаңарту қажет'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   (gate['message'] as String?)?.trim().isNotEmpty == true
                       ? gate['message'] as String
-                      : t('Жаңа нұсқа шықты. Жалғастыру үшін қосымшаны '
-                          'жаңартыңыз.'),
+                      : t(
+                          'Жаңа нұсқа шықты. Жалғастыру үшін қосымшаны '
+                          'жаңартыңыз.',
+                        ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Gz.textSecondary),
                 ),
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _openStore,
-                  child: Text(t('Жаңарту')),
-                ),
+                FilledButton(onPressed: _openStore, child: Text(t('Жаңарту'))),
               ],
             ),
           ),

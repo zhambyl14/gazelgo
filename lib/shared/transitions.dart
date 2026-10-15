@@ -9,8 +9,10 @@ Route<T> slideUpRoute<T>(Widget page) {
     reverseTransitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, animation, secondary) => page,
     transitionsBuilder: (context, animation, secondary, child) {
-      final curved =
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       return SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 1),
