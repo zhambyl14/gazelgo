@@ -195,6 +195,78 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   /// Іздеуден КЕЙІНГІ барлық статустың (accepted … expired) экраны.
   Widget _details(Order o) {
+    final live = _liveStatuses.contains(o.status);
+    final info = <Widget>[
+      if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
+        StreamBuilder<Map<String, dynamic>?>(
+          stream: Repo.orderExecutorLocationStream(o.id),
+          builder: (context, locSnap) {
+            final loc = locSnap.data;
+            final extra = <Marker>[
+              if (loc != null && loc['lat'] != null)
+                executorLiveMarker(
+                  LatLng(
+                    (loc['lat'] as num).toDouble(),
+                    (loc['lng'] as num).toDouble(),
+                  ),
+                ),
+            ];
+            return RouteMap(
+              from: LatLng(o.fromLat, o.fromLng),
+              to: LatLng(o.toLat, o.toLng),
+              stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+              height: 175,
+              extraMarkers: extra,
+              fromLabel: o.fromDisplay,
+              toLabel: o.toDisplay,
+              stopLabels: o.stops.map((s) => s.display).toList(),
+              distanceKm: o.distanceKm,
+            );
+          },
+        )
+      else
+        RouteMap(
+          from: LatLng(o.fromLat, o.fromLng),
+          to: LatLng(o.toLat, o.toLng),
+          stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+          height: 175,
+          fromLabel: o.fromDisplay,
+          toLabel: o.toDisplay,
+          stopLabels: o.stops.map((s) => s.display).toList(),
+          distanceKm: o.distanceKm,
+        ),
+      const SizedBox(height: 10),
+      SectionCard(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RouteLine(
+              from: o.fromDisplay,
+              to: o.toDisplay,
+              stops: o.stops.map((s) => s.display).toList(),
+            ),
+            const Divider(height: 20),
+            InfoRow(t('Жүк'), o.cargoDesc),
+            if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
+            InfoRow(t('Көлік'), o.vehicleType.label),
+            if (o.distanceKm > 0)
+              InfoRow(t('Қашықтық'), Geo.formatDistance(o.distanceKm)),
+            InfoRow(
+              t('Бағыты'),
+              o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде'),
+            ),
+            if (o.createdAt != null)
+              InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
+          ],
+        ),
+      ),
+      if (o.photos.isNotEmpty &&
+          !['completed', 'cancelled', 'expired'].contains(o.status)) ...[
+        const SizedBox(height: 10),
+        OrderPhotosStrip(paths: o.photos),
+      ],
+    ];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -223,83 +295,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
-            StreamBuilder<Map<String, dynamic>?>(
-              stream: Repo.orderExecutorLocationStream(o.id),
-              builder: (context, locSnap) {
-                final loc = locSnap.data;
-                final extra = <Marker>[
-                  if (loc != null && loc['lat'] != null)
-                    executorLiveMarker(
-                      LatLng(
-                        (loc['lat'] as num).toDouble(),
-                        (loc['lng'] as num).toDouble(),
-                      ),
-                    ),
-                ];
-                return RouteMap(
-                  from: LatLng(o.fromLat, o.fromLng),
-                  to: LatLng(o.toLat, o.toLng),
-                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                  height: 175,
-                  extraMarkers: extra,
-                  fromLabel: o.fromDisplay,
-                  toLabel: o.toDisplay,
-                  stopLabels: o.stops.map((s) => s.display).toList(),
-                  distanceKm: o.distanceKm,
-                );
-              },
-            )
-          else
-            RouteMap(
-              from: LatLng(o.fromLat, o.fromLng),
-              to: LatLng(o.toLat, o.toLng),
-              stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-              height: 175,
-              fromLabel: o.fromDisplay,
-              toLabel: o.toDisplay,
-              stopLabels: o.stops.map((s) => s.display).toList(),
-              distanceKm: o.distanceKm,
-            ),
-          const SizedBox(height: 10),
-          SectionCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RouteLine(
-                  from: o.fromDisplay,
-                  to: o.toDisplay,
-                  stops: o.stops.map((s) => s.display).toList(),
-                ),
-                const Divider(height: 20),
-                InfoRow(t('Жүк'), o.cargoDesc),
-                if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
-                InfoRow(t('Көлік'), o.vehicleType.label),
-                if (o.distanceKm > 0)
-                  InfoRow(
-                    t('Қашықтық'),
-                    '${o.distanceKm.toStringAsFixed(1)} км',
-                  ),
-                InfoRow(
-                  t('Бағыты'),
-                  o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде'),
-                ),
-                if (o.createdAt != null)
-                  InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
-              ],
-            ),
-          ),
-          if (o.photos.isNotEmpty &&
-              !['completed', 'cancelled', 'expired'].contains(o.status)) ...[
-            const SizedBox(height: 10),
-            OrderPhotosStrip(paths: o.photos),
+          // Сапар жүріп жатқанда (орындаушы жолда/келді/тиеу/жолда) ЕҢ
+          // маңыздысы — кім келе жатыр, қоңырау, «Тиеу басталды» растауы:
+          // олар картадан ЖОҒАРЫ тұрады (бұрын экранның төменінде қалатын).
+          if (live) ...[
+            ..._statusSection(o),
+            const SizedBox(height: 14),
+            ...info,
+          ] else ...[
+            ...info,
+            const SizedBox(height: 14),
+            ..._statusSection(o),
           ],
           const SizedBox(height: 14),
-          ..._statusSection(o),
-          const SizedBox(height: 14),
           // Бас тарту: accepted/arrived — процесте болмаса (іздеу кезінде
-          // «Күте алмаймын» батырмасы — [_SearchingScreen]).
+          // «Заказды тоқтату» — [_SearchingScreen] ішінде).
           if (['accepted', 'arrived'].contains(o.status))
             OutlinedButton.icon(
               onPressed: _cancel,
