@@ -30,7 +30,9 @@ class _ExecutorShellState extends State<ExecutorShell> {
     super.initState();
     // Линиядағы орындаушыға жаңа заказ туралы хабарлау (әр 25с)
     _feedWatch = Timer.periodic(
-        const Duration(seconds: 25), (_) => _checkNewOrders());
+      const Duration(seconds: 25),
+      (_) => _checkNewOrders(),
+    );
     _checkNewOrders();
   }
 
@@ -57,8 +59,7 @@ class _ExecutorShellState extends State<ExecutorShell> {
           .order('created_at', ascending: false)
           .limit(10);
       final ids = (rows as List).map((m) => m['id'] as String).toList();
-      final fresh =
-          ids.where((id) => !_notifiedOrders.contains(id)).toList();
+      final fresh = ids.where((id) => !_notifiedOrders.contains(id)).toList();
       _notifiedOrders.addAll(ids);
       // алғашқы жүктеуде ескілерге хабарламай, тек белгілеп қоямыз
       if (!_feedPrimed) {
@@ -72,9 +73,11 @@ class _ExecutorShellState extends State<ExecutorShell> {
       // нақты табылған ақау. Сол себепті локал нұсқасы тек push мүлдем
       // жоқ жағдайда (Firebase бапталмаған) резерв ретінде қалады.
       if (fresh.isNotEmpty && !Push.isActive && await Prefs.orderNotify()) {
-        Notify.show(t('Жаңа заказ бар! 🚚'),
-            '${t('Лентада')} ${fresh.length} ${t('жаңа заказ күтіп тұр — қараңыз.')}',
-            id: 2);
+        Notify.show(
+          t('Жаңа заказ бар! 🚚'),
+          '${t('Лентада')} ${fresh.length} ${t('жаңа заказ күтіп тұр — қараңыз.')}',
+          id: 2,
+        );
       }
     } catch (_) {}
   }
@@ -105,8 +108,11 @@ class _BusyOrderBanner extends StatelessWidget {
 
   void _open(BuildContext context, List<Order> active) {
     if (active.length == 1) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ActiveOrderScreen(orderId: active.first.id)));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ActiveOrderScreen(orderId: active.first.id),
+        ),
+      );
       return;
     }
     showModalBottomSheet(
@@ -118,16 +124,21 @@ class _BusyOrderBanner extends StatelessWidget {
       builder: (ctx) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(t('Белсенді заказдар'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 18)),
+                Text(
+                  t('Белсенді заказдар'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Flexible(
                   child: ListView.separated(
@@ -140,9 +151,11 @@ class _BusyOrderBanner extends StatelessWidget {
                         order: o,
                         onTap: () {
                           Navigator.pop(ctx);
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) =>
-                                  ActiveOrderScreen(orderId: o.id)));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ActiveOrderScreen(orderId: o.id),
+                            ),
+                          );
                         },
                       );
                     },
@@ -167,19 +180,19 @@ class _BusyOrderBanner extends StatelessWidget {
           onTap: () => _open(context, active),
           child: Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Gz.green, Color(0xFF0E8A3E)],
-              ),
+              gradient: LinearGradient(colors: [Gz.green, Color(0xFF0E8A3E)]),
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: SafeArea(
               top: false,
               bottom: false,
               child: Row(
                 children: [
-                  const Icon(Icons.local_shipping,
-                      color: Colors.white, size: 20),
+                  const Icon(
+                    Icons.local_shipping,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -187,23 +200,30 @@ class _BusyOrderBanner extends StatelessWidget {
                           ? '${active.length} ${t('белсенді заказ бар — ашу үшін басыңыз')}'
                           : t('Белсенді заказ бар — ашу үшін басыңыз'),
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   if (active.length > 1)
                     Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text('+${active.length - 1}',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
+                      child: Text(
+                        '+${active.length - 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   const Icon(Icons.chevron_right, color: Colors.white),
                 ],

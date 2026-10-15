@@ -9,8 +9,11 @@ import 'trust_actions.dart';
 
 /// Модератордың заказ басқару терезесі: детальдар + статусты өзгерту /
 /// тоқтату / қайта ұсыну. Оқыс оқиғаларға арналған.
-Future<void> showOrderAdminSheet(BuildContext context, String orderId,
-    {VoidCallback? onChanged}) async {
+Future<void> showOrderAdminSheet(
+  BuildContext context,
+  String orderId, {
+  VoidCallback? onChanged,
+}) async {
   await showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -66,8 +69,9 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     final parts = <String>[];
     if (pairCount >= 3) {
       parts.add(
-          '${t('Бұл клиент пен газелист соңғы 30 күнде')} $pairCount ${t('рет '
-              'бірге аяқтаған заказ жасаған — қайталанатын жұп.')}');
+        '${t('Бұл клиент пен газелист соңғы 30 күнде')} $pairCount ${t('рет '
+        'бірге аяқтаған заказ жасаған — қайталанатын жұп.')}',
+      );
     }
     if (isNewHighValue) {
       parts.add(t('Клиент аккаунты жаңа (<24 сағ) әрі заказ бағасы жоғары.'));
@@ -89,12 +93,12 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
   /// Такси заказында (жолаушы тасымалы) «Тиеу» орнына «Отырғызу» — жолаушы
   /// жүк емес.
   List<(String, String)> get _statuses => [
-        for (final s in _statusesBase)
-          if (s.$1 == 'loading' && _order?.vehicleType == VehicleType.taxi)
-            (s.$1, 'Отырғызу')
-          else
-            s,
-      ];
+    for (final s in _statusesBase)
+      if (s.$1 == 'loading' && _order?.vehicleType == VehicleType.taxi)
+        (s.$1, 'Отырғызу')
+      else
+        s,
+  ];
 
   Future<void> _setStatus(String status) async {
     final label = t(_statuses.firstWhere((s) => s.$1 == status).$2);
@@ -102,14 +106,18 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t('Статусты өзгерту')),
-        content: Text('${t('Заказ статусы')} «$label» ${t('болады. Растайсыз ба?')}'),
+        content: Text(
+          '${t('Заказ статусы')} «$label» ${t('болады. Растайсыз ба?')}',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Жоқ'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t('Жоқ')),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Иә, өзгерту'))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(t('Иә, өзгерту')),
+          ),
         ],
       ),
     );
@@ -146,17 +154,22 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: Gz.border,
-                        borderRadius: BorderRadius.circular(2)),
+                      color: Gz.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(fmtT(o.displayPrice),
-                          style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.w900)),
+                      child: Text(
+                        fmtT(o.displayPrice),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                     StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
@@ -164,8 +177,10 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                 if (_fraudWarning != null) ...[
                   const SizedBox(height: 10),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF3E0),
                       borderRadius: BorderRadius.circular(12),
@@ -174,16 +189,22 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            color: Color(0xFFB86E00), size: 18),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFFB86E00),
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(_fraudWarning!,
-                              style: const TextStyle(
-                                  color: Color(0xFF8A5300),
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.4)),
+                          child: Text(
+                            _fraudWarning!,
+                            style: const TextStyle(
+                              color: Color(0xFF8A5300),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              height: 1.4,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -203,8 +224,10 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                       const Divider(height: 20),
                       InfoRow(t('Жүк'), o.cargoDesc),
                       InfoRow(t('Көлік'), o.vehicleType.label),
-                      InfoRow(t('Бағыты'),
-                          o.intercity ? t('Қалааралық') : t('Қала ішінде')),
+                      InfoRow(
+                        t('Бағыты'),
+                        o.intercity ? t('Қалааралық') : t('Қала ішінде'),
+                      ),
                       InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
                     ],
                   ),
@@ -233,12 +256,18 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                Text(t('Статусты өзгерту'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(
+                  t('Статусты өзгерту'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
-                  t('Тек оқыс оқиғада қолданыңыз (мыс: орындаушы аяқтай алмай тұр).'),
+                  t(
+                    'Тек оқыс оқиғада қолданыңыз (мыс: орындаушы аяқтай алмай тұр).',
+                  ),
                   style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
@@ -249,17 +278,21 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     for (final (key, label) in _statuses)
                       if (key != o.status)
                         ActionChip(
-                          label: Text(t(label),
-                              style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700)),
+                          label: Text(
+                            t(label),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           backgroundColor: key == 'cancelled'
                               ? Gz.red.withValues(alpha: 0.08)
                               : Gz.bg,
                           side: BorderSide(
-                              color: key == 'cancelled'
-                                  ? Gz.red.withValues(alpha: 0.4)
-                                  : Gz.border),
+                            color: key == 'cancelled'
+                                ? Gz.red.withValues(alpha: 0.4)
+                                : Gz.border,
+                          ),
                           onPressed: () => _setStatus(key),
                         ),
                   ],
@@ -299,13 +332,21 @@ class _PartyCard extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-                child: ProfileBrief(
-                    profile: p, subtitle: subtitle, asRole: asRole)),
+              child: ProfileBrief(
+                profile: p,
+                subtitle: subtitle,
+                asRole: asRole,
+              ),
+            ),
             if (p != null) ...[
               const SizedBox(width: 8),
               TrustBadge(score: p.trustScore, blocked: p.isBlocked),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 18, color: Gz.textSecondary),
+              const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Gz.textSecondary,
+              ),
             ],
           ],
         ),

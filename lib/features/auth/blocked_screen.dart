@@ -47,14 +47,21 @@ class BlockedScreen extends ConsumerWidget {
                 child: const Icon(Icons.block, size: 52, color: Gz.red),
               ),
               const SizedBox(height: 20),
-              Text(t('Аккаунт бұғатталған'),
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              Text(
+                t('Аккаунт бұғатталған'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 profile.blockReason?.isNotEmpty == true
                     ? '${t('Себебі:')} ${profile.blockReason}'
-                    : t('Қауіпсіздік себебімен аккаунтыңызға уақытша шектеу '
-                        'қойылды.'),
+                    : t(
+                        'Қауіпсіздік себебімен аккаунтыңызға уақытша шектеу '
+                        'қойылды.',
+                      ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
               ),

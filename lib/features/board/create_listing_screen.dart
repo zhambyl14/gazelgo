@@ -155,7 +155,9 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       if (ep == null || ep.status != 'approved') {
         showSnack(
           context,
-          t('Қызмет жариялау үшін алдымен аккаунтыңыз модерациядан өтуі керек.'),
+          t(
+            'Қызмет жариялау үшін алдымен аккаунтыңыз модерациядан өтуі керек.',
+          ),
           error: true,
         );
         return;
@@ -186,7 +188,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
           body: body,
           priceText: _price.text.trim(),
           durationDays: duration,
-        photos: paths,
+          photos: paths,
         );
       }
       if (!mounted) return;
@@ -202,8 +204,8 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isExecutor = (ref.watch(myProfileProvider).value?.role ?? 'client') ==
-        'executor';
+    final isExecutor =
+        (ref.watch(myProfileProvider).value?.role ?? 'client') == 'executor';
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -249,10 +251,14 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                         const SizedBox(height: 2),
                         Text(
                           isExecutor
-                              ? t('Оны клиенттер «Қызметтер» бөлімінен көреді '
-                                  'де, өздері хабарласады.')
-                              : t('Оны орындаушылар «Жұмыстар» бөлімінен көреді '
-                                  'де, өздері хабарласады.'),
+                              ? t(
+                                  'Оны клиенттер «Қызметтер» бөлімінен көреді '
+                                  'де, өздері хабарласады.',
+                                )
+                              : t(
+                                  'Оны орындаушылар «Жұмыстар» бөлімінен көреді '
+                                  'де, өздері хабарласады.',
+                                ),
                           style: const TextStyle(
                             fontSize: 12.5,
                             height: 1.35,
@@ -330,10 +336,14 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             const SizedBox(height: 4),
             Text(
               isExecutor
-                  ? t('мыс: КамАЗым бар, топырақ пен қиыршық тас тасимын. '
-                      'Қала ішінде және маңайға шығамын.')
-                  : t('мыс: Құрылыс алаңына 10 күн бойы құм тасу керек. '
-                      'Ұзақ мерзімге фура іздеймін.'),
+                  ? t(
+                      'мыс: КамАЗым бар, топырақ пен қиыршық тас тасимын. '
+                      'Қала ішінде және маңайға шығамын.',
+                    )
+                  : t(
+                      'мыс: Құрылыс алаңына 10 күн бойы құм тасу керек. '
+                      'Ұзақ мерзімге фура іздеймін.',
+                    ),
               style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
             ),
             const SizedBox(height: 8),
@@ -462,7 +472,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             ),
             Text(
               '${t('Суреттер')} $kListingDays ${t('күн сақталады, содан кейін '
-                  'автоматты өшіріледі.')}',
+              'автоматты өшіріледі.')}',
               style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             if (_isRepost) ...[
@@ -485,8 +495,8 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                   itemCount: _photos.length,
                   separatorBuilder: (_, i) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
-                    final px =
-                        (88 * MediaQuery.devicePixelRatioOf(context)).round();
+                    final px = (88 * MediaQuery.devicePixelRatioOf(context))
+                        .round();
                     return Stack(
                       children: [
                         ClipRRect(
@@ -535,13 +545,14 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             Text(
               _missing ??
                   '${t('Хабарландыру')} $kListingDays ${t('күн лентада '
-                      'тұрады, сосын архивке кетеді — кейін қайта жариялай '
-                      'аласыз.')}',
+                  'тұрады, сосын архивке кетеді — кейін қайта жариялай '
+                  'аласыз.')}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: _missing == null ? Gz.textSecondary : Gz.red,
-                fontWeight:
-                    _missing == null ? FontWeight.w400 : FontWeight.w700,
+                fontWeight: _missing == null
+                    ? FontWeight.w400
+                    : FontWeight.w700,
                 fontSize: 12,
               ),
             ),

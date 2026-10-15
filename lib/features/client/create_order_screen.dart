@@ -74,6 +74,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   /// Заңдылық белгісі АВТОМАТТЫ қойылды ма (алғашқы бірнеше заказдан кейін).
   bool _legalAuto = false;
+
   /// «Тізім» — тыйым салынған заттардың НАҚТЫ тізіміне апарады: құжат
   /// ашылған бойда сол бөлімге автоматты скролл жасалып, ол қысқа уақыт
   /// белгіленеді. Бұрын жай ғана келісімнің басы ашылатын да, қолданушы
@@ -126,13 +127,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   ///
   /// (Әкімшілік жұрнақтарын алып тастап салыстырады: «Тараз қаласы» мен
   /// «Тараз қалалық әкімшілігі» бір қала болып есептеледі.)
-  bool get _intercity =>
-      distinctCities(_points.map((p) => p.city)).length > 1;
+  bool get _intercity => distinctCities(_points.map((p) => p.city)).length > 1;
 
   /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸.
   int get _minPrice => _intercity ? 1000 : 100;
 
-  int? get _priceValue => int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
+  int? get _priceValue =>
+      int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
 
   /// Жарияларға дайын емес болса — НЕ жетпейтіні (батырманың астында бір
   /// қатармен көрсетіледі). Дайын болса null.
@@ -374,8 +375,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       helpText: t('Қай уақытқа?'),
     );
     if (time == null || !mounted) return;
-    var picked =
-        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    var picked = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
     if (picked.isBefore(earliest)) picked = earliest;
     setState(() => _scheduledAt = picked);
   }
@@ -396,13 +402,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule_rounded, size: 18, color: Gz.textSecondary),
+              const Icon(
+                Icons.schedule_rounded,
+                size: 18,
+                color: Gz.textSecondary,
+              ),
               const SizedBox(width: 7),
-              Text(t('Қашан керек?'),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      letterSpacing: -0.2)),
+              Text(
+                t('Қашан керек?'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                  letterSpacing: -0.2,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -416,9 +429,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 onSelected: (_) => setState(() => _scheduledAt = null),
               ),
               ChoiceChip(
-                label: Text(picked == null
-                    ? t('Алдын ала жоспарлау')
-                    : fmtDate(picked)),
+                label: Text(
+                  picked == null ? t('Алдын ала жоспарлау') : fmtDate(picked),
+                ),
                 selected: picked != null,
                 onSelected: (_) => _pickScheduledAt(minHours, maxDays),
               ),
@@ -527,12 +540,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         toCity: _to.city,
         // Аралық аялдамалар (0047) — қосылған РЕТПЕН.
         stops: _stops
-            .map((s) => OrderStop(
-                  address: s.address,
-                  lat: s.point.latitude,
-                  lng: s.point.longitude,
-                  city: s.city,
-                ))
+            .map(
+              (s) => OrderStop(
+                address: s.address,
+                lat: s.point.latitude,
+                lng: s.point.longitude,
+                city: s.city,
+              ),
+            )
             .toList(),
         scheduledAt: _scheduledAt,
       );
@@ -562,10 +577,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final schedCfg = settingsMap?['scheduled_orders'];
     final schedEnabled =
         !widget.isGuest && schedCfg is Map && schedCfg['enabled'] == true;
-    final schedMinHours =
-        schedCfg is Map ? ((schedCfg['min_hours_ahead'] as num?)?.toInt() ?? 2) : 2;
-    final schedMaxDays =
-        schedCfg is Map ? ((schedCfg['max_days_ahead'] as num?)?.toInt() ?? 14) : 14;
+    final schedMinHours = schedCfg is Map
+        ? ((schedCfg['min_hours_ahead'] as num?)?.toInt() ?? 2)
+        : 2;
+    final schedMaxDays = schedCfg is Map
+        ? ((schedCfg['max_days_ahead'] as num?)?.toInt() ?? 14)
+        : 14;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -637,11 +654,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: Gz.tint(
-                                  _intercity ? Gz.violet : Gz.green, 0.10),
+                                _intercity ? Gz.violet : Gz.green,
+                                0.10,
+                              ),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: Gz.tint(
-                                    _intercity ? Gz.violet : Gz.green, 0.25),
+                                  _intercity ? Gz.violet : Gz.green,
+                                  0.25,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -685,8 +706,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           height: 190,
                           fromLabel: _from.address,
                           toLabel: _to.address,
-                          stopLabels:
-                              _stops.map((s) => s.address).toList(),
+                          stopLabels: _stops.map((s) => s.address).toList(),
                           distanceKm: route?.distanceKm,
                         ),
                         const SizedBox(height: 10),
@@ -871,8 +891,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               hintText: _isDelivery
                                   ? t('мыс: құжат, дәрі, кішкене қап')
                                   : t('мыс: диван, тоңазытқыш, көшу'),
-                              prefixIcon:
-                                  const Icon(Icons.inventory_2_outlined),
+                              prefixIcon: const Icon(
+                                Icons.inventory_2_outlined,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -1092,8 +1113,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         Center(
                           child: Text(
                             _missing ??
-                                t('Төлем — қолма-қол не аударыммен, тікелей '
-                                    'орындаушыға'),
+                                t(
+                                  'Төлем — қолма-қол не аударыммен, тікелей '
+                                  'орындаушыға',
+                                ),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: _canSubmit ? Gz.textSecondary : Gz.red,
@@ -1219,10 +1242,7 @@ class _EditableAddr extends StatelessWidget {
                 color: Gz.textSecondary,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 30,
-                  minHeight: 30,
-                ),
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                 tooltip: t('Алып тастау'),
               ),
           ],
@@ -1231,4 +1251,3 @@ class _EditableAddr extends StatelessWidget {
     );
   }
 }
-

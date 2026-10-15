@@ -19,9 +19,9 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   late Future<List<List<ExecutorProfile>>> _future = _load();
 
   Future<List<List<ExecutorProfile>>> _load() => Future.wait([
-        Repo.executorsByStatus('pending'),
-        Repo.docsReviewPending(),
-      ]);
+    Repo.executorsByStatus('pending'),
+    Repo.docsReviewPending(),
+  ]);
 
   void _reload() => setState(() => _future = _load());
 
@@ -38,13 +38,16 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
           final pending = snap.data?[0] ?? [];
           final docsReview = snap.data?[1] ?? [];
           if (pending.isEmpty && docsReview.isEmpty) {
-            return ListView(children: [
-              const SizedBox(height: 120),
-              EmptyState(
+            return ListView(
+              children: [
+                const SizedBox(height: 120),
+                EmptyState(
                   icon: Icons.inbox_outlined,
                   title: t('Жаңа өтінім жоқ'),
-                  subtitle: t('Барлық өтінімдер қаралған.')),
-            ]);
+                  subtitle: t('Барлық өтінімдер қаралған.'),
+                ),
+              ],
+            );
           }
           return ListView(
             padding: const EdgeInsets.all(12),
@@ -77,13 +80,16 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-        child: Text(text,
-            style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                color: Gz.textSecondary)),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w800,
+        fontSize: 13,
+        color: Gz.textSecondary,
+      ),
+    ),
+  );
 }
 
 /// Құжат жаңартуын ревьюлеу тайлы (қабылдау / қайтару).
@@ -98,29 +104,41 @@ class _DocsReviewTile extends StatelessWidget {
       future: Repo.profileOf(ep.userId),
       builder: (context, snap) {
         final p = snap.data;
-        final fields =
-            ep.docsUpdateFields.map(ExecutorProfile.docFieldLabel).join(', ');
+        final fields = ep.docsUpdateFields
+            .map(ExecutorProfile.docFieldLabel)
+            .join(', ');
         return SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  InitialsAvatar(p?.fullName ?? '?',
-                      radius: 20, imageUrl: p?.avatarUrl),
+                  InitialsAvatar(
+                    p?.fullName ?? '?',
+                    radius: 20,
+                    imageUrl: p?.avatarUrl,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(p?.fullName ?? '…',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15)),
+                    child: Text(
+                      p?.fullName ?? '…',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ],
               ),
               if (fields.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Text('${t('Жаңартылды')}: $fields',
-                    style: const TextStyle(
-                        fontSize: 12.5, color: Gz.textSecondary)),
+                Text(
+                  '${t('Жаңартылды')}: $fields',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Gz.textSecondary,
+                  ),
+                ),
               ],
               const SizedBox(height: 10),
               // Жаңартылған құжаттар
@@ -178,9 +196,12 @@ class _DocsReviewTile extends StatelessWidget {
   }
 
   Widget _doc(String? path, String label) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: SizedBox(width: 150, child: DocImage(path: path, label: label)),
-      );
+    padding: const EdgeInsets.only(right: 8),
+    child: SizedBox(
+      width: 150,
+      child: DocImage(path: path, label: label),
+    ),
+  );
 
   Future<void> _approve(BuildContext context) async {
     try {
@@ -201,11 +222,13 @@ class _DocsReviewTile extends StatelessWidget {
         content: TextField(controller: c, autofocus: true),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t('Болдырмау')),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Қайтару'))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(t('Қайтару')),
+          ),
         ],
       ),
     );
@@ -233,11 +256,15 @@ class _ApplicationTile extends StatelessWidget {
         final p = snap.data;
         return Card(
           child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 6,
+            ),
             leading: InitialsAvatar(p?.fullName ?? '?', imageUrl: p?.avatarUrl),
-            title: Text(p?.fullName ?? '…',
-                style: const TextStyle(fontWeight: FontWeight.w800)),
+            title: Text(
+              p?.fullName ?? '…',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
             subtitle: Text(
               '${ep.vehicleTitle} · ${ep.vehiclePlate}\n'
               '${ep.city ?? '—'} · ${fmtDate(ep.createdAt)}',
@@ -248,8 +275,7 @@ class _ApplicationTile extends StatelessWidget {
             onTap: () async {
               final changed = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      ApplicationDetailScreen(ep: ep, profile: p),
+                  builder: (_) => ApplicationDetailScreen(ep: ep, profile: p),
                 ),
               );
               if (changed == true) onChanged();
@@ -279,19 +305,30 @@ class ApplicationDetailScreen extends StatelessWidget {
             SectionCard(
               child: Row(
                 children: [
-                  InitialsAvatar(profile?.fullName ?? '?',
-                      radius: 24, imageUrl: profile?.avatarUrl),
+                  InitialsAvatar(
+                    profile?.fullName ?? '?',
+                    radius: 24,
+                    imageUrl: profile?.avatarUrl,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(profile?.fullName ?? '…',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 16)),
-                        Text(profile?.phone ?? '',
-                            style: const TextStyle(
-                                color: Gz.textSecondary, fontSize: 13)),
+                        Text(
+                          profile?.fullName ?? '…',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          profile?.phone ?? '',
+                          style: const TextStyle(
+                            color: Gz.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -303,9 +340,13 @@ class ApplicationDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t('Көлік'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(
+                    t('Көлік'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                   InfoRow(t('Маркасы'), ep.vehicleTitle),
@@ -318,13 +359,19 @@ class ApplicationDetailScreen extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                Text(t('Құжаттар'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  t('Құжаттар'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Gz.bg,
                     borderRadius: BorderRadius.circular(10),
@@ -332,7 +379,9 @@ class ApplicationDetailScreen extends StatelessWidget {
                   child: Text(
                     ep.isForeignCitizen ? t('Шетел азаматы') : t('ҚР азаматы'),
                     style: const TextStyle(
-                        fontSize: 11.5, fontWeight: FontWeight.w700),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -341,12 +390,18 @@ class ApplicationDetailScreen extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: DocImage(
-                        path: ep.licensePath, label: t('Жүргізуші куәлігі'))),
+                  child: DocImage(
+                    path: ep.licensePath,
+                    label: t('Жүргізуші куәлігі'),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: DocImage(
-                        path: ep.licenseSelfiePath, label: t('Правамен селфи'))),
+                  child: DocImage(
+                    path: ep.licenseSelfiePath,
+                    label: t('Правамен селфи'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -354,47 +409,67 @@ class ApplicationDetailScreen extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                      child: DocImage(
-                          path: ep.idDocPath, label: t('Жеке куәлік'))),
+                    child: DocImage(
+                      path: ep.idDocPath,
+                      label: t('Жеке куәлік'),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                      child: DocImage(
-                          path: ep.idSelfiePath, label: t('Куәлікпен селфи'))),
+                    child: DocImage(
+                      path: ep.idSelfiePath,
+                      label: t('Куәлікпен селфи'),
+                    ),
+                  ),
                 ],
               )
             else
               Row(
                 children: [
                   Expanded(
-                      child: DocImage(
-                          path: ep.passportPath, label: t('Шетел паспорты'))),
+                    child: DocImage(
+                      path: ep.passportPath,
+                      label: t('Шетел паспорты'),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                      child: DocImage(
-                          path: ep.passportSelfiePath,
-                          label: t('Паспортпен селфи'))),
+                    child: DocImage(
+                      path: ep.passportSelfiePath,
+                      label: t('Паспортпен селфи'),
+                    ),
+                  ),
                 ],
               ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                    child: DocImage(
-                        path: ep.techPassportPath, label: t('Техпаспорт'))),
+                  child: DocImage(
+                    path: ep.techPassportPath,
+                    label: t('Техпаспорт'),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: DocImage(
-                        path: ep.techPassportSelfiePath,
-                        label: t('Техпаспортпен фото'))),
+                  child: DocImage(
+                    path: ep.techPassportSelfiePath,
+                    label: t('Техпаспортпен фото'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
-            Text(t('Көлік фотолары'),
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(
+              t('Көлік фотолары'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             if (ep.vehiclePhotos.isEmpty)
-              Text(t('Фото жоқ'),
-                  style: const TextStyle(color: Gz.textSecondary)),
+              Text(
+                t('Фото жоқ'),
+                style: const TextStyle(color: Gz.textSecondary),
+              ),
             SizedBox(
               height: 130,
               child: ListView.separated(
@@ -404,8 +479,9 @@ class ApplicationDetailScreen extends StatelessWidget {
                 itemBuilder: (_, i) => SizedBox(
                   width: 170,
                   child: DocImage(
-                      path: ep.vehiclePhotos[i],
-                      label: '${t('Фото')} ${i + 1}'),
+                    path: ep.vehiclePhotos[i],
+                    label: '${t('Фото')} ${i + 1}',
+                  ),
                 ),
               ),
             ),
@@ -458,17 +534,20 @@ class ApplicationDetailScreen extends StatelessWidget {
           controller: c,
           autofocus: true,
           decoration: InputDecoration(
-              hintText: t('Мыс: техпаспорт фотосы анық емес')),
+            hintText: t('Мыс: техпаспорт фотосы анық емес'),
+          ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t('Болдырмау')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Gz.red,
-                foregroundColor: Colors.white,
-                shadowColor: const Color(0x59DC2626)),
+              backgroundColor: Gz.red,
+              foregroundColor: Colors.white,
+              shadowColor: const Color(0x59DC2626),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(t('Қабылдамау')),
           ),
@@ -501,9 +580,11 @@ class DocImage extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
-          child: Text('$label\n${t('жоқ')}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12)),
+          child: Text(
+            '$label\n${t('жоқ')}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          ),
         ),
       );
     }
@@ -521,8 +602,10 @@ class DocImage extends StatelessWidget {
           return GestureDetector(
             onTap: url == null
                 ? null
-                : () => launchUrl(Uri.parse(url),
-                    mode: LaunchMode.externalApplication),
+                : () => launchUrl(
+                    Uri.parse(url),
+                    mode: LaunchMode.externalApplication,
+                  ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -538,25 +621,36 @@ class DocImage extends StatelessWidget {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.picture_as_pdf,
-                                  color: Gz.red, size: 32),
+                              const Icon(
+                                Icons.picture_as_pdf,
+                                color: Gz.red,
+                                size: 32,
+                              ),
                               const SizedBox(height: 4),
-                              Text(t('PDF ашу'),
-                                  style: const TextStyle(
-                                      fontSize: 11.5,
-                                      color: Gz.textSecondary)),
+                              Text(
+                                t('PDF ашу'),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: Gz.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           );
@@ -565,14 +659,12 @@ class DocImage extends StatelessWidget {
           onTap: url == null
               ? null
               : () => showDialog(
-                    context: context,
-                    builder: (_) => Dialog(
-                      insetPadding: const EdgeInsets.all(10),
-                      child: InteractiveViewer(
-                        child: Image.network(url),
-                      ),
-                    ),
+                  context: context,
+                  builder: (_) => Dialog(
+                    insetPadding: const EdgeInsets.all(10),
+                    child: InteractiveViewer(child: Image.network(url)),
                   ),
+                ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -587,20 +679,27 @@ class DocImage extends StatelessWidget {
                 child: url == null
                     ? const Center(
                         child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2)))
-                    : Image.network(url,
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : Image.network(
+                        url,
                         fit: BoxFit.cover,
                         cacheHeight:
                             (110 * MediaQuery.devicePixelRatioOf(context))
-                                .round()),
+                                .round(),
+                      ),
               ),
               const SizedBox(height: 4),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         );

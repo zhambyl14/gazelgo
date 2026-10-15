@@ -18,27 +18,27 @@ class PendingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final (icon, color, title, text) = switch (profile.status) {
       'rejected' => (
-          Icons.cancel_outlined,
-          Gz.red,
-          t('Өтінім қабылданбады'),
-          profile.moderationComment?.isNotEmpty == true
-              ? '${t('Себебі:')} ${profile.moderationComment}'
-              : t('Деректерді түзетіп, қайта жіберіңіз.')
-        ),
+        Icons.cancel_outlined,
+        Gz.red,
+        t('Өтінім қабылданбады'),
+        profile.moderationComment?.isNotEmpty == true
+            ? '${t('Себебі:')} ${profile.moderationComment}'
+            : t('Деректерді түзетіп, қайта жіберіңіз.'),
+      ),
       'blocked' => (
-          Icons.block,
-          Gz.red,
-          t('Аккаунт бұғатталған'),
-          profile.moderationComment?.isNotEmpty == true
-              ? '${t('Себебі:')} ${profile.moderationComment}'
-              : t('Қолдау қызметіне хабарласыңыз.')
-        ),
+        Icons.block,
+        Gz.red,
+        t('Аккаунт бұғатталған'),
+        profile.moderationComment?.isNotEmpty == true
+            ? '${t('Себебі:')} ${profile.moderationComment}'
+            : t('Қолдау қызметіне хабарласыңыз.'),
+      ),
       _ => (
-          Icons.hourglass_top,
-          Gz.blue,
-          t('Өтінім қаралуда'),
-          t('Модератор құжаттарыңызды тексеруде — әдетте 24 сағатқа дейін.')
-        ),
+        Icons.hourglass_top,
+        Gz.blue,
+        t('Өтінім қаралуда'),
+        t('Модератор құжаттарыңызды тексеруде — әдетте 24 сағатқа дейін.'),
+      ),
     };
 
     return Scaffold(
@@ -72,9 +72,13 @@ class PendingScreen extends ConsumerWidget {
                 child: Icon(icon, size: 52, color: color),
               ),
               const SizedBox(height: 20),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w900)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 text,
@@ -88,8 +92,7 @@ class PendingScreen extends ConsumerWidget {
                   child: FilledButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ExecutorApplyScreen(existing: profile),
+                        builder: (_) => ExecutorApplyScreen(existing: profile),
                       ),
                     ),
                     icon: const Icon(Icons.edit),

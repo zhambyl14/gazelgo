@@ -47,7 +47,8 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
     final stories = ref.watch(newsFeedProvider).value ?? const <NewsStory>[];
     if (!enabled || stories.isEmpty) return const SizedBox.shrink();
 
-    final localSeen = ref.watch(newsSeenLocalProvider).value ?? const <String>{};
+    final localSeen =
+        ref.watch(newsSeenLocalProvider).value ?? const <String>{};
     bool unseen(NewsStory s) => !s.seen && !localSeen.contains(s.id);
     final unseenCount = stories.where(unseen).length;
     final showNew = ref.watch(newBadgesProvider).value?.news ?? true;
@@ -56,7 +57,8 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
       Navigator.of(context).pop(); // sidebar-ды жабамыз
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => NewsStoryScreen(stories: stories, initialIndex: index),
+          builder: (_) =>
+              NewsStoryScreen(stories: stories, initialIndex: index),
         ),
       );
     }

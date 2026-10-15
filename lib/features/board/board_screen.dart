@@ -81,6 +81,7 @@ class _BoardTabsState extends ConsumerState<_BoardTabs>
     with SingleTickerProviderStateMixin {
   /// null = барлық қала
   String? _city;
+
   /// null = барлық көлік түрі
   VehicleType? _vehicle;
 
@@ -136,8 +137,7 @@ class _BoardTabsState extends ConsumerState<_BoardTabs>
     final isExecutor =
         (ref.watch(myProfileProvider).value?.role ?? 'client') == 'executor';
     final feedTab = isExecutor ? t('Жұмыстар') : t('Қызметтер');
-    final mineTab =
-        isExecutor ? t('Менің қызметтерім') : t('Менің жұмыстарым');
+    final mineTab = isExecutor ? t('Менің қызметтерім') : t('Менің жұмыстарым');
     // Жариялау батырмасы ТЕК «менің хабарландыруларым» табында тұрады:
     // қарсы рөлдің лентасында ол «мына жұмысқа жауап беру» деп қате
     // оқылатын (клиент «Қызметтер» табында «Жұмыс беру» деген түймені
@@ -149,7 +149,10 @@ class _BoardTabsState extends ConsumerState<_BoardTabs>
         title: Text(t('Хабарландырулар')),
         bottom: TabBar(
           controller: _tabs,
-          tabs: [Tab(text: feedTab), Tab(text: mineTab)],
+          tabs: [
+            Tab(text: feedTab),
+            Tab(text: mineTab),
+          ],
         ),
       ),
       floatingActionButton: onMineTab
@@ -313,10 +316,14 @@ class _FeedTab extends StatelessWidget {
                         icon: Icons.search_off,
                         title: t('Хабарландыру табылмады'),
                         subtitle: isExecutor
-                            ? t('Бұл сүзгі бойынша клиенттердің жұмысы жоқ. '
-                                'Қаланы не көлік түрін өзгертіп көріңіз.')
-                            : t('Бұл сүзгі бойынша орындаушы қызметі жоқ. '
-                                'Қаланы не көлік түрін өзгертіп көріңіз.'),
+                            ? t(
+                                'Бұл сүзгі бойынша клиенттердің жұмысы жоқ. '
+                                'Қаланы не көлік түрін өзгертіп көріңіз.',
+                              )
+                            : t(
+                                'Бұл сүзгі бойынша орындаушы қызметі жоқ. '
+                                'Қаланы не көлік түрін өзгертіп көріңіз.',
+                              ),
                       ),
                     ],
                   ),
@@ -346,7 +353,6 @@ class _FeedTab extends StatelessWidget {
       ],
     );
   }
-
 }
 
 /// Сүзгі жолағының сол жағындағы жалғыз батырма. Белсенді сүзгі болса —
@@ -439,10 +445,7 @@ class _ActiveChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 2),
           IconButton(
@@ -611,14 +614,21 @@ class _FilterSheetState extends State<_FilterSheet> {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    _chip(t('Барлығы'), _vehicle == null,
-                        () => setState(() => _vehicle = null)),
+                    _chip(
+                      t('Барлығы'),
+                      _vehicle == null,
+                      () => setState(() => _vehicle = null),
+                    ),
                     // Такси өшулі болса — тізімде де болмайды (0046).
-                    for (final v in (widget.taxiOn
-                        ? VehicleType.values
-                        : kCargoVehicleTypes))
-                      _chip(v.label, _vehicle == v,
-                          () => setState(() => _vehicle = v)),
+                    for (final v
+                        in (widget.taxiOn
+                            ? VehicleType.values
+                            : kCargoVehicleTypes))
+                      _chip(
+                        v.label,
+                        _vehicle == v,
+                        () => setState(() => _vehicle = v),
+                      ),
                   ],
                 ),
               ),
@@ -721,10 +731,14 @@ class _MineTab extends StatelessWidget {
                       ? t('Әзірге қызметіңіз жоқ')
                       : t('Әзірге жұмысыңыз жоқ'),
                   subtitle: isExecutor
-                      ? t('Қызметіңізді жарияласаңыз, оны клиенттер көреді. '
-                          'Қанша адам көргенін осы жерден бақылайсыз.')
-                      : t('Жұмысыңызды жарияласаңыз, оны орындаушылар көреді. '
-                          'Қанша адам көргенін осы жерден бақылайсыз.'),
+                      ? t(
+                          'Қызметіңізді жарияласаңыз, оны клиенттер көреді. '
+                          'Қанша адам көргенін осы жерден бақылайсыз.',
+                        )
+                      : t(
+                          'Жұмысыңызды жарияласаңыз, оны орындаушылар көреді. '
+                          'Қанша адам көргенін осы жерден бақылайсыз.',
+                        ),
                 ),
                 const SizedBox(height: 16),
                 Center(
@@ -750,11 +764,8 @@ class _MineTab extends StatelessWidget {
                     child: ListingCard(
                       listing: l,
                       showViews: true,
-                      onTap: () => showListingSheet(
-                        context,
-                        l.id,
-                        onChanged: onRefresh,
-                      ),
+                      onTap: () =>
+                          showListingSheet(context, l.id, onChanged: onRefresh),
                     ),
                   ),
               ],
@@ -762,8 +773,10 @@ class _MineTab extends StatelessWidget {
                 const SizedBox(height: 8),
                 _header(
                   t('Архив'),
-                  t('Мерзімі біткен хабарландырулар. Суреттері өшірілген — '
-                      'қайта жарияласаңыз, оларды қайта салыңыз.'),
+                  t(
+                    'Мерзімі біткен хабарландырулар. Суреттері өшірілген — '
+                    'қайта жарияласаңыз, оларды қайта салыңыз.',
+                  ),
                 ),
                 for (final l in archive)
                   Padding(
@@ -771,11 +784,8 @@ class _MineTab extends StatelessWidget {
                     child: ListingCard(
                       listing: l,
                       showViews: true,
-                      onTap: () => showListingSheet(
-                        context,
-                        l.id,
-                        onChanged: onRefresh,
-                      ),
+                      onTap: () =>
+                          showListingSheet(context, l.id, onChanged: onRefresh),
                     ),
                   ),
               ],

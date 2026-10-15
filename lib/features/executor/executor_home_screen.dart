@@ -124,7 +124,10 @@ class _BalancePill extends StatelessWidget {
         color: Gz.surface,
         elevation: 0,
         shape: StadiumBorder(
-          side: BorderSide(color: Gz.yellow.withValues(alpha: 0.55), width: 1.4),
+          side: BorderSide(
+            color: Gz.yellow.withValues(alpha: 0.55),
+            width: 1.4,
+          ),
         ),
         child: InkWell(
           customBorder: const StadiumBorder(),
@@ -204,13 +207,15 @@ class _LineControlBar extends ConsumerWidget {
         icon: Icons.assignment_outlined,
         color: Gz.blue,
         title: t('Заказдармен таныса беріңіз'),
-        subtitle: t('Заказ қабылдау үшін өтінім толтырыңыз: көлігіңіз бен '
-            'құжаттарыңыз. Модератор растаған соң тариф алып, жұмысқа '
-            'кірісесіз.'),
-        actionLabel: t('Өтінім толтыру'),
-        onAction: () async => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ExecutorApplyScreen()),
+        subtitle: t(
+          'Заказ қабылдау үшін өтінім толтырыңыз: көлігіңіз бен '
+          'құжаттарыңыз. Модератор растаған соң тариф алып, жұмысқа '
+          'кірісесіз.',
         ),
+        actionLabel: t('Өтінім толтыру'),
+        onAction: () async => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ExecutorApplyScreen())),
       );
     }
 
@@ -236,9 +241,11 @@ class _LineControlBar extends ConsumerWidget {
         icon: Icons.hourglass_top,
         color: Gz.blue,
         title: t('Өтінім тексеруде'),
-        subtitle: t('Модератор құжаттарыңызды қарауда — әдетте 24 сағатқа '
-            'дейін. Расталған соң хабарлама келеді, содан кейін тариф алып '
-            'заказ қабылдайсыз.'),
+        subtitle: t(
+          'Модератор құжаттарыңызды қарауда — әдетте 24 сағатқа '
+          'дейін. Расталған соң хабарлама келеді, содан кейін тариф алып '
+          'заказ қабылдайсыз.',
+        ),
         actionLabel: t('Күйін тексеру'),
         onAction: () => checkExecutorStatus(context, ref),
       );

@@ -43,8 +43,7 @@ class StopsSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (_) =>
-          StopsSheet(destinations: destinations, origin: origin),
+      builder: (_) => StopsSheet(destinations: destinations, origin: origin),
     );
   }
 
@@ -199,8 +198,9 @@ class _StopsSheetState extends State<StopsSheet> {
                             child: InkWell(
                               onTap: () => _edit(i),
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
                                 child: Text(
                                   _dest[i].addr.address,
                                   maxLines: 1,
@@ -257,10 +257,8 @@ class _StopsSheetState extends State<StopsSheet> {
               ),
             const SizedBox(height: 10),
             FilledButton(
-              onPressed: () => Navigator.pop(
-                context,
-                _dest.map((e) => e.addr).toList(),
-              ),
+              onPressed: () =>
+                  Navigator.pop(context, _dest.map((e) => e.addr).toList()),
               child: BtnLabel(t('Дайын')),
             ),
           ],

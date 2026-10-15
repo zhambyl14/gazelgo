@@ -17,8 +17,8 @@ class TrustBadge extends StatelessWidget {
     final color = blocked
         ? Gz.red
         : score < 80
-            ? const Color(0xFFB86E00)
-            : Gz.green;
+        ? const Color(0xFFB86E00)
+        : Gz.green;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -28,12 +28,20 @@ class TrustBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(blocked ? Icons.block : Icons.shield_outlined,
-              size: 13, color: color),
+          Icon(
+            blocked ? Icons.block : Icons.shield_outlined,
+            size: 13,
+            color: color,
+          ),
           const SizedBox(width: 4),
-          Text(blocked ? t('Бұғатталған') : '${t('Сенім')} $score/100',
-              style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+          Text(
+            blocked ? t('Бұғатталған') : '${t('Сенім')} $score/100',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -42,8 +50,11 @@ class TrustBadge extends StatelessWidget {
 
 /// Модератордың пайдаланушыға сенім/блок әрекеттерін ашатын парақшасы:
 /// қолмен балл қосу/азайту (±15) және аккаунтты блоктау/блоктан шығару.
-Future<void> showTrustActionsSheet(BuildContext context, Profile profile,
-    {VoidCallback? onChanged}) async {
+Future<void> showTrustActionsSheet(
+  BuildContext context,
+  Profile profile, {
+  VoidCallback? onChanged,
+}) async {
   await showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -106,15 +117,20 @@ class _TrustSheetState extends State<_TrustSheet> {
           content: TextField(
             controller: c,
             autofocus: true,
-            decoration: InputDecoration(hintText: t('Мыс: тыйым салынған жүкке күдік')),
+            decoration: InputDecoration(
+              hintText: t('Мыс: тыйым салынған жүкке күдік'),
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('Болдырмау'))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(t('Болдырмау')),
+            ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red, foregroundColor: Colors.white),
+                backgroundColor: Gz.red,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(t('Блоктау')),
             ),
@@ -154,19 +170,29 @@ class _TrustSheetState extends State<_TrustSheet> {
           children: [
             Row(
               children: [
-                InitialsAvatar(p.fullName.isEmpty ? '?' : p.fullName,
-                    imageUrl: p.avatarUrl),
+                InitialsAvatar(
+                  p.fullName.isEmpty ? '?' : p.fullName,
+                  imageUrl: p.avatarUrl,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(p.fullName.isEmpty ? '…' : p.fullName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
-                      Text(p.phone,
-                          style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 12.5)),
+                      Text(
+                        p.fullName.isEmpty ? '…' : p.fullName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        p.phone,
+                        style: const TextStyle(
+                          color: Gz.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -175,37 +201,48 @@ class _TrustSheetState extends State<_TrustSheet> {
             ),
             if (_blocked && (_reason?.isNotEmpty ?? false)) ...[
               const SizedBox(height: 8),
-              Text('${t('Себебі:')} $_reason',
-                  style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+              Text(
+                '${t('Себебі:')} $_reason',
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              ),
             ],
             const SizedBox(height: 18),
-            Text(t('Сенім деңгейі'),
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            Text(
+              t('Сенім деңгейі'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
             const SizedBox(height: 4),
             Text(
-              t('Хабарлама түскен сайын автоматты −15. 50-ден төмен түссе '
-                  'аккаунт автоматты бұғатталады (жаңа заказ/ұсыныс бере алмайды).'),
+              t(
+                'Хабарлама түскен сайын автоматты −15. 50-ден төмен түссе '
+                'аккаунт автоматты бұғатталады (жаңа заказ/ұсыныс бере алмайды).',
+              ),
               style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => _adjust(-15),
-                  child: BtnLabel(t('−15 (күдікті)'),
-                      style: const TextStyle(fontSize: 12.5)),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _busy ? null : () => _adjust(-15),
+                    child: BtnLabel(
+                      t('−15 (күдікті)'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => _adjust(15),
-                  child: BtnLabel(t('+15 (сенімді қалпына келтіру)'),
-                      style: const TextStyle(fontSize: 12.5)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _busy ? null : () => _adjust(15),
+                    child: BtnLabel(
+                      t('+15 (сенімді қалпына келтіру)'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
@@ -215,7 +252,9 @@ class _TrustSheetState extends State<_TrustSheet> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: _busy ? null : _toggleBlock,
-                child: Text(_blocked ? t('Блоктан шығару') : t('Аккаунтты блоктау')),
+                child: Text(
+                  _blocked ? t('Блоктан шығару') : t('Аккаунтты блоктау'),
+                ),
               ),
             ),
           ],

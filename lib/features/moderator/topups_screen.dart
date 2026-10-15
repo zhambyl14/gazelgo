@@ -69,12 +69,15 @@ class _TopupsScreenState extends State<TopupsScreen> {
                 }
                 final rows = snap.data ?? [];
                 if (rows.isEmpty) {
-                  return ListView(children: [
-                    const SizedBox(height: 100),
-                    EmptyState(
+                  return ListView(
+                    children: [
+                      const SizedBox(height: 100),
+                      EmptyState(
                         icon: Icons.account_balance_wallet_outlined,
-                        title: t('Сұраным жоқ')),
-                  ]);
+                        title: t('Сұраным жоқ'),
+                      ),
+                    ],
+                  );
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.all(12),
@@ -112,23 +115,32 @@ class _TopupCard extends StatelessWidget {
                   builder: (context, snap) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(snap.data?.fullName ?? '…',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
+                      Text(
+                        snap.data?.fullName ?? '…',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
                       Text(
                         '${snap.data?.phone ?? ''} · ${fmtDate(req.createdAt)}',
                         style: const TextStyle(
-                            color: Gz.textSecondary, fontSize: 12.5),
+                          color: Gz.textSecondary,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              Text(fmtT(req.amount),
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Gz.green)),
+              Text(
+                fmtT(req.amount),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Gz.green,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -138,11 +150,14 @@ class _TopupCard extends StatelessWidget {
           ],
           if (req.receiptPath != null)
             SizedBox(
-                width: 150,
-                child: DocImage(path: req.receiptPath, label: t('Kaspi чек')))
+              width: 150,
+              child: DocImage(path: req.receiptPath, label: t('Kaspi чек')),
+            )
           else
-            Text(t('Чек тіркелмеген'),
-                style: const TextStyle(color: Gz.red, fontSize: 13)),
+            Text(
+              t('Чек тіркелмеген'),
+              style: const TextStyle(color: Gz.red, fontSize: 13),
+            ),
           if (req.status == 'pending') ...[
             const SizedBox(height: 12),
             Row(
@@ -166,9 +181,10 @@ class _TopupCard extends StatelessWidget {
             ),
           ] else if (req.note?.isNotEmpty == true) ...[
             const SizedBox(height: 8),
-            Text('${t('Ескерту:')} ${req.note}',
-                style:
-                    const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+            Text(
+              '${t('Ескерту:')} ${req.note}',
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            ),
           ],
         ],
       ),
@@ -186,16 +202,17 @@ class _TopupCard extends StatelessWidget {
           content: TextField(
             controller: c,
             autofocus: true,
-            decoration:
-                InputDecoration(hintText: t('Мыс: чек табылмады')),
+            decoration: InputDecoration(hintText: t('Мыс: чек табылмады')),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('Болдырмау'))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(t('Болдырмау')),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('Жіберу'))),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(t('Жіберу')),
+            ),
           ],
         ),
       );
@@ -204,11 +221,17 @@ class _TopupCard extends StatelessWidget {
     }
     if (!context.mounted) return;
     try {
-      await Repo.modReviewTopup(req.id, approve, note,
-          receiptPath: req.receiptPath);
+      await Repo.modReviewTopup(
+        req.id,
+        approve,
+        note,
+        receiptPath: req.receiptPath,
+      );
       if (context.mounted) {
-        showSnack(context,
-            approve ? t('Баланс толтырылды') : t('Сұраным қабылданбады'));
+        showSnack(
+          context,
+          approve ? t('Баланс толтырылды') : t('Сұраным қабылданбады'),
+        );
       }
       onChanged();
     } catch (e) {
@@ -253,18 +276,26 @@ class _BotVerdict extends StatelessWidget {
             children: [
               Icon(Icons.smart_toy_outlined, size: 15, color: color),
               const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.5)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                ),
+              ),
             ],
           ),
           if (summary?.isNotEmpty == true) ...[
             const SizedBox(height: 5),
-            Text(summary!,
-                style: const TextStyle(
-                    color: Gz.textSecondary, fontSize: 12, height: 1.35)),
+            Text(
+              summary!,
+              style: const TextStyle(
+                color: Gz.textSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
           ],
         ],
       ),

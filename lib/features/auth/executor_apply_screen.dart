@@ -849,9 +849,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   children: [
                     Expanded(
                       child: TextFormField(
-                      controller: _brand,
-                      onChanged: (_) => _scheduleProgressSave(),
-                      onEditingComplete: _saveApplicationProgress,
+                        controller: _brand,
+                        onChanged: (_) => _scheduleProgressSave(),
+                        onEditingComplete: _saveApplicationProgress,
                         decoration: InputDecoration(labelText: t('Маркасы')),
                         validator: (v) =>
                             (v == null || v.trim().isEmpty) ? t('Қажет') : null,
@@ -860,9 +860,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextFormField(
-                      controller: _model,
-                      onChanged: (_) => _scheduleProgressSave(),
-                      onEditingComplete: _saveApplicationProgress,
+                        controller: _model,
+                        onChanged: (_) => _scheduleProgressSave(),
+                        onEditingComplete: _saveApplicationProgress,
                         decoration: InputDecoration(labelText: t('Моделі')),
                       ),
                     ),

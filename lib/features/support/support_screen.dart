@@ -18,12 +18,15 @@ class SupportOrderButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ListTile(
         leading: const Icon(Icons.support_agent, color: Gz.ink),
-        title: Text(t('Қолдау қызметі'),
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          t('Қолдау қызметі'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         subtitle: Text(t('Жиі қойылатын сұрақтар / модераторға жазу')),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => SupportScreen(orderId: orderId))),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => SupportScreen(orderId: orderId)),
+        ),
       ),
     );
   }
@@ -53,13 +56,21 @@ class _SupportScreenState extends State<SupportScreen> {
     Repo.myProfile().then((p) {
       if (mounted) setState(() => _role = p?.role ?? 'client');
     });
-    Repo.settings().then((s) {
-      final tariffs = s['tariffs'];
-      if (mounted) {
-        setState(() => _cfg = AppConfig.fromSettings(null,
-            tariffs: tariffs is Map ? Map<String, dynamic>.from(tariffs) : null));
-      }
-    }).catchError((_) {});
+    Repo.settings()
+        .then((s) {
+          final tariffs = s['tariffs'];
+          if (mounted) {
+            setState(
+              () => _cfg = AppConfig.fromSettings(
+                null,
+                tariffs: tariffs is Map
+                    ? Map<String, dynamic>.from(tariffs)
+                    : null,
+              ),
+            );
+          }
+        })
+        .catchError((_) {});
   }
 
   List<(String, String)> get _faq => _role == 'executor'
@@ -73,12 +84,18 @@ class _SupportScreenState extends State<SupportScreen> {
       body: ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          Text(t('Жиі қойылатын сұрақтар'),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(
+            t('Жиі қойылатын сұрақтар'),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
           const SizedBox(height: 4),
-          Text(t('Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
-              'модераторға жазыңыз.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+          Text(
+            t(
+              'Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
+              'модераторға жазыңыз.',
+            ),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
           const SizedBox(height: 12),
           for (final (q, a) in _faq) _FaqItem(question: t(q), answer: t(a)),
           const SizedBox(height: 20),
@@ -92,19 +109,29 @@ class _SupportScreenState extends State<SupportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(t('Жауабын таппадыңыз ба?'),
-                    style: const
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(
+                  t('Жауабын таппадыңыз ба?'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(t('Модератор жеке жауап береді.'),
-                    style: const
-                        TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+                Text(
+                  t('Модератор жеке жауап береді.'),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        SupportChatScreen(orderId: widget.orderId),
-                  )),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          SupportChatScreen(orderId: widget.orderId),
+                    ),
+                  ),
                   icon: const Icon(Icons.support_agent),
                   label: Text(t('Қолдау алу (модераторға жазу)')),
                 ),
@@ -122,75 +149,75 @@ class _SupportScreenState extends State<SupportScreen> {
       'Заказды қалай беремін?',
       'Басты беттен керек көлік түрін таңдап, «Қайдан» және «Қайда» '
           'адрестерін қойыңыз. Содан соң бағаңызды ұсынып, заказды '
-          'жариялаңыз — орындаушылар ұсыныс жібере бастайды.'
+          'жариялаңыз — орындаушылар ұсыныс жібере бастайды.',
     ),
     (
       '«Такси» мен «Доставка» айырмашылығы неде?',
       '«Такси» — АДАМ тасымалы: заказ формасында жолаушы санын '
           'көрсетесіз, жүк сипаттамасы да, фото да сұралмайды. '
           '«Доставка» — жеңіл көлікпен ҰСАҚ ЖҮК жеткізу: құжат, дәрі, '
-          'кішкене қап. Екеуі де жеңіл көлікпен орындалады.'
+          'кішкене қап. Екеуі де жеңіл көлікпен орындалады.',
     ),
     (
       'Бір заказға бірнеше мекенжай қосуға бола ма?',
       'Иә. Адрес жолының астындағы «Адрес қосу» арқылы 3 жеткізу нүктесіне '
           'дейін қосасыз: маршрут A → 1 → 2 → финиш. Мекенжайлардың ретін '
           'сүйреп ауыстыруға болады. Қашықтық та, баға да БҮКІЛ маршрут '
-          'бойынша есептеледі.'
+          'бойынша есептеледі.',
     ),
     (
       'Бағаны кім қояды?',
       'Бағаны СІЗ ұсынасыз. Орындаушылар келіседі немесе өз бағасын ұсынады — '
-          'қолайлысын таңдайсыз.'
+          'қолайлысын таңдайсыз.',
     ),
     (
       'Орындаушы келгенін қалай растаймын?',
       'Орындаушы «Келдім» дегенде, заказ экранында растау түймесі шығады: '
           'жүк заказында «Тиеу басталды», таксиде «Отырғызу басталды». '
           'Орындаушы шынымен келсе ғана растаңыз — содан соң ол жолға '
-          'шыға алады.'
+          'шыға алады.',
     ),
     (
       'Заказды қалай тоқтатамын?',
       'Заказ экранындағы «Заказды тоқтату» арқылы — орындаушы тиеуді '
-          'бастамай тұрып. Тиеу басталғаннан кейін тоқтатуға болмайды.'
+          'бастамай тұрып. Тиеу басталғаннан кейін тоқтатуға болмайды.',
     ),
     (
       'Заказымды ешкім қабылдамай жатыр ше?',
       'Көбіне себебі — баға. Заказ экранында «Бағаны көтеру» ұсынысы '
           'шығады, соны қолданып көріңіз. Сондай-ақ адрестің дұрыс '
-          'қойылғанын және керек көлік түрін таңдағаныңызды тексеріңіз.'
+          'қойылғанын және керек көлік түрін таңдағаныңызды тексеріңіз.',
     ),
     (
       'Төлемді қалай жасаймын?',
       'Төлем орындаушымен тікелей: Kaspi аударым немесе қолма-қол. Қосымша '
-          'сіздің ақшаңызды ұстамайды және төлемге араласпайды.'
+          'сіздің ақшаңызды ұстамайды және төлемге араласпайды.',
     ),
     (
       'Қандай жүкке тыйым салынған?',
       'Есірткі, қару-жарақ, жарылғыш және улы заттар, құжатсыз акциз '
           'тауарлары, ұрланған мүлік, ақша мен банк карталары және тағы '
           'басқа. Толық тізім — заказ бетіндегі «Тізім» сілтемесінде '
-          'немесе Пайдаланушы келісімінің 5-бөлімінде.'
+          'немесе Пайдаланушы келісімінің 5-бөлімінде.',
     ),
     (
       'Күдікті жағдай болса не істеймін?',
       'Заказ экранындағы «Күдікті жағдай туралы хабарлау» арқылы модераторға '
           'дереу жазыңыз. Бұл заказды бас тартумен шатастырылмайды — '
-          'заказдың күйі өзгермейді.'
+          'заказдың күйі өзгермейді.',
     ),
     (
       'Өзім орындаушы бола аламын ба?',
       'Иә. Мәзірден «Орындаушы болу» дейсіз де, құжаттарыңызды жүктеп '
           'модерациядан өтесіз. Клиенттік деректеріңіз ЖОЙЫЛМАЙДЫ — кез '
           'келген уақытта кері ауысасыз. Рейтинг әр рөл бойынша бөлек '
-          'жүреді. Белсенді заказ бар кезде рөл ауыстыруға болмайды.'
+          'жүреді. Белсенді заказ бар кезде рөл ауыстыруға болмайды.',
     ),
     (
       'Аккаунтымды қалай өшіремін?',
       '«Профиль → Аккаунтты өшіру». Белсенді заказ болмаса, өшіру бірден '
           'орындалады және кері қайтарылмайды. Екі рөлдің де деректері '
-          'жойылады.'
+          'жойылады.',
     ),
   ];
 
@@ -202,64 +229,64 @@ class _SupportScreenState extends State<SupportScreen> {
       '«Баланс» экранынан соманы жазып, Kaspi арқылы аударасыз да, чектің '
           'фотосын тіркеп жібересіз. Модератор чекті тексерген соң сома '
           'балансыңызға қосылады. Өтінімнің күйін сол экранның төменгі '
-          'жағынан көресіз.'
+          'жағынан көресіз.',
     ),
     (
       'Заказды қалай аламын?',
       'Лентадан заказды таңдап «Келісу» (клиент бағасына) не «Өз бағам» '
-          '(қарсы ұсыныс). Клиент қабылдаса — заказ сіздікі.'
+          '(қарсы ұсыныс). Клиент қабылдаса — заказ сіздікі.',
     ),
     (
       'Такси мен доставка заказдарын көрмеймін ше?',
       'Бұл екі бөлімді әкімшілік бөлек қосады, әрі оларға тіркелгенде '
           'таңдаған көлік түріңіз сай болуы керек. Көлік түрін өзгерту '
-          'қажет болса — қолдау қызметіне жазыңыз.'
+          'қажет болса — қолдау қызметіне жазыңыз.',
     ),
     (
       'Клиент растауды бермей жатыр ше?',
       'Сіз «Келдім» дегеннен кейін клиент растауы керек: жүк заказында '
           '«Тиеу басталды», таксиде «Отырғызу басталды». Ол растамайынша '
-          '«Жолға шықтық» батырмасы шықпайды — клиентке хабарласыңыз.'
+          '«Жолға шықтық» батырмасы шықпайды — клиентке хабарласыңыз.',
     ),
     (
       '«Келдім» немесе «Аяқтау» басылмай тұр ше?',
       'Бұл екі әрекет орналасуыңызды тексереді: тиісті нүктеге шамамен '
           '1,5 км жақын болуыңыз керек. Геолокацияны қосыңыз және '
-          'қосымшаға рұқсат берілгенін тексеріңіз.'
+          'қосымшаға рұқсат берілгенін тексеріңіз.',
     ),
     (
       'Көп мекенжайлы заказ қалай орындалады?',
       'Заказда бірнеше нүкте болса, лентада «+N аялдама» белгісі тұрады. '
           'Заказ экранынан барлық нүктені бірден көресіз де, әрқайсысына '
-          'навигация саласыз. Келісілген баға БҮКІЛ маршрутқа қатысты.'
+          'навигация саласыз. Келісілген баға БҮКІЛ маршрутқа қатысты.',
     ),
     (
       'Ақшамды қашан аламын?',
       'Төлемді клиент сізге ТІКЕЛЕЙ береді — қолма-қол не Kaspi аударыммен. '
-          'Қосымша ақшаны ұстамайды; балансыңыз тек тариф төлеу үшін.'
+          'Қосымша ақшаны ұстамайды; балансыңыз тек тариф төлеу үшін.',
     ),
     (
       'Қандай заказдарды көремін?',
       'Тіркелгенде таңдаған көлік түріңізге (газель, фургон, КамАЗ…) берілген '
-          'және өз қалаңыздан шығатын заказдарды ғана көресіз.'
+          'және өз қалаңыздан шығатын заказдарды ғана көресіз.',
     ),
     (
       'Құжаттарым қайтарылды ше?',
       'Профильдегі / басты беттегі «Құжаттарды жаңарту» баннерін басып, '
-          'модератор көрсеткен құжатты қайта жүктеңіз.'
+          'модератор көрсеткен құжатты қайта жүктеңіз.',
     ),
     (
       'Клиент болып та жұмыс істей аламын ба?',
       'Иә. Мәзірден «Клиентке ауысу» дейсіз — орындаушылық деректеріңіз бен '
           'құжаттарыңыз сақталады, кез келген уақытта кері ауысасыз. Рейтинг '
           'әр рөл бойынша БӨЛЕК жүреді. Белсенді заказ бар кезде рөл '
-          'ауыстыруға болмайды.'
+          'ауыстыруға болмайды.',
     ),
     (
       'Рейтингім қалай есептеледі?',
       'Заказ аяқталған соң клиент сізді бағалайды. Орындаушы ретіндегі '
           'рейтингіңіз клиент ретіндегіден мүлдем бөлек — біреуі екіншісіне '
-          'әсер етпейді.'
+          'әсер етпейді.',
     ),
   ];
 }
@@ -285,17 +312,23 @@ class _FaqItem extends StatelessWidget {
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
           shape: const Border(),
-          title: Text(question,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 14)),
+          title: Text(
+            question,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
           iconColor: Gz.ink,
           collapsedIconColor: Gz.textSecondary,
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(answer,
-                  style: const TextStyle(
-                      color: Gz.textSecondary, fontSize: 13.5, height: 1.45)),
+              child: Text(
+                answer,
+                style: const TextStyle(
+                  color: Gz.textSecondary,
+                  fontSize: 13.5,
+                  height: 1.45,
+                ),
+              ),
             ),
           ],
         ),
@@ -341,15 +374,20 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 Material(
                   color: Gz.surface,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     child: Row(
                       children: [
                         const Icon(Icons.circle, size: 10, color: Gz.green),
                         const SizedBox(width: 6),
                         Expanded(
-                            child: Text(t('Чат ашық'),
-                                style: const TextStyle(fontSize: 13))),
+                          child: Text(
+                            t('Чат ашық'),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
                         TextButton.icon(
                           onPressed: () async {
                             try {
@@ -381,8 +419,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                   threadId: current?.id,
                   asModerator: false,
                   threadOpen: current?.isOpen ?? true,
-                  onSend: (body, imagePath) => Repo.supportSend(body,
-                      imagePath: imagePath, orderId: widget.orderId),
+                  onSend: (body, imagePath) => Repo.supportSend(
+                    body,
+                    imagePath: imagePath,
+                    orderId: widget.orderId,
+                  ),
                 ),
               ),
             ],

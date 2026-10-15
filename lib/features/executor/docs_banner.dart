@@ -10,8 +10,11 @@ import '../auth/executor_apply_screen.dart';
 class ExecutorDocsBanner extends StatelessWidget {
   final ExecutorProfile? ep;
   final EdgeInsets padding;
-  const ExecutorDocsBanner(
-      {super.key, required this.ep, this.padding = EdgeInsets.zero});
+  const ExecutorDocsBanner({
+    super.key,
+    required this.ep,
+    this.padding = EdgeInsets.zero,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,14 +31,18 @@ class ExecutorDocsBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(Gz.radius),
             border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
           ),
-          child: Row(children: [
-            const Icon(Icons.hourglass_top, color: Gz.blue),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(t('Жаңартылған құжаттар модератор тексеруінде…'),
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ]),
+          child: Row(
+            children: [
+              const Icon(Icons.hourglass_top, color: Gz.blue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  t('Жаңартылған құжаттар модератор тексеруінде…'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -45,8 +52,9 @@ class ExecutorDocsBanner extends StatelessWidget {
         padding: padding,
         child: InkWell(
           borderRadius: BorderRadius.circular(Gz.radius),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ExecutorApplyScreen(existing: e))),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => ExecutorApplyScreen(existing: e)),
+          ),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -62,15 +70,21 @@ class ExecutorDocsBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t('Құжаттарды жаңарту қажет'),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14.5)),
+                      Text(
+                        t('Құжаттарды жаңарту қажет'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14.5,
+                        ),
+                      ),
                       Text(
                         e.docsUpdateComment?.isNotEmpty == true
                             ? e.docsUpdateComment!
                             : t('Модератор құжаттарыңызды жаңартуды сұрады.'),
                         style: const TextStyle(
-                            color: Gz.textSecondary, fontSize: 12.5),
+                          color: Gz.textSecondary,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ],
                   ),

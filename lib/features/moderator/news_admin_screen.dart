@@ -165,9 +165,11 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
     final ok = await confirmDialog(
       context,
       title: t('Жаңалықты өшіру'),
-      message: t('Сторис толығымен жойылады: суреті/видеосы да, әуені де '
-          'сервердегі қоймадан өшіріледі. Бұл әрекетті КЕРІ ҚАЙТАРУ мүмкін '
-          'емес.'),
+      message: t(
+        'Сторис толығымен жойылады: суреті/видеосы да, әуені де '
+        'сервердегі қоймадан өшіріледі. Бұл әрекетті КЕРІ ҚАЙТАРУ мүмкін '
+        'емес.',
+      ),
       cancelLabel: t('Болдырмау'),
       confirmLabel: t('Өшіру'),
       confirmColor: Gz.red,
@@ -202,10 +204,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
           EmptyState(icon: Icons.wifi_off, title: _error!),
           const SizedBox(height: 16),
           Center(
-            child: OutlinedButton(
-              onPressed: _load,
-              child: Text(t('Қайталау')),
-            ),
+            child: OutlinedButton(onPressed: _load, child: Text(t('Қайталау'))),
           ),
         ],
       );
@@ -240,10 +239,12 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          t('Стористер қолданушыға логотип батырмасындағы мәзірден, '
-              '«Хабарландырулардың» үстінен көрінеді. Реті — осы тізімдегідей '
-              '(сүйреп ауыстырыңыз). Бөлімнің ӨЗІН «Баптаулар» табынан '
-              'қосасыз.'),
+          t(
+            'Стористер қолданушыға логотип батырмасындағы мәзірден, '
+            '«Хабарландырулардың» үстінен көрінеді. Реті — осы тізімдегідей '
+            '(сүйреп ауыстырыңыз). Бөлімнің ӨЗІН «Баптаулар» табынан '
+            'қосасыз.',
+          ),
           style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
         ),
         if (_items.isEmpty) ...[
@@ -251,8 +252,10 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
           EmptyState(
             icon: Icons.auto_awesome,
             title: t('Әзірге жаңалық жоқ'),
-            subtitle: t('Төмендегі «Жаңалық қосу» түймесінен бірінші '
-                'сторисіңізді жасаңыз.'),
+            subtitle: t(
+              'Төмендегі «Жаңалық қосу» түймесінен бірінші '
+              'сторисіңізді жасаңыз.',
+            ),
           ),
         ],
       ],
@@ -272,10 +275,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: () => _preview(index),
-            child: _thumb(s),
-          ),
+          GestureDetector(onTap: () => _preview(index), child: _thumb(s)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -430,7 +430,6 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
     ),
   );
 }
-
 
 // ============================================================
 // ҚҰРАСТЫРҒЫШ — Instagram / WhatsApp үлгісіндегі толық экранды редактор
@@ -588,9 +587,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
     // экранның төменгі жартысында тұрса, пернетақта оны жауып қалып,
     // модератор не жазып жатқанын көрмей қалар еді (Instagram да солай
     // істейді). САҚТАЛАТЫНЫ — өзгермеген `_layout`.
-    layout: _textEditing
-        ? _layout.copyWith(textX: 0.5, textY: 0.3)
-        : _layout,
+    layout: _textEditing ? _layout.copyWith(textX: 0.5, textY: 0.3) : _layout,
     audiences: _audiences.toList(),
     active: _active,
     startsAt: _startsAt,
@@ -629,7 +626,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       if (mounted && _video == v) {
         _videoError =
             '${t('Бұл видеоны құрылғы ойната алмады. MP4 (H.264) пішіміне '
-                'ауыстырып көріңіз.')}\n${errText(e)}';
+            'ауыстырып көріңіз.')}\n${errText(e)}';
       }
     } finally {
       if (mounted && _video == v) setState(() => _videoLoading = false);
@@ -977,10 +974,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                     ),
                     Row(
                       children: [
-                        _roundBtn(
-                          Icons.close,
-                          onTap: _busy ? null : _close,
-                        ),
+                        _roundBtn(Icons.close, onTap: _busy ? null : _close),
                         const SizedBox(width: 8),
                         if (_busy)
                           const SizedBox(
@@ -1055,8 +1049,11 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.format_color_text,
-                      color: Colors.white70, size: 18),
+                  const Icon(
+                    Icons.format_color_text,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   for (final c in _textColors) _colorDot(c),
                 ],
@@ -1071,9 +1068,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
   Widget _colorDot(int argb) {
     final on = _layout.textColor == argb;
     return GestureDetector(
-      onTap: () => setState(
-        () => _layout = _layout.copyWith(textColor: argb),
-      ),
+      onTap: () => setState(() => _layout = _layout.copyWith(textColor: argb)),
       child: Container(
         width: 26,
         height: 26,
@@ -1470,8 +1465,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          t('Мәтіндік стористе — бүкіл фон. Суретте/видеода — айналасындағы '
-              'жиек түсі.'),
+          t(
+            'Мәтіндік стористе — бүкіл фон. Суретте/видеода — айналасындағы '
+            'жиек түсі.',
+          ),
           style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 12),
@@ -1629,8 +1626,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          t('Сурет пен мәтін осынша секунд тұрады. Видеода видеоның өз '
-              'ұзақтығы қолданылады.'),
+          t(
+            'Сурет пен мәтін осынша секунд тұрады. Видеода видеоның өз '
+            'ұзақтығы қолданылады.',
+          ),
           style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         Row(
@@ -1668,8 +1667,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          t('Мерзімі өткенде сторис қолданушыға МҮЛДЕМ көрінбейді (сіз оны '
-              'осында өңдей бересіз).'),
+          t(
+            'Мерзімі өткенде сторис қолданушыға МҮЛДЕМ көрінбейді (сіз оны '
+            'осында өңдей бересіз).',
+          ),
           style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),
@@ -1735,8 +1736,10 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          t('Кемінде біреуін таңдаңыз. «Гест» — қосымшаға әлі кірмеген '
-              'қолданушы.'),
+          t(
+            'Кемінде біреуін таңдаңыз. «Гест» — қосымшаға әлі кірмеген '
+            'қолданушы.',
+          ),
           style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),

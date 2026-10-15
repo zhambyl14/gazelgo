@@ -16,10 +16,12 @@ class MyOrdersScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(t('Тапсырыстарым')),
-          bottom: TabBar(tabs: [
-            Tab(text: t('Белсенді')),
-            Tab(text: t('Тарих')),
-          ]),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: t('Белсенді')),
+              Tab(text: t('Тарих')),
+            ],
+          ),
         ),
         body: StreamBuilder<List<Order>>(
           stream: Repo.myOrdersStream(),
@@ -32,14 +34,21 @@ class MyOrdersScreen extends StatelessWidget {
             final active = all.where((o) => o.isActive).toList();
             // Тарихта тек СӘТТІ аяқталған заказдар (тоқтатылған/мерзімі
             // өткендер көрсетілмейді).
-            final history =
-                all.where((o) => o.status == 'completed').toList();
+            final history = all.where((o) => o.status == 'completed').toList();
             return TabBarView(
               children: [
-                _list(context, active,
-                    empty: t('Белсенді заказ жоқ.\nБасты беттен газель шақырыңыз.')),
-                _list(context, history,
-                    empty: t('Аяқталған заказ әзірге жоқ.')),
+                _list(
+                  context,
+                  active,
+                  empty: t(
+                    'Белсенді заказ жоқ.\nБасты беттен газель шақырыңыз.',
+                  ),
+                ),
+                _list(
+                  context,
+                  history,
+                  empty: t('Аяқталған заказ әзірге жоқ.'),
+                ),
               ],
             );
           },
@@ -48,8 +57,11 @@ class MyOrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _list(BuildContext context, List<Order> orders,
-      {required String empty}) {
+  Widget _list(
+    BuildContext context,
+    List<Order> orders, {
+    required String empty,
+  }) {
     if (orders.isEmpty) {
       return EmptyState(icon: Icons.receipt_long, title: empty);
     }
@@ -59,8 +71,11 @@ class MyOrdersScreen extends StatelessWidget {
       separatorBuilder: (_, i) => const SizedBox(height: 8),
       itemBuilder: (_, i) => OrderCard(
         order: orders[i],
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => OrderDetailScreen(orderId: orders[i].id))),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrderDetailScreen(orderId: orders[i].id),
+          ),
+        ),
       ),
     );
   }

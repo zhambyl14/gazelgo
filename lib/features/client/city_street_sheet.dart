@@ -326,8 +326,10 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     final ref = _origin ?? _center;
     if (ref != null) {
       around.sort(
-        (a, b) => Geo.haversineKm(ref, a.point)
-            .compareTo(Geo.haversineKm(ref, b.point)),
+        (a, b) => Geo.haversineKm(
+          ref,
+          a.point,
+        ).compareTo(Geo.haversineKm(ref, b.point)),
       );
     }
     return [...own, ...(own.isEmpty ? around : around.take(3))];

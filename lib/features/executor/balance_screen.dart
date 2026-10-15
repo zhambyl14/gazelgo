@@ -100,15 +100,14 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
     // өтінімді бот тексере алмайды (тексеретін ештеңе жоқ) — ол әрқашан
     // модератордың қолына түсіп, кезекті ұзартады.
     if (_receipt == null) {
-      showSnack(
-        context,
-        t('Kaspi чегінің скриншотын тіркеңіз'),
-        error: true,
-      );
+      showSnack(context, t('Kaspi чегінің скриншотын тіркеңіз'), error: true);
       return;
     }
     try {
-      final path = await Repo.uploadDoc(_receiptName ?? 'receipt.jpg', _receipt!);
+      final path = await Repo.uploadDoc(
+        _receiptName ?? 'receipt.jpg',
+        _receipt!,
+      );
       await Repo.requestTopup(amount, path);
       _amount.clear();
       setState(() {
@@ -251,15 +250,17 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                           _receipt == null || _receiptName == 'receipt.pdf'
                               ? Icons.receipt_long
                               : Icons.check_circle,
-                          color: _receipt != null &&
-                                  _receiptName != 'receipt.pdf'
+                          color:
+                              _receipt != null && _receiptName != 'receipt.pdf'
                               ? Gz.green
                               : null,
                         ),
                         label: BtnLabel(
-                          t(_receipt != null && _receiptName != 'receipt.pdf'
-                              ? 'Чек тіркелді'
-                              : 'Чек тіркеу'),
+                          t(
+                            _receipt != null && _receiptName != 'receipt.pdf'
+                                ? 'Чек тіркелді'
+                                : 'Чек тіркеу',
+                          ),
                         ),
                       ),
                     ),
@@ -274,9 +275,11 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                               : null,
                         ),
                         label: BtnLabel(
-                          t(_receiptName == 'receipt.pdf'
-                              ? 'PDF тіркелді'
-                              : 'PDF тіркеу'),
+                          t(
+                            _receiptName == 'receipt.pdf'
+                                ? 'PDF тіркелді'
+                                : 'PDF тіркеу',
+                          ),
                         ),
                       ),
                     ),
@@ -290,7 +293,9 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                       'ретінде осында тіркеңіз',
                     ),
                     style: const TextStyle(
-                        color: Gz.textSecondary, fontSize: 11.5),
+                      color: Gz.textSecondary,
+                      fontSize: 11.5,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 10),

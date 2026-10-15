@@ -188,11 +188,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _supportBotEnabled = supportBot['enabled'] == true;
       _botMax.text = '${bot['auto_approve_max'] ?? 0}';
       _botAgeHours.text = '${bot['max_receipt_age_hours'] ?? 24}';
-      _botMerchants.text =
-          ((bot['merchant_names'] as List?) ?? const []).join(', ');
+      _botMerchants.text = ((bot['merchant_names'] as List?) ?? const []).join(
+        ', ',
+      );
       _tariffPrice.text = '${tariffs['simple_day'] ?? 300}';
-      _durationMode =
-          tariffs['duration_mode'] == 'rolling' ? 'rolling' : 'fixed';
+      _durationMode = tariffs['duration_mode'] == 'rolling'
+          ? 'rolling'
+          : 'fixed';
       _durationHours.text = '${tariffs['duration_hours'] ?? 12}';
       _ordersPerShift.text = '${tariffs['orders_per_shift'] ?? 10}';
       // ---- бонус бағдарламасы (0059) ----
@@ -251,8 +253,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
     final hours = _int(_durationHours);
     if (hours == null || hours < 1 || hours > 24) {
-      showSnack(context, t('Ұзақтығын 1-24 сағат аралығында жазыңыз'),
-          error: true);
+      showSnack(
+        context,
+        t('Ұзақтығын 1-24 сағат аралығында жазыңыз'),
+        error: true,
+      );
       return;
     }
     final orders = _int(_ordersPerShift);
@@ -301,7 +306,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       if (mounted) {
         showSnack(
           context,
-          v ? t('Бонус бағдарламасы қосылды') : t('Бонус бағдарламасы өшірілді'),
+          v
+              ? t('Бонус бағдарламасы қосылды')
+              : t('Бонус бағдарламасы өшірілді'),
         );
       }
     } catch (e) {
@@ -494,7 +501,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         context,
         missing == 0
             ? '${t('Выписка жүктелді')} · $inserted ${t('жол')} · '
-                '$checked ${t('толтырудың бәрі сәйкес')}'
+                  '$checked ${t('толтырудың бәрі сәйкес')}'
             : '⚠️ $checked ${t('толтырудың')} $missing-${t('і выпискада ЖОҚ')}',
         error: missing > 0,
       );
@@ -511,10 +518,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _boardSaving = true;
     });
     try {
-      await Repo.modUpdateSetting(
-        'listings',
-        {'enabled': v, 'new_badge': _boardNewBadge},
-      );
+      await Repo.modUpdateSetting('listings', {
+        'enabled': v,
+        'new_badge': _boardNewBadge,
+      });
       if (mounted) {
         showSnack(
           context,
@@ -541,10 +548,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _taxiSaving = true;
     });
     try {
-      await Repo.modUpdateSetting(
-        'taxi',
-        {'enabled': v, 'new_badge': _taxiNewBadge},
-      );
+      await Repo.modUpdateSetting('taxi', {
+        'enabled': v,
+        'new_badge': _taxiNewBadge,
+      });
       if (mounted) {
         showSnack(
           context,
@@ -630,13 +637,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       }
     });
     try {
-      await Repo.modUpdateSetting(
-        board ? 'listings' : 'taxi',
-        {
-          'enabled': board ? _boardEnabled : _taxiEnabled,
-          'new_badge': v,
-        },
-      );
+      await Repo.modUpdateSetting(board ? 'listings' : 'taxi', {
+        'enabled': board ? _boardEnabled : _taxiEnabled,
+        'new_badge': v,
+      });
       if (mounted) {
         showSnack(
           context,
@@ -710,22 +714,25 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Future<void> _toggleRepeatOrder(bool v) => _toggleSimple(
-        'repeat_order', v,
-        apply: (v) => _repeatOrderEnabled = v,
-        setSaving: (v) => _repeatOrderSaving = v,
-      );
+    'repeat_order',
+    v,
+    apply: (v) => _repeatOrderEnabled = v,
+    setSaving: (v) => _repeatOrderSaving = v,
+  );
 
   Future<void> _toggleLiveTracking(bool v) => _toggleSimple(
-        'live_tracking', v,
-        apply: (v) => _liveTrackingEnabled = v,
-        setSaving: (v) => _liveTrackingSaving = v,
-      );
+    'live_tracking',
+    v,
+    apply: (v) => _liveTrackingEnabled = v,
+    setSaving: (v) => _liveTrackingSaving = v,
+  );
 
   Future<void> _toggleShareTrip(bool v) => _toggleSimple(
-        'share_trip', v,
-        apply: (v) => _shareTripEnabled = v,
-        setSaving: (v) => _shareTripSaving = v,
-      );
+    'share_trip',
+    v,
+    apply: (v) => _shareTripEnabled = v,
+    setSaving: (v) => _shareTripSaving = v,
+  );
 
   /// Қосу/өшіру — `executor_bonus_amount`-ты жоғалтпау үшін генерик
   /// `_toggleSimple`-ды қолданбаймыз (ол тек `{'enabled': v}` жібереді,
@@ -833,12 +840,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: Жаңалықтар · сторис (0066) ----
           _sectionTitle(t('Жаңалықтар (сторис)')),
           Text(
-            t('Логотип батырмасындағы мәзірде, «Хабарландырулардың» ҮСТІНДЕ '
-                'тұратын бөлім: Instagram сторисі секілді сурет, қысқа видео, '
-                'мәтін және әуен. Стористің ӨЗІН жоғарыдағы «Жаңалықтар» '
-                'табынан қосасыз — әрқайсысына мерзім мен аудитория (клиент · '
-                'орындаушы · гест) бөлек қойылады. Осы қосқыш өшулі болса — '
-                'карта ешкімге көрінбейді.'),
+            t(
+              'Логотип батырмасындағы мәзірде, «Хабарландырулардың» ҮСТІНДЕ '
+              'тұратын бөлім: Instagram сторисі секілді сурет, қысқа видео, '
+              'мәтін және әуен. Стористің ӨЗІН жоғарыдағы «Жаңалықтар» '
+              'табынан қосасыз — әрқайсысына мерзім мен аудитория (клиент · '
+              'орындаушы · гест) бөлек қойылады. Осы қосқыш өшулі болса — '
+              'карта ешкімге көрінбейді.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -867,13 +876,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: Такси (0046) ----
           _sectionTitle(t('Такси бөлімі')),
           Text(
-            t('Қосулы болса — клиентте «Такси (ЖАҢА)» және «Спецтехника» '
-                'деген екі санат шығады. «Такси» санатының ішінде ЕКІ түр '
-                'бар: Такси (жолаушы) және Доставка (жеңіл көлікпен ұсақ '
-                'жүк). Орындаушы да сол түрлерді таңдай алады. Өшулі болса '
-                '— экран баяғы қалпында, екеуі де мүлдем көрінбейді. '
-                'Астыңғы қосқыш — тек сары «ЖАҢА» жапсырмасы: бөлім '
-                'ескіргенде оны бөлімнің өзін өшірмей-ақ алып тастайсыз.'),
+            t(
+              'Қосулы болса — клиентте «Такси (ЖАҢА)» және «Спецтехника» '
+              'деген екі санат шығады. «Такси» санатының ішінде ЕКІ түр '
+              'бар: Такси (жолаушы) және Доставка (жеңіл көлікпен ұсақ '
+              'жүк). Орындаушы да сол түрлерді таңдай алады. Өшулі болса '
+              '— экран баяғы қалпында, екеуі де мүлдем көрінбейді. '
+              'Астыңғы қосқыш — тек сары «ЖАҢА» жапсырмасы: бөлім '
+              'ескіргенде оны бөлімнің өзін өшірмей-ақ алып тастайсыз.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -899,9 +910,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Хабарландырулар тақтасы')),
           Text(
-            t('Логотип батырмасындағы «Хабарландырулар» бөлімі: орындаушылар '
-                'қызметін, клиенттер жұмысын жариялайды. Әр хабарландыру '
-                '7 күн тұрады, сосын автоматты өшеді.'),
+            t(
+              'Логотип батырмасындағы «Хабарландырулар» бөлімі: орындаушылар '
+              'қызметін, клиенттер жұмысын жариялайды. Әр хабарландыру '
+              '7 күн тұрады, сосын автоматты өшеді.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -925,9 +938,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),
           Text(
-            t('Орындаушы 1 ауысымға төлейтін баға, ауысымның қанша '
-                'уақытқа созылатыны және сол ауысымда қанша заказ алуға '
-                'болатыны.'),
+            t(
+              'Орындаушы 1 ауысымға төлейтін баға, ауысымның қанша '
+              'уақытқа созылатыны және сол ауысымда қанша заказ алуға '
+              'болатыны.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -946,8 +961,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 const SizedBox(height: 16),
                 Text(
                   t('Ауысым түрі'),
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 RadioGroup<String>(
@@ -959,12 +976,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         contentPadding: EdgeInsets.zero,
                         value: 'fixed',
                         dense: true,
-                        title: Text(t('Белгілі уақыт аралығында'),
-                            style: const TextStyle(fontSize: 13.5)),
+                        title: Text(
+                          t('Белгілі уақыт аралығында'),
+                          style: const TextStyle(fontSize: 13.5),
+                        ),
                         subtitle: Text(
-                          t('Сағат 08:00-ден бастап циклмен қайталанады '
-                              '(мыс. 12 сағат болса — 08:00–20:00 және '
-                              '20:00–08:00).'),
+                          t(
+                            'Сағат 08:00-ден бастап циклмен қайталанады '
+                            '(мыс. 12 сағат болса — 08:00–20:00 және '
+                            '20:00–08:00).',
+                          ),
                           style: const TextStyle(fontSize: 11.5),
                         ),
                       ),
@@ -972,11 +993,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         contentPadding: EdgeInsets.zero,
                         value: 'rolling',
                         dense: true,
-                        title: Text(t('Қосқан сәттен бастап'),
-                            style: const TextStyle(fontSize: 13.5)),
+                        title: Text(
+                          t('Қосқан сәттен бастап'),
+                          style: const TextStyle(fontSize: 13.5),
+                        ),
                         subtitle: Text(
-                          t('Орындаушы тарифті қосқан уақыттан бастап '
-                              'есептеледі (сағатқа қарамайды).'),
+                          t(
+                            'Орындаушы тарифті қосқан уақыттан бастап '
+                            'есептеледі (сағатқа қарамайды).',
+                          ),
                           style: const TextStyle(fontSize: 11.5),
                         ),
                       ),
@@ -1001,8 +1026,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   decoration: InputDecoration(
                     labelText: t('Бір ауысымға заказ саны (лимит)'),
                     helperMaxLines: 3,
-                    helperText: t('Орындаушы осы санша заказ алған соң тариф '
-                        'жабылады — жаңасын сатып алуы керек. Әдепкі — 10.'),
+                    helperText: t(
+                      'Орындаушы осы санша заказ алған соң тариф '
+                      'жабылады — жаңасын сатып алуы керек. Әдепкі — 10.',
+                    ),
                     prefixIcon: const Icon(Icons.local_shipping_outlined),
                   ),
                 ),
@@ -1013,7 +1040,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   Icons.visibility_outlined,
                   t('Орындаушы былай көреді'),
                   '${t('Тариф')} · ${_previewDuration()} · '
-                      '${_previewOrders()}',
+                  '${_previewOrders()}',
                 ),
                 const SizedBox(height: 12),
                 BusyButton(label: t('Сақтау'), onPressed: _saveTariff),
@@ -1024,11 +1051,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: белсенділік бонусы (0059) ----
           _sectionTitle(t('Белсенділік бонусы')),
           Text(
-            t('Орындаушы белгілі кезеңде көп заказ аяқтаса — БАЛАНСЫНА бонус '
-                'сомасы автоматты түседі. Прогресс («бонусқа N заказ қалды») '
-                'заказдар лентасының жоғарысында тұрады. Бонус тек балансқа '
-                'түседі — қолма-қол шешіп алынбайды, тариф сатып алуға '
-                'жұмсалады.'),
+            t(
+              'Орындаушы белгілі кезеңде көп заказ аяқтаса — БАЛАНСЫНА бонус '
+              'сомасы автоматты түседі. Прогресс («бонусқа N заказ қалды») '
+              'заказдар лентасының жоғарысында тұрады. Бонус тек балансқа '
+              'түседі — қолма-қол шешіп алынбайды, тариф сатып алуға '
+              'жұмсалады.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1115,8 +1144,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                   subtitle: Text(
                     _bonusRepeat
-                        ? t('Әр лимит сайын жаңа бонус беріледі (мыс. 20, 40, '
-                              '60 заказ).')
+                        ? t(
+                            'Әр лимит сайын жаңа бонус беріледі (мыс. 20, 40, '
+                            '60 заказ).',
+                          )
                         : t('Бір кезеңде бір-ақ рет беріледі.'),
                     style: const TextStyle(fontSize: 11.5),
                   ),
@@ -1199,10 +1230,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: чекті тексеретін бот (0051) ----
           _sectionTitle(t('Чек тексеретін бот')),
           Text(
-            t('Жаңа толтыру өтінімі түскенде бот Kaspi чегін өзі ашып, екі '
-                'тәуелсіз тәсілмен оқиды да, бәрі сәйкес келсе балансты '
-                'автоматты толтырады. Күдікті болса — тиіспейді, Telegram-ға '
-                'себебін жазады, шешімді сіз қабылдайсыз.'),
+            t(
+              'Жаңа толтыру өтінімі түскенде бот Kaspi чегін өзі ашып, екі '
+              'тәуелсіз тәсілмен оқиды да, бәрі сәйкес келсе балансты '
+              'автоматты толтырады. Күдікті болса — тиіспейді, Telegram-ға '
+              'себебін жазады, шешімді сіз қабылдайсыз.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1273,12 +1306,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  t('Kaspi выпискасын аптасына бір рет жүктеп тұрсаңыз, бот '
-                      'расталған толтырулардың ақшасы ШЫН ТҮСКЕНІН тексереді. '
-                      'Чек скриншоттан кейін қайтарылып алынса — тек осылай '
-                      'білуге болады.'),
-                  style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                  t(
+                    'Kaspi выпискасын аптасына бір рет жүктеп тұрсаңыз, бот '
+                    'расталған толтырулардың ақшасы ШЫН ТҮСКЕНІН тексереді. '
+                    'Чек скриншоттан кейін қайтарылып алынса — тек осылай '
+                    'білуге болады.',
+                  ),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 BusyButton(
@@ -1294,11 +1331,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: қолдау чатының авто-жауап боты (0054) ----
           _sectionTitle(t('Қолдау чатының боты')),
           Text(
-            t('Қосулы болса, пайдаланушы (клиент/орындаушы) қолдау чатына '
-                'жазғанда бот өзі жауап береді — модератор жазғандай көрінеді, '
-                'бот екені білінбейді. Заказ статусына қатысты сұрақ не '
-                '«оператор» деген сұраныс келсе — бот тиіспейді, Telegram-ге '
-                'ескерту барады, модератор өзі жалғастырады.'),
+            t(
+              'Қосулы болса, пайдаланушы (клиент/орындаушы) қолдау чатына '
+              'жазғанда бот өзі жауап береді — модератор жазғандай көрінеді, '
+              'бот екені білінбейді. Заказ статусына қатысты сұрақ не '
+              '«оператор» деген сұраныс келсе — бот тиіспейді, Telegram-ге '
+              'ескерту барады, модератор өзі жалғастырады.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1316,9 +1355,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- Кіру/тіркелу «Көмек» батырмасы (0072) ----
           _sectionTitle(t('Тіркелудегі «Көмек» (WhatsApp)')),
           Text(
-            t('Кіру және тіркелу беттеріндегі «Көмек» батырмасы осы нөмірдің '
-                'WhatsApp-ына апарады. Кірген пайдаланушылар қолдау чатын '
-                'қолданады.'),
+            t(
+              'Кіру және тіркелу беттеріндегі «Көмек» батырмасы осы нөмірдің '
+              'WhatsApp-ына апарады. Кірген пайдаланушылар қолдау чатын '
+              'қолданады.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1344,8 +1385,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // ---- ЖАҢА БӨЛІМ: клиентке пайдалы фичалар (0060) ----
           _sectionTitle(t('Тапсырысты қайталау')),
           Text(
-            t('Клиент аяқталған/тоқтатылған заказды бір батырмамен қайта '
-                'ашады (маршрут пен көлік түрі дайын тұрады).'),
+            t(
+              'Клиент аяқталған/тоқтатылған заказды бір батырмамен қайта '
+              'ашады (маршрут пен көлік түрі дайын тұрады).',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1361,8 +1404,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Алдын ала тапсырыс')),
           Text(
-            t('Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
-                'сол уақыт келгенше орындаушыларға көрінбейді.'),
+            t(
+              'Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
+              'сол уақыт келгенше орындаушыларға көрінбейді.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1399,7 +1444,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                   const SizedBox(height: 12),
                   BusyButton(
-                      label: t('Сақтау'), onPressed: _saveScheduledOrders),
+                    label: t('Сақтау'),
+                    onPressed: _saveScheduledOrders,
+                  ),
                 ],
               ),
             ),
@@ -1408,8 +1455,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Орындаушыны картада тірі көрсету')),
           Text(
-            t('Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
-                'көреді (орындаушы GPS-і 20 секунд сайын жіберіледі).'),
+            t(
+              'Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
+              'көреді (орындаушы GPS-і 20 секунд сайын жіберіледі).',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1425,8 +1474,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Сапарды бөлісу')),
           Text(
-            t('Клиент заказдың сілтемесін жақынына жібере алады — олар '
-                'қосымшасыз, кірместен барысты қарайды.'),
+            t(
+              'Клиент заказдың сілтемесін жақынына жібере алады — олар '
+              'қосымшасыз, кірместен барысты қарайды.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1442,12 +1493,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Жаттыққа шақыру бонусы')),
           Text(
-            t('Пайдаланушылар бір-бірін өз кодымен шақырады (тіркелу '
-                'экранында да, профильде де енгізуге болады). Досы кодты '
-                'енгізгеннен КЕЙІН, БІРІНШІ ЗАКАЗЫН АЯҚТАҒАНДА ғана сыйақы '
-                'беріледі (жалған тіркелумен фармитуден қорғау үшін): '
-                'ОРЫНДАУШЫ шақырса — балансына сома, КЛИЕНТ шақырса — тек '
-                'санағы өседі.'),
+            t(
+              'Пайдаланушылар бір-бірін өз кодымен шақырады (тіркелу '
+              'экранында да, профильде де енгізуге болады). Досы кодты '
+              'енгізгеннен КЕЙІН, БІРІНШІ ЗАКАЗЫН АЯҚТАҒАНДА ғана сыйақы '
+              'беріледі (жалған тіркелумен фармитуден қорғау үшін): '
+              'ОРЫНДАУШЫ шақырса — балансына сома, КЛИЕНТ шақырса — тек '
+              'санағы өседі.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
@@ -1471,9 +1524,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     decoration: InputDecoration(
                       labelText: t('Орындаушыға бонус сомасы (₸)'),
                       helperText: t(
-                          'Шақырған адамы орындаушы болса, досы БІРІНШІ '
-                          'заказын аяқтағанда балансына қосылады. '
-                          '0 қойсаңыз — бонус берілмейді, тек санақ жүреді.'),
+                        'Шақырған адамы орындаушы болса, досы БІРІНШІ '
+                        'заказын аяқтағанда балансына қосылады. '
+                        '0 қойсаңыз — бонус берілмейді, тек санақ жүреді.',
+                      ),
                       helperMaxLines: 3,
                       prefixIcon: const Icon(Icons.payments_outlined),
                     ),
@@ -1485,16 +1539,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     decoration: InputDecoration(
                       labelText: t('Клиентке ұпай саны'),
                       helperText: t(
-                          'Шақырған адамы клиент болса, досы БІРІНШІ '
-                          'заказын аяқтағанда «шақырдыңыз» санағына осынша '
-                          'қосылады (ақшаға тимейді). Әдепкі — 1.'),
+                        'Шақырған адамы клиент болса, досы БІРІНШІ '
+                        'заказын аяқтағанда «шақырдыңыз» санағына осынша '
+                        'қосылады (ақшаға тимейді). Әдепкі — 1.',
+                      ),
                       helperMaxLines: 3,
                       prefixIcon: const Icon(Icons.stars_outlined),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  BusyButton(
-                      label: t('Сақтау'), onPressed: _saveReferralBonus),
+                  BusyButton(label: t('Сақтау'), onPressed: _saveReferralBonus),
                 ],
               ),
             ),
@@ -1503,10 +1557,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
-            t('Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды build нөмірін '
-                'көтеріңіз — одан төмендегілер тек «Жаңарту» батырмасын '
-                'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
-                'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.'),
+            t(
+              'Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды build нөмірін '
+              'көтеріңіз — одан төмендегілер тек «Жаңарту» батырмасын '
+              'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
+              'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 10),

@@ -83,8 +83,11 @@ class _ChatViewState extends State<ChatView> {
   }
 
   Future<void> _sendImage() async {
-    final f = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 1600);
+    final f = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1600,
+    );
     if (f == null) return;
     setState(() => _sending = true);
     try {
@@ -170,8 +173,10 @@ class _ChatViewState extends State<ChatView> {
                     maxLines: 4,
                     decoration: InputDecoration(
                       hintText: t('Хабарлама…'),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
                     onSubmitted: (_) => _send(),
                   ),
@@ -181,17 +186,18 @@ class _ChatViewState extends State<ChatView> {
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2)),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       )
                     : IconButton.filled(
                         style: IconButton.styleFrom(
-                            backgroundColor: Gz.yellow,
-                            foregroundColor: Gz.ink,
-                            elevation: 4,
-                            shadowColor: Gz.yellow.withValues(alpha: 0.5)),
+                          backgroundColor: Gz.yellow,
+                          foregroundColor: Gz.ink,
+                          elevation: 4,
+                          shadowColor: Gz.yellow.withValues(alpha: 0.5),
+                        ),
                         onPressed: () => _send(),
                         icon: const Icon(Icons.send_rounded),
                       ),
@@ -222,7 +228,8 @@ class _Bubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75),
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
         decoration: BoxDecoration(
           // Өз хабарламам — БРЕНД градиенті (жалаң тегіс сарыдан гөрі әрлі),
           // қарсы тараптікі — ақ, жиегі мен жеңіл көлеңкесі бар: екеуі
@@ -265,7 +272,8 @@ class _Bubble extends StatelessWidget {
                       insetPadding: const EdgeInsets.all(10),
                       child: InteractiveViewer(
                         child: Image.network(
-                            Repo.supportImageUrl(msg.imagePath!)),
+                          Repo.supportImageUrl(msg.imagePath!),
+                        ),
                       ),
                     ),
                   ),
@@ -276,9 +284,8 @@ class _Bubble extends StatelessWidget {
                       width: 180,
                       height: 180,
                       fit: BoxFit.cover,
-                      cacheWidth:
-                          (180 * MediaQuery.devicePixelRatioOf(context))
-                              .round(),
+                      cacheWidth: (180 * MediaQuery.devicePixelRatioOf(context))
+                          .round(),
                       cacheHeight:
                           (180 * MediaQuery.devicePixelRatioOf(context))
                               .round(),
@@ -292,8 +299,9 @@ class _Bubble extends StatelessWidget {
             Text(
               fmtTime(msg.createdAt),
               style: TextStyle(
-                  fontSize: 10.5,
-                  color: mine ? Gz.ink.withValues(alpha: 0.5) : Gz.textSecondary),
+                fontSize: 10.5,
+                color: mine ? Gz.ink.withValues(alpha: 0.5) : Gz.textSecondary,
+              ),
             ),
           ],
         ),
@@ -310,8 +318,9 @@ class _IntroPlaceholder extends StatelessWidget {
     return EmptyState(
       icon: Icons.support_agent,
       title: t('Қолдау қызметі'),
-      subtitle:
-          t('Сұрағыңызды жазыңыз — модератор жауап береді. Фото да тіркей аласыз.'),
+      subtitle: t(
+        'Сұрағыңызды жазыңыз — модератор жауап береді. Фото да тіркей аласыз.',
+      ),
     );
   }
 }

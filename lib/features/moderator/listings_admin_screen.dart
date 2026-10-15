@@ -26,7 +26,10 @@ class _ListingsAdminScreenState extends State<ListingsAdminScreen> {
         appBar: AppBar(
           title: Text(t('Хабарландырулар')),
           bottom: TabBar(
-            tabs: [Tab(text: t('Лентада')), Tab(text: t('Архив'))],
+            tabs: [
+              Tab(text: t('Лентада')),
+              Tab(text: t('Архив')),
+            ],
           ),
         ),
         body: const TabBarView(

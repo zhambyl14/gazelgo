@@ -198,10 +198,7 @@ class _ReportCardState extends State<_ReportCard> {
               ),
               Text(
                 fmtDate(r.createdAt),
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  color: Gz.textSecondary,
-                ),
+                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
               ),
             ],
           ),

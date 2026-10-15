@@ -109,8 +109,10 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
       context,
       icon: Icons.delete_outline,
       title: '${s.labelKk} — ${t('жою')}?',
-      message: t('Бұл түр қолданыста болса (заказ, орындаушы, хабарландыру) '
-          'ол ЖОЙЫЛМАЙДЫ — тек жасырылады, ескі заказдар бұзылмайды.'),
+      message: t(
+        'Бұл түр қолданыста болса (заказ, орындаушы, хабарландыру) '
+        'ол ЖОЙЫЛМАЙДЫ — тек жасырылады, ескі заказдар бұзылмайды.',
+      ),
       confirmLabel: t('Иә, жою'),
       confirmColor: Gz.red,
     );
@@ -145,10 +147,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
           EmptyState(icon: Icons.wifi_off, title: _error!),
           const SizedBox(height: 16),
           Center(
-            child: OutlinedButton(
-              onPressed: _load,
-              child: Text(t('Қайталау')),
-            ),
+            child: OutlinedButton(onPressed: _load, child: Text(t('Қайталау'))),
           ),
         ],
       );
@@ -179,25 +178,27 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
   }
 
   Widget _intro() => Padding(
-        key: const ValueKey('__intro__'),
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t('Клиент пен орындаушы көретін көлік түрлері'),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              t('Тізімді сүйреп РЕТІН ауыстырыңыз — каруселде дәл осы ретпен '
-                  'тұрады. Қосқыш өшірулі түр клиентке КӨРІНБЕЙДІ. Түрді '
-                  'басып атауын, анықтамасын және иконкасын өзгертесіз.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-            ),
-          ],
+    key: const ValueKey('__intro__'),
+    padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t('Клиент пен орындаушы көретін көлік түрлері'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
         ),
-      );
+        const SizedBox(height: 6),
+        Text(
+          t(
+            'Тізімді сүйреп РЕТІН ауыстырыңыз — каруселде дәл осы ретпен '
+            'тұрады. Қосқыш өшірулі түр клиентке КӨРІНБЕЙДІ. Түрді '
+            'басып атауын, анықтамасын және иконкасын өзгертесіз.',
+          ),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+        ),
+      ],
+    ),
+  );
 
   Widget _tile(VehicleSpec s, int index) {
     final dim = !s.active;
@@ -258,7 +259,9 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 11.5),
+                            color: Gz.textSecondary,
+                            fontSize: 11.5,
+                          ),
                         ),
                     ],
                   ),
@@ -281,17 +284,20 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
   }
 
   Widget _chip(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-              fontSize: 9.5, fontWeight: FontWeight.w800, color: color),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 9.5,
+        fontWeight: FontWeight.w800,
+        color: color,
+      ),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +309,12 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
 /// оқиды: модератор экранында әлі сақталмаған өзгеріс те көрінеді.
 Widget specIcon(VehicleSpec s, {double size = 34}) {
   Widget fallback() => s.assetIcon != null
-      ? Image.asset(s.assetIcon!, width: size, height: size, fit: BoxFit.contain)
+      ? Image.asset(
+          s.assetIcon!,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+        )
       : Text(s.emoji, style: TextStyle(fontSize: size * 0.8, height: 1));
 
   return SizedBox(
@@ -317,8 +328,8 @@ Widget specIcon(VehicleSpec s, {double size = 34}) {
           // ДЕКОДТАП аламыз (жад үнемдеу, flutter-performance §3).
           : Builder(
               builder: (context) {
-                final px =
-                    (size * MediaQuery.devicePixelRatioOf(context)).round();
+                final px = (size * MediaQuery.devicePixelRatioOf(context))
+                    .round();
                 return Image.network(
                   s.iconUrl!,
                   width: size,
@@ -409,7 +420,9 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
     setState(() => _uploading = true);
     try {
       final url = await Repo.uploadVehicleIcon(
-          code.isEmpty ? (widget.spec?.code ?? 'icon') : code, png);
+        code.isEmpty ? (widget.spec?.code ?? 'icon') : code,
+        png,
+      );
       if (mounted) setState(() => _iconUrl = url);
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -485,16 +498,22 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                 TextButton.icon(
                   onPressed: _uploading ? null : _pickIcon,
                   icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text(_iconUrl == null
-                      ? t('Сурет жүктеу')
-                      : t('Суретті ауыстыру')),
+                  label: Text(
+                    _iconUrl == null
+                        ? t('Сурет жүктеу')
+                        : t('Суретті ауыстыру'),
+                  ),
                 ),
                 Text(
-                  t('PNG таңдағанда керек жерін өзіңіз кесесіз — '
-                      'өлшемі автоматты келтіріледі.'),
+                  t(
+                    'PNG таңдағанда керек жерін өзіңіз кесесіз — '
+                    'өлшемі автоматты келтіріледі.',
+                  ),
                   textAlign: TextAlign.center,
-                  style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 11.5,
+                  ),
                 ),
               ],
             ),
@@ -511,8 +530,10 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                 labelText: t('Коды (латынша)'),
                 hintText: 'tral',
                 helperMaxLines: 3,
-                helperText: t('Дерекқордағы белгісі — кейін ӨЗГЕРТІЛМЕЙДІ. '
-                    'Кіші латын әрпі, сан және «_» ғана.'),
+                helperText: t(
+                  'Дерекқордағы белгісі — кейін ӨЗГЕРТІЛМЕЙДІ. '
+                  'Кіші латын әрпі, сан және «_» ғана.',
+                ),
                 prefixIcon: const Icon(Icons.tag),
               ),
             ),
@@ -547,8 +568,10 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
           ),
           const SizedBox(height: 4),
           Text(
-            t('Каруселде таңдалған түрдің АСТЫНДА бір жол болып шығады — '
-                'сол себепті ҚЫСҚА жазыңыз (мыс. «Ауыр жүк»).'),
+            t(
+              'Каруселде таңдалған түрдің АСТЫНДА бір жол болып шығады — '
+              'сол себепті ҚЫСҚА жазыңыз (мыс. «Ауыр жүк»).',
+            ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 10),
@@ -580,11 +603,17 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                   contentPadding: EdgeInsets.zero,
                   value: _active,
                   onChanged: (v) => setState(() => _active = v),
-                  title: Text(t('Көрінеді'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  title: Text(
+                    t('Көрінеді'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
                   subtitle: Text(
-                    t('Өшірулі болса клиент те, орындаушы да бұл түрді таппайды.'),
+                    t(
+                      'Өшірулі болса клиент те, орындаушы да бұл түрді таппайды.',
+                    ),
                     style: const TextStyle(fontSize: 11.5),
                   ),
                 ),
@@ -593,13 +622,19 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                   contentPadding: EdgeInsets.zero,
                   value: _isTaxi,
                   onChanged: (v) => setState(() => _isTaxi = v),
-                  title: Text(t('«Такси» санатына жатады'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  title: Text(
+                    t('«Такси» санатына жатады'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
                   subtitle: Text(
-                    t('Қосулы болса — спецтехника каруселінде емес, «Такси» '
-                        'санатында тұрады және такси бөлімі өшірулі кезде '
-                        'мүлдем көрінбейді.'),
+                    t(
+                      'Қосулы болса — спецтехника каруселінде емес, «Такси» '
+                      'санатында тұрады және такси бөлімі өшірулі кезде '
+                      'мүлдем көрінбейді.',
+                    ),
                     style: const TextStyle(fontSize: 11.5),
                   ),
                 ),

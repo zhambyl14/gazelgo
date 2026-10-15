@@ -39,14 +39,22 @@ class ReviewsScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(
                   children: [
-                    Text(rating <= 0 ? '—' : rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                            fontSize: 40, fontWeight: FontWeight.w900)),
+                    Text(
+                      rating <= 0 ? '—' : rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     RatingStars(rating, count: ratingCount, size: 18),
                     const SizedBox(height: 2),
-                    Text('$ratingCount ${t('пікір')}',
-                        style: const TextStyle(
-                            color: Gz.textSecondary, fontSize: 13)),
+                    Text(
+                      '$ratingCount ${t('пікір')}',
+                      style: const TextStyle(
+                        color: Gz.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -55,7 +63,8 @@ class ReviewsScreen extends StatelessWidget {
                 child: reviews.isEmpty
                     ? EmptyState(
                         icon: Icons.rate_review_outlined,
-                        title: t('Әзірге пікір жоқ'))
+                        title: t('Әзірге пікір жоқ'),
+                      )
                     : ListView.separated(
                         padding: const EdgeInsets.all(12),
                         itemCount: reviews.length,
@@ -75,21 +84,27 @@ class ReviewsScreen extends StatelessWidget {
                                           ? t('Орындаушыдан')
                                           : t('Клиенттен'),
                                       style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: Gz.textSecondary),
+                                        fontSize: 11.5,
+                                        color: Gz.textSecondary,
+                                      ),
                                     ),
                                   ],
                                 ),
                                 if (r.comment.isNotEmpty) ...[
                                   const SizedBox(height: 6),
-                                  Text(r.comment,
-                                      style: const TextStyle(fontSize: 14)),
+                                  Text(
+                                    r.comment,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
                                 ],
                                 const SizedBox(height: 4),
-                                Text(fmtDate(r.createdAt),
-                                    style: const TextStyle(
-                                        fontSize: 11.5,
-                                        color: Gz.textSecondary)),
+                                Text(
+                                  fmtDate(r.createdAt),
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: Gz.textSecondary,
+                                  ),
+                                ),
                               ],
                             ),
                           );

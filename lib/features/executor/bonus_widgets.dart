@@ -285,22 +285,24 @@ class _BonusSheet extends StatelessWidget {
             _rule(
               Icons.account_balance_wallet_outlined,
               '${t('Бонус')}: ${fmtT(b.amount)}',
-              t('Сома БАЛАНСҚА түседі — тариф сатып алуға жұмсалады. '
-                  'Қолма-қол шешіп алу әзірге жоқ.'),
+              t(
+                'Сома БАЛАНСҚА түседі — тариф сатып алуға жұмсалады. '
+                'Қолма-қол шешіп алу әзірге жоқ.',
+              ),
             ),
             if (b.repeat)
               _rule(
                 Icons.repeat_rounded,
                 t('Қайталанады'),
                 '${t('Кезең ішінде әр')} ${b.target} ${t('заказ сайын жаңа '
-                    'бонус беріледі.')}',
+                'бонус беріледі.')}',
               )
             else
               _rule(
                 Icons.looks_one_outlined,
                 t('Кезеңде бір рет'),
                 '${t('Бір кезеңде бір бонус')} — '
-                    '${bonusPeriodLabel(b.period)} ${t('жаңарады')}.',
+                '${bonusPeriodLabel(b.period)} ${t('жаңарады')}.',
               ),
             if (b.periodEnd != null)
               _rule(
@@ -327,11 +329,7 @@ class _BonusSheet extends StatelessWidget {
                   ),
                   Container(width: 1, height: 34, color: Gz.border),
                   Expanded(
-                    child: _stat(
-                      t('Барлығы'),
-                      fmtT(b.earnedTotal),
-                      Gz.ink,
-                    ),
+                    child: _stat(t('Барлығы'), fmtT(b.earnedTotal), Gz.ink),
                   ),
                 ],
               ),
@@ -433,8 +431,10 @@ class BonusHistoryScreen extends StatelessWidget {
             return EmptyState(
               icon: Icons.card_giftcard_outlined,
               title: t('Әзірге бонус жоқ'),
-              subtitle: t('Заказ лимитін толтырсаңыз — бонус балансқа '
-                  'автоматты түседі.'),
+              subtitle: t(
+                'Заказ лимитін толтырсаңыз — бонус балансқа '
+                'автоматты түседі.',
+              ),
             );
           }
           final total = rows.fold<int>(0, (s, e) => s + e.amount);

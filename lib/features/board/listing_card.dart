@@ -170,7 +170,8 @@ class ListingCard extends StatelessWidget {
       color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
       borderRadius: BorderRadius.circular(9),
       border: Border.all(
-          color: color == null ? Gz.border : Gz.tint(color, 0.25)),
+        color: color == null ? Gz.border : Gz.tint(color, 0.25),
+      ),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,

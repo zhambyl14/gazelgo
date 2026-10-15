@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' show Marker;
+import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,6 +18,7 @@ import '../../shared/widgets.dart';
 import '../support/support_screen.dart';
 import 'address_picker.dart';
 import 'create_order_screen.dart';
+import 'searching_view.dart';
 
 /// Клиенттің заказ экраны: ұсыныстар, барыс, пікір.
 class OrderDetailScreen extends StatefulWidget {
@@ -152,161 +156,170 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  /// Заказ стримі БІР рет құрылады: экран қайта салынғанда (мыс. баптау
+  /// жүктелгенде) жаңа сұрау тізбегі басталып кетпеуі үшін.
+  late final Stream<Order?> _orderStream = Repo.orderStream(widget.orderId);
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(t('Заказ'))),
-      body: StreamBuilder<Order?>(
-        stream: Repo.orderStream(widget.orderId),
-        builder: (context, snap) {
-          final o = snap.data;
-          if (o == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          _maybeCleanupPhotos(o);
-          _maybeShowReview(o);
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+    return StreamBuilder<Order?>(
+      stream: _orderStream,
+      builder: (context, snap) {
+        final o = snap.data;
+        if (o == null) {
+          return Scaffold(
+            appBar: AppBar(title: Text(t('Заказ'))),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        _maybeCleanupPhotos(o);
+        _maybeShowReview(o);
+        // Іздеу кезінде — толық экранды карта + сүйретілетін панель
+        // (Yandex Go үлгісі). Орындаушы табылған сәтте стрим жаңа статус
+        // әкеледі де, экран өзі төмендегі әдеттегі түрге ауысады.
+        if (o.status == 'searching') {
+          return _SearchingScreen(
+            order: o,
+            onCancel: _cancel,
+            onShare: _shareTripEnabled ? () => _shareTrip(o) : null,
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(title: Text(t('Заказ'))),
+          body: _details(o),
+        );
+      },
+    );
+  }
+
+  /// Іздеуден КЕЙІНГІ барлық статустың (accepted … expired) экраны.
+  Widget _details(Order o) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  fmtT(o.displayPrice),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+              if (_shareTripEnabled &&
+                  !['cancelled', 'expired'].contains(o.status))
+                IconButton(
+                  tooltip: t('Бөлісу'),
+                  icon: const Icon(Icons.ios_share),
+                  onPressed: () => _shareTrip(o),
+                ),
+              StatusChip(o.status, vehicleType: o.vehicleType),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
+            StreamBuilder<Map<String, dynamic>?>(
+              stream: Repo.orderExecutorLocationStream(o.id),
+              builder: (context, locSnap) {
+                final loc = locSnap.data;
+                final extra = <Marker>[
+                  if (loc != null && loc['lat'] != null)
+                    executorLiveMarker(
+                      LatLng(
+                        (loc['lat'] as num).toDouble(),
+                        (loc['lng'] as num).toDouble(),
+                      ),
+                    ),
+                ];
+                return RouteMap(
+                  from: LatLng(o.fromLat, o.fromLng),
+                  to: LatLng(o.toLat, o.toLng),
+                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                  height: 175,
+                  extraMarkers: extra,
+                  fromLabel: o.fromDisplay,
+                  toLabel: o.toDisplay,
+                  stopLabels: o.stops.map((s) => s.display).toList(),
+                  distanceKm: o.distanceKm,
+                );
+              },
+            )
+          else
+            RouteMap(
+              from: LatLng(o.fromLat, o.fromLng),
+              to: LatLng(o.toLat, o.toLng),
+              stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+              height: 175,
+              fromLabel: o.fromDisplay,
+              toLabel: o.toDisplay,
+              stopLabels: o.stops.map((s) => s.display).toList(),
+              distanceKm: o.distanceKm,
+            ),
+          const SizedBox(height: 10),
+          SectionCard(
+            padding: const EdgeInsets.all(14),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        fmtT(o.displayPrice),
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                    if (_shareTripEnabled &&
-                        !['cancelled', 'expired'].contains(o.status))
-                      IconButton(
-                        tooltip: t('Бөлісу'),
-                        icon: const Icon(Icons.ios_share),
-                        onPressed: () => _shareTrip(o),
-                      ),
-                    StatusChip(o.status, vehicleType: o.vehicleType),
-                  ],
+                RouteLine(
+                  from: o.fromDisplay,
+                  to: o.toDisplay,
+                  stops: o.stops.map((s) => s.display).toList(),
                 ),
-                const SizedBox(height: 12),
-                if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
-                  StreamBuilder<Map<String, dynamic>?>(
-                    stream: Repo.orderExecutorLocationStream(o.id),
-                    builder: (context, locSnap) {
-                      final loc = locSnap.data;
-                      final extra = <Marker>[
-                        if (loc != null && loc['lat'] != null)
-                          executorLiveMarker(
-                            LatLng(
-                              (loc['lat'] as num).toDouble(),
-                              (loc['lng'] as num).toDouble(),
-                            ),
-                          ),
-                      ];
-                      return RouteMap(
-                        from: LatLng(o.fromLat, o.fromLng),
-                        to: LatLng(o.toLat, o.toLng),
-                        stops: o.stops
-                            .map((s) => LatLng(s.lat, s.lng))
-                            .toList(),
-                        height: 175,
-                        extraMarkers: extra,
-                        fromLabel: o.fromDisplay,
-                        toLabel: o.toDisplay,
-                        stopLabels: o.stops.map((s) => s.display).toList(),
-                        distanceKm: o.distanceKm,
-                      );
-                    },
-                  )
-                else
-                  RouteMap(
-                    from: LatLng(o.fromLat, o.fromLng),
-                    to: LatLng(o.toLat, o.toLng),
-                    stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                    height: 175,
-                    fromLabel: o.fromDisplay,
-                    toLabel: o.toDisplay,
-                    stopLabels: o.stops.map((s) => s.display).toList(),
-                    distanceKm: o.distanceKm,
+                const Divider(height: 20),
+                InfoRow(t('Жүк'), o.cargoDesc),
+                if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
+                InfoRow(t('Көлік'), o.vehicleType.label),
+                if (o.distanceKm > 0)
+                  InfoRow(
+                    t('Қашықтық'),
+                    '${o.distanceKm.toStringAsFixed(1)} км',
                   ),
-                const SizedBox(height: 10),
-                SectionCard(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RouteLine(
-                        from: o.fromDisplay,
-                        to: o.toDisplay,
-                        stops: o.stops.map((s) => s.display).toList(),
-                      ),
-                      const Divider(height: 20),
-                      InfoRow(t('Жүк'), o.cargoDesc),
-                      if (o.comment.isNotEmpty)
-                        InfoRow(t('Түсініктеме'), o.comment),
-                      InfoRow(t('Көлік'), o.vehicleType.label),
-                      if (o.distanceKm > 0)
-                        InfoRow(
-                          t('Қашықтық'),
-                          '${o.distanceKm.toStringAsFixed(1)} км',
-                        ),
-                      InfoRow(
-                        t('Бағыты'),
-                        o.intercity
-                            ? t('Қалааралық (межгород)')
-                            : t('Қала ішінде'),
-                      ),
-                      if (o.createdAt != null)
-                        InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
-                    ],
-                  ),
+                InfoRow(
+                  t('Бағыты'),
+                  o.intercity ? t('Қалааралық (межгород)') : t('Қала ішінде'),
                 ),
-                if (o.photos.isNotEmpty &&
-                    ![
-                      'completed',
-                      'cancelled',
-                      'expired',
-                    ].contains(o.status)) ...[
-                  const SizedBox(height: 10),
-                  OrderPhotosStrip(paths: o.photos),
-                ],
-                const SizedBox(height: 14),
-                ..._statusSection(o),
-                const SizedBox(height: 14),
-                // Бас тарту: searching/accepted/arrived — процесте болмаса
-                if (['searching', 'accepted', 'arrived'].contains(o.status))
-                  OutlinedButton.icon(
-                    onPressed: _cancel,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Gz.red,
-                      side: const BorderSide(color: Gz.red),
-                    ),
-                    icon: const Icon(Icons.close),
-                    label: Text(t('Заказды тоқтату')),
-                  ),
-                const SizedBox(height: 24),
+                if (o.createdAt != null)
+                  InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
               ],
             ),
-          );
-        },
+          ),
+          if (o.photos.isNotEmpty &&
+              !['completed', 'cancelled', 'expired'].contains(o.status)) ...[
+            const SizedBox(height: 10),
+            OrderPhotosStrip(paths: o.photos),
+          ],
+          const SizedBox(height: 14),
+          ..._statusSection(o),
+          const SizedBox(height: 14),
+          // Бас тарту: accepted/arrived — процесте болмаса (іздеу кезінде
+          // «Күте алмаймын» батырмасы — [_SearchingScreen]).
+          if (['accepted', 'arrived'].contains(o.status))
+            OutlinedButton.icon(
+              onPressed: _cancel,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Gz.red,
+                side: const BorderSide(color: Gz.red),
+              ),
+              icon: const Icon(Icons.close),
+              label: Text(t('Заказды тоқтату')),
+            ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
 
   List<Widget> _statusSection(Order o) {
     switch (o.status) {
+      // Іздеу күйінің өз экраны бар — [_SearchingScreen].
       case 'searching':
-        return [
-          if (o.isScheduledPending) ...[
-            _ScheduledBadge(scheduledAt: o.scheduledAt!),
-            const SizedBox(height: 10),
-          ],
-          _OffersSection(order: o),
-        ];
+        return const [];
       case 'accepted':
       case 'arrived':
       case 'loading':
@@ -398,62 +411,6 @@ class _ReorderButton extends StatelessWidget {
   }
 }
 
-/// Алдын ала тапсырыс (0060) — белгіленген уақыты әлі келмегенде
-/// «Іздеуде» орнына көрсетіледі: орындаушыларға ол уақытқа дейін көрінбейді.
-class _ScheduledBadge extends StatelessWidget {
-  final DateTime scheduledAt;
-  const _ScheduledBadge({required this.scheduledAt});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Gz.violet.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(Gz.radius),
-        border: Border.all(color: Gz.violet.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.schedule_outlined, color: Gz.violet),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t('Жоспарланған тапсырыс'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  t('Орындаушыларға көрінбейді'),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 12.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  fmtDate(scheduledAt),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                    color: Gz.violet,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Орындаушы келгенін клиент растайды: «Тиеу басталды» → status=loading.
 /// Осыдан кейін ғана орындаушы «Жолға шықтық» дей алады (0027). Такси
 /// заказында (жолаушы тасымалы) «тиеу» орнына «отыру» сөздігі қолданылады —
@@ -528,84 +485,554 @@ class _ConfirmLoadingCard extends StatelessWidget {
   }
 }
 
-// ===================== ҰСЫНЫСТАР (bidding) =====================
-class _OffersSection extends StatelessWidget {
+// ===================== ІЗДЕУ (Yandex Go үлгісі) =====================
+
+/// Заказ «Іздеуде» тұрғанда: толық экранды карта (алу нүктесінде радар
+/// толқындары + «~N мин» пині) және сүйретілетін ақ панель — тақырып,
+/// таймер, ұсыныстар, маршрут, төлем, «Күте алмаймын».
+///
+/// Логика бұрынғыдай: ұсынысты қабылдау/қабылдамау — [_OfferCard],
+/// бағаны көтеру — [_RaisePriceHint], бас тарту — ата-экранның себеп
+/// таңдайтын `_cancel` ағыны. Орындаушы табылған сәтте заказ стримі жаңа
+/// статус әкеледі де, бұл виджет алынып, әдеттегі экран көрінеді (таймер,
+/// ұсыныстар жазылымы `dispose`-та жабылады).
+class _SearchingScreen extends StatefulWidget {
   final Order order;
-  const _OffersSection({required this.order});
+  final VoidCallback onCancel;
+
+  /// `null` — «Бөлісу» фичасы өшулі (модератор баптауы).
+  final VoidCallback? onShare;
+
+  const _SearchingScreen({
+    required this.order,
+    required this.onCancel,
+    this.onShare,
+  });
+
+  @override
+  State<_SearchingScreen> createState() => _SearchingScreenState();
+}
+
+class _SearchingScreenState extends State<_SearchingScreen> {
+  static const _minSize = 0.38;
+  static const _initialSize = 0.45;
+
+  /// Алғашқы ұсыныс келгенде панель осы биіктікке дейін өзі көтеріледі.
+  static const _offersSize = 0.62;
+
+  final _sheet = DraggableScrollableController();
+
+  /// Панельдің ағымдағы биіктігі (үлесі) — карта деректері белгісін
+  /// панельдің дәл үстінде ұстау үшін.
+  final _extent = ValueNotifier<double>(_initialSize);
+
+  /// Іздеу басталғаннан бергі секунд. Секунд сайын тек таймер мәтіні мен
+  /// «~N мин» пині қайта салынады — бүкіл экран емес.
+  final _elapsed = ValueNotifier<int>(0);
+
+  /// Заказдың БАРЛЫҚ ұсынысы (pending + rejected) — бас тарту санын
+  /// «бағаны көтеріңіз» кеңесі үшін де білу керек.
+  final _allOffers = ValueNotifier<List<Offer>>(const []);
+
+  final DateTime _openedAt = DateTime.now();
+  Timer? _ticker;
+  StreamSubscription<List<Offer>>? _offersSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    // Стрим БІР рет тыңдалады (build ішінде құрылса, әр 3 секундтағы
+    // заказ жаңартуында сұрау тізбегі қайта басталатын еді).
+    _offersSub = Repo.offersStream(
+      widget.order.id,
+    ).listen(_onOffers, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _offersSub?.cancel();
+    _sheet.dispose();
+    _extent.dispose();
+    _elapsed.dispose();
+    _allOffers.dispose();
+    super.dispose();
+  }
+
+  void _tick() {
+    final start = widget.order.createdAt ?? _openedAt;
+    final s = DateTime.now().difference(start).inSeconds;
+    // Құрылғы сағаты сервердікінен артта қалса — теріс сан шықпасын.
+    _elapsed.value = s < 0 ? 0 : s;
+  }
+
+  static List<Offer> _pendingOf(List<Offer> all) =>
+      all.where((of) => of.status == 'pending').toList()
+        ..sort((a, b) => a.price.compareTo(b.price));
+
+  void _onOffers(List<Offer> all) {
+    if (!mounted) return;
+    final before = _pendingOf(_allOffers.value).length;
+    _allOffers.value = all;
+    final now = _pendingOf(all).length;
+    // Алғашқы ұсыныс келгенде панель өзі ашылады — ұсыныс көзден тыс
+    // (панельдің төменгі жағында) қалып қоймасын.
+    if (before == 0 &&
+        now > 0 &&
+        _sheet.isAttached &&
+        _sheet.size < _offersSize - 0.02) {
+      _sheet.animateTo(
+        _offersSize,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  /// Күту уақытының БОЛЖАМЫ (минут). Нақты есеп емес — сол себепті «~».
+  /// Алдымен базалық уақыттан кеми береді; ұзақ ешкім жауап бермесе,
+  /// «~3 мин» деп мәңгі тұрып қалмай, ақырын өседі (адал болжам).
+  int _etaMinutes(int elapsedSec) {
+    final o = widget.order;
+    final base = o.intercity ? 15 : (o.vehicleType.isTaxiCategory ? 5 : 9);
+    final m = elapsedSec ~/ 60;
+    final eta = m <= base - 3 ? base - m : 3 + (m - (base - 3)) ~/ 5;
+    return eta < 3 ? 3 : (eta > 15 ? 15 : eta);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Offer>>(
-      stream: Repo.offersStream(order.id),
-      builder: (context, snap) {
-        final all = snap.data ?? [];
-        final offers = all.where((of) => of.status == 'pending').toList()
-          ..sort((a, b) => a.price.compareTo(b.price));
-        final rejectedCount = all.where((of) => of.status == 'rejected').length;
-        final ageMin = order.createdAt == null
-            ? 0
-            : DateTime.now().difference(order.createdAt!).inMinutes;
-        // Кеңес: 5+ бас тарту немесе 15+ мин жауапсыз → бағаны көтеру
-        final suggestRaise =
-            rejectedCount >= 5 || (offers.isEmpty && ageMin >= 15);
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    final o = widget.order;
+    final scheduled = o.isScheduledPending;
+    final accent = scheduled ? Gz.violet : Gz.blue;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Gz.bg,
+        body: LayoutBuilder(
+          builder: (context, box) {
+            final h = box.maxHeight;
+            final topPad = MediaQuery.paddingOf(context).top;
+            // Панель ең жоғары көтерілгенде де «Артқа» батырмасын жаппауы
+            // керек — шегі экран биіктігінен есептеледі.
+            final maxSize = ((h - topPad - 68) / h).clamp(0.6, 0.9);
+            // Карта панельдің ең төменгі күйінің астына сәл кіреді (панельдің
+            // дөңгелек бұрыштарының артында бос фон көрінбеуі үшін). Картаның
+            // ортасы — демек алу нүктесі — панельдің ҮСТІНДЕГІ көрінетін
+            // бөлікте тұрады.
+            final mapBottom = h * _minSize - 28;
+            return Stack(
               children: [
-                Text(
-                  t('Ұсыныстар'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: mapBottom,
+                  child: _map(o, accent, scheduled),
                 ),
-                const SizedBox(width: 8),
-                if (offers.isNotEmpty)
-                  CircleAvatar(
-                    radius: 11,
-                    backgroundColor: Gz.yellow,
-                    child: Text(
-                      '${offers.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Gz.ink,
+                // Жоғарғы перде — батырмалар ашық тайлда да анық көрінеді.
+                // Түртуді ұстамайды.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      height: topPad + 64,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Gz.bg.withValues(alpha: 0.85),
+                            Gz.bg.withValues(alpha: 0.0),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                const Spacer(),
-                const _PulsingDot(),
-                const SizedBox(width: 6),
-                Text(
-                  t('Іздеуде…'),
-                  style: const TextStyle(color: Gz.blue, fontSize: 13),
+                ),
+                // OSM тайлдарының дерек көзі (OSMF талабы) — толық экранды
+                // маршрут картасындағыдай, панельдің дәл үстінде.
+                ValueListenableBuilder<double>(
+                  valueListenable: _extent,
+                  builder: (_, ext, child) => ext > 0.7
+                      ? const SizedBox.shrink()
+                      : Positioned(
+                          left: 12,
+                          bottom: h * ext + 10,
+                          child: child!,
+                        ),
+                  child: const _OsmAttribution(),
+                ),
+                NotificationListener<DraggableScrollableNotification>(
+                  onNotification: (n) {
+                    _extent.value = n.extent;
+                    return false;
+                  },
+                  child: DraggableScrollableSheet(
+                    controller: _sheet,
+                    initialChildSize: _initialSize,
+                    minChildSize: _minSize,
+                    maxChildSize: maxSize,
+                    builder: (context, scroll) =>
+                        _sheetBody(o, scroll, scheduled, accent),
+                  ),
+                ),
+                // Батырмалар ЕҢ ҮСТІНДЕ: панель ешқашан оларды жаппайды.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      child: Row(
+                        children: [
+                          SearchMapButton(
+                            icon: Icons.arrow_back_rounded,
+                            tooltip: MaterialLocalizations.of(
+                              context,
+                            ).backButtonTooltip,
+                            onTap: () => Navigator.of(context).maybePop(),
+                          ),
+                          const Spacer(),
+                          if (widget.onShare != null)
+                            SearchMapButton(
+                              icon: Icons.ios_share,
+                              tooltip: t('Бөлісу'),
+                              onTap: widget.onShare!,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Толық экранды карта: алу нүктесінде радар + сақина + «~N мин» пині,
+  /// аялдамалар — сұр сақиналар, соңғы нүкте — қара шаршы.
+  Widget _map(Order o, Color accent, bool scheduled) {
+    final pickup = LatLng(o.fromLat, o.fromLng);
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: pickup,
+        initialZoom: 15.5,
+        backgroundColor: Gz.bg,
+        // Бұру өшірулі — кездейсоқ қисайып қалған карта ең жиі шағым.
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+        ),
+      ),
+      children: [
+        osmTileLayer(),
+        MarkerLayer(
+          markers: [
+            for (final s in o.stops)
+              Marker(
+                point: LatLng(s.lat, s.lng),
+                width: 16,
+                height: 16,
+                child: const Center(child: SearchStopDot(size: 14)),
+              ),
+            Marker(
+              point: LatLng(o.toLat, o.toLng),
+              width: 18,
+              height: 18,
+              child: const SearchDestinationSquare(),
             ),
-            const SizedBox(height: 8),
-            if (suggestRaise) _RaisePriceHint(order: order),
-            if (offers.isEmpty && !suggestRaise)
-              SectionCard(
-                child: Text(
-                  t(
-                    'Орындаушылардың ұсыныстары осында шығады. '
-                    'Әдетте бірнеше минут ішінде жауап келеді.',
-                  ),
+            // Жоспарланған тапсырыс әлі ІЗДЕЛМЕЙДІ (орындаушыларға
+            // көрінбейді) — «іздеп жатырмыз» радары оны адастырар еді.
+            if (!scheduled)
+              Marker(
+                point: pickup,
+                width: 230,
+                height: 230,
+                child: SearchRadar(color: accent),
+              ),
+            Marker(
+              point: pickup,
+              width: 18,
+              height: 18,
+              child: SearchPickupDot(color: accent),
+            ),
+            // Пин нүктенің ҮСТІНДЕ: төменгі жиегі координатаға түседі.
+            Marker(
+              point: pickup,
+              width: 170,
+              height: 90,
+              alignment: Alignment.topCenter,
+              child: scheduled
+                  // Жоспарланған тапсырыс — уақыты панельде жазылған,
+                  // мұнда тек белгі (бір ақпарат екі рет қайталанбайды).
+                  ? SearchEtaPill(color: accent, spinning: false)
+                  : ValueListenableBuilder<int>(
+                      valueListenable: _elapsed,
+                      builder: (_, s, _) => SearchEtaPill(
+                        label: '~${_etaMinutes(s)} ${t('мин')}',
+                        color: accent,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _sheetBody(
+    Order o,
+    ScrollController scroll,
+    bool scheduled,
+    Color accent,
+  ) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Gz.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x24101828),
+            blurRadius: 24,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      // SingleChildScrollView (ListView емес): ішіндегі күйлі виджеттер
+      // (бағаны көтеру снузы, батырмалардың «жүктелуде» күйі) панель
+      // айналдырылғанда жойылып кетпейді.
+      child: SingleChildScrollView(
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: ValueListenableBuilder<List<Offer>>(
+          valueListenable: _allOffers,
+          builder: (context, all, _) =>
+              _sheetContent(o, all, scheduled, accent),
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetContent(Order o, List<Offer> all, bool scheduled, Color accent) {
+    final offers = _pendingOf(all);
+    final rejectedCount = all.where((of) => of.status == 'rejected').length;
+    final ageMin = o.createdAt == null
+        ? 0
+        : DateTime.now().difference(o.createdAt!).inMinutes;
+    // Кеңес: 5+ бас тарту немесе 15+ мин жауапсыз → бағаны көтеру
+    final suggestRaise = rejectedCount >= 5 || (offers.isEmpty && ageMin >= 15);
+
+    final payNote = [
+      o.vehicleType.label,
+      if (o.distanceKm > 0) '${o.distanceKm.toStringAsFixed(1)} км',
+    ].join(' · ');
+    final details = <Widget>[
+      if (o.cargoDesc.isNotEmpty) InfoRow(t('Жүк'), o.cargoDesc),
+      if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
+      if (o.intercity) InfoRow(t('Бағыты'), t('Қалааралық (межгород)')),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SearchSheetHandle(),
+        // ── Тақырып + таймер ─────────────────────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                scheduled
+                    ? t('Жоспарланған тапсырыс')
+                    : t('Көлік іздеп жатырмыз'),
+                style: const TextStyle(
+                  fontSize: 22,
+                  height: 1.15,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                  color: Gz.ink,
+                ),
+              ),
+            ),
+            if (!scheduled)
+              Padding(
+                padding: const EdgeInsets.only(left: 10, top: 4),
+                child: SearchElapsedText(
+                  seconds: _elapsed,
                   style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                     color: Gz.textSecondary,
-                    fontSize: 13.5,
                   ),
                 ),
               ),
-            for (final offer in offers) ...[
-              _OfferCard(offer: offer, clientPrice: order.clientPrice),
-              const SizedBox(height: 8),
-            ],
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 6),
+        if (scheduled) ...[
+          Text(
+            t('Орындаушыларға көрінбейді'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            fmtDate(o.scheduledAt),
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: Gz.violet,
+            ),
+          ),
+        ] else if (offers.isNotEmpty)
+          // Ұсыныс келгені тақырыптың ДӘЛ астында айқын көрінеді.
+          Row(
+            children: [
+              SearchCountBadge(offers.length),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  t('Ұсыныс келді — таңдаңыз'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: Gz.green,
+                  ),
+                ),
+              ),
+            ],
+          )
+        else
+          Text(
+            t('Қазір келеді, сәл күтіңіз…'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+          ),
+        if (!scheduled) ...[
+          const SizedBox(height: 14),
+          SearchProgressBar(color: accent),
+        ],
+        const SizedBox(height: 16),
+        // ── Ұсыныстар ────────────────────────────────────────────────
+        // Кілттер: тізім өзгергенде кеңестің (снуз) және батырмалардың
+        // күйі басқа карточкаға «ауысып» кетпеуі үшін.
+        if (suggestRaise)
+          _RaisePriceHint(key: const ValueKey('raise-hint'), order: o),
+        for (final offer in offers) ...[
+          _OfferCard(
+            key: ValueKey('offer-${offer.id}'),
+            offer: offer,
+            clientPrice: o.clientPrice,
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (offers.isNotEmpty) const SizedBox(height: 6),
+        if (offers.isEmpty && !suggestRaise && !scheduled) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: Gz.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                // «Бірнеше минут» деп мұнда жазбаймыз — күту болжамы
+                // картадағы «~N мин» пинінде тұр (екі рет қайталанбайды).
+                child: Text(
+                  t('Орындаушылардың ұсыныстары осында шығады.'),
+                  style: const TextStyle(
+                    color: Gz.textSecondary,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+        ],
+        // ── Маршрут, төлем, жүк ──────────────────────────────────────
+        SearchRouteCard(
+          from: o.fromDisplay,
+          to: o.toDisplay,
+          stops: o.stops.map((s) => s.display).toList(),
+        ),
+        const SizedBox(height: 10),
+        SearchPaymentRow(
+          title: t('Қолма-қол не аударым'),
+          subtitle: payNote,
+          price: fmtT(o.displayPrice),
+        ),
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Gz.surfaceAlt,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Gz.border),
+            ),
+            child: Column(children: details),
+          ),
+        ],
+        if (o.photos.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          OrderPhotosStrip(paths: o.photos),
+        ],
+        const SizedBox(height: 18),
+        SearchSoftButton(
+          // Жоспарланған тапсырыста әлі ештеңе «күтілмейді» — әдеттегі сөз.
+          label: scheduled ? t('Заказды тоқтату') : t('Күте алмаймын'),
+          onPressed: widget.onCancel,
+        ),
+      ],
+    );
+  }
+}
+
+/// «© OpenStreetMap» — тайлдарды пайдаланғанда сілтеме міндетті.
+class _OsmAttribution extends StatelessWidget {
+  const _OsmAttribution();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Gz.surface.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: const Text(
+          '© OpenStreetMap',
+          style: TextStyle(
+            fontSize: 9.5,
+            height: 1.1,
+            fontWeight: FontWeight.w700,
+            color: Gz.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -620,7 +1047,7 @@ class _OffersSection extends StatelessWidget {
 /// мерзімін осы виджеттің ӨЗІ (жергілікті `_snoozedUntil`) есептейді.
 class _RaisePriceHint extends StatefulWidget {
   final Order order;
-  const _RaisePriceHint({required this.order});
+  const _RaisePriceHint({super.key, required this.order});
 
   @override
   State<_RaisePriceHint> createState() => _RaisePriceHintState();
@@ -810,7 +1237,7 @@ class _StepBtn extends StatelessWidget {
 class _OfferCard extends StatelessWidget {
   final Offer offer;
   final int? clientPrice;
-  const _OfferCard({required this.offer, this.clientPrice});
+  const _OfferCard({super.key, required this.offer, this.clientPrice});
 
   @override
   Widget build(BuildContext context) {
@@ -908,17 +1335,35 @@ class _OfferCard extends StatelessWidget {
 }
 
 /// Орындаушының қысқа профилі (аты, рейтинг, көлігі).
-class _ExecutorBrief extends StatelessWidget {
+///
+/// Профиль БІР рет жүктеледі: ұсыныстар/заказ стримі әр 4 секунд сайын
+/// панельді қайта салады — әр жолы желіге қайта сұрау жібермеуі үшін.
+class _ExecutorBrief extends StatefulWidget {
   final String executorId;
   const _ExecutorBrief({required this.executorId});
 
   @override
+  State<_ExecutorBrief> createState() => _ExecutorBriefState();
+}
+
+class _ExecutorBriefState extends State<_ExecutorBrief> {
+  late Future<List<Object?>> _future = _load();
+
+  Future<List<Object?>> _load() => Future.wait<Object?>([
+    Repo.profileOf(widget.executorId),
+    Repo.executorProfileOf(widget.executorId),
+  ]);
+
+  @override
+  void didUpdateWidget(_ExecutorBrief old) {
+    super.didUpdateWidget(old);
+    if (old.executorId != widget.executorId) _future = _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Future.wait([
-        Repo.profileOf(executorId),
-        Repo.executorProfileOf(executorId),
-      ]),
+    return FutureBuilder<List<Object?>>(
+      future: _future,
       builder: (context, snap) {
         final p = snap.data?[0] as Profile?;
         final ep = snap.data?[1] as ExecutorProfile?;
@@ -1149,39 +1594,6 @@ class _Timeline extends StatelessWidget {
               ],
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _PulsingDot extends StatefulWidget {
-  const _PulsingDot();
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _c,
-      child: Container(
-        width: 9,
-        height: 9,
-        decoration: const BoxDecoration(color: Gz.blue, shape: BoxShape.circle),
       ),
     );
   }

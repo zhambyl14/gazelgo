@@ -109,14 +109,19 @@ class _TrackScreenState extends State<TrackScreen> {
                 child: Text(
                   vehicle.label,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 18),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
                 ),
               ),
               StatusChip(status, vehicleType: vehicle),
             ],
           ),
           const SizedBox(height: 12),
-          if (fromLat != null && fromLng != null && toLat != null && toLng != null)
+          if (fromLat != null &&
+              fromLng != null &&
+              toLat != null &&
+              toLng != null)
             RouteMap(
               from: LatLng(fromLat, fromLng),
               to: LatLng(toLat, toLng),
@@ -125,10 +130,9 @@ class _TrackScreenState extends State<TrackScreen> {
                 if (lat != null && lng != null)
                   executorLiveMarker(LatLng(lat, lng)),
               ],
-              fromLabel:
-                  '${d['from_city'] ?? ''} ${d['from_address'] ?? ''}'.trim(),
-              toLabel:
-                  '${d['to_city'] ?? ''} ${d['to_address'] ?? ''}'.trim(),
+              fromLabel: '${d['from_city'] ?? ''} ${d['from_address'] ?? ''}'
+                  .trim(),
+              toLabel: '${d['to_city'] ?? ''} ${d['to_address'] ?? ''}'.trim(),
               distanceKm: (d['distance_km'] as num?)?.toDouble(),
             ),
           const SizedBox(height: 12),
@@ -136,13 +140,19 @@ class _TrackScreenState extends State<TrackScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                InfoRow(t('Қайдан'),
-                    '${d['from_city'] ?? ''} ${d['from_address'] ?? ''}'.trim()),
-                InfoRow(t('Қайда'),
-                    '${d['to_city'] ?? ''} ${d['to_address'] ?? ''}'.trim()),
+                InfoRow(
+                  t('Қайдан'),
+                  '${d['from_city'] ?? ''} ${d['from_address'] ?? ''}'.trim(),
+                ),
+                InfoRow(
+                  t('Қайда'),
+                  '${d['to_city'] ?? ''} ${d['to_address'] ?? ''}'.trim(),
+                ),
                 if (d['distance_km'] != null)
-                  InfoRow(t('Қашықтық'),
-                      '${(d['distance_km'] as num).toStringAsFixed(1)} км'),
+                  InfoRow(
+                    t('Қашықтық'),
+                    '${(d['distance_km'] as num).toStringAsFixed(1)} км',
+                  ),
                 if (executorName != null && executorName.trim().isNotEmpty)
                   InfoRow(t('Орындаушы'), executorName),
               ],
@@ -153,8 +163,9 @@ class _TrackScreenState extends State<TrackScreen> {
             child: Text(
               'Tasu',
               style: TextStyle(
-                  color: Gz.textSecondary.withValues(alpha: 0.6),
-                  fontSize: 12),
+                color: Gz.textSecondary.withValues(alpha: 0.6),
+                fontSize: 12,
+              ),
             ),
           ),
         ],

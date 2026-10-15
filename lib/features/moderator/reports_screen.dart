@@ -33,10 +33,7 @@ class ReportsScreen extends StatelessWidget {
           ),
           const Expanded(
             child: TabBarView(
-              children: [
-                _OrderReportsList(),
-                ListingReportsScreen(),
-              ],
+              children: [_OrderReportsList(), ListingReportsScreen()],
             ),
           ),
         ],
@@ -99,13 +96,16 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-        child: Text(text,
-            style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                color: Gz.textSecondary)),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w800,
+        fontSize: 13,
+        color: Gz.textSecondary,
+      ),
+    ),
+  );
 }
 
 class _ReportTile extends StatefulWidget {
@@ -155,8 +155,12 @@ class _ReportTileState extends State<_ReportTile> {
     try {
       await Repo.modSetReportStatus(widget.report.id, status);
       if (mounted) {
-        showSnack(context,
-            status == 'dismissed' ? t('Елеусіз қалдырылды') : t('Қаралды деп белгіленді'));
+        showSnack(
+          context,
+          status == 'dismissed'
+              ? t('Елеусіз қалдырылды')
+              : t('Қаралды деп белгіленді'),
+        );
       }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -170,9 +174,9 @@ class _ReportTileState extends State<_ReportTile> {
       return const SectionCard(
         padding: EdgeInsets.all(14),
         child: SizedBox(
-            height: 40,
-            child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2))),
+          height: 40,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
       );
     }
     final o = _order;
@@ -183,45 +187,64 @@ class _ReportTileState extends State<_ReportTile> {
         children: [
           Row(
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  size: 18, color: r.status == 'open' ? Gz.red : Gz.textSecondary),
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 18,
+                color: r.status == 'open' ? Gz.red : Gz.textSecondary,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   '${t('Хабарлаған:')} ${_reporter?.fullName ?? '…'} '
                   '(${r.reporterRole == 'client' ? t('клиент') : t('газелист')})',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              Text(fmtDate(r.createdAt),
-                  style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary)),
+              Text(
+                fmtDate(r.createdAt),
+                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
+              ),
             ],
           ),
           if (r.reason.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('«${r.reason}»',
-                style: const TextStyle(
-                    fontSize: 12.5,
-                    color: Gz.textSecondary,
-                    fontStyle: FontStyle.italic)),
+            Text(
+              '«${r.reason}»',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: Gz.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
           if (o != null) ...[
             const SizedBox(height: 10),
             Text(o.cargoDesc, style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 4),
-            Text('${o.fromDisplay} → ${o.toDisplay}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Gz.textSecondary)),
+            Text(
+              '${o.fromDisplay} → ${o.toDisplay}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+            ),
           ],
           if (_reported != null) ...[
             const SizedBox(height: 10),
             InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => showTrustActionsSheet(context, _reported!,
-                  onChanged: () => setState(() {})),
+              onTap: () => showTrustActionsSheet(
+                context,
+                _reported!,
+                onChanged: () => setState(() {}),
+              ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Gz.bg,
                   borderRadius: BorderRadius.circular(12),
@@ -229,16 +252,24 @@ class _ReportTileState extends State<_ReportTile> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('${t('Хабарланған:')} ${_reported!.fullName}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      child: Text(
+                        '${t('Хабарланған:')} ${_reported!.fullName}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ),
                     TrustBadge(
-                        score: _reported!.trustScore,
-                        blocked: _reported!.isBlocked),
+                      score: _reported!.trustScore,
+                      blocked: _reported!.isBlocked,
+                    ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right,
-                        size: 18, color: Gz.textSecondary),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: Gz.textSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -251,8 +282,10 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => showOrderAdminSheet(context, o.id),
-                    child: BtnLabel(t('Заказды ашу'),
-                        style: const TextStyle(fontSize: 12.5)),
+                    child: BtnLabel(
+                      t('Заказды ашу'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
                   ),
                 ),
               if (o != null && r.status == 'open') const SizedBox(width: 8),
@@ -260,8 +293,10 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _setStatus('dismissed'),
-                    child: BtnLabel(t('Елеусіз қалдыру'),
-                        style: const TextStyle(fontSize: 12.5)),
+                    child: BtnLabel(
+                      t('Елеусіз қалдыру'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
                   ),
                 ),
               if (r.status == 'open') const SizedBox(width: 8),
@@ -269,8 +304,10 @@ class _ReportTileState extends State<_ReportTile> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _setStatus('reviewed'),
-                    child: BtnLabel(t('Қаралды'),
-                        style: const TextStyle(fontSize: 12.5)),
+                    child: BtnLabel(
+                      t('Қаралды'),
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
                   ),
                 ),
             ],

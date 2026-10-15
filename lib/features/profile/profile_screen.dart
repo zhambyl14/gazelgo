@@ -125,9 +125,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  void _open(Widget page) => Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => page));
+  void _open(Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   /// Жедел әрекеттер торының плиткалары — рөлге қарай.
   List<_QuickTile> _quickTiles(Profile p, bool isExec) {
@@ -270,7 +269,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const BonusProfileCard(),
                   if (ep != null) ...[
                     const SizedBox(height: 12),
-                    _VehicleCard(ep: ep, onChangeCity: () => _changeCity(context)),
+                    _VehicleCard(
+                      ep: ep,
+                      onChangeCity: () => _changeCity(context),
+                    ),
                   ],
                   const SizedBox(height: 14),
                 ],
@@ -296,8 +298,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       icon: Icons.manage_accounts_outlined,
                       color: Gz.textSecondary,
                       title: t('Есептік жазба баптаулары'),
-                      onTap: () =>
-                          _open(_AccountSettingsScreen(onDelete: _deleteAccount)),
+                      onTap: () => _open(
+                        _AccountSettingsScreen(onDelete: _deleteAccount),
+                      ),
                     ),
                   ],
                 ),
@@ -525,8 +528,11 @@ class _ProfileHero extends StatelessWidget {
     );
   }
 
-  Widget _divider() =>
-      Container(width: 1, height: 30, color: Colors.white.withValues(alpha: 0.1));
+  Widget _divider() => Container(
+    width: 1,
+    height: 30,
+    color: Colors.white.withValues(alpha: 0.1),
+  );
 }
 
 class _HeroStat extends StatelessWidget {
@@ -724,8 +730,7 @@ class _GroupCard extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < children.length; i++) ...[
-                if (i > 0)
-                  const Divider(height: 1, indent: 56, endIndent: 12),
+                if (i > 0) const Divider(height: 1, indent: 56, endIndent: 12),
                 children[i],
               ],
             ],
@@ -826,10 +831,7 @@ class _VehicleCard extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -1092,10 +1094,13 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
   /// Нақты жария домен жоқ (қосымша ТЕК iOS/Android) — сол себепті
   /// сілтеме орнына дүкенде «Tasu» деп іздеуді айтамыз.
   Future<void> _shareCode(String code) async {
-    await SharePlus.instance.share(ShareParams(
-      text: '${t('Tasu қосымшасына менің кодыммен тіркеліңіз')}: $code. '
-          '${t('Play Market немесе App Store-дан «Tasu» деп іздеп табыңыз.')}',
-    ));
+    await SharePlus.instance.share(
+      ShareParams(
+        text:
+            '${t('Tasu қосымшасына менің кодыммен тіркеліңіз')}: $code. '
+            '${t('Play Market немесе App Store-дан «Tasu» деп іздеп табыңыз.')}',
+      ),
+    );
   }
 
   Future<void> _copyCode(String code) async {
@@ -1114,18 +1119,26 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
             children: [
               const Icon(Icons.card_giftcard, color: Gz.violet),
               const SizedBox(width: 8),
-              Text(t('Досыңды шақыр'),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 14.5)),
+              Text(
+                t('Досыңды шақыр'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             p.isExecutor
-                ? t('Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
-                    'балансыңызға бонус қосылады')
-                : t('Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
-                    'шақыру санағыңыз өседі'),
+                ? t(
+                    'Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
+                    'балансыңызға бонус қосылады',
+                  )
+                : t(
+                    'Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
+                    'шақыру санағыңыз өседі',
+                  ),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
           ),
           const SizedBox(height: 6),
@@ -1137,7 +1150,9 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                     '${t('Сіз')} ${p.referralCount} '
                     '${t('адам шақырдыңыз')}',
                     style: const TextStyle(
-                        color: Gz.textSecondary, fontSize: 12.5),
+                      color: Gz.textSecondary,
+                      fontSize: 12.5,
+                    ),
                   ),
                 ),
               ],
@@ -1148,7 +1163,9 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Gz.bg,
                       borderRadius: BorderRadius.circular(12),
@@ -1166,9 +1183,10 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                         maxLines: 1,
                         softWrap: false,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            letterSpacing: 1.5),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -1197,14 +1215,17 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
             Text(
               t('Досыңыздың кодын енгізіңіз'),
               style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 13.5),
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
-              t('Тіркелу кезінде енгізуді ұмытсаңыз — осы жерден енгізіңіз. '
-                  'Бірінші заказыңызды аяқтағанға ДЕЙІН үлгеру керек.'),
-              style: const TextStyle(
-                  color: Gz.textSecondary, fontSize: 11.5),
+              t(
+                'Тіркелу кезінде енгізуді ұмытсаңыз — осы жерден енгізіңіз. '
+                'Бірінші заказыңызды аяқтағанға ДЕЙІН үлгеру керек.',
+              ),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
             ),
             const SizedBox(height: 8),
             // Өріс пен батырма БІР ҚАТАРДА тұрған: тар экранда өріс

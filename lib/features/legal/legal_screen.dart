@@ -34,10 +34,12 @@ class LegalScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(t('Заңдық құжаттар')),
-          bottom: TabBar(tabs: [
-            Tab(text: t('Пайдаланушы келісімі')),
-            Tab(text: t('Құпиялылық саясаты')),
-          ]),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: t('Пайдаланушы келісімі')),
+              Tab(text: t('Құпиялылық саясаты')),
+            ],
+          ),
         ),
         // Ұзын құжаттар `t()` СӨЗДІГІНЕН ІЗДЕЛМЕЙДІ: бұрын бүкіл мәтін
         // бір «кілт» болып тұратын да, қазақша нұсқасында бір таңба
@@ -120,14 +122,20 @@ List<_Block> _parseLegal(String raw) {
     }
     final clause = _reClause.firstMatch(line);
     if (clause != null) {
-      blocks.add(_Block(_BlockKind.clause, clause.group(2)!,
-          number: clause.group(1)));
+      blocks.add(
+        _Block(_BlockKind.clause, clause.group(2)!, number: clause.group(1)),
+      );
       continue;
     }
     final section = _reSection.firstMatch(line);
     if (section != null) {
-      blocks.add(_Block(_BlockKind.section, section.group(2)!,
-          sectionNo: int.tryParse(section.group(1)!)));
+      blocks.add(
+        _Block(
+          _BlockKind.section,
+          section.group(2)!,
+          sectionNo: int.tryParse(section.group(1)!),
+        ),
+      );
       continue;
     }
     blocks.add(_Block(_BlockKind.plain, line));
@@ -198,82 +206,79 @@ class _LegalDocState extends State<_LegalDoc> {
   }
 
   Widget _block(_Block b) => switch (b.kind) {
-        _BlockKind.title => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              b.text,
+    _BlockKind.title => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        b.text,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.4,
+          height: 1.25,
+          color: Gz.ink,
+        ),
+      ),
+    ),
+    _BlockKind.subtitle => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        b.text,
+        style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
+      ),
+    ),
+    _BlockKind.section => _sectionHeader(b),
+    _BlockKind.clause => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
+          children: [
+            // Тармақ нөмірі ӘРҚАШАН қалың әрі мәтіннен бөлек түсті:
+            // қолданушы «3.2» деп сілтеме жасағанда оны көзбен
+            // бірден табады.
+            TextSpan(
+              text: '${b.number}  ',
               style: const TextStyle(
-                fontSize: 20,
                 fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
-                height: 1.25,
                 color: Gz.ink,
               ),
             ),
+            TextSpan(text: b.text),
+          ],
+        ),
+      ),
+    ),
+    _BlockKind.bullet => Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 7, right: 10),
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: Gz.yellow,
+              shape: BoxShape.circle,
+            ),
           ),
-        _BlockKind.subtitle => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+          Expanded(
             child: Text(
               b.text,
-              style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
+              style: const TextStyle(fontSize: 14, height: 1.5, color: Gz.ink),
             ),
           ),
-        _BlockKind.section => _sectionHeader(b),
-        _BlockKind.clause => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text.rich(
-              TextSpan(
-                style: const TextStyle(
-                    fontSize: 14, height: 1.55, color: Gz.ink),
-                children: [
-                  // Тармақ нөмірі ӘРҚАШАН қалың әрі мәтіннен бөлек түсті:
-                  // қолданушы «3.2» деп сілтеме жасағанда оны көзбен
-                  // бірден табады.
-                  TextSpan(
-                    text: '${b.number}  ',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: Gz.ink,
-                    ),
-                  ),
-                  TextSpan(text: b.text),
-                ],
-              ),
-            ),
-          ),
-        _BlockKind.bullet => Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 7, right: 10),
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Gz.yellow,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    b.text,
-                    style: const TextStyle(
-                        fontSize: 14, height: 1.5, color: Gz.ink),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        _BlockKind.plain => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text(
-              b.text,
-              style:
-                  const TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
-            ),
-          ),
-      };
+        ],
+      ),
+    ),
+    _BlockKind.plain => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        b.text,
+        style: const TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
+      ),
+    ),
+  };
 
   /// Бөлім тақырыбы: нөмірі сары шеңберде, астында сары сызық — құжатты
   /// айналдырғанда бөлімдер бір-бірінен АНЫҚ ажырап тұрады.
@@ -287,9 +292,7 @@ class _LegalDocState extends State<_LegalDoc> {
       decoration: BoxDecoration(
         color: on ? Gz.yellow.withValues(alpha: 0.28) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        border: Border(
-          bottom: BorderSide(color: Gz.yellow, width: 2.5),
-        ),
+        border: Border(bottom: BorderSide(color: Gz.yellow, width: 2.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
