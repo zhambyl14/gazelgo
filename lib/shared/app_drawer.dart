@@ -92,10 +92,12 @@ class AppDrawer extends ConsumerWidget {
                         ),
                         // Белсенді рөл + СОЛ РӨЛДЕГІ рейтинг (қос рөлде
                         // клиенттік пен орындаушылық баға бөлек жүреді).
+                        // Гестке бұрын «Tasu / Tasu» деп бір сөз екі рет
+                        // жазылатын — орнына не істеу керегін айтамыз.
                         if (isGuest)
-                          const Text(
-                            'Tasu',
-                            style: TextStyle(
+                          Text(
+                            t('Сіз әлі аккаунтқа кірмегенсіз'),
+                            style: const TextStyle(
                               fontSize: 11.5,
                               color: Gz.textSecondary,
                             ),
@@ -155,28 +157,35 @@ class AppDrawer extends ConsumerWidget {
                   const NewsDrawerCard(),
 
                   // ---- ЖАҢА: хабарландырулар тақтасы ----
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-                    child: _BoardCard(
-                      isExecutor: isExecutor,
-                      showNew:
-                          ref.watch(newBadgesProvider).value?.board ?? true,
-                      onTap: () {
-                        // Модератор тақтаны жаңа ғана қосқан/өшірген болуы
-                        // мүмкін — қосымшаны қайта ашуды талап етпей, әр
-                        // ашқан сайын күйін серверден қайта сұраймыз.
-                        ref.invalidate(boardEnabledProvider);
-                        _open(context, const BoardScreen());
-                      },
+                  // Модератор баптауында ӨШІРУЛІ болса — карта мүлдем
+                  // көрсетілмейді (бұрын ең үлкен карта болып тұрып, ашқанда
+                  // «әлі қосылмады» деп қана шығатын — пайдасыз басу).
+                  if (ref.watch(boardEnabledProvider).value == true)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+                      child: _BoardCard(
+                        isExecutor: isExecutor,
+                        showNew:
+                            ref.watch(newBadgesProvider).value?.board ?? true,
+                        onTap: () {
+                          // Модератор тақтаны жаңа ғана қосқан/өшірген болуы
+                          // мүмкін — қосымшаны қайта ашуды талап етпей, әр
+                          // ашқан сайын күйін серверден қайта сұраймыз.
+                          ref.invalidate(boardEnabledProvider);
+                          _open(context, const BoardScreen());
+                        },
+                      ),
                     ),
-                  ),
 
-                  _item(
-                    context,
-                    Icons.person_outline,
-                    t('Профиль'),
-                    () => _open(context, const ProfileScreen()),
-                  ),
+                  // Гестке «Профиль» жоқ: ол тек кіру бетіне апаратын еді,
+                  // ал төменде «Кіру / Тіркелу» батырмасы бар (қайталама).
+                  if (!isGuest)
+                    _item(
+                      context,
+                      Icons.person_outline,
+                      t('Профиль'),
+                      () => _open(context, const ProfileScreen()),
+                    ),
 
                   // Гестте тізім ҚЫСҚА: кірмей тұрып мәні бар тармақтар ғана
                   // (хабарландырулар, профиль, заңдық құжаттар, тіл, кіру).
@@ -322,10 +331,16 @@ class AppDrawer extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-              fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -0.15),
+            fontWeight: FontWeight.w700,
+            fontSize: 14.5,
+            letterSpacing: -0.15,
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded,
-            size: 20, color: Gz.textTertiary),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          size: 20,
+          color: Gz.textTertiary,
+        ),
         onTap: onTap,
       ),
     );
@@ -379,18 +394,24 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
       title: _title,
       message: _toExecutor
           ? (_firstTime
-                ? t('Аккаунтыңыз сақталады — үстіне орындаушы рөлі қосылады. '
-                      'Заказдар лентасы бірден ашылады: қандай жұмыс бар '
-                      'екенін көресіз. Заказ ҚАБЫЛДАУ үшін ғана көлік '
-                      'деректері мен құжаттарды толтырып, өтінім '
-                      'жібересіз.\n\nОрындаушы рейтингі бөлек басталады.')
-                : t('Орындаушы режиміне ауысасыз: заказ лентасы, баланс, '
-                      'орындаушы уведомлениелері.\n\nРейтингіңіз де '
-                      'орындаушылық болады.'))
-          : t('Клиент режиміне ауысасыз: көлік шақыру, тапсырыстарыңыз, '
-                'клиент уведомлениелері.\n\nОрындаушы деректеріңіз '
-                'жоғалмайды — кез келген уақытта қайта ауыса аласыз. '
-                'Бірақ белсенді тарифіңіздің уақыты жүре береді.'),
+                ? t(
+                    'Аккаунтыңыз сақталады — үстіне орындаушы рөлі қосылады. '
+                    'Заказдар лентасы бірден ашылады: қандай жұмыс бар '
+                    'екенін көресіз. Заказ ҚАБЫЛДАУ үшін ғана көлік '
+                    'деректері мен құжаттарды толтырып, өтінім '
+                    'жібересіз.\n\nОрындаушы рейтингі бөлек басталады.',
+                  )
+                : t(
+                    'Орындаушы режиміне ауысасыз: заказ лентасы, баланс, '
+                    'орындаушы уведомлениелері.\n\nРейтингіңіз де '
+                    'орындаушылық болады.',
+                  ))
+          : t(
+              'Клиент режиміне ауысасыз: көлік шақыру, тапсырыстарыңыз, '
+              'клиент уведомлениелері.\n\nОрындаушы деректеріңіз '
+              'жоғалмайды — кез келген уақытта қайта ауыса аласыз. '
+              'Бірақ белсенді тарифіңіздің уақыты жүре береді.',
+            ),
       cancelLabel: t('Болдырмау'),
       confirmLabel: _toExecutor ? t('Ауысу') : t('Клиентке ауысу'),
       icon: _toExecutor ? Icons.local_shipping_outlined : Icons.person_outline,
@@ -494,8 +515,11 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
                     color: Gz.surface,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.swap_horiz_rounded,
-                      size: 18, color: Gz.textSecondary),
+                  child: const Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 18,
+                    color: Gz.textSecondary,
+                  ),
                 ),
             ],
           ),
