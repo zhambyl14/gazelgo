@@ -447,63 +447,106 @@ class AddAddressButton extends StatelessWidget {
   }
 }
 
-/// Маршрут мекенжайының бір жолы (қайдан / аялдама / қайда).
-///
-/// Клиенттің басты бетіндегі панельде де, заказ құру экранында да ортақ:
-/// иконка + мәтін + оң жақтағы әрекет. Мәтін БІР ЖОЛДА қалады (адрес ұзын
-/// болса «…» — толық нұсқасын түртіп ашады), сол себепті аялдама қосылғанда
-/// панельдің биіктігі болжамды өседі, «секіріп» кетпейді.
-class AddressRow extends StatelessWidget {
-  /// Сол жақтағы белгі — әдетте [RoutePointMark] (алу / нөмір / финиш).
+/// [RouteFieldsCard] ішіндегі бір жол.
+class RouteField {
+  /// Сол жақтағы белгі — [RoutePointMark] (алу / финиш).
   final Widget mark;
+
+  /// Үстіндегі кішкене сұр белгі: «Қайдан» / «Қайда».
+  final String label;
   final String text;
-  final Widget? trailing;
-  final VoidCallback? onTap;
 
-  /// Мәтін әлі таңдалмаған (placeholder) — солғын көрсетіледі.
+  /// Мәтін әлі таңдалмаған (placeholder) — солғын.
   final bool dim;
+  final VoidCallback? onTap;
+  final Widget? trailing;
 
-  const AddressRow({
-    super.key,
+  const RouteField({
     required this.mark,
+    required this.label,
     required this.text,
-    this.trailing,
-    this.onTap,
     this.dim = false,
+    this.onTap,
+    this.trailing,
   });
+}
+
+/// Маршрут өрістері БІР карточкада (Яндекс Go үлгісі): әр жолдың үстінде
+/// кішкене сұр белгі («Қайдан» / «Қайда»), астында мекенжай, жолдар арасы
+/// жіңішке сызық. Бұрын екі бөлек өріс болатын — қайсысы қайдан, қайсысы
+/// қайда екені тек түсті нүктеден ғана білінетін.
+class RouteFieldsCard extends StatelessWidget {
+  final List<RouteField> fields;
+  const RouteFieldsCard({super.key, required this.fields});
+
+  static const _r = Radius.circular(16);
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Gz.surfaceAlt,
+        borderRadius: const BorderRadius.all(_r),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < fields.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 46, endIndent: 12),
+            _row(fields[i], first: i == 0, last: i == fields.length - 1),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(RouteField f, {required bool first, required bool last}) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-        decoration: BoxDecoration(
-          color: Gz.surfaceAlt,
-          borderRadius: BorderRadius.circular(14),
-          // Жіңішке жиек: ақ панельдің ішіндегі жол «басуға болатын өріс»
-          // екені бірден көрінеді (бұрын тек сәл сұр фон болатын).
-          border: Border.all(color: Gz.border),
-        ),
+      onTap: f.onTap,
+      borderRadius: BorderRadius.vertical(
+        top: first ? _r : Radius.zero,
+        bottom: last ? _r : Radius.zero,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(13, 9, 10, 9),
         child: Row(
           children: [
-            SizedBox(width: 20, child: Center(child: mark)),
+            SizedBox(width: 22, child: Center(child: f.mark)),
             const SizedBox(width: 11),
             Expanded(
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: dim ? FontWeight.w500 : FontWeight.w700,
-                  color: dim ? Gz.textTertiary : Gz.ink,
-                  fontSize: 14,
-                  letterSpacing: -0.1,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    f.label,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      height: 1.2,
+                      color: Gz.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    f.text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.25,
+                      letterSpacing: -0.15,
+                      fontWeight: f.dim ? FontWeight.w500 : FontWeight.w700,
+                      color: f.dim ? Gz.textTertiary : Gz.ink,
+                    ),
+                  ),
+                ],
               ),
             ),
-            ?trailing,
+            if (f.trailing != null) ...[
+              const SizedBox(width: 8),
+              f.trailing!,
+            ],
           ],
         ),
       ),

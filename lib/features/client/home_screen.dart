@@ -614,81 +614,75 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                       // ---- МАРШРУТ ----
                                       // «Қайдан» картамен байланысты, бірақ
                                       // түртіп сәл өзгертуге болады.
-                                      AddressRow(
-                                        mark: const RoutePointMark.origin(),
-                                        text: _resolvingFrom
-                                            ? t('Анықталуда…')
-                                            : (_from?.address ??
-                                                  t('Картаны жылжытыңыз')),
-                                        onTap: _resolvingFrom
-                                            ? null
-                                            : _editFrom,
-                                        trailing: _resolvingFrom
-                                            ? const SizedBox(
-                                                width: 14,
-                                                height: 14,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : const Icon(
-                                                Icons.edit_outlined,
-                                                size: 16,
-                                                color: Gz.textSecondary,
-                                              ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Жеткізу нүктелері. БІРНЕШЕУ болса —
+                                      // Маршрут — БІР карточкада (Яндекс Go
+                                      // үлгісі): «Қайдан» картамен
+                                      // байланысты, түртіп өзгертуге болады.
+                                      // Жеткізу нүктелері БІРНЕШЕУ болса —
                                       // панель биіктемеуі үшін БІР ЖОЛҒА
                                       // жиналады («A → B»), түртсе басқару
-                                      // парағы ашылады (ретін ауыстыру,
-                                      // өшіру, қосу).
-                                      if (_stops.isEmpty)
-                                        AddressRow(
-                                          mark: const RoutePointMark.finish(),
-                                          text: _to?.address ??
-                                              t('Қайда жеткіземіз?'),
-                                          dim: _to == null,
-                                          onTap: _pickTo,
-                                          trailing: const Icon(
-                                            Icons.chevron_right,
-                                            color: Gz.textSecondary,
+                                      // парағы ашылады.
+                                      RouteFieldsCard(
+                                        fields: [
+                                          RouteField(
+                                            mark: const RoutePointMark.origin(),
+                                            label: t('Қайдан'),
+                                            text: _resolvingFrom
+                                                ? t('Анықталуда…')
+                                                : (_from?.address ??
+                                                      t('Картаны жылжытыңыз')),
+                                            dim: _resolvingFrom ||
+                                                _from == null,
+                                            onTap: _resolvingFrom
+                                                ? null
+                                                : _editFrom,
+                                            trailing: _resolvingFrom
+                                                ? const SizedBox(
+                                                    width: 14,
+                                                    height: 14,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.edit_outlined,
+                                                    size: 16,
+                                                    color: Gz.textSecondary,
+                                                  ),
                                           ),
-                                        )
-                                      else
-                                        AddressRow(
-                                          mark: const Icon(
-                                            Icons.sports_score,
-                                            size: 20,
-                                            color: Gz.red,
-                                          ),
-                                          text: _destinations
-                                              .map((d) => d.address)
-                                              .join('  →  '),
-                                          onTap: _openStopsSheet,
-                                          trailing: Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 7,
-                                                  vertical: 2,
-                                                ),
-                                            decoration: BoxDecoration(
-                                              color: Gz.violet
-                                                  .withValues(alpha: 0.14),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                            ),
-                                            child: Text(
-                                              '${_destinations.length}',
-                                              style: const TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w900,
-                                                color: Gz.violet,
+                                          if (_stops.isEmpty)
+                                            RouteField(
+                                              mark: const RoutePointMark.finish(),
+                                              label: t('Қайда'),
+                                              text: _to?.address ??
+                                                  t('Қайда жеткіземіз?'),
+                                              dim: _to == null,
+                                              onTap: _pickTo,
+                                              trailing: const Icon(
+                                                Icons.chevron_right,
+                                                color: Gz.textSecondary,
+                                              ),
+                                            )
+                                          else
+                                            RouteField(
+                                              mark: const Icon(
+                                                Icons.sports_score,
+                                                size: 20,
+                                                color: Gz.red,
+                                              ),
+                                              label:
+                                                  '${t('Қайда')} · ${_destinations.length}',
+                                              text: _destinations
+                                                  .map((d) => d.address)
+                                                  .join('  →  '),
+                                              onTap: _openStopsSheet,
+                                              trailing: const Icon(
+                                                Icons.chevron_right,
+                                                color: Gz.textSecondary,
                                               ),
                                             ),
-                                          ),
-                                        ),
+                                        ],
+                                      ),
                                       // «Мекенжай қосу» — жеткізу нүктесі
                                       // белгіленген соң ғана әрі шектен
                                       // аспағанда.
