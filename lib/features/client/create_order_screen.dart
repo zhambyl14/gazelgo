@@ -235,6 +235,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       context,
       title: t('Мекенжайды өзгерту'),
       initial: _stops[index],
+      origin: _from.point,
     );
     if (res != null && mounted) {
       setState(() {
@@ -252,6 +253,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final res = await CityStreetSheet.show(
       context,
       title: t('Мекенжай қосу'),
+      origin: _from.point,
     );
     if (res != null && mounted) {
       setState(() {
@@ -276,6 +278,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       context,
       title: t('Қайда жеткіземіз?'),
       initial: _to,
+      origin: _from.point,
     );
     if (res != null && mounted) {
       setState(() {

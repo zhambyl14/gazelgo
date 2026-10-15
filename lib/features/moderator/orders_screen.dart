@@ -129,71 +129,28 @@ class _OrderAdminTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      padding: const EdgeInsets.all(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () =>
-            showOrderAdminSheet(context, order.id, onChanged: onChanged),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    fmtT(order.displayPrice),
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                StatusChip(order.status, vehicleType: order.vehicleType),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Text(
-              '${order.fromDisplay} → ${order.toDisplay}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                const Icon(
-                  Icons.inventory_2_outlined,
-                  size: 15,
-                  color: Gz.textSecondary,
-                ),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    order.cargoDesc,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Gz.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Text(
-                  fmtDate(order.createdAt),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 11),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Text(
-              'ID: ${order.id}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 10),
-            ),
-          ],
-        ),
+    // Клиент пен орындаушы көретін ОРТАҚ карточка: маршрут нүктелерімен,
+    // қашықтықпен (км), көлік түрімен. Бұрын модераторда жеке, жұпыны
+    // карточка болатын: қашықтық жоқ, жолаушы саны «қорап» белгішесімен,
+    // ұзын UUID бүтін жолды алып тұратын.
+    final id = order.id.length > 8 ? order.id.substring(0, 8) : order.id;
+    return OrderCard(
+      order: order,
+      onTap: () => showOrderAdminSheet(context, order.id, onChanged: onChanged),
+      footer: Row(
+        children: [
+          const Icon(Icons.tag_rounded, size: 14, color: Gz.textTertiary),
+          const SizedBox(width: 3),
+          Text(
+            id,
+            style: const TextStyle(color: Gz.textTertiary, fontSize: 12),
+          ),
+          const Spacer(),
+          Text(
+            fmtDate(order.createdAt),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

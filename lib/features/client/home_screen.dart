@@ -177,6 +177,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       context,
       title: t('Қайда жеткіземіз?'),
       initial: _to,
+      origin: _from?.point,
     );
     if (res != null) setState(() => _to = res);
   }
@@ -202,14 +203,22 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   /// аралық аялдамаға айналады — Яндекс/inDriver-дегідей «жол бойымен
   /// қосу» логикасы (клиент әдетте соңына тағы бір жер қосады).
   Future<void> _addDestination() async {
-    final res = await CityStreetSheet.show(context, title: t('Мекенжай қосу'));
+    final res = await CityStreetSheet.show(
+      context,
+      title: t('Мекенжай қосу'),
+      origin: _from?.point,
+    );
     if (res == null || !mounted) return;
     _applyDestinations([..._destinations, res]);
   }
 
   /// Мекенжайлар парағы: ретін ауыстыру, өшіру, қосу (фото 2 үлгісі).
   Future<void> _openStopsSheet() async {
-    final res = await StopsSheet.show(context, destinations: _destinations);
+    final res = await StopsSheet.show(
+      context,
+      destinations: _destinations,
+      origin: _from?.point,
+    );
     if (res != null && mounted) _applyDestinations(res);
   }
 

@@ -110,8 +110,13 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     setState(() => _resolving = true);
     final addr = await Geo.reverseDetailed(target);
     // Осы маңда клиенттер бұрын түзеткен атау бар ма?
-    final corr = await Repo.nearbyAddress(target.latitude, target.longitude);
+    final rawCorr =
+        await Repo.nearbyAddress(target.latitude, target.longitude);
     if (!mounted || target != _center) return;
+    // Базада «түзетілген атау» ретінде қоқыс тұруы мүмкін (мыс. Алматы
+    // ортасында «43.23890, 76.88970ндю») — ондайды клиентке ұсынбаймыз.
+    final corr =
+        (rawCorr == null || Geo.isJunkLabel(rawCorr)) ? null : rawCorr;
     var label = addr.labelFor(widget.city);
     // Геокодер атау таппаса `labelFor` КООРДИНАТА қайтарады — ол мекенжай
     // емес, орындаушыға түсініксіз. Мұндайда жолды бос қалдырамыз да,
@@ -134,9 +139,9 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
 
   void _confirmSave() {
     final label = _addr.text.trim().isEmpty ? _rawAddress : _addr.text.trim();
-    if (label.isEmpty) {
-      // Координатаны адрес ретінде жібермейміз: орындаушы қайда баратынын
-      // түсінбейді. Көше/нысан атын жазғызамыз.
+    if (label.isEmpty || Geo.isJunkLabel(label)) {
+      // Координатаны/қоқысты адрес ретінде жібермейміз: орындаушы қайда
+      // баратынын түсінбейді. Көше/нысан атын жазғызамыз.
       showSnack(
         context,
         t('Мекенжай анықталмады. Төмендегі жолға көше не нысан атын жазыңыз.'),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/lang.dart';
 import '../../core/models.dart';
@@ -23,13 +24,17 @@ class StopsSheet extends StatefulWidget {
   /// Жеткізу нүктелері: [...аралық аялдамалар, финиш]. Кемінде 1 болуы шарт.
   final List<PickedAddress> destinations;
 
-  const StopsSheet({super.key, required this.destinations});
+  /// Алу нүктесі — мекенжай іздегенде қашықтық осыдан есептеледі.
+  final LatLng? origin;
+
+  const StopsSheet({super.key, required this.destinations, this.origin});
 
   /// Парақты ашады. Қайтарады: жаңа жеткізу нүктелері тізімі (бас тартса
   /// null). Тізім ӘРҚАШАН бос емес — соңғы нүктені өшіруге жол берілмейді.
   static Future<List<PickedAddress>?> show(
     BuildContext context, {
     required List<PickedAddress> destinations,
+    LatLng? origin,
   }) {
     return showModalBottomSheet<List<PickedAddress>>(
       context: context,
@@ -38,7 +43,8 @@ class StopsSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (_) => StopsSheet(destinations: destinations),
+      builder: (_) =>
+          StopsSheet(destinations: destinations, origin: origin),
     );
   }
 
@@ -73,6 +79,7 @@ class _StopsSheetState extends State<StopsSheet> {
     final res = await CityStreetSheet.show(
       context,
       title: t('Мекенжай қосу'),
+      origin: widget.origin,
     );
     if (res != null && mounted) {
       setState(() => _dest.add(_Entry(_nextId++, res)));
@@ -84,6 +91,7 @@ class _StopsSheetState extends State<StopsSheet> {
       context,
       title: t('Мекенжайды өзгерту'),
       initial: _dest[i].addr,
+      origin: widget.origin,
     );
     if (res != null && mounted) setState(() => _dest[i].addr = res);
   }

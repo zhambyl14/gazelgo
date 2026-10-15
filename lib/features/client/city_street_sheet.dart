@@ -33,12 +33,24 @@ import 'saved_addresses.dart';
 class CityStreetSheet extends StatefulWidget {
   final String title;
   final PickedAddress? initial;
-  const CityStreetSheet({super.key, required this.title, this.initial});
+
+  /// Тізімдегі әр мекенжайдың ҚАШЫҚТЫҒЫ осы нүктеден есептеледі (Яндекс
+  /// Go-дағыдай «12,5 км»). «Қайда» іздегенде — алу нүктесі; берілмесе —
+  /// клиенттің өз орны (GPS).
+  final LatLng? origin;
+
+  const CityStreetSheet({
+    super.key,
+    required this.title,
+    this.initial,
+    this.origin,
+  });
 
   static Future<PickedAddress?> show(
     BuildContext context, {
     required String title,
     PickedAddress? initial,
+    LatLng? origin,
   }) {
     return showModalBottomSheet<PickedAddress>(
       context: context,
@@ -47,7 +59,8 @@ class CityStreetSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (_) => CityStreetSheet(title: title, initial: initial),
+      builder: (_) =>
+          CityStreetSheet(title: title, initial: initial, origin: origin),
     );
   }
 
@@ -182,6 +195,8 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       setState(() => _detectingCity = false);
       return;
     }
+    // Қашықтықты есептеу үшін ([widget.origin] берілмесе).
+    setState(() => _here = p);
     final anchor = Geo.anchorCity(p);
     final addr = await Geo.reverseDetailed(p);
     if (!mounted) return;
@@ -210,6 +225,19 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   }
 
   LatLng? get _center => _cityPoint ?? Geo.cityCenter(_city);
+
+  /// Клиенттің GPS-тегі орны (анықталса).
+  LatLng? _here;
+
+  /// Қашықтық есептелетін нүкте: алу нүктесі, болмаса өз орны.
+  LatLng? get _origin => widget.origin ?? _here;
+
+  /// «12,5 км» / «850 м» — нүкте белгісіз болса null (жазылмайды).
+  String? _distanceTo(LatLng p) {
+    final o = _origin;
+    if (o == null) return null;
+    return Geo.formatDistance(Geo.haversineKm(o, p));
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   //  ІЗДЕУ
@@ -294,6 +322,14 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     final around = inArea
         .where((e) => e.city != null && !Geo.sameCity(e.city, _city))
         .toList();
+    // Маңайдағы елді мекендер — жақыннан алысқа.
+    final ref = _origin ?? _center;
+    if (ref != null) {
+      around.sort(
+        (a, b) => Geo.haversineKm(ref, a.point)
+            .compareTo(Geo.haversineKm(ref, b.point)),
+      );
+    }
     return [...own, ...(own.isEmpty ? around : around.take(3))];
   }
 
@@ -568,29 +604,54 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                   decoration: InputDecoration(
                     hintText: t('Көше, үй нөмірі не нысан аты'),
                     prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _loading
-                        ? const Padding(
-                            padding: EdgeInsets.all(13),
+                    // Оң жақта — «Карта» (Яндекс Go үлгісі): картадан
+                    // белгілеу әрқашан бір басуда, тізімнің астын іздеудің
+                    // қажеті жоқ.
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_loading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
                             child: SizedBox(
-                              width: 18,
-                              height: 18,
+                              width: 16,
+                              height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
-                        : (query.isEmpty
-                              ? null
-                              : IconButton(
-                                  icon: const Icon(Icons.clear_rounded),
-                                  onPressed: () {
-                                    _search.clear();
-                                    _searchSeq++;
-                                    setState(() {
-                                      _results = const [];
-                                      _loading = false;
-                                      _searchFailed = false;
-                                    });
-                                  },
-                                )),
+                        else if (query.isNotEmpty)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(
+                              Icons.cancel_rounded,
+                              size: 20,
+                              color: Gz.textTertiary,
+                            ),
+                            onPressed: () {
+                              _search.clear();
+                              _searchSeq++;
+                              setState(() {
+                                _results = const [];
+                                _loading = false;
+                                _searchFailed = false;
+                              });
+                            },
+                          ),
+                        Container(width: 1, height: 22, color: Gz.border),
+                        TextButton(
+                          onPressed: _findOnMap,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Gz.blue,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            minimumSize: const Size(0, 40),
+                          ),
+                          child: Text(
+                            t('Карта'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -690,54 +751,67 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   Widget _quickList() {
     final my = _myPlace;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      padding: const EdgeInsets.only(top: 4, bottom: 12),
       children: [
         if (my != null)
-          _row(
-            icon: Icons.my_location_rounded,
-            iconColor: Gz.green,
+          _placeRow(
+            icon: Icons.near_me_rounded,
+            iconColor: Gz.blue,
             title: t('Менің орным'),
             subtitle: my.address,
             onTap: () => _useDirect(my),
           ),
         if (_saved.isNotEmpty) ...[
           _header(Icons.bookmark_rounded, t('Сақталған')),
-          for (final a in _saved)
-            _row(
-              icon: a.isPrimary ? Icons.star_rounded : savedAddressIcon(a.kind),
-              iconColor: a.isPrimary ? Gz.yellowDark : Gz.ink,
-              title: savedAddressTitle(a),
-              subtitle: a.address,
-              onTap: () => _useDirect(a.toPicked()),
-            ),
+          ..._divided([
+            for (final a in _saved)
+              _placeRow(
+                icon: a.isPrimary
+                    ? Icons.star_rounded
+                    : savedAddressIcon(a.kind),
+                iconColor: a.isPrimary ? Gz.yellowDark : Gz.ink,
+                title: savedAddressTitle(a),
+                subtitle: a.address,
+                distance: _distanceTo(a.toPicked().point),
+                onTap: () => _useDirect(a.toPicked()),
+              ),
+          ]),
         ],
         if (_recent.isNotEmpty) ...[
           _header(Icons.history_rounded, t('Соңғы мекенжайлар')),
-          for (final p in _recent)
-            _row(
-              icon: Icons.history_rounded,
-              iconColor: Gz.textSecondary,
-              title: p.address,
-              subtitle: p.city,
-              onTap: () => _useDirect(p),
-            ),
-        ],
-        const SizedBox(height: 4),
-        _mapRow(),
-        if (my == null && _saved.isEmpty && _recent.isEmpty) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-            child: Text(
-              t(
-                'Мекенжайды жазып іздеңіз — мыс. «Абая 15» немесе «Хан '
-                'Шатыр». Не болмаса картадан дәл жерді белгілеңіз.',
+          ..._divided([
+            for (final p in _recent)
+              _placeRow(
+                icon: Icons.history_rounded,
+                title: p.address,
+                subtitle: p.city,
+                distance: _distanceTo(p.point),
+                onTap: () => _useDirect(p),
               ),
-              textAlign: TextAlign.center,
-              style: Gz.bodyMuted,
+          ]),
+        ],
+        if (my == null && _saved.isEmpty && _recent.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.travel_explore_rounded,
+                  size: 40,
+                  color: Gz.textTertiary,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  t(
+                    'Мекенжайды жазыңыз — мыс. «Абая 15» не «Хан Шатыр». '
+                    'Дәл жерді белгілеу үшін — «Карта».',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: Gz.bodyMuted,
+                ),
+              ],
             ),
           ),
-        ],
       ],
     );
   }
@@ -745,23 +819,16 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   // ── ІЗДЕУ НӘТИЖЕЛЕРІ ───────────────────────────────────────────────
   Widget _resultList(String query) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      padding: const EdgeInsets.only(top: 4, bottom: 12),
       children: [
-        for (final r in _results) _resultRow(r),
+        ..._divided([for (final r in _results) _resultRow(r)]),
         if (_city == null && !_detectingCity)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Text(
-              t('Алдымен жоғарыдан қаланы таңдаңыз.'),
-              textAlign: TextAlign.center,
-              style: Gz.bodyMuted,
-            ),
-          )
+          _note(t('Алдымен жоғарыдан қаланы таңдаңыз.'))
         else if (_searchFailed)
           // Іздеу ІСТЕМЕЙ тұр (желі/сервер) — «табылмады» деп жалған
           // айтпаймыз, қайталау батырмасын береміз.
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 6),
             child: Column(
               children: [
                 Text(
@@ -782,41 +849,36 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
             ),
           )
         else if (_results.isEmpty && !_loading)
-          // Тұйыққа тірелмеу керек: табылмаса да ЕКІ жол ашық қалады —
-          // жазғанын сол күйі қолдану немесе картадан белгілеу.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Text(
-              t(
-                'Тізімнен табылмады. Төмендегі «Осыны қолдану» арқылы '
-                'жазғаныңызды қалдырып, картадан дәл жерін белгілеңіз.',
-              ),
-              textAlign: TextAlign.center,
-              style: Gz.bodyMuted,
+          _note(
+            t(
+              'Тізімнен табылмады. Төмендегі «Осыны қолдану» арқылы '
+              'жазғаныңызды қалдырып, картадан дәл жерін белгілеңіз.',
             ),
           ),
         // «Жазғанымды қолдану» — ӘРҚАШАН қолжетімді (тізім бос болса да,
         // толы болса да): геокодер Қазақстандағы шағын аудандарды жиі
-        // танымайды, ал клиент өз адресін өзі жақсы біледі.
+        // танымайды, ал клиент өз адресін өзі жақсы біледі. Нүкте әрқашан
+        // картадан расталады — тізімдегі бөтен көшенің нүктесі алынбайды.
         if (_city != null)
-          _row(
-            icon: Icons.edit_location_alt_rounded,
-            iconColor: Gz.green,
-            title: '${t('Осыны қолдану')}: «$query»',
-            // Нүкте әрқашан картадан расталады — тізімдегі бөтен көшенің
-            // нүктесі үнсіз алынбайды.
-            subtitle: t('Картадан дәл жерін белгілейсіз'),
-            onTap: _useTyped,
-            strong: true,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+            child: _row(
+              icon: Icons.edit_location_alt_rounded,
+              iconColor: Gz.green,
+              title: '${t('Осыны қолдану')}: «$query»',
+              subtitle: t('Картадан дәл жерін белгілейсіз'),
+              onTap: _useTyped,
+              strong: true,
+            ),
           ),
-        _mapRow(),
       ],
     );
   }
 
   Widget _resultRow(GeoPlace r) {
-    // Нәтиже қала маңындағы ауылда болса, ауыл атын адреске ҚОСАМЫЗ —
-    // орындаушы қайда баратынын адрестің өзінен көруі керек.
+    // Нәтиже қала маңындағы ауылда болса, ауыл атын АДРЕСКЕ қосамыз —
+    // орындаушы қайда баратынын адрестің өзінен көруі керек. Тізімде ол
+    // тақырыпта емес, астыңғы жолда («аудан, елді мекен») тұрады.
     final other =
         r.city != null && r.city!.isNotEmpty && !Geo.sameCity(r.city, _city);
     final label = other ? '${r.city}, ${r.name}' : r.name;
@@ -824,47 +886,110 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     // Көше табылды, бірақ үй нөмірі картада жоқ — нүкте көшенің бір
     // жерінде тұр, сондықтан картадан растатамыз.
     final approx = r.kind == Geo.kStreetApprox;
-    // Бірдей «Абая, 5» әртүрлі аудандарда кездеседі — аудан атын
-    // қосымша жолға жазамыз, клиент дұрысын таңдай алуы үшін.
+    final place = r.city ?? _area ?? _city;
     final district = r.district;
     final sub = approx
         ? t('Үй картада жоқ — нүктені картадан растайсыз')
-        // Ауыл аты тақырыпта тұр («Талғар, улица Абая, 15») — астында
-        // қайталамаймыз, тек аудан (бар болса).
-        : (district != null &&
-                  !label.contains(district) &&
-                  !Geo.sameCity(district, r.city)
-              ? district
-              : '');
-    return _row(
+        : [
+            if (district != null && !Geo.sameCity(district, place)) district,
+            ?place,
+          ].join(', ');
+    return _placeRow(
       icon: approx ? Icons.edit_location_alt_rounded : Icons.place_rounded,
-      iconColor: approx ? Gz.blue : Gz.red,
-      title: label,
+      iconColor: approx ? Gz.blue : Gz.textTertiary,
+      title: r.name,
       subtitle: sub.isEmpty ? null : sub,
+      distance: _distanceTo(r.point),
       onTap: () => approx ? _confirmOnMap(label, r.point) : _use(picked),
-      // Жаңа мекенжайды таңдамай-ақ «Үй»/«Жұмыс» етіп сақтауға болады.
-      trailing: IconButton(
-        tooltip: t('Сақтау'),
-        onPressed: () => _save(picked),
-        icon: const Icon(
-          Icons.bookmark_add_outlined,
-          size: 19,
-          color: Gz.textTertiary,
+      // Ұзақ басса — «Үй»/«Жұмыс» етіп сақтау (тізімді белгішелермен
+      // шұбарламау үшін батырма емес, ұзақ басу).
+      onLongPress: approx ? null : () => _save(picked),
+    );
+  }
+
+  /// Жолдардың арасына жіңішке сызық (белгішеден кейін басталады).
+  List<Widget> _divided(List<Widget> rows) => [
+    for (var i = 0; i < rows.length; i++) ...[
+      if (i > 0) const Divider(height: 1, indent: 54, endIndent: 16),
+      rows[i],
+    ],
+  ];
+
+  Widget _note(String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 18, 24, 6),
+    child: Text(text, textAlign: TextAlign.center, style: Gz.bodyMuted),
+  );
+
+  /// Мекенжай жолы — Яндекс Go үлгісі: сұр белгіше, үстінде көше/нысан,
+  /// астында «аудан, қала», оң жақта ҚАШЫҚТЫҚ («12,5 км»).
+  Widget _placeRow({
+    required IconData icon,
+    Color iconColor = Gz.textTertiary,
+    required String title,
+    String? subtitle,
+    String? distance,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: iconColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.15,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.3,
+                        color: Gz.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (distance != null) ...[
+              const SizedBox(width: 10),
+              Text(
+                distance,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Gz.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _mapRow() => _row(
-    icon: Icons.map_rounded,
-    iconColor: Gz.blue,
-    title: t('Картадан белгілеу'),
-    subtitle: t('Пинді дәл керек жерге апарасыз'),
-    onTap: _findOnMap,
-  );
-
   Widget _header(IconData icon, String label) => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
     child: Row(
       children: [
         Icon(icon, size: 14, color: Gz.textTertiary),

@@ -835,6 +835,16 @@ class Geo {
   static bool _bigPoi(String? kind) =>
       kind != null && _bigPoiKinds.contains(kind);
 
+  /// Мәтін мекенжай емес, координата/қоқыс па («43.23890, 76.88970ндю»,
+  /// «123», «.»). Ондай «атау» клиентке ұсынылмауы және сақталмауы керек.
+  static bool isJunkLabel(String s) {
+    final t = s.trim();
+    if (RegExp(r'-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}').hasMatch(t)) {
+      return true;
+    }
+    return RegExp(r'\p{L}', unicode: true).allMatches(t).length < 3;
+  }
+
   static String coordLabel(LatLng p) =>
       '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
 
@@ -898,6 +908,19 @@ class Geo {
       durationMin: km / 40 * 60,
       points: List.of(points),
     );
+  }
+
+  /// Қашықтықты қысқа жазу: «850 м», «4,2 км», «125 км» (үтірмен — қазақ
+  /// және орыс тілдерінде ондық бөлшек үтірмен жазылады).
+  static String formatDistance(double km) {
+    if (km < 1) {
+      final m = (km * 1000 / 10).round() * 10;
+      return '${m < 10 ? 10 : m} м';
+    }
+    if (km < 100) {
+      return '${km.toStringAsFixed(1).replaceAll('.', ',')} км';
+    }
+    return '${km.round()} км';
   }
 
   static double haversineKm(LatLng a, LatLng b) {
