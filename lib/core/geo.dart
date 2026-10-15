@@ -36,8 +36,9 @@ class Geo {
         return null;
       }
       return await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       ).timeout(const Duration(seconds: 8));
     } catch (_) {
       return null;
@@ -45,6 +46,10 @@ class Geo {
   }
 
   /// Адрес іздеу (Қазақстан шегінде) — Nominatim (OSM).
+  ///
+  /// Желі/сервер қатесінде [GeoSearchException] лақтырады — шақырушы
+  /// «табылмады» мен «іздеу істемей тұр» дегенді ажырата алуы үшін (бұрын
+  /// екеуі де бос тізім болып, клиент қате адрес жазып жүретін).
   static Future<List<GeoPlace>> search(String query) async {
     final q = query.trim();
     if (q.length < 3) return [];
@@ -67,11 +72,22 @@ class Geo {
     final s = street.trim();
     if (s.length < 2) return [];
     final bias = near ?? _cityCenter(city);
+    // Бір сұраныс құлаған болса, екіншісінің нәтижесін көрсетеміз; тек
+    // ЕКЕУІ де құласа ғана қате.
+    Future<List<GeoPlace>?> safe(Future<List<GeoPlace>> f) async {
+      try {
+        return await f;
+      } on GeoSearchException {
+        return null;
+      }
+    }
+
     final res = await Future.wait([
-      _searchStructured(city: city, street: s),
-      _searchFree('$s, $city', near: bias),
+      safe(_searchStructured(city: city, street: s)),
+      safe(_searchFree('$s, $city', near: bias)),
     ]);
-    return dedupePlaces([...res[0], ...res[1]]);
+    if (res[0] == null && res[1] == null) throw const GeoSearchException();
+    return dedupePlaces([...?res[0], ...?res[1]]);
   }
 
   /// Елді мекен іздеу (қала/кент/ауыл/станция) — қала таңдау парағы үшін.
@@ -82,15 +98,18 @@ class Geo {
     if (q.length < 2) return [];
     try {
       final uri = Uri.parse('https://nominatim.openstreetmap.org/search')
-          .replace(queryParameters: {
-        'q': q,
-        'format': 'jsonv2',
-        'countrycodes': 'kz',
-        'limit': '20',
-        'addressdetails': '1',
-        'accept-language': 'kk,ru',
-      });
-      final res = await http.get(uri, headers: _ua)
+          .replace(
+            queryParameters: {
+              'q': q,
+              'format': 'jsonv2',
+              'countrycodes': 'kz',
+              'limit': '20',
+              'addressdetails': '1',
+              'accept-language': 'kk,ru',
+            },
+          );
+      final res = await http
+          .get(uri, headers: _ua)
           .timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return [];
       final list = jsonDecode(res.body) as List;
@@ -99,16 +118,21 @@ class Geo {
         final e = raw as Map<String, dynamic>;
         final type = _str(e['addresstype']) ?? _str(e['type']) ?? '';
         if (!_settlementTypes.contains(type)) continue;
-        final name = _str(e['name']) ??
+        final name =
+            _str(e['name']) ??
             _str((e['display_name'] as String?)?.split(',').first);
         if (name == null) continue;
-        out.add(GeoPlace(
-          name: name,
-          point: LatLng(double.parse(e['lat'] as String),
-              double.parse(e['lon'] as String)),
-          city: name,
-          kind: type,
-        ));
+        out.add(
+          GeoPlace(
+            name: name,
+            point: LatLng(
+              double.parse(e['lat'] as String),
+              double.parse(e['lon'] as String),
+            ),
+            city: name,
+            kind: type,
+          ),
+        );
       }
       return dedupePlaces(out);
     } catch (_) {
@@ -130,59 +154,93 @@ class Geo {
     'allotments',
   };
 
-  static Future<List<GeoPlace>> _searchFree(String q, {LatLng? near}) async {
-    try {
-      final params = <String, String>{
-        'q': q,
-        'format': 'jsonv2',
-        'countrycodes': 'kz',
-        'limit': '10',
-        'addressdetails': '1',
-        'namedetails': '1',
-        'accept-language': 'kk,ru',
-      };
-      if (near != null) {
-        // ~60 км viewbox — нәтижелерді осы аймаққа қарай бұрады (bounded=1
-        // ҚОЙМАЙМЫЗ: қала шетіндегі ауыл түсіп қалмауы үшін).
-        const d = 0.55;
-        params['viewbox'] = '${near.longitude - d},${near.latitude + d},'
-            '${near.longitude + d},${near.latitude - d}';
+  /// Nominatim-ге сұраныс: 429/5xx/желі қатесінде бір рет қайталайды,
+  /// сәтті нәтижені жадта сақтайды (бірдей сұраныс қайта жіберілмейді —
+  /// тегін серверге жүктеме азаяды, ал клиент жылдам жауап алады).
+  /// Сәтсіз болса [GeoSearchException] лақтырады.
+  static Future<List<GeoPlace>> _getPlaces(Uri uri) async {
+    final key = uri.toString();
+    final cached = _placeCache[key];
+    if (cached != null) return cached;
+    Object? lastError;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 800));
       }
-      final uri = Uri.parse('https://nominatim.openstreetmap.org/search')
-          .replace(queryParameters: params);
-      final res = await http.get(uri, headers: _ua)
-          .timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return [];
-      final list = jsonDecode(res.body) as List;
-      return list.map((e) => _placeFrom(e as Map<String, dynamic>)).toList();
-    } catch (_) {
-      return [];
+      try {
+        final res = await http
+            .get(uri, headers: _ua)
+            .timeout(const Duration(seconds: 8));
+        if (res.statusCode == 200) {
+          final list = jsonDecode(res.body) as List;
+          final out = <GeoPlace>[];
+          for (final e in list) {
+            try {
+              out.add(_placeFrom(e as Map<String, dynamic>));
+            } catch (_) {
+              // бір бұзық жазба бүкіл тізімді құлатпауы керек
+            }
+          }
+          if (_placeCache.length > 60) _placeCache.clear();
+          _placeCache[key] = out;
+          return out;
+        }
+        lastError = 'HTTP ${res.statusCode}';
+        // 4xx (429-дан басқа) қайталаудың қажеті жоқ.
+        if (res.statusCode < 500 && res.statusCode != 429) break;
+      } catch (e) {
+        lastError = e;
+      }
     }
+    throw GeoSearchException('$lastError');
   }
 
-  static Future<List<GeoPlace>> _searchStructured(
-      {required String city, required String street}) async {
-    try {
-      final uri = Uri.parse('https://nominatim.openstreetmap.org/search')
-          .replace(queryParameters: {
-        'street': street,
-        'city': city,
-        'country': 'Kazakhstan',
-        'format': 'jsonv2',
-        'countrycodes': 'kz',
-        'limit': '8',
-        'addressdetails': '1',
-        'namedetails': '1',
-        'accept-language': 'kk,ru',
-      });
-      final res = await http.get(uri, headers: _ua)
-          .timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return [];
-      final list = jsonDecode(res.body) as List;
-      return list.map((e) => _placeFrom(e as Map<String, dynamic>)).toList();
-    } catch (_) {
-      return [];
+  static final Map<String, List<GeoPlace>> _placeCache = {};
+
+  static Future<List<GeoPlace>> _searchFree(String q, {LatLng? near}) {
+    final params = <String, String>{
+      'q': q,
+      'format': 'jsonv2',
+      'countrycodes': 'kz',
+      'limit': '10',
+      'addressdetails': '1',
+      'namedetails': '1',
+      'accept-language': 'kk,ru',
+    };
+    if (near != null) {
+      // ~60 км viewbox — нәтижелерді осы аймаққа қарай бұрады (bounded=1
+      // ҚОЙМАЙМЫЗ: қала шетіндегі ауыл түсіп қалмауы үшін).
+      const d = 0.55;
+      params['viewbox'] =
+          '${near.longitude - d},${near.latitude + d},'
+          '${near.longitude + d},${near.latitude - d}';
     }
+    return _getPlaces(
+      Uri.parse(
+        'https://nominatim.openstreetmap.org/search',
+      ).replace(queryParameters: params),
+    );
+  }
+
+  static Future<List<GeoPlace>> _searchStructured({
+    required String city,
+    required String street,
+  }) {
+    return _getPlaces(
+      Uri.parse('https://nominatim.openstreetmap.org/search').replace(
+        queryParameters: {
+          'street': street,
+          'city': city,
+          'country': 'Kazakhstan',
+          'format': 'jsonv2',
+          'countrycodes': 'kz',
+          'limit': '8',
+          'addressdetails': '1',
+          'namedetails': '1',
+          'accept-language': 'kk,ru',
+        },
+      ),
+    );
   }
 
   /// Бірдей атау + бірдей маңдағы нүктелерді біріктіреді (екі сұраныстың
@@ -192,7 +250,8 @@ class Geo {
     final out = <GeoPlace>[];
     for (final p in src) {
       if (p.name.trim().isEmpty) continue;
-      final key = '${p.name.trim().toLowerCase()}|'
+      final key =
+          '${p.name.trim().toLowerCase()}|'
           '${p.point.latitude.toStringAsFixed(3)},'
           '${p.point.longitude.toStringAsFixed(3)}';
       if (!seen.add(key)) continue;
@@ -275,11 +334,35 @@ class Geo {
       name: parsed.label.isEmpty
           ? ((e['display_name'] as String?) ?? '').split(',').take(2).join(',')
           : parsed.label,
-      point: LatLng(double.parse(e['lat'] as String),
-          double.parse(e['lon'] as String)),
+      point: LatLng(
+        double.parse(e['lat'] as String),
+        double.parse(e['lon'] as String),
+      ),
       city: parsed.settlement,
       kind: _str(e['type']),
+      district: _districtOf(a, parsed),
     );
+  }
+
+  /// Аудан атауы: көше аты ретінде қолданылмаған `suburb`/`city_district`
+  /// не `neighbourhood` (қала/ауыл атынан басқа).
+  static String? _districtOf(Map<String, dynamic>? a, _Parsed parsed) {
+    if (a == null) return null;
+    final road = _str(a['road']) ?? _str(a['pedestrian']) ?? _str(a['footway']);
+    for (final k in const ['suburb', 'city_district', 'neighbourhood']) {
+      final v = _str(a[k]);
+      if (v == null) continue;
+      if (road == null &&
+          parsed.street != null &&
+          parsed.street!.startsWith(v)) {
+        continue; // ол көше орнына қолданылып кеткен
+      }
+      if (parsed.settlement != null && Geo.sameCity(v, parsed.settlement)) {
+        continue;
+      }
+      return v;
+    }
+    return null;
   }
 
   static String? _str(Object? v) {
@@ -293,7 +376,8 @@ class Geo {
   /// да `city` етіп қайтаруы мүмкін — сонда Луговой «Тараз» болып кетеді.
   static String? _cityOf(Map<String, dynamic>? a) {
     if (a == null) return null;
-    final raw = _str(a['village']) ??
+    final raw =
+        _str(a['village']) ??
         _str(a['hamlet']) ??
         _str(a['town']) ??
         _str(a['city']) ??
@@ -324,14 +408,17 @@ class Geo {
   /// Nominatim жауабын бөлшектейді: нысан аты / көше+үй / елді мекен.
   static _Parsed _parse(Map<String, dynamic> e, Map<String, dynamic>? a) {
     // Көше + үй нөмірі.
-    final road = _str(a?['road']) ??
+    final road =
+        _str(a?['road']) ??
         _str(a?['pedestrian']) ??
         _str(a?['footway']) ??
         _str(a?['neighbourhood']) ??
         _str(a?['quarter']) ??
         _str(a?['suburb']);
     final house = _str(a?['house_number']);
-    final street = road == null ? null : (house == null ? road : '$road, $house');
+    final street = road == null
+        ? null
+        : (house == null ? road : '$road, $house');
 
     // Нысан аты: жергілікті тілдегі атау → жауаптың `name` өрісі →
     // `address` ішіндегі нысан кілттері.
@@ -350,15 +437,13 @@ class Geo {
     }
     // Nominatim КӨШЕНІҢ өзін қайтарғанда `name` = көше аты болады — оны
     // «нысан» деп қайталап жазбаймыз («Абая, Абая, 5» болып кетпеуі үшін).
-    if (poi != null && road != null && poi.toLowerCase() == road.toLowerCase()) {
+    if (poi != null &&
+        road != null &&
+        poi.toLowerCase() == road.toLowerCase()) {
       poi = null;
     }
 
-    return _Parsed(
-      poi: poi,
-      street: street,
-      settlement: _cityOf(a),
-    );
+    return _Parsed(poi: poi, street: street, settlement: _cityOf(a));
   }
 
   /// Nominatim қайтаратын әкімшілік жұрнақтар. Тізім қайталап қолданылады,
@@ -448,7 +533,8 @@ class Geo {
   }
 
   /// Координатадан адрес атауы (қала атауынсыз).
-  static Future<String> reverse(LatLng p) async => (await reverseWithCity(p)).$1;
+  static Future<String> reverse(LatLng p) async =>
+      (await reverseWithCity(p)).$1;
 
   /// Координатадан адрес атауы + елді мекен (межгород анықтау үшін).
   static Future<(String, String?)> reverseWithCity(LatLng p) async {
@@ -464,16 +550,19 @@ class Geo {
   static Future<GeoAddress> reverseDetailed(LatLng p) async {
     try {
       final uri = Uri.parse('https://nominatim.openstreetmap.org/reverse')
-          .replace(queryParameters: {
-        'lat': '${p.latitude}',
-        'lon': '${p.longitude}',
-        'format': 'jsonv2',
-        'zoom': '18',
-        'addressdetails': '1',
-        'namedetails': '1',
-        'accept-language': 'kk,ru',
-      });
-      final res = await http.get(uri, headers: _ua)
+          .replace(
+            queryParameters: {
+              'lat': '${p.latitude}',
+              'lon': '${p.longitude}',
+              'format': 'jsonv2',
+              'zoom': '18',
+              'addressdetails': '1',
+              'namedetails': '1',
+              'accept-language': 'kk,ru',
+            },
+          );
+      final res = await http
+          .get(uri, headers: _ua)
           .timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return GeoAddress.unknown(p);
       final j = jsonDecode(res.body) as Map<String, dynamic>;
@@ -513,12 +602,14 @@ class Geo {
     int radiusM = 180,
     int limit = 12,
   }) async {
-    final key = '${p.latitude.toStringAsFixed(4)},'
+    final key =
+        '${p.latitude.toStringAsFixed(4)},'
         '${p.longitude.toStringAsFixed(4)},$radiusM';
     final cached = _nearbyCache[key];
     if (cached != null) return cached;
     try {
-      final q = '[out:json][timeout:20];'
+      final q =
+          '[out:json][timeout:20];'
           'nwr(around:$radiusM,${p.latitude},${p.longitude})'
           '[name][~"^(amenity|shop|office|tourism|leisure|building)\$"~"."];'
           'out center 60;';
@@ -530,7 +621,8 @@ class Geo {
       for (final raw in els) {
         final e = (raw as Map).cast<String, dynamic>();
         final tags = (e['tags'] as Map?)?.cast<String, dynamic>() ?? const {};
-        final name = _str(tags['name:kk']) ??
+        final name =
+            _str(tags['name:kk']) ??
             _str(tags['name:ru']) ??
             _str(tags['name']);
         if (name == null) continue;
@@ -543,17 +635,20 @@ class Geo {
           _str(tags['addr:street']),
           _str(tags['addr:housenumber']),
         ].whereType<String>().join(', ');
-        out.add(GeoPlace(
-          name: street.isEmpty ? name : '$name, $street',
-          point: at,
-          kind: _str(tags['shop']) ??
-              _str(tags['amenity']) ??
-              _str(tags['tourism']) ??
-              _str(tags['leisure']) ??
-              _str(tags['office']) ??
-              _str(tags['building']),
-          distanceM: haversineKm(p, at) * 1000,
-        ));
+        out.add(
+          GeoPlace(
+            name: street.isEmpty ? name : '$name, $street',
+            point: at,
+            kind:
+                _str(tags['shop']) ??
+                _str(tags['amenity']) ??
+                _str(tags['tourism']) ??
+                _str(tags['leisure']) ??
+                _str(tags['office']) ??
+                _str(tags['building']),
+            distanceM: haversineKm(p, at) * 1000,
+          ),
+        );
       }
       // Ірі нысандар (ТРЦ, базар, ЖК, аурухана…) алдымен, содан кейін
       // қашықтық бойынша — клиент іздеп тұрғаны әдетте солар.
@@ -629,8 +724,7 @@ class Geo {
       '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
 
   /// Маршрут: OSRM демо-сервері, болмаса хаверсин × 1.3.
-  static Future<GeoRoute> route(LatLng from, LatLng to) =>
-      routeVia([from, to]);
+  static Future<GeoRoute> route(LatLng from, LatLng to) => routeVia([from, to]);
 
   /// Маршрут БІРНЕШЕ нүкте арқылы (аралық аялдамалармен, 0047).
   /// OSRM нүктелерді `;` арқылы қабылдайды әрі оларды БЕРІЛГЕН РЕТПЕН
@@ -643,26 +737,33 @@ class Geo {
       return GeoRoute(distanceKm: 0, durationMin: 0, points: points);
     }
     try {
-      final coordsPath =
-          points.map((p) => '${p.longitude},${p.latitude}').join(';');
+      final coordsPath = points
+          .map((p) => '${p.longitude},${p.latitude}')
+          .join(';');
       final uri = Uri.parse(
-          'https://router.project-osrm.org/route/v1/driving/$coordsPath'
-          '?overview=full&geometries=geojson');
-      final res = await http.get(uri, headers: _ua)
+        'https://router.project-osrm.org/route/v1/driving/$coordsPath'
+        '?overview=full&geometries=geojson',
+      );
+      final res = await http
+          .get(uri, headers: _ua)
           .timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final j = jsonDecode(res.body) as Map<String, dynamic>;
         final routes = j['routes'] as List?;
         if (routes != null && routes.isNotEmpty) {
           final r = routes.first as Map<String, dynamic>;
-          final coords =
-              ((r['geometry'] as Map)['coordinates'] as List).cast<List>();
+          final coords = ((r['geometry'] as Map)['coordinates'] as List)
+              .cast<List>();
           return GeoRoute(
             distanceKm: (r['distance'] as num).toDouble() / 1000,
             durationMin: (r['duration'] as num).toDouble() / 60,
             points: coords
-                .map((c) =>
-                    LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+                .map(
+                  (c) => LatLng(
+                    (c[1] as num).toDouble(),
+                    (c[0] as num).toDouble(),
+                  ),
+                )
                 .toList(),
           );
         }
@@ -688,7 +789,8 @@ class Geo {
     const r = 6371.0;
     final dLat = _rad(b.latitude - a.latitude);
     final dLon = _rad(b.longitude - a.longitude);
-    final h = math.pow(math.sin(dLat / 2), 2) +
+    final h =
+        math.pow(math.sin(dLat / 2), 2) +
         math.cos(_rad(a.latitude)) *
             math.cos(_rad(b.latitude)) *
             math.pow(math.sin(dLon / 2), 2);
@@ -698,9 +800,22 @@ class Geo {
   static double _rad(double d) => d * math.pi / 180;
 }
 
+/// Геокодер (Nominatim) жауап бермеді / қате қайтарды. «Ештеңе табылмады»
+/// ([] тізім) емес — іздеу ІСТЕМЕЙ тұр, клиентке қайталауды ұсыну керек.
+class GeoSearchException implements Exception {
+  final String? detail;
+  const GeoSearchException([this.detail]);
+  @override
+  String toString() => 'GeoSearchException(${detail ?? ''})';
+}
+
 class GeoPlace {
   final String name;
   final LatLng point;
+
+  /// Аудан/шағынаудан (болса) — бірдей «Абая, 5» әртүрлі аудандарда
+  /// кездескенде тізімде ажырату үшін.
+  final String? district;
 
   /// Нақты елді мекен (ауыл/кент/қала) — тірек қала ЕМЕС.
   final String? city;
@@ -714,6 +829,7 @@ class GeoPlace {
   GeoPlace({
     required this.name,
     required this.point,
+    this.district,
     this.city,
     this.kind,
     this.distanceM,
@@ -782,8 +898,9 @@ class GeoRoute {
   final double distanceKm;
   final double durationMin;
   final List<LatLng> points;
-  GeoRoute(
-      {required this.distanceKm,
-      required this.durationMin,
-      required this.points});
+  GeoRoute({
+    required this.distanceKm,
+    required this.durationMin,
+    required this.points,
+  });
 }

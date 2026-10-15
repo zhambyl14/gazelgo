@@ -130,17 +130,27 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     );
   }
 
+  /// Соңғы анықтаудың нөмірі: картаны жылжытқанда баяу ескі жауап жаңа
+  /// нүктенің адресін басып кетпеуі үшін.
+  int _resolveSeq = 0;
+
   Future<void> _resolveFrom(LatLng center, {bool persist = false}) async {
+    final seq = ++_resolveSeq;
     setState(() => _resolvingFrom = true);
     final a = await Geo.reverseDetailed(center);
-    if (!mounted) return;
+    if (!mounted || seq != _resolveSeq) return;
     // Заказға ТІРЕК қала жазылады, себебі орындаушылар лентасы қала бойынша
     // сүзіледі: клиент Қосшыда/Луговойда тұрса да заказды Астана/Тараз
     // орындаушылары көруі керек. Ал ауылдың өз аты адрес жолында қалады
     // («Қосшы, Абылай хан, 12») — орындаушы қайда баратынын біледі.
     final anchor = Geo.anchorCity(center) ?? a.settlement;
     setState(() {
-      _from = PickedAddress(a.labelFor(anchor), center, anchor);
+      // Геокодер атау таппаса — жалаң координата емес, түсінікті белгі.
+      final raw = a.labelFor(anchor);
+      final label = raw == Geo.coordLabel(center)
+          ? '${t('Картадағы нүкте')}: $raw'
+          : raw;
+      _from = PickedAddress(label, center, anchor);
       _resolvingFrom = false;
     });
     // Клиент өзі белгілеген орынды есте сақтаймыз (келесі ашылудың әдепкісі).
