@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -177,16 +178,17 @@ class Repo {
   }
 
   /// Модератордың «Хабарламалар» тізімі (0024) — соңғылары бірінші.
-  static Stream<List<OrderReport>> openReportsStream() => _poll(() async {
-    final rows = await c
-        .from('order_reports')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(100);
-    return (rows as List)
-        .map((m) => OrderReport.fromMap(Map<String, dynamic>.from(m)))
-        .toList();
-  }, every: const Duration(seconds: 6));
+  static Stream<List<OrderReport>> openReportsStream() =>
+      _poll('reports', () async {
+        final rows = await c
+            .from('order_reports')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(100);
+        return (rows as List)
+            .map((m) => OrderReport.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }, every: const Duration(seconds: 6));
 
   /// Хабарламаны «қаралды/елеусіз қалдырылды» деп белгілеу (0024).
   static Future<void> modSetReportStatus(String reportId, String status) =>
@@ -698,6 +700,7 @@ class Repo {
 
   /// Орындаушы статистикасы — тікелей байланыс (polling, ~4с).
   static Stream<ExecutorStats> executorStatsStream() => _poll(
+    'stats:$uid',
     () async => ExecutorStats.fromMap(
       Map<String, dynamic>.from(await c.rpc('executor_stats') as Map),
     ),
@@ -889,7 +892,7 @@ class Repo {
   /// Клиент өз заказының орындаушысының орнын polling арқылы қадағалайды.
   static Stream<Map<String, dynamic>?> orderExecutorLocationStream(
     String orderId,
-  ) => _poll(() async {
+  ) => _poll('loc:$orderId', () async {
     final res = await c.rpc(
       'get_order_executor_location',
       params: {'p_order_id': orderId},
@@ -1122,7 +1125,7 @@ class Repo {
   }
 
   static Stream<List<SupportMessage>> supportMessagesStream(String threadId) =>
-      _poll(() async {
+      _poll('msgs:$threadId', () async {
         final rows = await c
             .from('support_messages')
             .select()
@@ -1140,7 +1143,7 @@ class Repo {
   static Stream<List<SupportThread>> myThreadsStream() {
     final id = uid;
     if (id == null) return const Stream.empty();
-    return _poll(() async {
+    return _poll('threads:$uid', () async {
       final rows = await c
           .from('support_threads')
           .select()
@@ -1154,45 +1157,64 @@ class Repo {
     });
   }
 
-  static Stream<List<SupportThread>> allThreadsStream() => _poll(() async {
-    final rows = await c
-        .from('support_threads')
-        .select()
-        .order('last_msg_at', ascending: false);
-    return (rows as List)
-        .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
-        .toList();
-  });
+  static Stream<List<SupportThread>> allThreadsStream() =>
+      _poll('allThreads', () async {
+        final rows = await c
+            .from('support_threads')
+            .select()
+            .order('last_msg_at', ascending: false);
+        return (rows as List)
+            .map((m) => SupportThread.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      });
 
   // ================= STREAMS (polling — realtime-ге тәуелсіз, тұрақты) =================
 
   /// Периодты сұраныс стримі. Қате болса соңғы мәнді сақтап, қайта сұрайды —
   /// осылайша 4G-де realtime channelError болмайды.
+  ///
+  /// ОРТАҚ ([key] бойынша): бір кілтке бір ғана сұрау циклы жүреді, қанша
+  /// виджет тыңдаса да. Жаңа тыңдаушы соңғы мәнді БІРДЕН алады. Бұрын көп
+  /// экран `stream: Repo.xxxStream()`-ды build ішінде шақыратын — әр қайта
+  /// салуда (мыс. басты бетте картаны жылжытқанда) жаңа стрим құрылып,
+  /// сұрау қайта жіберілетін. Тыңдаушы қалмаса, цикл 3 секундтан кейін
+  /// тоқтайды; қосымша фонда тұрғанда сұраулар ТОҚТАП тұрады.
   static Stream<T> _poll<T>(
+    String key,
     Future<T> Function() fetch, {
     Duration every = const Duration(seconds: 4),
-  }) async* {
-    while (true) {
-      try {
-        yield await fetch();
-      } catch (_) {
-        // соңғы мәнде қалады, экранда loader көрсетілмейді
-      }
-      await Future.delayed(every);
-    }
+  }) {
+    final poll = _polls.putIfAbsent(
+      key,
+      () => _SharedPoll(
+        fetch,
+        every,
+        onIdle: (sp) {
+          if (identical(_polls[key], sp)) _polls.remove(key);
+        },
+      ),
+    );
+    return poll.stream.cast<T>();
   }
+
+  static final Map<String, _SharedPoll> _polls = {};
 
   static Stream<List<Order>> myOrdersStream() {
     final id = uid;
     if (id == null) return const Stream.empty();
-    return _poll(() async {
+    return _poll('myOrders:$id', () async {
+      // Тек СОҢҒЫ 60 заказ: бұрын клиенттің бүкіл тарихы әр 4 секунд сайын
+      // жүктелетін (заказы көп адамда трафик пен жүктеме өсе беретін).
       final rows = await c
           .from('orders')
           .select()
           .eq('client_id', id)
-          .order('created_at');
+          .order('created_at', ascending: false)
+          .limit(60);
       return (rows as List)
           .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+          .toList()
+          .reversed
           .toList();
     });
   }
@@ -1204,7 +1226,7 @@ class Repo {
   static Stream<List<Order>> myActiveExecutorOrdersStream() {
     final id = uid;
     if (id == null) return const Stream.empty();
-    return _poll(() async {
+    return _poll('activeExec:$id', () async {
       final rows = await c
           .from('orders')
           .select()
@@ -1222,20 +1244,25 @@ class Repo {
     });
   }
 
-  static Stream<Order?> orderStream(String orderId) => _poll(() async {
-    final m = await c.from('orders').select().eq('id', orderId).maybeSingle();
-    return m == null ? null : Order.fromMap(m);
-  }, every: const Duration(seconds: 3));
+  static Stream<Order?> orderStream(String orderId) => _poll(
+    'order:$orderId',
+    () async {
+      final m = await c.from('orders').select().eq('id', orderId).maybeSingle();
+      return m == null ? null : Order.fromMap(m);
+    },
+    every: const Duration(seconds: 3),
+  );
 
   /// §6/§5 Лента: орындаушының қаласы мен маршрутына сай заказдар (RPC).
   /// Қала фильтрі, өлшем сәйкестігі, межгород маршруты — бәрі серверде
   /// `executor_feed` ішінде (бір ғана логика көзі).
-  static Stream<List<Order>> executorFeedStream() => _poll(() async {
-    final rows = await c.rpc('executor_feed');
-    return (rows as List)
-        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
-        .toList();
-  }, every: const Duration(seconds: 4));
+  static Stream<List<Order>> executorFeedStream() =>
+      _poll('feed:$uid', () async {
+        final rows = await c.rpc('executor_feed');
+        return (rows as List)
+            .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }, every: const Duration(seconds: 4));
 
   /// §6 Орындаушының тіркелген қаласын орнату/жаңарту.
   static Future<void> setExecutorCity(String city) =>
@@ -1246,21 +1273,22 @@ class Repo {
   static Future<void> setOrderPushEnabled(bool enabled) =>
       c.rpc('set_order_push_enabled', params: {'p_enabled': enabled});
 
-  static Stream<List<Offer>> offersStream(String orderId) => _poll(() async {
-    final rows = await c
-        .from('offers')
-        .select()
-        .eq('order_id', orderId)
-        .order('created_at');
-    return (rows as List)
-        .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
-        .toList();
-  }, every: const Duration(seconds: 3));
+  static Stream<List<Offer>> offersStream(String orderId) =>
+      _poll('offers:$orderId', () async {
+        final rows = await c
+            .from('offers')
+            .select()
+            .eq('order_id', orderId)
+            .order('created_at');
+        return (rows as List)
+            .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }, every: const Duration(seconds: 3));
 
   static Stream<ExecutorProfile?> myExecutorProfileStream() {
     final id = uid;
     if (id == null) return const Stream.empty();
-    return _poll(() async {
+    return _poll('execProfile:$id', () async {
       final m = await c
           .from('executor_profiles')
           .select()
@@ -1765,7 +1793,7 @@ class Repo {
   /// заказ аяқталған сайын өзі жаңарады). Статистикадан сирегірек —
   /// бонус әр 15 секундта тексерілсе де жеткілікті.
   static Stream<BonusInfo> executorBonusStream() =>
-      _poll(executorBonus, every: const Duration(seconds: 15));
+      _poll('bonus:$uid', executorBonus, every: const Duration(seconds: 15));
 
   /// Орындаушының бонус тарихы (соңғы 100 жазба).
   static Future<List<BonusAward>> myBonusAwards() async {
@@ -1926,3 +1954,99 @@ final executorBonusStreamProvider = StreamProvider.autoDispose<BonusInfo>(
 final executorFeedStreamProvider = StreamProvider.autoDispose<List<Order>>(
   (ref) => Repo.executorFeedStream(),
 );
+
+/// Қосымша ЭКРАНДА ма (фонда емес). Фонда polling тоқтап тұрады —
+/// батарея мен трафик бекер жұмсалмайды; қайта ашылғанда бірден жаңарады.
+class _AppVisibility with WidgetsBindingObserver {
+  _AppVisibility._() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+  static final _instance = _AppVisibility._();
+
+  Completer<void>? _waiter;
+
+  static bool get _active {
+    final s = WidgetsBinding.instance.lifecycleState;
+    return s == null ||
+        s == AppLifecycleState.resumed ||
+        s == AppLifecycleState.inactive;
+  }
+
+  static Future<void> waitActive() async {
+    if (_active) return;
+    final self = _instance;
+    self._waiter ??= Completer<void>();
+    await self._waiter!.future;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_active) {
+      _waiter?.complete();
+      _waiter = null;
+    }
+  }
+}
+
+/// Бір кілтке ортақ периодты сұрау (қараңыз: [Repo._poll]).
+class _SharedPoll {
+  _SharedPoll(this._fetch, this._every, {required this.onIdle});
+
+  final Future<Object?> Function() _fetch;
+  final Duration _every;
+  final void Function(_SharedPoll) onIdle;
+
+  final _listeners = <MultiStreamController<Object?>>{};
+  Object? _last;
+  bool _hasLast = false;
+  bool _running = false;
+  int _gen = 0;
+  Timer? _stopTimer;
+
+  Stream<Object?> get stream => Stream<Object?>.multi((c) {
+    _stopTimer?.cancel();
+    _stopTimer = null;
+    _listeners.add(c);
+    if (_hasLast) c.add(_last);
+    c.onCancel = () {
+      _listeners.remove(c);
+      if (_listeners.isEmpty) {
+        // Сәл күтеміз: StreamBuilder қайта жазылғанда (ескісінен шығып,
+        // бірден жаңасына кіреді) цикл үзіліп, қайта басталмауы үшін.
+        _stopTimer = Timer(const Duration(seconds: 3), _stop);
+      }
+    };
+    if (!_running) _start();
+  });
+
+  void _start() {
+    _running = true;
+    _loop(++_gen);
+  }
+
+  void _stop() {
+    if (_listeners.isNotEmpty) return;
+    _running = false;
+    _gen++;
+    onIdle(this);
+  }
+
+  Future<void> _loop(int gen) async {
+    while (_running && gen == _gen) {
+      await _AppVisibility.waitActive();
+      if (!_running || gen != _gen) return;
+      try {
+        final v = await _fetch();
+        if (gen != _gen) return;
+        _last = v;
+        _hasLast = true;
+        for (final c in List.of(_listeners)) {
+          c.add(v);
+        }
+      } catch (_) {
+        // соңғы мәнде қалады, экранда loader көрсетілмейді
+      }
+      await Future.delayed(_every);
+    }
+  }
+}
