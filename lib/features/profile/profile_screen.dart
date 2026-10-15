@@ -9,6 +9,7 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/vehicle_picker.dart' show vehicleIcon;
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart' show CityPickerSheet;
 import '../client/my_addresses_screen.dart';
@@ -128,12 +129,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _open(Widget page) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
-  /// Жедел әрекеттер торының плиткалары — рөлге қарай.
-  List<_QuickTile> _quickTiles(Profile p, bool isExec) {
-    final reviews = _QuickTile(
+  /// «Менің» тізімінің жолдары — рөлге қарай. Орындаушының табыс пен
+  /// балансы мұнда емес, табыс блогының ішінде (жылдам өту батырмалары).
+  List<Widget> _menuRows(Profile p, bool isExec) {
+    final reviews = _NavRow(
       icon: Icons.star_rounded,
-      label: t('Пікірлер'),
       color: const Color(0xFFF59E0B),
+      title: t('Пікірлер'),
       onTap: () => _open(
         ReviewsScreen(
           userId: p.id,
@@ -143,45 +145,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
-    final support = _QuickTile(
+    final support = _NavRow(
       icon: Icons.support_agent,
-      label: t('Қолдау'),
-      color: isExec ? Gz.blue : Gz.violet,
+      color: Gz.blue,
+      title: t('Қолдау'),
       onTap: () => _open(const SupportScreen()),
     );
-
-    if (p.isModerator) return [reviews, support];
-
-    if (isExec) {
-      return [
-        _QuickTile(
-          icon: Icons.payments_outlined,
-          label: t('Табыс'),
-          color: Gz.green,
-          onTap: () => _open(const EarningsScreen()),
-        ),
-        _QuickTile(
-          icon: Icons.account_balance_wallet_outlined,
-          label: t('Баланс'),
-          color: Gz.yellowDark,
-          onTap: () => _open(const BalanceScreen()),
-        ),
-        reviews,
-        support,
-      ];
-    }
-
+    if (p.isModerator || isExec) return [reviews, support];
     return [
-      _QuickTile(
+      _NavRow(
         icon: Icons.receipt_long,
-        label: t('Тапсырыстар'),
-        color: Gz.blue,
+        color: Gz.ink,
+        title: t('Тапсырыстар'),
         onTap: () => _open(const MyOrdersScreen()),
       ),
-      _QuickTile(
+      _NavRow(
         icon: Icons.bookmark_rounded,
-        label: t('Мекенжайлар'),
         color: Gz.green,
+        title: t('Мекенжайлар'),
         onTap: () => _open(const MyAddressesScreen()),
       ),
       reviews,
@@ -223,9 +204,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
               children: [
-                // ---------- 1. HERO ----------
+                // ---------- 1. АВАТАР, АТЫ, СТАТУСЫ ----------
                 _ProfileHero(
                   profile: p,
+                  ep: isExec ? ep : null,
                   uploading: _uploadingAvatar,
                   onAvatarTap: _uploadingAvatar ? null : _changeAvatar,
                   onReviewsTap: () => _open(
@@ -237,7 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ---------- Модератордың құжат сұранымы ----------
                 if (isExec &&
@@ -247,26 +229,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // ---------- 2. ЖЕДЕЛ ӘРЕКЕТТЕР ----------
-                // Рөлге қарай ӨЗГЕРЕДІ. Модератор — үшінші жағдай: оған
-                // «Тапсырыстар»/«Мекенжайлар» клиенттік экрандары керек
-                // емес (бос бет ашылар еді), тек пікірлер мен қолдау.
-                _QuickGrid(tiles: _quickTiles(p, isExec)),
-                const SizedBox(height: 14),
-
-                // ---------- Жаттыққа шақыру бонусы (0060) ----------
-                // Тек ұпай/санақ — балансқа/ақшаға ешбір әсері жоқ.
-                if (_referralEnabled(ref)) ...[
-                  _ReferralCard(profile: p),
-                  const SizedBox(height: 14),
-                ],
-
-                // ---------- Орындаушының карталары ----------
+                // ---------- 2. ОРЫНДАУШЫ: табыс (басты) + көлік ----------
                 if (isExec) ...[
-                  const _ExecEarningsCard(),
-                  const SizedBox(height: 12),
-                  // Бонус бағдарламасы өшірулі болса — көрінбейді (0059).
-                  const BonusProfileCard(),
+                  _ExecEarningsCard(
+                    onHistory: () => _open(const EarningsScreen()),
+                    onBalance: () => _open(const BalanceScreen()),
+                  ),
                   if (ep != null) ...[
                     const SizedBox(height: 12),
                     _VehicleCard(
@@ -274,6 +242,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onChangeCity: () => _changeCity(context),
                     ),
                   ],
+                  // Бонус бағдарламасы өшірулі болса — көрінбейді (0059).
+                  const SizedBox(height: 12),
+                  const BonusProfileCard(),
+                  const SizedBox(height: 14),
+                ],
+
+                // ---------- 3. МЕНІҢ ----------
+                _GroupCard(children: _menuRows(p, isExec)),
+                const SizedBox(height: 14),
+
+                // ---------- Жаттыққа шақыру бонусы (0060) ----------
+                // Тек ұпай/санақ — балансқа/ақшаға ешбір әсері жоқ.
+                if (_referralEnabled(ref)) ...[
+                  _ReferralCard(profile: p),
                   const SizedBox(height: 14),
                 ],
 
@@ -337,18 +319,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 // ============================================================
-// HERO
+// ТАҚЫРЫП (Clean Minimal)
 // ============================================================
-/// Профильдің бас картасы: қара-көк градиент, үлкен аватар, аты, рөл
-/// жапсырмасы және үш көрсеткіш (рейтинг · сапар · сенім).
+/// Профильдің басы — АШЫҚ фонда, ортада: аватар (сары жиекпен, түртсе
+/// ауыстырылады), аты, телефоны, рөлі мен (орындаушыда) аккаунт мәртебесі;
+/// астында үш көрсеткіш (рейтинг · заказ · сенім) бір ақ карточкада.
 class _ProfileHero extends StatelessWidget {
   final Profile profile;
+
+  /// Орындаушы профилі — аккаунт мәртебесін көрсету үшін (клиентте null).
+  final ExecutorProfile? ep;
   final bool uploading;
   final VoidCallback? onAvatarTap;
   final VoidCallback onReviewsTap;
 
   const _ProfileHero({
     required this.profile,
+    required this.ep,
     required this.uploading,
     required this.onAvatarTap,
     required this.onReviewsTap,
@@ -357,182 +344,208 @@ class _ProfileHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = profile;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        gradient: Gz.heroGradient,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: Gz.liftShadow,
-      ),
-      child: Column(
-        children: [
-          Row(
+    final status = ep == null ? null : _accountStatus(ep!.status);
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: onAvatarTap,
+          child: Stack(
             children: [
-              GestureDetector(
-                onTap: onAvatarTap,
-                child: Stack(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Gz.yellow.withValues(alpha: 0.85),
-                          width: 2.5,
-                        ),
-                      ),
-                      child: InitialsAvatar(
-                        p.fullName,
-                        radius: 33,
-                        imageUrl: p.avatarUrl,
-                      ),
-                    ),
-                    if (uploading)
-                      const Positioned.fill(
-                        child: Padding(
-                          padding: EdgeInsets.all(5),
-                          child: CircleAvatar(
-                            backgroundColor: Colors.black45,
-                            child: SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Positioned(
-                        right: 1,
-                        bottom: 1,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            gradient: Gz.brandGradient,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Gz.ink, width: 2),
-                            boxShadow: Gz.glow(Gz.yellow, alpha: 0.4, blur: 8),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 12,
-                            color: Gz.ink,
-                          ),
-                        ),
-                      ),
-                  ],
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: Gz.brandGradient,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: const BoxDecoration(
+                    color: Gz.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: InitialsAvatar(
+                    p.fullName,
+                    radius: 42,
+                    imageUrl: p.avatarUrl,
+                  ),
                 ),
               ),
-              const SizedBox(width: 15),
+              if (uploading)
+                const Positioned.fill(
+                  child: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black45,
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Gz.ink,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Gz.surface, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 13,
+                      color: Gz.yellow,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          p.fullName,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.4,
+            color: Gz.ink,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          p.phone,
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            if (!p.isModerator)
+              _Chip(
+                text: p.isExecutor ? t('Орындаушы') : t('Клиент'),
+                bg: Gz.ink,
+                fg: Gz.yellow,
+              ),
+            if (status != null)
+              _Chip(
+                text: status.$1,
+                bg: status.$2.withValues(alpha: 0.12),
+                fg: status.$2,
+                icon: status.$3,
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Үш көрсеткіш — рейтингті бассаң пікірлер ашылады.
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Gz.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Gz.border),
+          ),
+          child: Row(
+            children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p.fullName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      p.phone,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.66),
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (!p.isModerator)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 3.5,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: Gz.brandGradient,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: Gz.glow(Gz.yellow, alpha: 0.3, blur: 10),
-                        ),
-                        child: Text(
-                          p.isExecutor ? t('Орындаушы') : t('Клиент'),
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w900,
-                            color: Gz.ink,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ),
-                  ],
+                child: _HeroStat(
+                  value: p.ratingCount == 0 ? '—' : p.rating.toStringAsFixed(1),
+                  label: '${p.ratingCount} ${t('пікір')}',
+                  icon: Icons.star_rounded,
+                  color: const Color(0xFFF59E0B),
+                  onTap: onReviewsTap,
+                ),
+              ),
+              _divider(),
+              Expanded(
+                child: _HeroStat(
+                  value: '${p.trips}',
+                  label: t('заказ'),
+                  icon: Icons.local_shipping_rounded,
+                  color: Gz.ink,
+                ),
+              ),
+              _divider(),
+              Expanded(
+                child: _HeroStat(
+                  value: '${p.trustScore}',
+                  label: t('сенім'),
+                  icon: Icons.verified_user_rounded,
+                  color: p.trustScore >= 80
+                      ? Gz.green
+                      : (p.trustScore >= 50 ? Gz.yellowDark : Gz.red),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Үш көрсеткіш — рейтингті бассаң пікірлер ашылады.
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _HeroStat(
-                    value: p.ratingCount == 0
-                        ? '—'
-                        : p.rating.toStringAsFixed(1),
-                    label: '${p.ratingCount} ${t('пікір')}',
-                    icon: Icons.star_rounded,
-                    color: Gz.yellow,
-                    onTap: onReviewsTap,
-                  ),
-                ),
-                _divider(),
-                Expanded(
-                  child: _HeroStat(
-                    value: '${p.trips}',
-                    label: t('заказ'),
-                    icon: Icons.local_shipping_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-                _divider(),
-                Expanded(
-                  child: _HeroStat(
-                    value: '${p.trustScore}',
-                    label: t('сенім'),
-                    icon: Icons.verified_user_rounded,
-                    // Қою фондағы көрсеткіш — ЖАРҚЫН реңктер (қою жасыл не
-                    // қою қызыл түнгі градиентте көрінбей қалады).
-                    color: p.trustScore >= 80
-                        ? Gz.greenBright
-                        : (p.trustScore >= 50 ? Gz.yellow : Gz.redBright),
-                  ),
-                ),
-              ],
+        ),
+      ],
+    );
+  }
+
+  Widget _divider() => Container(width: 1, height: 30, color: Gz.border);
+}
+
+/// Орындаушы аккаунтының мәртебесі: (жазу, түс, иконка).
+(String, Color, IconData) _accountStatus(String status) => switch (status) {
+  'approved' => (t('Расталған'), Gz.green, Icons.verified_rounded),
+  'pending' => (t('Тексерілуде'), Gz.blue, Icons.hourglass_top_rounded),
+  'rejected' => (t('Қабылданбаған'), Gz.red, Icons.cancel_outlined),
+  _ => (t('Бұғатталған'), Gz.red, Icons.block_rounded),
+};
+
+/// Шағын дөңгелек белгі (рөл, мәртебе).
+class _Chip extends StatelessWidget {
+  final String text;
+  final Color bg;
+  final Color fg;
+  final IconData? icon;
+  const _Chip({
+    required this.text,
+    required this.bg,
+    required this.fg,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: fg,
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _divider() => Container(
-    width: 1,
-    height: 30,
-    color: Colors.white.withValues(alpha: 0.1),
-  );
 }
 
 class _HeroStat extends StatelessWidget {
@@ -562,7 +575,7 @@ class _HeroStat extends StatelessWidget {
             Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: Gz.ink,
                 fontWeight: FontWeight.w900,
                 fontSize: 17,
                 height: 1.15,
@@ -580,8 +593,8 @@ class _HeroStat extends StatelessWidget {
           child: Text(
             label.toUpperCase(),
             maxLines: 1,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+            style: const TextStyle(
+              color: Gz.textSecondary,
               fontSize: 9.5,
               height: 1.2,
               fontWeight: FontWeight.w700,
@@ -598,102 +611,6 @@ class _HeroStat extends StatelessWidget {
       child: body,
     );
   }
-}
-
-// ============================================================
-// ЖЕДЕЛ ӘРЕКЕТТЕР
-// ============================================================
-class _QuickTile {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _QuickTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-}
-
-/// Ең жиі керек 4 бөлім — екі бағанды тор. Аты ұзын болса (орысша
-/// «Объявления») FittedBox кішірейтеді, ешқашан қиылмайды.
-class _QuickGrid extends StatelessWidget {
-  final List<_QuickTile> tiles;
-  const _QuickGrid({required this.tiles});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < tiles.length; i += 2)
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
-            child: Row(
-              children: [
-                Expanded(child: _tile(tiles[i])),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: i + 1 < tiles.length
-                      ? _tile(tiles[i + 1])
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _tile(_QuickTile q) => PressScale(
-    child: Material(
-      color: Gz.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: q.onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Gz.border),
-            boxShadow: Gz.cardShadow,
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: Gz.tint(q.color, 0.13),
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: Gz.tint(q.color, 0.20), width: 1.2),
-                ),
-                child: Icon(q.icon, size: 19, color: q.color),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    q.label,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      height: 1.2,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 // ============================================================
@@ -800,98 +717,67 @@ class _VehicleCard extends StatelessWidget {
   final VoidCallback onChangeCity;
   const _VehicleCard({required this.ep, required this.onChangeCity});
 
-  (String, Color) get _status => switch (ep.status) {
-    'approved' => (t('Расталған'), Gz.green),
-    'pending' => (t('Тексерілуде'), Gz.blue),
-    'rejected' => (t('Қабылданбаған'), Gz.red),
-    _ => (t('Бұғатталған'), Gz.red),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final (label, color) = _status;
+    final meta = [
+      if (ep.vehiclePlate.isNotEmpty) ep.vehiclePlate,
+      ?ep.city,
+    ].join(' · ');
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.directions_car_filled_outlined,
-                size: 18,
-                color: Gz.ink,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                t('Көлігім'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Gz.tint(Gz.yellow, 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: vehicleIcon(ep.vehicleType, size: 30),
           ),
-          const SizedBox(height: 10),
-          InfoRow(t('Көлік'), ep.vehicleTitle),
-          InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
-          if (ep.city != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 100,
-                    child: Text(
-                      t('Қала'),
-                      style: const TextStyle(
-                        color: Gz.textSecondary,
-                        fontSize: 13.5,
-                      ),
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ep.vehicleTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
                   ),
-                  Expanded(
-                    child: Text(
-                      ep.city!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: onChangeCity,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    // «Ауыстыру» → орысша «Заменить» ұзынырақ: қала атауымен
-                    // қатарда екі жолға сынып, қиылып тұратын.
-                    child: BtnLabel(
-                      t('Ауыстыру'),
-                      style: const TextStyle(fontSize: 12.5),
+                ),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Gz.textSecondary,
+                      fontSize: 12.5,
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+          if (ep.city != null)
+            TextButton(
+              onPressed: onChangeCity,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              // «Ауыстыру» → орысша «Заменить» ұзынырақ — BtnLabel сыйғызады.
+              child: BtnLabel(
+                t('Қаланы ауыстыру'),
+                style: const TextStyle(fontSize: 12.5),
               ),
             ),
         ],
@@ -938,51 +824,72 @@ class _AccountSettingsScreen extends StatelessWidget {
   }
 }
 
-/// Профильдегі табыс картасы (орындаушыға): бүгін / осы ай / барлығы + тарих.
+/// Орындаушының ТАБЫС блогы (Driver Pro) — профильдің басты элементі:
+/// бүгінгі табыс ірі санмен, астында осы ай мен барлығы, және тарих пен
+/// балансқа жылдам өту батырмалары.
 class _ExecEarningsCard extends ConsumerWidget {
-  const _ExecEarningsCard();
+  final VoidCallback onHistory;
+  final VoidCallback onBalance;
+  const _ExecEarningsCard({required this.onHistory, required this.onBalance});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(executorStatsStreamProvider).value;
-    return SectionCard(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        gradient: Gz.heroGradient,
+        borderRadius: BorderRadius.circular(Gz.radius),
+        boxShadow: Gz.cardShadow,
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text(
+            t('Бүгінгі табыс'),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              fmtT(s?.today),
+              maxLines: 1,
+              style: const TextStyle(
+                color: Gz.yellow,
+                fontSize: 32,
+                height: 1.15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.payments_outlined, size: 18, color: Gz.green),
+              Expanded(child: _mini(t('Осы ай'), fmtT(s?.month))),
               const SizedBox(width: 8),
-              Text(
-                t('Табыс'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const EarningsScreen()),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: BtnLabel(t('Толық тарих')),
-              ),
+              Expanded(child: _mini(t('Барлығы'), fmtT(s?.totalEarned))),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _mini(t('Бүгін'), fmtT(s?.today), Gz.green)),
-              const SizedBox(width: 8),
-              Expanded(child: _mini(t('Осы ай'), fmtT(s?.month), Gz.blue)),
+              Expanded(
+                child: _action(Icons.bar_chart_rounded, t('Тарих'), onHistory),
+              ),
               const SizedBox(width: 8),
               Expanded(
-                child: _mini(t('Барлығы'), fmtT(s?.totalEarned), Gz.ink),
+                child: _action(
+                  Icons.account_balance_wallet_rounded,
+                  '${t('Баланс')} · ${fmtT(s?.balance)}',
+                  onBalance,
+                ),
               ),
             ],
           ),
@@ -991,20 +898,16 @@ class _ExecEarningsCard extends ConsumerWidget {
     );
   }
 
-  Widget _mini(String label, String value, Color color) {
+  Widget _mini(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Gz.bg,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Үш карточка бір қатарда тұрғандықтан ені тар: ұзын атау мен
-          // үлкен сома (мыс. «548 300 ₸») бұрын «548 3…» болып ҚИЫЛЫП
-          // көрінбей қалатын. FittedBox `scaleDown` — сыймаса кішірейтеді,
-          // сыйса өлшемін өзгертпейді, ешқашан қиылмайды.
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1012,10 +915,13 @@ class _ExecEarningsCard extends ConsumerWidget {
               label,
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11.5,
+              ),
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1023,14 +929,45 @@ class _ExecEarningsCard extends ConsumerWidget {
               value,
               maxLines: 1,
               softWrap: false,
-              style: TextStyle(
-                fontSize: 15.5,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: color,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _action(IconData icon, String label, VoidCallback onTap) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: SizedBox(
+          height: 42,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 17, color: Gz.yellow),
+              const SizedBox(width: 6),
+              Flexible(
+                child: BtnLabel(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
