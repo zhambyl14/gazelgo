@@ -58,6 +58,13 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   final _addr = TextEditingController(); // редакцияланатын мекенжай аты
   Timer? _debounce;
   Timer? _moveDebounce;
+
+  /// Карта саусақпен жылжып жатыр — орталық пин «көтеріледі».
+  bool _pinLifted = false;
+  Timer? _dropTimer;
+
+  /// Пайдаланушының нақты GPS орны («мен осындамын» көк нүктесі).
+  LatLng? _myPos;
   List<GeoPlace> _results = [];
   String _rawAddress =
       ''; // геокодер қайтарған «шикі» атау (түзетуді анықтау үшін)
@@ -89,6 +96,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
   void dispose() {
     _debounce?.cancel();
     _moveDebounce?.cancel();
+    _dropTimer?.cancel();
     _search.dispose();
     _addr.dispose();
     super.dispose();
@@ -98,6 +106,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     final pos = await Geo.currentPosition();
     if (pos != null && mounted) {
       final p = LatLng(pos.latitude, pos.longitude);
+      setState(() => _myPos = p);
       _map.move(p, 16);
       _center = p;
       _addrLocked = false;
@@ -110,13 +119,11 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     setState(() => _resolving = true);
     final addr = await Geo.reverseDetailed(target);
     // Осы маңда клиенттер бұрын түзеткен атау бар ма?
-    final rawCorr =
-        await Repo.nearbyAddress(target.latitude, target.longitude);
+    final rawCorr = await Repo.nearbyAddress(target.latitude, target.longitude);
     if (!mounted || target != _center) return;
     // Базада «түзетілген атау» ретінде қоқыс тұруы мүмкін (мыс. Алматы
     // ортасында «43.23890, 76.88970ндю») — ондайды клиентке ұсынбаймыз.
-    final corr =
-        (rawCorr == null || Geo.isJunkLabel(rawCorr)) ? null : rawCorr;
+    final corr = (rawCorr == null || Geo.isJunkLabel(rawCorr)) ? null : rawCorr;
     var label = addr.labelFor(widget.city);
     // Геокодер атау таппаса `labelFor` КООРДИНАТА қайтарады — ол мекенжай
     // емес, орындаушыға түсініксіз. Мұндайда жолды бос қалдырамыз да,
@@ -361,7 +368,14 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                 _center = camera.center;
                 // Картаны клиент ӨЗ ҚОЛЫМЕН жылжытты — демек жаңа жерді
                 // іздеп жатыр, ескі атауды ұстап тұрудың қажеті жоқ.
-                if (hasGesture) _addrLocked = false;
+                if (hasGesture) {
+                  _addrLocked = false;
+                  if (!_pinLifted) setState(() => _pinLifted = true);
+                  _dropTimer?.cancel();
+                  _dropTimer = Timer(const Duration(milliseconds: 180), () {
+                    if (mounted) setState(() => _pinLifted = false);
+                  });
+                }
                 _moveDebounce?.cancel();
                 _moveDebounce = Timer(
                   const Duration(milliseconds: 400),
@@ -369,13 +383,17 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                 );
               },
             ),
-            children: [osmTileLayer()],
+            children: [
+              osmTileLayer(),
+              if (_myPos != null)
+                MarkerLayer(markers: [myLocationMarker(_myPos!)]),
+            ],
           ),
           // Орталық пин. Ұшы картаның центріне ДӘЛ түседі ([MapCenterPin]
           // биіктігіне тең бос орынмен теңгереді) — бұрынғы «bottom: 38»
           // жуықтауының орнына нақты есеп, сол себепті таңдалған нүкте мен
           // анықталған мекенжай айырылмайды.
-          MapCenterPin(color: Gz.red, size: 36, busy: _resolving),
+          MapCenterPin(busy: _resolving, lifted: _pinLifted),
           // іздеу өрісі
           Positioned(
             top: 12,

@@ -31,8 +31,54 @@
 
   <title>Tasu</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Flutter жүктелгенше көрінетін ақ экран: Tasu логотип-пині секіріп,
+       астынан сары толқын таралады (қосымшаның ішкі splash-ымен бірдей). */
+    html, body { margin: 0; height: 100%; background: #fff; }
+    #tasu-loader {
+      position: fixed; inset: 0; display: flex; align-items: center;
+      justify-content: center; background: #fff; z-index: 9999;
+      transition: opacity .25s ease;
+    }
+    #tasu-loader .pin { position: relative; width: 82px; height: 100px; }
+    #tasu-loader img {
+      width: 82px; height: 100px; display: block;
+      animation: tasu-hop 1.6s ease-in-out infinite;
+      transform-origin: 50% 100%;
+    }
+    #tasu-loader .ring {
+      position: absolute; left: 50%; bottom: -6px; width: 18px; height: 6px;
+      margin-left: -9px; border: 2px solid rgba(232,168,0,.55);
+      border-radius: 50%; animation: tasu-ring 1.6s ease-out infinite;
+    }
+    @keyframes tasu-hop {
+      0%, 30%, 100% { transform: translateY(0) scale(1, 1); }
+      55% { transform: translateY(-22px) scale(1, 1); }
+      78% { transform: translateY(0) scale(1.05, .93); }
+      88% { transform: translateY(0) scale(1, 1); }
+    }
+    @keyframes tasu-ring {
+      0%, 75% { transform: scale(.4); opacity: 0; }
+      78% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(8); opacity: 0; }
+    }
+  </style>
 </head>
 <body>
+  <div id="tasu-loader">
+    <div class="pin">
+      <img src="icons/tasu_logo.png" alt="Tasu">
+      <div class="ring"></div>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('tasu-loader');
+      if (!el) return;
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 300);
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

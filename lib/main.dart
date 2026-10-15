@@ -379,7 +379,44 @@ class _Splash extends StatefulWidget {
   State<_Splash> createState() => _SplashState();
 }
 
-class _SplashState extends State<_Splash> {
+/// Ашылу анимациясы. Native splash (ақ фон + ортадағы логотип-пин, биіктігі
+/// ~100dp) БІТКЕН ЖЕРДЕН жалғасады: логотип дәл сол орында, сол өлшемде
+/// тұрады, сондықтан ауысу «секірмейді». Содан кейін пин бір рет секіріп
+/// жерге «қонады», қонған жерінен сары толқындар таралады, астынан «Tasu»
+/// жазуы мен слоган біртіндеп шығады.
+///
+/// Жүктеу кезеңдері (сессия → профиль → рөл) әрқайсысы `_Splash`-ты ЖАҢА
+/// данамен қайта салуы мүмкін — анимация басынан қайта ойнамауы үшін
+/// басталу уақыты статикалық [_t0]-да сақталады.
+class _SplashState extends State<_Splash> with TickerProviderStateMixin {
+  static DateTime? _t0;
+  static const _introMs = 1100;
+
+  late final AnimationController _intro;
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..repeat();
+
+  @override
+  void initState() {
+    super.initState();
+    _t0 ??= DateTime.now();
+    final done = DateTime.now().difference(_t0!).inMilliseconds / _introMs;
+    _intro = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: _introMs),
+      value: done.clamp(0.0, 1.0),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _intro.dispose();
+    _pulse.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -392,36 +429,164 @@ class _SplashState extends State<_Splash> {
     }
   }
 
+  /// Пиннің секіруі: 0..0.25 — орнында, 0.25..0.5 — жоғары, 0.5..0.68 —
+  /// төмен түсіп қонады (сәл «жаншылып»), содан кейін тыныш тұрады.
+  static double _hop(double t) {
+    if (t < 0.25 || t > 0.68) return 0;
+    if (t < 0.5) return Curves.easeOut.transform((t - 0.25) / 0.25);
+    return 1 - Curves.easeIn.transform((t - 0.5) / 0.18);
+  }
+
+  static double _squash(double t) {
+    if (t < 0.68 || t > 0.82) return 0;
+    final k = (t - 0.68) / 0.14;
+    return k < 0.5 ? k * 2 : (1 - k) * 2;
+  }
+
+  static double _fade(double t, double from, double to) =>
+      Curves.easeOutCubic.transform(((t - from) / (to - from)).clamp(0.0, 1.0));
+
   @override
   Widget build(BuildContext context) {
+    const logoH = 100.0;
+    const logoW = logoH * 826 / 1013;
+    final logo = Image.asset(
+      'assets/icon/tasu_logo.png',
+      height: logoH,
+      width: logoW,
+      filterQuality: FilterQuality.medium,
+    );
     return Scaffold(
       backgroundColor: Gz.surface,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Image.asset(
-                'assets/icon/icon.png',
-                width: 120,
-                height: 120,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                t('Жүк тасымалы және арнайы техника платформасы'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
-              ),
-            ),
-          ],
+      body: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_intro, _pulse]),
+          builder: (context, _) {
+            final p = _intro.value;
+            final hop = _hop(p);
+            final squash = _squash(p);
+            // Толқындар тек пин қонғаннан кейін басталады.
+            final pulseOn = _fade(p, 0.66, 0.8);
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Пиннің ұшы тұрған «жер» (экран ортасынан logoH/2 төмен).
+                Transform.translate(
+                  offset: const Offset(0, logoH / 2),
+                  child: SizedBox(
+                    width: 180,
+                    height: 60,
+                    child: CustomPaint(
+                      painter: _GroundPainter(
+                        pulse: _pulse.value,
+                        pulseOpacity: pulseOn,
+                        shadow: 1 - hop * 0.6,
+                      ),
+                    ),
+                  ),
+                ),
+                Transform.translate(
+                  offset: Offset(0, -26 * hop),
+                  child: Transform(
+                    alignment: Alignment.bottomCenter,
+                    transform: Matrix4.diagonal3Values(
+                      1 + 0.05 * squash,
+                      1 - 0.07 * squash,
+                      1,
+                    ),
+                    child: logo,
+                  ),
+                ),
+                Transform.translate(
+                  offset: Offset(
+                    0,
+                    logoH / 2 + 62 + 10 * (1 - _fade(p, 0.55, 0.9)),
+                  ),
+                  child: Opacity(
+                    opacity: _fade(p, 0.55, 0.9),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Tasu',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: Gz.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Opacity(
+                          opacity: _fade(p, 0.7, 1),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              t('Жүк тасымалы және арнайы техника платформасы'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Gz.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
+}
+
+/// Пиннің астындағы «жер»: жұмсақ көлеңке-эллипс және одан таралатын
+/// екі сары толқын (бірі екіншісінен жарты кезеңге кешігеді).
+class _GroundPainter extends CustomPainter {
+  final double pulse;
+  final double pulseOpacity;
+  final double shadow;
+  _GroundPainter({
+    required this.pulse,
+    required this.pulseOpacity,
+    required this.shadow,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    if (pulseOpacity > 0) {
+      for (final phase in [pulse, (pulse + 0.5) % 1]) {
+        final k = Curves.easeOut.transform(phase);
+        final w = 18 + 150 * k;
+        canvas.drawOval(
+          Rect.fromCenter(center: c, width: w, height: w * 0.32),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.2
+            ..color = Gz.yellowDark.withValues(
+              alpha: 0.55 * (1 - k) * pulseOpacity,
+            ),
+        );
+      }
+    }
+    canvas.drawOval(
+      Rect.fromCenter(center: c, width: 26 * shadow, height: 8 * shadow),
+      Paint()
+        ..color = Gz.ink.withValues(alpha: 0.18 * shadow)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GroundPainter old) =>
+      old.pulse != pulse ||
+      old.pulseOpacity != pulseOpacity ||
+      old.shadow != shadow;
 }
 
 class _RetryScreen extends StatelessWidget {

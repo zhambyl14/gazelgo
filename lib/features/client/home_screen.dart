@@ -54,6 +54,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
   final _map = MapController();
   Timer? _moveDebounce;
+
+  /// Клиент картаны саусақпен жылжытып жатыр — орталық пин «көтеріледі».
+  bool _pinLifted = false;
+  Timer? _dropTimer;
+
+  /// Пайдаланушының нақты GPS орны («мен осындамын» көк нүктесі).
+  LatLng? _myPos;
   PickedAddress? _from;
   bool _resolvingFrom = true;
   PickedAddress? _to;
@@ -75,9 +82,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   VehicleType _taxiVehicle = VehicleType.taxi;
 
   /// Заказға кететін НАҚТЫ көлік түрі.
-  VehicleType get _vehicle => _category == VehicleCategory.taxi
-      ? _taxiVehicle
-      : _cargoVehicle;
+  VehicleType get _vehicle =>
+      _category == VehicleCategory.taxi ? _taxiVehicle : _cargoVehicle;
 
   @override
   void initState() {
@@ -89,6 +95,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   @override
   void dispose() {
     _moveDebounce?.cancel();
+    _dropTimer?.cancel();
     super.dispose();
   }
 
@@ -105,6 +112,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     final pos = await Geo.currentPosition();
     if (pos != null && mounted) {
       final p = LatLng(pos.latitude, pos.longitude);
+      setState(() => _myPos = p);
       _map.move(p, 15.5);
       _resolveFrom(p, persist: true);
     }
@@ -117,12 +125,20 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       return;
     }
     final p = LatLng(pos.latitude, pos.longitude);
+    if (mounted) setState(() => _myPos = p);
     _map.move(p, 16);
     _resolveFrom(p, persist: true);
   }
 
   void _onMapMove(MapCamera camera, bool hasGesture) {
     if (!hasGesture) return;
+    // Пинді бір рет қана көтереміз (әр кадрда setState жасамаймыз), ал
+    // саусақ тоқтағаннан кейін ~180 мс өткенде орнына қондырамыз.
+    if (!_pinLifted) setState(() => _pinLifted = true);
+    _dropTimer?.cancel();
+    _dropTimer = Timer(const Duration(milliseconds: 180), () {
+      if (mounted) setState(() => _pinLifted = false);
+    });
     _moveDebounce?.cancel();
     _moveDebounce = Timer(
       const Duration(milliseconds: 500),
@@ -278,7 +294,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       final go = await confirmDialog(
         context,
         title: t('Белсенді заказ бар'),
-        message: '$count ${t('белсенді заказыңыз бар — оны «Тапсырыстар» '
+        message:
+            '$count ${t('белсенді заказыңыз бар — оны «Тапсырыстар» '
             'бетінен қадағалаңыз. Жаңа заказ бересіз бе?')}',
         cancelLabel: t('Жоқ'),
         confirmLabel: t('Жаңа заказ'),
@@ -347,7 +364,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                 initialZoom: 13,
                 onPositionChanged: _onMapMove,
               ),
-              children: [osmTileLayer()],
+              children: [
+                osmTileLayer(),
+                if (_myPos != null)
+                  MarkerLayer(markers: [myLocationMarker(_myPos!)]),
+              ],
             ),
           ),
           // Экранның ортасындағы пин — картаның `camera.center`-і, яғни
@@ -359,11 +380,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
           // белгіленген жер мен анықталған мекенжай дәл сәйкес келеді.
           Positioned.fill(
             bottom: _bottomInset,
-            child: MapCenterPin(
-              color: Gz.green,
-              size: 34,
-              busy: _resolvingFrom,
-            ),
+            child: MapCenterPin(busy: _resolvingFrom, lifted: _pinLifted),
           ),
           SafeArea(
             child: Column(
@@ -520,7 +537,9 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           if (!_panelCollapsed) ...[
                                             const SizedBox(height: 2),
                                             Text(
-                                              t('Картадан орныңызды белгілеңіз'),
+                                              t(
+                                                'Картадан орныңызды белгілеңіз',
+                                              ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
@@ -581,7 +600,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                               setState(() => _category = c),
                                           // «ЖАҢА» белгісін модератор алып
                                           // тастай алады (0058).
-                                          showNewBadge: ref
+                                          showNewBadge:
+                                              ref
                                                   .watch(newBadgesProvider)
                                                   .value
                                                   ?.taxi ??
@@ -599,16 +619,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         VehicleTypeCarousel(
                                           selected: _taxiVehicle,
                                           types: kTaxiVehicleTypes,
-                                          onChanged: (v) => setState(
-                                            () => _taxiVehicle = v,
-                                          ),
+                                          onChanged: (v) =>
+                                              setState(() => _taxiVehicle = v),
                                         )
                                       else
                                         VehicleTypeCarousel(
                                           selected: _cargoVehicle,
-                                          onChanged: (v) => setState(
-                                            () => _cargoVehicle = v,
-                                          ),
+                                          onChanged: (v) =>
+                                              setState(() => _cargoVehicle = v),
                                         ),
                                       const SizedBox(height: 10),
                                       // ---- МАРШРУТ ----
@@ -630,8 +648,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                                 ? t('Анықталуда…')
                                                 : (_from?.address ??
                                                       t('Картаны жылжытыңыз')),
-                                            dim: _resolvingFrom ||
-                                                _from == null,
+                                            dim:
+                                                _resolvingFrom || _from == null,
                                             onTap: _resolvingFrom
                                                 ? null
                                                 : _editFrom,
@@ -652,9 +670,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           ),
                                           if (_stops.isEmpty)
                                             RouteField(
-                                              mark: const RoutePointMark.finish(),
+                                              mark:
+                                                  const RoutePointMark.finish(),
                                               label: t('Қайда'),
-                                              text: _to?.address ??
+                                              text:
+                                                  _to?.address ??
                                                   t('Қайда жеткіземіз?'),
                                               dim: _to == null,
                                               onTap: _pickTo,
