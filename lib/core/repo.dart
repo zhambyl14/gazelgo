@@ -56,8 +56,9 @@ class Repo {
       }
     } on FunctionException catch (e) {
       final d = e.details;
-      if (d is Map && d['error'] != null)
+      if (d is Map && d['error'] != null) {
         throw Exception(d['error'].toString());
+      }
       throw Exception('SERVER_ERROR');
     }
     final n = Phone.normalize(phone);

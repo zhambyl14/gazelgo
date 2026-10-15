@@ -62,7 +62,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
 
   // ---------------------------------------------------------------- әрекеттер
 
-  /// [ReorderableListView.onReorder] жаңа орынды элемент ӘЛІ тізімде тұрған
+  /// `ReorderableListView.onReorder` жаңа орынды элемент ӘЛІ тізімде тұрған
   /// күйде береді — сол себепті төмен қарай жылжытқанда бір саты түзетеміз
   /// (қосымшадағы басқа сүйрелетін тізімдер де осылай жасайды).
   Future<void> _reorder(int from, int to) async {
@@ -169,6 +169,8 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
           header: _intro(),
           // Тақырып (header) — жылжымайтын элемент, сол себепті сүйреу
           // индекстері бірге жылжымайды: тізім өзі 0-ден басталады.
+          // onReorderItem тек жаңа Flutter-де бар — ескі build-тар үшін сақталды.
+          // ignore: deprecated_member_use
           onReorder: _reorder,
           itemBuilder: (context, i) => _tile(_items[i], i),
         ),

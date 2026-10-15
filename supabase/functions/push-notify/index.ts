@@ -9,6 +9,11 @@
 // (PUSH_TRIGGER_SECRET). Google-ге FCM HTTP v1 API арқылы шығамыз: service
 // account кілтімен JWT құрып, OAuth2 access_token аламыз (firebase-admin
 // SDK-сыз — Deno-да ол жоқ, қолмен RS256 қол қоямыз).
+//
+// Диагностика: `validate_only: true` берілсе, FCM хабарды ЖІБЕРМЕЙ тек
+// тексереді (токен жарамды ма, кілт дұрыс па). `all_tokens: true` —
+// target_user_ids-ке қарамай, базадағы БАРЛЫҚ токенді алады (тек
+// validate_only-мен бірге рұқсат). Әр FCM қатесі журналға жазылады.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 Deno.serve(async (req: Request) => {
@@ -26,13 +31,13 @@ Deno.serve(async (req: Request) => {
     title?: string;
     body?: string;
     // Орысша нұсқасы (0045) — берілмесе, қазақшасы қолданылады. Әр
-    // пайдаланушыға `profiles.lang` бойынша БІР ҒАНА тіл жіберіледі
-    // (бұрын қосымша сол оқиға туралы екінші, аударылған локал
-    // уведомление көрсететін — сол қосарлану жойылды).
+    // пайдаланушыға `profiles.lang` бойынша БІР ҒАНА тіл жіберіледі.
     title_ru?: string;
     body_ru?: string;
-    data?: Record<string, string>;
+    data?: Record<string, unknown>;
     target_user_ids?: string[] | null;
+    validate_only?: boolean;
+    all_tokens?: boolean;
   };
   try {
     body = await req.json();
@@ -42,63 +47,86 @@ Deno.serve(async (req: Request) => {
   if (!body.title || !body.body) {
     return json({ error: "BAD_INPUT" }, 400);
   }
+  const validateOnly = body.validate_only === true;
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  let targetIds = Array.isArray(body.target_user_ids)
-    ? body.target_user_ids.filter((id): id is string => typeof id === "string")
-    : [];
+  let tokenRows: { token: string; user_id: string; platform: string }[] = [];
+  if (validateOnly && body.all_tokens === true) {
+    const { data, error } = await admin
+      .from("push_tokens")
+      .select("token, user_id, platform");
+    if (error) return json({ error: "SERVER_ERROR" }, 500);
+    tokenRows = data ?? [];
+  } else {
+    let targetIds = Array.isArray(body.target_user_ids)
+      ? body.target_user_ids.filter((id): id is string => typeof id === "string")
+      : [];
 
-  // target_user_ids жіберілмесе — әдепкі бойынша барлық модератор (ескі
-  // «жаңа өтінім» broadcast тәртібі).
-  if (targetIds.length === 0) {
-    const { data: mods, error: modError } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("role", "moderator");
-    if (modError) return json({ error: "SERVER_ERROR" }, 500);
-    targetIds = (mods ?? []).map((m) => m.id as string);
-  }
-  if (targetIds.length === 0) return json({ ok: true, sent: 0 }, 200);
+    // target_user_ids жіберілмесе — әдепкі бойынша барлық модератор (ескі
+    // «жаңа өтінім» broadcast тәртібі).
+    if (targetIds.length === 0) {
+      const { data: mods, error: modError } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("role", "moderator");
+      if (modError) return json({ error: "SERVER_ERROR" }, 500);
+      targetIds = (mods ?? []).map((m) => m.id as string);
+    }
+    if (targetIds.length === 0) {
+      console.log("push: no targets", body.data?.type ?? "");
+      return json({ ok: true, sent: 0 }, 200);
+    }
 
-  const { data: tokenRows, error: tokError } = await admin
-    .from("push_tokens")
-    .select("token, user_id")
-    .in("user_id", targetIds);
-  if (tokError) return json({ error: "SERVER_ERROR" }, 500);
-
-  // Әр пайдаланушының тілі (0045). Оқу сәтсіз болса — бәріне қазақша.
-  const langOf = new Map<string, string>();
-  const { data: langRows } = await admin
-    .from("profiles")
-    .select("id, lang")
-    .in("id", targetIds);
-  for (const r of langRows ?? []) {
-    langOf.set(r.id as string, (r.lang as string) === "ru" ? "ru" : "kk");
+    const { data, error } = await admin
+      .from("push_tokens")
+      .select("token, user_id, platform")
+      .in("user_id", targetIds);
+    if (error) return json({ error: "SERVER_ERROR" }, 500);
+    tokenRows = data ?? [];
   }
 
   // Бір токен бірнеше рет келмеуі керек (әйтпесе БІР құрылғыға екі
   // хабарландыру түседі).
-  const byToken = new Map<string, string>(); // token → user_id
-  for (const r of tokenRows ?? []) {
-    byToken.set(r.token as string, r.user_id as string);
+  const byToken = new Map<string, { user_id: string; platform: string }>();
+  for (const r of tokenRows) {
+    byToken.set(r.token, { user_id: r.user_id, platform: r.platform });
   }
   const tokens = [...byToken.keys()];
-  if (tokens.length === 0) return json({ ok: true, sent: 0 }, 200);
+  if (tokens.length === 0) {
+    console.log("push: targets have no tokens", body.data?.type ?? "");
+    return json({ ok: true, sent: 0 }, 200);
+  }
+
+  // Әр пайдаланушының тілі (0045). Оқу сәтсіз болса — бәріне қазақша.
+  const userIds = [...new Set([...byToken.values()].map((v) => v.user_id))];
+  const langOf = new Map<string, string>();
+  const { data: langRows } = await admin
+    .from("profiles")
+    .select("id, lang")
+    .in("id", userIds);
+  for (const r of langRows ?? []) {
+    langOf.set(r.id as string, (r.lang as string) === "ru" ? "ru" : "kk");
+  }
 
   let accessToken: string;
   try {
     accessToken = await getGoogleAccessToken();
   } catch (e) {
-    console.error("FCM_AUTH_FAILED", e);
-    return json({ error: "FCM_AUTH_FAILED" }, 500);
+    console.error("FCM_AUTH_FAILED", String(e));
+    return json({ error: "FCM_AUTH_FAILED", detail: String(e) }, 500);
   }
   const projectId = Deno.env.get("FCM_PROJECT_ID")!;
 
-  const data = body.data ?? {};
+  // FCM `data` — тек жолдар (string) болуы керек, әйтпесе БҮКІЛ хабар
+  // 400 INVALID_ARGUMENT-пен қайтарылады.
+  const data: Record<string, string> = {};
+  for (const [k, v] of Object.entries(body.data ?? {})) {
+    if (v !== null && v !== undefined) data[k] = String(v);
+  }
   const titleKk = body.title;
   const bodyKk = body.body;
   const titleRu = body.title_ru ?? titleKk;
@@ -106,8 +134,11 @@ Deno.serve(async (req: Request) => {
 
   let sent = 0;
   const staleTokens: string[] = [];
-  for (const token of tokens) {
-    const ru = langOf.get(byToken.get(token)!) === "ru";
+  const errors: Record<string, number> = {};
+
+  const sendOne = async (token: string) => {
+    const owner = byToken.get(token)!;
+    const ru = langOf.get(owner.user_id) === "ru";
     const title = ru ? titleRu : titleKk;
     const bodyText = ru ? bodyRu : bodyKk;
     try {
@@ -120,10 +151,11 @@ Deno.serve(async (req: Request) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            validate_only: validateOnly,
             message: {
               token,
               notification: { title, body: bodyText },
-              data,
+              data: { ...data, title, body: bodyText },
               android: {
                 priority: "high",
                 notification: {
@@ -138,8 +170,18 @@ Deno.serve(async (req: Request) => {
                 },
               },
               apns: {
-                headers: { "apns-priority": "10" },
+                headers: { "apns-priority": "10", "apns-push-type": "alert" },
                 payload: { aps: { sound: "default" } },
+              },
+              // Web (PWA, gazelgo.pages.dev): firebase-messaging-sw.js
+              // хабарды өзі көрсетеді, басқанда қосымша ашылады.
+              webpush: {
+                headers: { Urgency: "high" },
+                notification: {
+                  icon: "/icons/Icon-192.png",
+                  badge: "/icons/Icon-192.png",
+                },
+                fcm_options: { link: "/" },
               },
             },
           }),
@@ -147,28 +189,62 @@ Deno.serve(async (req: Request) => {
       );
       if (res.ok) {
         sent++;
-      } else {
-        const errText = await res.text();
-        if (res.status === 404 || /UNREGISTERED|NOT_FOUND/i.test(errText)) {
-          staleTokens.push(token);
-        }
+        return;
+      }
+      const errText = await res.text();
+      const code =
+        /UNREGISTERED|SENDER_ID_MISMATCH|THIRD_PARTY_AUTH_ERROR|INVALID_ARGUMENT|QUOTA_EXCEEDED|UNAVAILABLE|INTERNAL|PERMISSION_DENIED|UNAUTHENTICATED/
+          .exec(errText)?.[0] ?? `HTTP_${res.status}`;
+      errors[`${owner.platform}:${code}`] =
+        (errors[`${owner.platform}:${code}`] ?? 0) + 1;
+      console.error(
+        "FCM_SEND_ERROR",
+        owner.platform,
+        res.status,
+        errText.slice(0, 400),
+      );
+      // Токен жарамсыз (қосымша жойылған, басқа Firebase жобасынан т.б.) —
+      // базадан өшіреміз, әйтпесе әр жолы бос сұраныс жібере береміз.
+      if (
+        res.status === 404 ||
+        /UNREGISTERED|SENDER_ID_MISMATCH|registration token is not a valid/i
+          .test(errText)
+      ) {
+        staleTokens.push(token);
       }
     } catch (e) {
-      console.error("FCM_SEND_FAILED", token, e);
+      errors[`${owner.platform}:FETCH_FAILED`] =
+        (errors[`${owner.platform}:FETCH_FAILED`] ?? 0) + 1;
+      console.error("FCM_SEND_FAILED", owner.platform, String(e));
     }
+  };
+
+  // Параллель (10-нан) — көп алушы болса да функция тез аяқталады.
+  for (let i = 0; i < tokens.length; i += 10) {
+    await Promise.all(tokens.slice(i, i + 10).map(sendOne));
   }
 
-  if (staleTokens.length > 0) {
+  if (staleTokens.length > 0 && !validateOnly) {
     await admin.from("push_tokens").delete().in("token", staleTokens);
   }
 
-  return json({ ok: true, sent, cleaned: staleTokens.length }, 200);
+  const result = {
+    ok: true,
+    validate_only: validateOnly,
+    tokens: tokens.length,
+    sent,
+    stale: staleTokens.length,
+    errors,
+  };
+  console.log("push:", body.data?.type ?? "", JSON.stringify(result));
+  return json(result, 200);
 });
 
 /// Google service account кілтімен (RS256, JWT bearer flow) OAuth2
 /// access_token алады — `firebase-admin` жоқ Deno ортасында осылай.
 async function getGoogleAccessToken(): Promise<string> {
-  const saJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON")!;
+  const saJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON");
+  if (!saJson) throw new Error("FCM_SERVICE_ACCOUNT_JSON is not set");
   const sa = JSON.parse(saJson) as {
     client_email: string;
     private_key: string;
@@ -226,6 +302,7 @@ function base64urlBytes(bytes: Uint8Array): string {
 
 function pemToDer(pem: string): ArrayBuffer {
   const b64 = pem
+    .replace(/\\n/g, "\n")
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
     .replace(/\s+/g, "");

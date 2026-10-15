@@ -159,6 +159,8 @@ class _StopsSheetState extends State<StopsSheet> {
                 shrinkWrap: true,
                 buildDefaultDragHandles: false,
                 itemCount: _dest.length,
+                // onReorderItem тек жаңа Flutter-де бар — ескі build-тар үшін сақталды.
+                // ignore: deprecated_member_use
                 onReorder: _reorder,
                 itemBuilder: (context, i) {
                   final last = i == _dest.length - 1;

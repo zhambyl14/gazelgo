@@ -224,6 +224,8 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
           itemCount: _items.length,
           header: _intro(),
+          // onReorderItem тек жаңа Flutter-де бар — ескі build-тар үшін сақталды.
+          // ignore: deprecated_member_use
           onReorder: _reorder,
           itemBuilder: (context, i) => _tile(_items[i], i),
         ),

@@ -516,8 +516,9 @@ class _ConfirmLoadingCard extends StatelessWidget {
               try {
                 await Repo.orderAdvance(orderId, 'loading');
               } catch (e) {
-                if (context.mounted)
+                if (context.mounted) {
                   showSnack(context, errText(e), error: true);
+                }
               }
             },
           ),

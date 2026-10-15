@@ -28,13 +28,12 @@ class Env {
   /// функциясына қосу керек (supabase/APPLY.md → «Telegram верификация»).
   static const telegramBot = 'tasuappbot';
 
-  /// Веб нұсқасының көпшілікке ашық домені (Vercel) — «Сапарды бөлісу»
+  /// Веб нұсқасының көпшілікке ашық домені (Cloudflare Pages) — «Сапарды бөлісу»
   /// сілтемесі (0060) осыған негізделеді: мобиль қосымша өз веб доменін
-  /// білмейтіндіктен, осы жерде тұрақты жазылады. ӨЗ Vercel доменіңізге
-  /// ауыстырыңыз (Vercel жобасының Deployments бетінде көрінеді), әйтпесе
-  /// бөлісу сілтемесі жұмыс істемейді.
+  /// білмейтіндіктен, осы жерде тұрақты жазылады. Домен ауысса — осында
+  /// жаңартыңыз (бұрын бөтен адамның tasu.vercel.app сайтына сілтейтін).
   static const webBaseUrl = String.fromEnvironment(
     'WEB_BASE_URL',
-    defaultValue: 'https://tasu.vercel.app',
+    defaultValue: 'https://gazelgo.pages.dev',
   );
 }

@@ -41,6 +41,39 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Web push көмекшілері (lib/core/web_notify_web.dart шақырады).
+    // Қосымша АШЫҚ тұрғанда келген push-ты жүйелік хабарландыру ретінде
+    // көрсету — iOS PWA-да `new Notification()` жұмыс істемейді, тек
+    // service worker тіркеуі арқылы көрсетуге болады.
+    window.tasuShowNotification = function (title, body) {
+      try {
+        if (!('serviceWorker' in navigator) || !('Notification' in window) ||
+            Notification.permission !== 'granted') return;
+        navigator.serviceWorker
+          .getRegistration('/firebase-cloud-messaging-push-scope')
+          .then(function (reg) {
+            if (!reg) return;
+            return reg.showNotification(title, {
+              body: body,
+              icon: '/icons/Icon-192.png',
+              badge: '/icons/Icon-192.png',
+            });
+          })
+          .catch(function () {});
+      } catch (e) {}
+    };
+    // Қосымша «Басты экранға қосылған» (PWA) күйде ашылды ма? iPhone-да
+    // web push тек осы күйде жұмыс істейді.
+    window.tasuIsStandalone = function () {
+      try {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true;
+      } catch (e) {
+        return false;
+      }
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

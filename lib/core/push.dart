@@ -7,12 +7,27 @@ import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'notify.dart';
 import 'repo.dart';
+import 'web_notify.dart';
+
+/// Web-те push-ты қосу үшін пайдаланушыдан не керек (баннер көрсетеді).
+enum WebPushPrompt {
+  /// Браузер рұқсат сұрауға дайын — «Хабарламаларды қосу» батырмасы.
+  permission,
+
+  /// iPhone/iPad Safari: web push тек «Басты экранға қосылған» (PWA)
+  /// қосымшада жұмыс істейді — соны үйрететін нұсқау.
+  install,
+}
 
 /// Қосымша толық жабық болса да жеткізілетін push-хабарландырулар (FCM).
 ///
 /// [Notify] (flutter_local_notifications) тек қосымша тірі/фонда тұрғанда
 /// жұмыс істейді — модератор газелист өтінімін дереу көруі маңызды болғандықтан
 /// (телефон құлыпты, қосымша жабық болса да), нағыз push қажет.
+///
+/// Web (gazelgo.pages.dev, PWA) те қолдайды: токен `firebase-messaging-sw.js`
+/// service worker арқылы алынады, рұқсатты пайдаланушы батырманы басып
+/// береді ([requestWebPermission] — iOS рұқсатты тек басу арқылы сұратады).
 ///
 /// Firebase әлі бапталмаса ([FirebaseOpts.isConfigured] false) — үнсіз
 /// өшірулі күйде қалады, қосымша жұмысын жалғастырады.
@@ -35,6 +50,11 @@ class Push {
   /// «Жаңа заказ» push-ы келеді (нақты табылған ақау).
   static String? _syncedUid;
 
+  /// Web-те push қосу үшін пайдаланушыдан қажет әрекет (null — ештеңе
+  /// керек емес: қосулы, бас тартылған не браузер қолдамайды). Баннер
+  /// ([WebPushBanner]) осыны тыңдайды.
+  static final webPrompt = ValueNotifier<WebPushPrompt?>(null);
+
   /// Нағыз push (FCM) жұмыс істеп тұр ма? Қосымша ішіндегі қосарланған локал
   /// уведомлениелер осыны тексереді: push бар болса — оқиға туралы сервер
   /// БІР РЕТ, пайдаланушының тілінде хабарлайды.
@@ -46,7 +66,7 @@ class Push {
   static void Function(Map<String, dynamic> data)? onOpen;
 
   static Future<void> init() async {
-    if (kIsWeb || !FirebaseOpts.isConfigured) return;
+    if (!FirebaseOpts.isConfigured) return;
     // Бастапқы баптау бір рет қана, ал ТОКЕН СИНХРОНЫ әр кіруде қайталанады
     // (төменде) — сол себепті ерте `return` жасамаймыз.
     if (_firebaseReady) {
@@ -79,17 +99,21 @@ class Push {
       return;
     }
 
+    final messaging = FirebaseMessaging.instance;
+
+    if (kIsWeb) {
+      await _initWeb(messaging);
+      return;
+    }
+
     _initStarted = true;
     _firebaseReady = true;
-    final messaging = FirebaseMessaging.instance;
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // Навигация мен foreground баннер листенерлерін БАСҚА ҚАДАМДАРДАН БҰРЫН
     // тіркейміз: permission сұрау не getToken() желі/құрылғы себебімен
     // сәтсіз аяқталса да (бөлек try-catch төменде), осы екеуі әрқашан
-    // жұмыс істеуі керек — әйтпесе пуш жүйелік tray арқылы келгенімен,
-    // басқанда навигация болмай қалады (бір try-блокта бәрі бірге тұрғанда
-    // осы дәл осылай сынған еді).
+    // жұмыс істеуі керек.
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen((m) => onOpen?.call(m.data));
     try {
@@ -114,23 +138,90 @@ class Push {
         _syncedUid = null; // жаңа токен — қайта тіркеу қажет
         _saveToken(t);
       });
-      await syncToken();
     } catch (_) {}
+    await syncToken();
+  }
+
+  /// Web: браузер push-ты қолдаса ғана іске қосылады. Рұқсат БҰРЫН берілген
+  /// болса — бірден токен тіркейміз; әлі сұралмаса — баннер көрсетеміз
+  /// (iOS Safari рұқсатты тек пайдаланушы батырманы басқанда сұратады).
+  static Future<void> _initWeb(FirebaseMessaging messaging) async {
+    bool supported = false;
+    try {
+      supported = await messaging.isSupported();
+    } catch (_) {}
+    if (!supported) {
+      // iPhone Safari-де push тек «Басты экранға қосылған» қосымшада бар.
+      if (defaultTargetPlatform == TargetPlatform.iOS && !webIsStandalone()) {
+        webPrompt.value = WebPushPrompt.install;
+      }
+      return;
+    }
+
+    _initStarted = true;
+    _firebaseReady = true;
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen((m) => onOpen?.call(m.data));
+    await _refreshWebPermission();
+  }
+
+  static Future<void> _refreshWebPermission() async {
+    AuthorizationStatus status;
+    try {
+      status = (await FirebaseMessaging.instance.getNotificationSettings())
+          .authorizationStatus;
+    } catch (_) {
+      return;
+    }
+    switch (status) {
+      case AuthorizationStatus.authorized:
+      case AuthorizationStatus.provisional:
+        webPrompt.value = null;
+        await syncToken();
+      case AuthorizationStatus.notDetermined:
+        webPrompt.value = WebPushPrompt.permission;
+      case AuthorizationStatus.denied:
+        webPrompt.value = null;
+    }
+  }
+
+  /// Web баннеріндегі «Қосу» батырмасы. Пайдаланушы басқан сәтте ғана
+  /// шақырылуы керек (Safari рұқсат терезесін тек осылай көрсетеді).
+  static Future<void> requestWebPermission() async {
+    if (!kIsWeb || !_initStarted) return;
+    try {
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint('Push: web permission request failed: $e');
+    }
+    _syncedUid = null;
+    await _refreshWebPermission();
   }
 
   /// FCM токенін АҒЫМДАҒЫ пайдаланушыға тіркеу. Кірген сайын шақырылады:
   /// бір телефонда аккаунт ауысса, токен жаңа иесіне көшеді (`save_push_token`
   /// сервер жағында `on conflict (token)` арқылы иесін ауыстырады).
   static Future<void> syncToken() async {
-    if (kIsWeb || !_initStarted) return;
+    if (!_initStarted) return;
     final uid = Repo.uid;
     if (uid == null || uid == _syncedUid) return;
     try {
+      if (kIsWeb) {
+        final s = await FirebaseMessaging.instance.getNotificationSettings();
+        if (s.authorizationStatus != AuthorizationStatus.authorized &&
+            s.authorizationStatus != AuthorizationStatus.provisional) {
+          return;
+        }
+      }
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) return;
       // `_saveToken` қатені жұтады — мұнда тікелей шақырамыз, сәтсіз болса
       // төмендегі `_ready` орнатылмай, резерв уведомлениелер қосулы қалады.
-      await Repo.savePushToken(token, defaultTargetPlatform.name);
+      await Repo.savePushToken(token, _platformName);
       _syncedUid = uid;
       // Токен нақты сақталған соң ғана «push жұмыс істейді» деп есептейміз:
       // әйтпесе (Play Services жоқ, желі жоқ т.б.) сервер бұл құрылғыға
@@ -138,7 +229,7 @@ class Push {
       // өшірулі тұрып, пайдаланушы ЕШТЕҢЕ алмай қалатын еді.
       _ready = true;
     } catch (e) {
-      debugPrint('Push: save_push_token RPC failed: $e');
+      debugPrint('Push: token sync failed: $e');
     }
   }
 
@@ -146,43 +237,43 @@ class Push {
   /// шыққан пайдаланушының push-ы келе береді (жаңа иесі кірмей тұрып та).
   static Future<void> clearToken() async {
     _syncedUid = null;
-    if (kIsWeb || !_initStarted) return;
+    _ready = false;
+    if (!_initStarted) return;
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) await Repo.deletePushToken(token);
     } catch (_) {}
   }
 
+  static String get _platformName =>
+      kIsWeb ? 'web' : defaultTargetPlatform.name;
+
   /// Foreground хабарды көрсету. iOS-та жүйе баннерді өзі шығарады
   /// (жоғарыдағы presentation options), сол себепті notification payload
   /// бар хабарды iOS-та ҚАЙТА көрсетпейміз (қосарланбау үшін). Android-та
   /// FCM foreground-та баннер шығармайды — Notify (local) арқылы көрсетеміз.
+  /// Web-те қосымша ашық тұрғанда браузер де өзі көрсетпейді —
+  /// service worker арқылы жүйелік хабарландыру шығарамыз.
   static void _onForegroundMessage(RemoteMessage m) {
     final n = m.notification;
-    final payload = jsonEncode(m.data);
-    if (n == null) {
-      // Деректі ғана (data-only) хабар — жүйе ешбір платформада өзі
-      // көрсетпейді, сол себепті екеуінде де local арқылы шығарамыз.
-      final title = m.data['title'] as String?;
-      final body = m.data['body'] as String? ?? '';
-      if (title != null && title.isNotEmpty) {
-        Notify.show(title, body, id: _fgId++, payload: payload);
-      }
+    final title = n?.title ?? m.data['title'] as String?;
+    final body = n?.body ?? m.data['body'] as String? ?? '';
+    if (title == null || title.isEmpty) return;
+
+    if (kIsWeb) {
+      showWebNotification(title, body);
       return;
     }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      Notify.show(
-        n.title ?? 'Tasu',
-        n.body ?? '',
-        id: _fgId++,
-        payload: payload,
-      );
+    final payload = jsonEncode(m.data);
+    if (n == null || defaultTargetPlatform == TargetPlatform.android) {
+      Notify.show(title, body, id: _fgId++, payload: payload);
     }
   }
 
   static Future<void> _saveToken(String token) async {
+    if (Repo.uid == null) return;
     try {
-      await Repo.savePushToken(token, defaultTargetPlatform.name);
+      await Repo.savePushToken(token, _platformName);
     } catch (e) {
       debugPrint('Push: refreshed token RPC failed: $e');
     }

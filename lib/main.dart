@@ -28,6 +28,7 @@ import 'features/moderator/moderator_shell.dart';
 import 'features/support/support_screen.dart';
 import 'shared/portrait_frame.dart';
 import 'shared/update_gate.dart';
+import 'shared/web_push_banner.dart';
 import 'shared/widgets.dart';
 
 /// Push/локал уведомлениелерден навигация үшін — түбір Navigator кілті.
@@ -222,7 +223,7 @@ class GazelGoApp extends StatelessWidget {
             ),
             // Тік (9:16) формат: телефонда — өзгеріссіз, кең терезеде
             // (веб/ноутбук/планшет) қосымша сол пропорцияда ортада салынады.
-            child: PortraitFrame(child: child!),
+            child: PortraitFrame(child: WebPushBanner(child: child!)),
           );
         },
         home: _appHome(),
@@ -342,7 +343,9 @@ class _ExecutorRouter extends ConsumerWidget {
       ),
       data: (e) {
         // Модератор БҰҒАТТАҒАН аккаунт — қосымшаға кіре алмайды.
-        if (e != null && e.status == 'blocked') return PendingScreen(profile: e);
+        if (e != null && e.status == 'blocked') {
+          return PendingScreen(profile: e);
+        }
         // ӘЛІ ӨТІНІМ ТОЛТЫРМАҒАН (профиль жоқ) да ExecutorShell-ге кіреді.
         // Бұрын мұндай адам бірден ExecutorApplyScreen-ге тірелетін де,
         // құжаттарын жинамайынша қосымшада не бар екенін МҮЛДЕМ көрмейтін.
