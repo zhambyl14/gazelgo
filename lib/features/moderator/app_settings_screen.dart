@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/env.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
@@ -120,6 +121,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _iosUrl = TextEditingController();
   final _updateMessage = TextEditingController();
 
+  /// Кіру/тіркелу бетіндегі «Көмек» батырмасының WhatsApp нөмірі (0072).
+  final _supportWhatsApp = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -145,6 +149,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _androidUrl.dispose();
     _iosUrl.dispose();
     _updateMessage.dispose();
+    _supportWhatsApp.dispose();
     _schedMinHours.dispose();
     _schedMaxDays.dispose();
     _referralBonusAmount.dispose();
@@ -176,6 +181,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final bot = (s['topup_bot'] as Map?) ?? {};
       _botRaw = Map<String, dynamic>.from(bot);
       _botEnabled = bot['enabled'] == true;
+      final contact = (s['support_contact'] as Map?) ?? {};
+      _supportWhatsApp.text = '${contact['whatsapp'] ?? Env.supportWhatsApp}';
       final supportBot = (s['support_bot'] as Map?) ?? {};
       _supportBotRaw = Map<String, dynamic>.from(supportBot);
       _supportBotEnabled = supportBot['enabled'] == true;
@@ -336,6 +343,23 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await Repo.modUpdateSetting('bonus', next.toMap());
     if (mounted) {
       setState(() => _bonus = next);
+      showSnack(context, t('Сақталды'));
+    }
+  }
+
+  /// «Көмек» батырмасының WhatsApp нөмірі. Тек цифрлар қалдырылады;
+  /// 8-ден басталса (8 747…) — 7-ге ауыстырамыз (wa.me елдік кодты талап етеді).
+  Future<void> _saveSupportContact() async {
+    var n = _supportWhatsApp.text.replaceAll(RegExp(r'D'), '');
+    if (n.length == 11 && n.startsWith('8')) n = '7${n.substring(1)}';
+    if (n.length == 10) n = '7$n';
+    if (!RegExp(r'^7d{10}$').hasMatch(n)) {
+      showSnack(context, t('Нөмірді 7XXXXXXXXXX түрінде жазыңыз'), error: true);
+      return;
+    }
+    await Repo.modUpdateSetting('support_contact', {'whatsapp': n});
+    if (mounted) {
+      setState(() => _supportWhatsApp.text = n);
       showSnack(context, t('Сақталды'));
     }
   }
@@ -1287,6 +1311,34 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             onLabel: t('Бот қолдау чатына жауап беріп тұр'),
             offLabel: t('Барлық хабарлама тек модераторға келеді'),
             onChanged: _toggleSupportBot,
+          ),
+          const SizedBox(height: 24),
+          // ---- Кіру/тіркелу «Көмек» батырмасы (0072) ----
+          _sectionTitle(t('Тіркелудегі «Көмек» (WhatsApp)')),
+          Text(
+            t('Кіру және тіркелу беттеріндегі «Көмек» батырмасы осы нөмірдің '
+                'WhatsApp-ына апарады. Кірген пайдаланушылар қолдау чатын '
+                'қолданады.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 10),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _supportWhatsApp,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: t('WhatsApp нөмірі'),
+                    hintText: '77001234567',
+                    prefixIcon: const Icon(Icons.chat_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                BusyButton(label: t('Сақтау'), onPressed: _saveSupportContact),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           // ---- ЖАҢА БӨЛІМ: клиентке пайдалы фичалар (0060) ----

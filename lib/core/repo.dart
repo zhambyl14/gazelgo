@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'env.dart';
 import 'models.dart';
 import 'phone.dart';
 import 'prefs.dart';
@@ -560,6 +561,19 @@ class Repo {
 
   /// Мәжбүрлі жаңарту баптауы (0030) — авторизациясыз да шақырылады
   /// (кіру экранында тұрған ескі нұсқаны да бұғаттау үшін).
+  /// Кіру/тіркелу бетіндегі «Көмек» батырмасының WhatsApp нөмірі (0072,
+  /// модератор баптауы). Авторизациясыз шақырылады. Желі қатесінде не
+  /// баптау бос болса — [Env.supportWhatsApp] (кодтағы әдепкі нөмір).
+  static Future<String> supportWhatsApp() async {
+    try {
+      final res = await c.rpc('support_contact');
+      final n = (res is Map ? '${res['whatsapp'] ?? ''}' : '')
+          .replaceAll(RegExp(r'\D'), '');
+      if (n.length >= 10) return n;
+    } catch (_) {}
+    return Env.supportWhatsApp;
+  }
+
   static Future<Map<String, dynamic>> appVersionGate() async {
     final res = await c.rpc('app_version_gate');
     return Map<String, dynamic>.from(res as Map);

@@ -5,6 +5,7 @@ import '../../core/lang.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/help_button.dart';
 import '../../shared/widgets.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -72,16 +73,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final go = await confirmDialog(
       context,
       title: t('Бұл нөмір әлі тіркелмеген'),
-      message: t('Алдымен тіркелу қажет — бір минут алады: аты-жөніңіз, '
-          'құпиясөз және Telegram арқылы нөмірді растау.'),
+      message: t(
+        'Алдымен тіркелу қажет — бір минут алады: аты-жөніңіз, '
+        'құпиясөз және Telegram арқылы нөмірді растау.',
+      ),
       cancelLabel: t('Артқа'),
       confirmLabel: t('Тіркелу'),
       icon: Icons.person_add_alt_1_outlined,
     );
     if (!go || !mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
   }
 
   @override
@@ -110,6 +113,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             icon: const Icon(Icons.arrow_back),
                           ),
                         const Spacer(),
+                        const HelpButton(topic: 'кіру / Вход'),
+                        const SizedBox(width: 4),
                         const LanguageSwitcher(),
                       ],
                     ),
@@ -218,8 +223,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           builder: (_) => const RegisterScreen(),
                         ),
                       ),
-                      icon: const Icon(Icons.person_add_alt_1_outlined,
-                          size: 20),
+                      icon: const Icon(
+                        Icons.person_add_alt_1_outlined,
+                        size: 20,
+                      ),
                       label: BtnLabel(t('Тіркелу')),
                     ),
                   ],

@@ -7,6 +7,7 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/telegram_verify.dart';
+import '../../shared/help_button.dart';
 import '../../shared/widgets.dart';
 import '../legal/legal_screen.dart';
 
@@ -540,6 +541,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         appBar: AppBar(
           title: Text(t('Тіркелу')),
           backgroundColor: Gz.surface,
+          actions: const [HelpButton(topic: 'тіркелу / Регистрация')],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
