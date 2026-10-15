@@ -205,8 +205,8 @@ class _SearchRoadStripState extends State<SearchRoadStrip>
     duration: const Duration(milliseconds: 4200),
   );
 
-  static const _iconSize = 38.0;
-  static const _height = 50.0;
+  static const _iconSize = 28.0;
+  static const _height = 34.0;
 
   @override
   void initState() {
@@ -280,14 +280,14 @@ class _SearchRoadStripState extends State<SearchRoadStrip>
                       left: 0,
                       right: 0,
                       bottom: 2,
-                      height: 10,
+                      height: 8,
                       child: CustomPaint(
                         painter: _RoadPainter(offset: widget.moving ? t : 0),
                       ),
                     ),
                     Positioned(
                       left: x,
-                      bottom: 9 + bump,
+                      bottom: 7 + bump,
                       child: Opacity(opacity: opacity, child: child),
                     ),
                   ],
@@ -361,7 +361,7 @@ class SearchStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 11, 12, 8),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(Gz.radius),
@@ -379,7 +379,7 @@ class SearchStatusCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 19,
+                    fontSize: 17,
                     height: 1.15,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.4,
@@ -394,13 +394,13 @@ class SearchStatusCard extends StatelessWidget {
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 12.5,
               height: 1.3,
               fontWeight: FontWeight.w500,
               color: Gz.ink.withValues(alpha: 0.72),
             ),
           ),
-          if (bottom != null) ...[const SizedBox(height: 6), bottom!],
+          if (bottom != null) ...[const SizedBox(height: 2), bottom!],
         ],
       ),
     );

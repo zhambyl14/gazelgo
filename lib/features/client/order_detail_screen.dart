@@ -528,7 +528,9 @@ class _SearchingScreen extends StatefulWidget {
 }
 
 class _SearchingScreenState extends State<_SearchingScreen> {
-  static const _minSize = 0.38;
+  /// Панельді төмен түсіргенде тек сары күй карточкасы қалады — карта
+  /// толық дерлік ашылады.
+  static const _minSize = 0.24;
   static const _initialSize = 0.47;
 
   /// Алғашқы ұсыныс келгенде панель осы биіктікке дейін өзі көтеріледі.
@@ -746,6 +748,23 @@ class _SearchingScreenState extends State<_SearchingScreen> {
                         ),
                   child: const _OsmAttribution(),
                 ),
+                // «Шақыру нүктесіне оралу» — карта еркін жылжиды, клиент
+                // басқа жерге кетіп қалса, бір басумен алу нүктесіне қайтады.
+                ValueListenableBuilder<double>(
+                  valueListenable: _extent,
+                  builder: (_, ext, child) => ext > 0.7
+                      ? const SizedBox.shrink()
+                      : Positioned(
+                          right: 12,
+                          bottom: h * ext + 12,
+                          child: child!,
+                        ),
+                  child: SearchMapButton(
+                    icon: Icons.my_location_rounded,
+                    tooltip: t('Шақыру нүктесіне оралу'),
+                    onTap: () => _map.move(LatLng(o.fromLat, o.fromLng), 16),
+                  ),
+                ),
                 NotificationListener<DraggableScrollableNotification>(
                   onNotification: (n) {
                     _extent.value = n.extent;
@@ -755,6 +774,10 @@ class _SearchingScreenState extends State<_SearchingScreen> {
                     controller: _sheet,
                     initialChildSize: _initialSize,
                     minChildSize: _minSize,
+                    // Саусақты жібергенде панель үш күйдің біріне «қонады»:
+                    // жиналған (тек күй) / қалыпты / толық ашық.
+                    snap: true,
+                    snapSizes: const [_initialSize],
                     maxChildSize: maxSize,
                     builder: (context, scroll) =>
                         _sheetBody(o, scroll, scheduled),
