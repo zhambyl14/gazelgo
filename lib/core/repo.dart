@@ -2491,6 +2491,11 @@ final myOrdersStreamProvider = StreamProvider.autoDispose<List<Order>>((ref) {
   return Repo.myOrdersStream();
 });
 
+/// Таңдаулы/бұғат тізімдері серверде бар ма (0077) — мәзір тармағы үшін.
+final executorPrefsAvailableProvider = FutureProvider<bool>(
+  (ref) => Repo.executorPrefsAvailable(),
+);
+
 /// Оқылмаған хабарламалар саны (0078) — мәзірдегі 🔔 белгісі үшін.
 final unreadNotificationsProvider = StreamProvider.autoDispose<int>((ref) {
   ref.watch(authStateProvider);

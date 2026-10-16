@@ -86,7 +86,8 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
         context,
         title: t('Орындаушыны бұғаттау керек пе?'),
         message: t('Ол енді сіздің заказдарыңызды көрмейді және ұсыныс '
-            'жібере алмайды. Кейін профиліңізден шығаруға болады.'),
+            'жібере алмайды. Кейін мәзірдегі «Менің орындаушыларым» '
+            'бөлімінен шығаруға болады.'),
         confirmLabel: t('Бұғаттау'),
         confirmColor: Gz.red,
         icon: Icons.block_rounded,

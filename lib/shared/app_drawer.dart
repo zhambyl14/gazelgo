@@ -8,6 +8,7 @@ import '../core/theme.dart';
 import '../features/auth/login_screen.dart';
 import '../features/board/board_screen.dart';
 import '../features/client/my_addresses_screen.dart';
+import '../features/client/my_executors_screen.dart';
 import '../features/client/my_orders_screen.dart';
 import '../features/executor/balance_screen.dart';
 import '../features/executor/bonus_widgets.dart';
@@ -269,6 +270,16 @@ class AppDrawer extends ConsumerWidget {
                         t('Менің мекенжайларым'),
                         () => _open(context, const MyAddressesScreen()),
                       ),
+                      // Таңдаулы / бұғатталған орындаушылар (0077).
+                      if (ref.watch(executorPrefsAvailableProvider).value ??
+                          false)
+                        _item(
+                          context,
+                          Icons.favorite_border_rounded,
+                          Gz.red,
+                          t('Менің орындаушыларым'),
+                          () => _open(context, const MyExecutorsScreen()),
+                        ),
                     ],
                     _item(
                       context,
