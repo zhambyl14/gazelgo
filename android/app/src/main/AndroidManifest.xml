@@ -68,6 +68,19 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="dgis"/>
         </intent>
+        <!-- Орындаушы таңдайтын басқа навигаторлар (shared/nav_apps.dart) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="yandexnavi"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="yandexmaps"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="tel"/>

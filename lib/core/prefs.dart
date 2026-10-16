@@ -86,6 +86,20 @@ class Prefs {
     await p.setDouble(_kLastLng, lng);
   }
 
+  static const _kNavApp = 'executor_nav_app';
+
+  /// Орындаушы таңдаған навигатор ('dgis' | 'yandex' | 'google'); null —
+  /// әлі таңдалмаған (бірінші рет басқанда сұралады).
+  static Future<String?> navApp() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kNavApp);
+  }
+
+  static Future<void> setNavApp(String v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kNavApp, v);
+  }
+
   static const _kSeenNews = 'seen_news_ids';
 
   /// Тізімде сақталатын ең көп сторис id-і. Ескілері шетінен шығып отырады

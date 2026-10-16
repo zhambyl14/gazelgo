@@ -10,6 +10,7 @@ import 'map_widgets.dart';
 import 'ui/dialogs.dart';
 import 'ui/sheet.dart';
 import 'ui/bits.dart';
+import 'ui/review_tags.dart';
 import 'vehicle_picker.dart';
 
 // Бірыңғай дизайн-жүйенің компоненттері (баннер, терезе, диалог, тег,
@@ -19,6 +20,7 @@ export 'ui/bits.dart';
 export 'ui/contact.dart';
 export 'ui/dialogs.dart';
 export 'ui/notice.dart';
+export 'ui/review_tags.dart';
 export 'ui/sheet.dart';
 
 /// Батырма мәтіні: ені жетпесе — ЕКІНШІ ЖОЛҒА ТҮСПЕЙДІ, кішірейіп сыяды.
@@ -1351,7 +1353,9 @@ class OrderPhotosStrip extends StatelessWidget {
 /// экранның төменінде қалып, көрінбей қалмас үшін. Бұрын бағаланған болса
 /// мүлдем ашылмайды.
 Future<void> maybeShowReviewDialog(BuildContext context,
-    {required String orderId, required String title}) async {
+    {required String orderId,
+    required String title,
+    List<ReviewTag> tags = const []}) async {
   try {
     final rows = await Repo.c
         .from('reviews')
@@ -1372,6 +1376,7 @@ Future<void> maybeShowReviewDialog(BuildContext context,
       child: ReviewPrompt(
         orderId: orderId,
         title: title,
+        tags: tags,
         onDone: () => Navigator.of(ctx).maybePop(),
       ),
     ),
@@ -1383,10 +1388,16 @@ class ReviewPrompt extends StatefulWidget {
   final String orderId;
   final String title;
   final VoidCallback? onDone;
+
+  /// Бір басумен белгіленетін тегтер (0079): 4–5 жұлдызда — «не ұнады»,
+  /// 1–2-де — «не ұнамады», 3-те — екеуі де.
+  final List<ReviewTag> tags;
+
   const ReviewPrompt(
       {super.key,
       required this.orderId,
       this.title = 'Бағалаңыз',
+      this.tags = const [],
       this.onDone});
 
   @override
@@ -1398,6 +1409,12 @@ class _ReviewPromptState extends State<ReviewPrompt> {
   final _comment = TextEditingController();
   bool _done = false;
   bool _checked = false;
+  final Set<String> _tags = {};
+
+  List<ReviewTag> get _visibleTags => [
+        for (final tg in widget.tags)
+          if (_rating == 3 || (_rating >= 4) == tg.positive) tg,
+      ];
 
   @override
   void initState() {
@@ -1464,6 +1481,36 @@ class _ReviewPromptState extends State<ReviewPrompt> {
                 ),
             ],
           ),
+          if (_visibleTags.isNotEmpty) ...[
+            Text(
+              _rating >= 4
+                  ? t('Не ұнады?')
+                  : (_rating <= 2 ? t('Не ұнамады?') : t('Қысқаша айтыңыз')),
+              style: Gz.caption,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final tg in _visibleTags)
+                  FilterChip(
+                    avatar: Icon(
+                      tg.icon,
+                      size: 16,
+                      color: tg.positive ? Gz.success : Gz.danger,
+                    ),
+                    label: Text(t(tg.label)),
+                    selected: _tags.contains(tg.code),
+                    showCheckmark: false,
+                    onSelected: (v) => setState(
+                      () => v ? _tags.add(tg.code) : _tags.remove(tg.code),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           TextField(
             controller: _comment,
             maxLines: 2,
@@ -1475,7 +1522,17 @@ class _ReviewPromptState extends State<ReviewPrompt> {
             label: t('Жіберу'),
             onPressed: () async {
               try {
-                await Repo.submitReview(widget.orderId, _rating, _comment.text);
+                // Жұлдыз ауысқанда жасырылып қалған тегтер жіберілмейді.
+                final visible = {for (final tg in _visibleTags) tg.code};
+                await Repo.submitReview(
+                  widget.orderId,
+                  _rating,
+                  _comment.text,
+                  tags: [
+                    for (final c in _tags)
+                      if (visible.contains(c)) c,
+                  ].take(6).toList(),
+                );
                 if (mounted) setState(() => _done = true);
                 if (context.mounted) {
                   showSnack(context, t('Пікіріңіз үшін рахмет!'));

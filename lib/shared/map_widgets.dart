@@ -1445,3 +1445,286 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
         ),
       );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  «КӨЛІК ҚАЙДА КЕЛЕ ЖАТЫР» — ТІРІ КАРТА (0073)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Клиенттің тірі картасы: орындаушының көлігі ӨЗ ТҮРІНІҢ белгісімен,
+/// бағыт стрелкасымен, екі нүкте арасында ЖАЙЛАП жылжиды (polling 12с
+/// сайын келеді — секірмей, ағып жүреді). Көлікке дейін жол сызылмайды —
+/// мақсат: клиент жүргізушінің қайда екенін көрсін.
+///
+/// Камера өзі теңшеледі: заказ қабылданғанда — көлік пен A нүктесі
+/// (жүргізуші сізге келе жатыр), жолға шыққан соң — көлік пен B нүктесі.
+/// Ішкі карта интерактивті ЕМЕС ([RouteMap]-дегі себеппен — бет
+/// айналмай қалады); түртсе — толық экран.
+class LiveTrackMap extends StatefulWidget {
+  final Order order;
+
+  /// Көліктің соңғы белгілі нүктесі (null — әлі белгісіз).
+  final LatLng? vehicle;
+
+  /// GPS бағыты (градус). null болса — қозғалыстан өзі есептеледі.
+  final double? heading;
+
+  /// Нүкте қаншалықты ескі (сек) — 3 минуттан асса «сигнал әлсіз».
+  final int? ageSec;
+
+  final double height;
+
+  const LiveTrackMap({
+    super.key,
+    required this.order,
+    this.vehicle,
+    this.heading,
+    this.ageSec,
+    this.height = 230,
+  });
+
+  @override
+  State<LiveTrackMap> createState() => _LiveTrackMapState();
+}
+
+class _LiveTrackMapState extends State<LiveTrackMap>
+    with SingleTickerProviderStateMixin {
+  final _map = MapController();
+  bool _ready = false;
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+  LatLng? _animFrom;
+  LatLng? _animTo;
+  double? _bearing;
+
+  Order get _o => widget.order;
+  LatLng get _a => LatLng(_o.fromLat, _o.fromLng);
+  LatLng get _b => LatLng(_o.toLat, _o.toLng);
+  bool get _toPickup => _o.status == 'accepted' || _o.status == 'arrived';
+  LatLng get _target => _toPickup ? _a : _b;
+
+  LatLng? get _current {
+    final to = _animTo;
+    final from = _animFrom;
+    if (to == null) return null;
+    if (from == null) return to;
+    final k = Curves.easeInOut.transform(_anim.value);
+    return LatLng(
+      from.latitude + (to.latitude - from.latitude) * k,
+      from.longitude + (to.longitude - from.longitude) * k,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _animTo = widget.vehicle;
+    _bearing = widget.heading;
+  }
+
+  @override
+  void didUpdateWidget(LiveTrackMap old) {
+    super.didUpdateWidget(old);
+    final v = widget.vehicle;
+    var refit = widget.order.status != old.order.status;
+    final last = _animTo;
+    if (v != null && (last == null || Geo.haversineKm(last, v) > 0.003)) {
+      final prev = _current ?? v;
+      // Сервер бағыт бермесе (ескі қосымша, GPS бағыты жоқ) — соңғы
+      // жылжудан есептейміз; орнында тұрса бұрынғы бағыт сақталады.
+      _bearing = widget.heading ??
+          (Geo.haversineKm(prev, v) > 0.015 ? bearingDeg(prev, v) : _bearing);
+      _animFrom = prev;
+      _animTo = v;
+      _anim.forward(from: 0);
+      refit = true;
+    } else if (widget.heading != null) {
+      _bearing = widget.heading;
+    }
+    if (refit) _fit();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  void _fit() {
+    if (!_ready) return;
+    final v = _animTo;
+    final pts = [?v, _target];
+    try {
+      if (pts.length < 2 ||
+          _degenerate(pts) ||
+          Geo.haversineKm(pts[0], pts[1]) < 0.08) {
+        _map.move(pts.first, 16);
+      } else {
+        _map.fitCamera(
+          CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints(pts),
+            padding: const EdgeInsets.fromLTRB(56, 72, 56, 48),
+          ),
+        );
+      }
+    } catch (_) {
+      // карта әлі өлшенбеген — келесі жаңартуда теңшеледі
+    }
+  }
+
+  void _openFull(BuildContext context) {
+    final v = _animTo;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => RouteMapScreen(
+        from: _a,
+        to: _b,
+        stops: [for (final s in _o.stops) LatLng(s.lat, s.lng)],
+        extraMarkers: [
+          if (v != null)
+            executorLiveMarker(
+              v,
+              vehicleType: _o.vehicleType,
+              heading: _bearing,
+            ),
+        ],
+        fromLabel: _o.fromDisplay,
+        toLabel: _o.toDisplay,
+        stopLabels: [for (final s in _o.stops) s.display],
+        distanceKm: _o.distanceKm,
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stops = [for (final s in _o.stops) LatLng(s.lat, s.lng)];
+    final stale = (widget.ageSec ?? 0) > 180;
+    return Container(
+      height: widget.height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: FlutterMap(
+                mapController: _map,
+                options: MapOptions(
+                  initialCenter: widget.vehicle ?? _target,
+                  initialZoom: 14,
+                  backgroundColor: Gz.bg,
+                  onMapReady: () {
+                    _ready = true;
+                    _fit();
+                  },
+                  interactionOptions:
+                      const InteractionOptions(flags: InteractiveFlag.none),
+                ),
+                children: [
+                  osmTileLayer(),
+                  // Тек заказдың өз маршруты. Көлікке дейін жол САЛЫНБАЙДЫ
+                  // (пайдаланушы шешімі): клиентке көліктің ҚАЙДА екені мен
+                  // қалай жылжып келе жатқаны көрінсе жеткілікті.
+                  PolylineLayer(polylines: _routeLines([_a, ...stops, _b])),
+                  MarkerLayer(
+                    markers: _routeMarkers(
+                      from: _a,
+                      to: _b,
+                      stops: stops,
+                      extra: const [],
+                    ),
+                  ),
+                  AnimatedBuilder(
+                    animation: _anim,
+                    builder: (_, _) {
+                      final c = _current;
+                      return MarkerLayer(markers: [
+                        if (c != null)
+                          executorLiveMarker(
+                            c,
+                            vehicleType: _o.vehicleType,
+                            heading: _bearing,
+                          ),
+                      ]);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(onTap: () => _openFull(context)),
+            ),
+          ),
+          if (widget.vehicle == null || stale)
+            Positioned(
+              left: 10,
+              top: 10,
+              right: 10,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+                    decoration: BoxDecoration(
+                      color: Gz.surface,
+                      borderRadius: BorderRadius.circular(Gz.rLg),
+                      boxShadow: Gz.cardShadow,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.gps_not_fixed_rounded,
+                          size: 15,
+                          color: Gz.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.vehicle == null
+                                ? t('Көліктің орны әзірге белгісіз')
+                                : t('Сигнал әлсіз — соңғы белгілі орны'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Gz.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: const BoxDecoration(
+                  color: Gz.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: Gz.cardShadow,
+                ),
+                child: const Icon(
+                  Icons.open_in_full_rounded,
+                  size: 15,
+                  color: Gz.ink,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
