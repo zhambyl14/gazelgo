@@ -9,7 +9,6 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
-import '../../shared/drawer_hint.dart';
 import '../../shared/status_check.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
@@ -46,12 +45,20 @@ class ExecutorHomeScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
                   child: Row(
                     children: [
-                      // Логотип — sidebar ашатын батырма: профиль, баланс,
-                      // табыс, хабарландырулар тақтасы — бәрі сонда (бөлек
-                      // «Профиль» табы жойылды). Бұрышында «мәзір» белгісі
-                      // тұр — түйме екені бірден көрінеді.
+                      // «☰» — бүйір мәзір: профиль, заказдарым, баланс,
+                      // табыс, хабарландырулар тақтасы. Клиенттегідей АЙҚЫН
+                      // батырма (бұрын логотип болатын — түйме деп
+                      // танылмайтын); белсенді заказ саны бұрышында.
                       Builder(
-                        builder: (ctx) => LogoMenuButton(
+                        builder: (ctx) => MapRoundButton(
+                          icon: Icons.menu_rounded,
+                          tooltip: t('Мәзір'),
+                          badge:
+                              ref
+                                  .watch(myActiveExecutorOrdersProvider)
+                                  .value
+                                  ?.length ??
+                              0,
                           onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),
@@ -101,9 +108,6 @@ class ExecutorHomeScreen extends ConsumerWidget {
                 const Expanded(child: ExecutorFeedBody()),
               ],
             ),
-            // Sidebar-ды табуға көмектесетін тұтқа мен алғашқы нұсқау (0059).
-            const DrawerEdgeHandle(),
-            const DrawerHintOverlay(top: 84),
           ],
         ),
       ),

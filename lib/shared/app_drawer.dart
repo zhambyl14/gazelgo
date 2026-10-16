@@ -8,6 +8,7 @@ import '../core/theme.dart';
 import '../features/auth/login_screen.dart';
 import '../features/board/board_screen.dart';
 import '../features/client/my_addresses_screen.dart';
+import '../features/client/my_orders_screen.dart';
 import '../features/executor/balance_screen.dart';
 import '../features/executor/bonus_widgets.dart';
 import '../features/executor/earnings_screen.dart';
@@ -177,38 +178,57 @@ class AppDrawer extends ConsumerWidget {
                       ),
                     ),
 
-                  // Гестке «Профиль» жоқ: ол тек кіру бетіне апаратын еді,
-                  // ал төменде «Кіру / Тіркелу» батырмасы бар (қайталама).
-                  if (!isGuest)
-                    _item(
-                      context,
-                      Icons.person_outline,
-                      t('Профиль'),
-                      () => _open(context, const ProfileScreen()),
-                    ),
-
                   // Гестте тізім ҚЫСҚА: кірмей тұрып мәні бар тармақтар ғана
-                  // (хабарландырулар, профиль, заңдық құжаттар, тіл, кіру).
+                  // (хабарландырулар, заңдық құжаттар, тіл, кіру). «Профиль»
+                  // жоқ: ол тек кіру бетіне апаратын еді.
                   if (isGuest)
                     _item(
                       context,
                       Icons.description_outlined,
+                      Gz.textSecondary,
                       t('Заңдық құжаттар'),
                       // Сторлар талабы: келісімді кірмей тұрып оқи алу керек,
                       // сол себепті бұл тармақ кіру экранына бұрылмайды.
                       () => _go(context, const LegalScreen()),
                     )
                   else ...[
+                    _item(
+                      context,
+                      Icons.person_outline_rounded,
+                      Gz.ink,
+                      t('Профиль'),
+                      () => _open(context, const ProfileScreen()),
+                    ),
                     if (isExecutor) ...[
+                      // «Заказдарым» — бұрын орындаушы өзі алған заказдардың
+                      // тарихын еш жерден көре алмайтын.
+                      _item(
+                        context,
+                        Icons.assignment_outlined,
+                        Gz.info,
+                        t('Заказдарым'),
+                        () => _open(
+                          context,
+                          const MyOrdersScreen(asExecutor: true),
+                        ),
+                        badge:
+                            ref
+                                .watch(myActiveExecutorOrdersProvider)
+                                .value
+                                ?.length ??
+                            0,
+                      ),
                       _item(
                         context,
                         Icons.account_balance_wallet_outlined,
+                        Gz.yellowDeep,
                         t('Баланс'),
                         () => _open(context, const BalanceScreen()),
                       ),
                       _item(
                         context,
                         Icons.payments_outlined,
+                        Gz.green,
                         t('Табыс'),
                         () => _open(context, const EarningsScreen()),
                       ),
@@ -222,19 +242,37 @@ class AppDrawer extends ConsumerWidget {
                         _item(
                           context,
                           Icons.card_giftcard_outlined,
+                          Gz.violet,
                           t('Бонустар'),
                           () => _open(context, const BonusHistoryScreen()),
                         ),
-                    ] else
+                    ] else ...[
+                      // «Тапсырыстарым» — бұрын тек Профиль ішіндегі
+                      // плиткада ғана болатын (мәзірден табылмайтын).
                       _item(
                         context,
-                        Icons.bookmark_outline,
+                        Icons.receipt_long_outlined,
+                        Gz.info,
+                        t('Тапсырыстарым'),
+                        () => _open(context, const MyOrdersScreen()),
+                        badge:
+                            (ref.watch(myOrdersStreamProvider).value ??
+                                    const <Order>[])
+                                .where((o) => o.isActive)
+                                .length,
+                      ),
+                      _item(
+                        context,
+                        Icons.bookmark_outline_rounded,
+                        Gz.green,
                         t('Менің мекенжайларым'),
                         () => _open(context, const MyAddressesScreen()),
                       ),
+                    ],
                     _item(
                       context,
-                      Icons.support_agent,
+                      Icons.support_agent_rounded,
+                      Gz.violet,
                       t('Қолдау қызметі'),
                       () => _open(context, const SupportScreen()),
                     ),
@@ -297,51 +335,37 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 
+  /// Мәзір жолы — профиль мен баптаулардағы [GzListRow]-пен бірдей үлгі
+  /// (түрлі-түсті шаршыдағы иконка). [badge] > 0 болса — оң жақта сан.
   Widget _item(
     BuildContext context,
     IconData icon,
+    Color color,
     String label,
-    VoidCallback onTap,
-  ) {
-    // Иконка ЖҰМСАҚ ШАРШЫНЫҢ ішінде: тізім жалаң белгілер тізбегі емес,
-    // біркелкі «карточкалар» болып оқылады әрі әр жолдың басы бір
-    // вертикаль сызықтан басталады. Басқанда толқын дөңгелектелген
-    // таблетка болып шығады (shape), сол себепті sidebar-дың шетіне
-    // тіреліп тұрмайды.
+    VoidCallback onTap, {
+    int badge = 0,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        horizontalTitleGap: 12,
-        minLeadingWidth: 34,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: Container(
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Gz.surfaceAlt,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Gz.border),
-          ),
-          child: Icon(icon, size: 18, color: Gz.ink),
-        ),
-        title: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-            letterSpacing: -0.15,
-          ),
-        ),
-        trailing: const Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: Gz.textTertiary,
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: GzListRow(
+        icon: icon,
+        color: color,
+        title: label,
         onTap: onTap,
+        trailing: badge > 0
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CountBadge(badge),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Gz.textTertiary,
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }

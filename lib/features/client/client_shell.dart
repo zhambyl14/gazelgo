@@ -96,12 +96,12 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     if (widget.guest) {
       return const ClientHomeScreen(isGuest: true);
     }
-    return StreamBuilder<List<Order>>(
-      stream: Repo.myOrdersStream(),
-      builder: (context, snap) {
-        if (snap.hasData) _watchStatuses(snap.data!);
-        return const ClientHomeScreen();
-      },
-    );
+    // Ортақ провайдерді ТЫҢДАЙМЫЗ (бөлек polling ашпаймыз): басты беттің
+    // баннері мен мәзір белгісі де дәл осы деректі қолданады.
+    ref.listen<AsyncValue<List<Order>>>(myOrdersStreamProvider, (_, next) {
+      final data = next.value;
+      if (data != null) _watchStatuses(data);
+    });
+    return const ClientHomeScreen();
   }
 }

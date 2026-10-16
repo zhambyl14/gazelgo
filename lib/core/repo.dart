@@ -1244,6 +1244,10 @@ class Repo {
     }
   }
 
+  /// Клиенттің соңғы 100 заказы (ескіден жаңаға қарай реттелген — бұрынғы
+  /// шақырушылар `.reversed` арқылы жаңасын алдына шығарады). Бұрын
+  /// ШЕКТЕУСІЗ сұралатын: тарихы ұзын клиентте әр 4 секунд сайын жүздеген
+  /// жол жүктелетін.
   static Stream<List<Order>> myOrdersStream() {
     final id = uid;
     if (id == null) return const Stream.empty();
@@ -1252,11 +1256,29 @@ class Repo {
           .from('orders')
           .select()
           .eq('client_id', id)
-          .order('created_at');
+          .order('created_at', ascending: false)
+          .limit(100);
       return (rows as List)
           .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+          .toList()
+          .reversed
           .toList();
-    });
+    }, every: const Duration(seconds: 6));
+  }
+
+  /// Орындаушының өзі алған заказдары (белсенді + тарих), жаңасы алдында.
+  static Future<List<Order>> myExecutorOrders() async {
+    final id = uid;
+    if (id == null) return const [];
+    final rows = await c
+        .from('orders')
+        .select()
+        .eq('executor_id', id)
+        .order('created_at', ascending: false)
+        .limit(150);
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
   }
 
   /// Орындаушының белсенді заказдары (accepted/arrived/loading/in_transit).
@@ -1560,6 +1582,28 @@ class Repo {
   /// хабарландырулар — бір сұраныста).
   static Future<Map<String, dynamic>> modOverviewStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_overview_stats') as Map);
+
+  /// Модератор Шолуының графиктері (0080): соңғы [days] күннің күндік
+  /// көрсеткіштері (ескіден жаңаға қарай).
+  static Future<List<Map<String, dynamic>>> modDashboardSeries(int days) async {
+    final res = await c.rpc('mod_dashboard_series', params: {'p_days': days});
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  /// Сервердегі функция ӘЛІ ҚОЛДАНЫЛМАҒАН ба (миграция жоқ) — жаңа
+  /// мүмкіндіктер мұндай қатеде экранды сындырмай, жай ғана жасырылады.
+  static bool isMissingFunction(Object e) {
+    final s = e.toString();
+    return s.contains('PGRST202') ||
+        s.contains('Could not find the function') ||
+        s.contains('does not exist') ||
+        s.contains('PGRST205') ||
+        s.contains('42P01') ||
+        s.contains('42883');
+  }
 
   /// Модераторға хабарландырулар тізімі. [status]: active | expired | null.
   static Future<List<Listing>> modListings(String? status) async {
@@ -1959,6 +2003,24 @@ final newsSeenLocalProvider = FutureProvider<Set<String>>(
 final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
   (ref) => Repo.settings(),
 );
+
+/// Клиенттің заказдары — қосымшадағы ЖАЛҒЫЗ polling-циклі.
+///
+/// Бұрын ClientShell, басты беттің баннері және «Тапсырыстарым» әрқайсысы
+/// `Repo.myOrdersStream()`-ті ӨЗІНШЕ ашатын: бір дерек үшін қатар 2–3
+/// цикл әр 4 секунд сайын желіге шығатын. Енді бәрі осы провайдерді
+/// тыңдайды; ешкім тыңдамаса (`autoDispose`) цикл тоқтайды.
+final myOrdersStreamProvider = StreamProvider.autoDispose<List<Order>>((ref) {
+  ref.watch(authStateProvider);
+  return Repo.myOrdersStream();
+});
+
+/// Орындаушының белсенді заказдары (баннер, мәзір белгісі) — бір цикл.
+final myActiveExecutorOrdersProvider =
+    StreamProvider.autoDispose<List<Order>>((ref) {
+      ref.watch(authStateProvider);
+      return Repo.myActiveExecutorOrdersStream();
+    });
 
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.

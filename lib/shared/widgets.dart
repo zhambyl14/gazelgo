@@ -1013,13 +1013,18 @@ class OrderCard extends StatelessWidget {
   final Widget? footer;
   final bool showMap;
 
+  /// Тарих тізімдерінде — уақыттың орнына толық КҮНІ (бүгінгі заказда
+  /// сағат жеткілікті, ал тарихта «қай күні?» деген сұрақ маңызды).
+  final bool showDate;
+
   const OrderCard(
       {super.key,
       required this.order,
       this.onTap,
       this.trailing,
       this.footer,
-      this.showMap = false});
+      this.showMap = false,
+      this.showDate = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1097,8 +1102,10 @@ class OrderCard extends StatelessWidget {
                     ),
                   if (order.createdAt != null && trailing == null)
                     InfoChip(
-                      icon: Icons.schedule,
-                      text: fmtTime(order.createdAt),
+                      icon: showDate ? Icons.event_outlined : Icons.schedule,
+                      text: showDate
+                          ? fmtDate(order.createdAt)
+                          : fmtTime(order.createdAt),
                     ),
                 ],
               ),
