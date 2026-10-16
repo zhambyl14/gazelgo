@@ -41,7 +41,7 @@ class ReviewsScreen extends StatelessWidget {
                   children: [
                     Text(rating <= 0 ? '—' : rating.toStringAsFixed(1),
                         style: const TextStyle(
-                            fontSize: 40, fontWeight: FontWeight.w900)),
+                            fontSize: 28, fontWeight: FontWeight.w900)),
                     RatingStars(rating, count: ratingCount, size: 18),
                     const SizedBox(height: 2),
                     Text('$ratingCount ${t('пікір')}',
@@ -75,7 +75,7 @@ class ReviewsScreen extends StatelessWidget {
                                           ? t('Орындаушыдан')
                                           : t('Клиенттен'),
                                       style: const TextStyle(
-                                          fontSize: 11.5,
+                                          fontSize: 12,
                                           color: Gz.textSecondary),
                                     ),
                                   ],
@@ -88,7 +88,7 @@ class ReviewsScreen extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(fmtDate(r.createdAt),
                                     style: const TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 12,
                                         color: Gz.textSecondary)),
                               ],
                             ),

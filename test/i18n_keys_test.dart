@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tasu/core/i18n/ru_bonus.dart';
 import 'package:tasu/core/i18n/ru_dual_role.dart';
+import 'package:tasu/core/i18n/ru_redesign.dart';
 import 'package:tasu/core/lang.dart';
 
 /// Аударма сөздігі КОДПЕН СӘЙКЕС ПЕ — детерминирленген тексеру.
@@ -73,6 +74,8 @@ void main() {
   checkDict('ruDualRole', ruDualRole);
   // Бонус бағдарламасы / sidebar нұсқауы / жаңа профиль (0059).
   checkDict('ruBonus', ruBonus);
+  // Бірыңғай дизайн және жаңа мүмкіндіктер (2026-10).
+  checkDict('ruRedesign', ruRedesign);
 
   // ═══════════════════════════════════════════════════════════════════
   //  КЕРІ БАҒЫТ: кодтағы ӘР `t()` мәтінінің аудармасы бар ма

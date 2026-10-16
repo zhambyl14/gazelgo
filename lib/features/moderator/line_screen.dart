@@ -184,7 +184,7 @@ class _LineScreenState extends State<LineScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style:
-                  const TextStyle(fontSize: 10.5, color: Gz.textSecondary)),
+                  const TextStyle(fontSize: 11, color: Gz.textSecondary)),
         ],
       ),
     );
@@ -198,6 +198,6 @@ class _LineScreenState extends State<LineScreen> {
         ),
         child: Text(text,
             style: TextStyle(
-                fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+                fontSize: 11, fontWeight: FontWeight.w700, color: color)),
       );
 }

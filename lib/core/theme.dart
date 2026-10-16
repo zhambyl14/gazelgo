@@ -63,7 +63,108 @@ class Gz {
   static const disabledBg = Color(0xFFEBEFF5);
   static const disabledFg = Color(0xFFA3AFBD);
 
-  static const radius = 22.0;
+  // ---- МАҒЫНАЛЫҚ РӨЛДЕР ----
+  // Түстің МАҒЫНАСЫ бүкіл қосымшада бірдей (клиент, орындаушы, модератор):
+  //   success — сәтті / белсенді / «бәрі дұрыс»;
+  //   info    — күтуде / ақпарат / іздеуде;
+  //   warning — назар аударыңыз (бірақ қате емес);
+  //   danger  — қате / бас тарту / қауіпті әрекет;
+  //   accent  — межгород / жоспарлы тапсырыс / аялдама.
+  // Баннер, чип, статус — бәрі осы бес рөлдің бірін ғана қолданады.
+  static const success = green;
+  static const info = blue;
+
+  /// Ескерту мәтіні мен иконкасы (ақ фонда оқылатын қою сары-қоңыр).
+  static const warning = yellowDeep;
+  static const danger = red;
+  static const accent = violet;
+
+  /// Рейтинг жұлдызы (бүкіл қосымшада бір реңк).
+  static const star = Color(0xFFF59E0B);
+
+  /// Telegram бренд түстері (нөмірді Telegram арқылы растау экраны).
+  static const telegram = Color(0xFF2B7DC4);
+  static const telegramDark = Color(0xFF1C5A91);
+  static const telegramSoft = Color(0xFFEAF4FF);
+
+  static const telegramBorder = Color(0xFF9DCBF5);
+
+  /// Көлеңке реңктері (карта белгілері, қалқыма элементтер).
+  static const shadowTight = Color(0x38101828);
+  static const shadowWide = Color(0x24101828);
+
+  /// Жасылдың қою сыңары — жасыл градиенттің төменгі шеті.
+  static const greenDeep = Color(0xFF0E8A3E);
+
+  /// Қою (hero) фондағы жасыл белгі — қарапайым жасыл онда көмескі.
+  static const greenOnDark = Color(0xFF4ADE80);
+
+  /// Қою фондағы солғын мәтін (web push баннері т.б.).
+  static const onDarkMuted = Color(0xFFCBD5E1);
+
+  /// Сурет/видео үстіндегі қараңғылату (мәтін оқылуы үшін).
+  static const scrim = Color(0xCC000000);
+  static const scrimStrong = Color(0xF2000000);
+
+  /// Иконка кесу экранындағы «шахмат» фонының екі реңкі.
+  static const checkerA = Color(0xFF2B3440);
+  static const checkerB = Color(0xFF232B35);
+
+  /// Жаңалық (сторис) фонының дайын градиенттері — модератор таңдайды.
+  static const storyGradients = <List<Color>>[
+    [Color(0xFF243449), Color(0xFF101828)], // қара-көк (бренд)
+    [Color(0xFF4F46E5), Color(0xFF1E1B4B)], // күлгін
+    [Color(0xFF12A150), Color(0xFF064E28)], // жасыл
+    [Color(0xFFE8A800), Color(0xFF8A6400)], // сары (бренд)
+    [Color(0xFFDC2F3F), Color(0xFF6B1010)], // қызыл
+    [Color(0xFF0E8FA8), Color(0xFF083344)], // көгілдір
+  ];
+
+  // ---- РАДИУС САТЫСЫ ----
+  // Бұрын қосымшада 23 түрлі радиус болатын (1–30). Енді тек осы саты
+  // қолданылады — test/design_tokens_test.dart тексереді.
+  /// Тег, кішкене белгі.
+  static const rXs = 8.0;
+
+  /// Чип, кішкене батырма, сурет.
+  static const rSm = 12.0;
+
+  /// Батырма, өріс, баннер, плитка.
+  static const rMd = 16.0;
+
+  /// Карта (Card).
+  static const rLg = 20.0;
+
+  /// Hero-карта, диалог, bottom sheet.
+  static const rXl = 24.0;
+
+  /// Карталардың әдепкі радиусы.
+  static const radius = rLg;
+
+  /// Картаның (OSM тайлдарының) Tasu стиліндегі түс сүзгісі.
+  ///
+  /// OSM-нің стандарт тайлдары ашық-түрлі әрі «шулы» (қызғылт-сары жолдар,
+  /// қанық жасыл саябақтар) — үстіндегі брендтік белгілер (сары, жасыл,
+  /// қызыл) олардың арасында жоғалып кететін. Сүзгі:
+  ///   • қанықтықты ~45%-ке түсіреді (түстер сақталады, бірақ жұмсарады);
+  ///   • контрастты сәл азайтып, жарықтандырады;
+  ///   • суық реңк береді — фон [bg] түсіне (#F4F7FC) жақындайды.
+  /// Нәтижесінде карта таза, жеңіл болып, Tasu белгілері «жанып» тұрады.
+  /// Тайлдар баяғыдай ТЕГІН OSM серверінен келеді — тек түсі өзгереді.
+  static const mapFilter = ColorFilter.matrix(<double>[
+    0.4876, 0.3383, 0.0342, 0, 32.7, //
+    0.1006, 0.7253, 0.0342, 0, 35.7, //
+    0.1006, 0.3383, 0.4212, 0, 41.7, //
+    0, 0, 0, 1, 0, //
+  ]);
+
+  /// Қызыл (қауіпті) толтырылған батырманың стилі — «Бұғаттау»,
+  /// «Қабылдамау», «Растау (бас тарту)» т.б. Бүкіл қосымшада бірдей.
+  static ButtonStyle dangerFilled() => FilledButton.styleFrom(
+        backgroundColor: red,
+        foregroundColor: Colors.white,
+        shadowColor: red.withValues(alpha: 0.35),
+      );
 
   /// Негізгі қаріп (assets/fonts — Rubik, қазақ әліпбиін толық қолдайды).
   static const fontFamily = 'Rubik';
@@ -133,8 +234,13 @@ class Gz {
   // ---- ТИПОГРАФИКА ----
   // Мәтіннің көзге әдемі көрінуі үш нәрсеге тәуелді: ӨЛШЕМ САТЫСЫ (әр
   // деңгей нақты ажыратылады), ЖОЛ БИІКТІГІ (height) және ӘРІП АРАЛЫҒЫ
-  // (үлкен қаріпте теріс, ұсақ қаріпте сәл оң). Экрандарда осы стильдерді
-  // қолдану керек — «fontSize: 14.5, w800» деп қолмен жазудың орнына.
+  // (үлкен қаріпте теріс, ұсақ қаріпте сәл оң).
+  //
+  // ӨЛШЕМ САТЫСЫ — бүкіл қосымшада ТЕК осы 12 өлшем:
+  //   10 · 11 · 12 · 13 · 14 · 15 · 16 · 18 · 20 · 22 · 24 · 28
+  // Бұрын 31 түрлі өлшем болатын (8.5, 12.5, 14.5, 17.5 …) — бір экранда
+  // тақырып 15, екіншісінде 17 болып, қосымша «әр жерде әртүрлі» көрінетін.
+  // test/design_tokens_test.dart сатыдан тыс өлшемге жол бермейді.
 
   /// Экранның бас тақырыбы (кіру беті, hero сома).
   static const display = TextStyle(
@@ -148,16 +254,16 @@ class Gz {
   static const h2 = TextStyle(
       fontSize: 18, fontWeight: FontWeight.w800, height: 1.25, letterSpacing: -0.3);
 
-  /// Тізім элементінің тақырыбы.
+  /// Тізім элементінің / карта бөлімінің тақырыбы.
   static const h3 = TextStyle(
-      fontSize: 15.5, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15);
+      fontSize: 16, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15);
 
   /// Негізгі мәтін.
-  static const body = TextStyle(fontSize: 14.5, height: 1.5);
+  static const body = TextStyle(fontSize: 15, height: 1.5);
 
   /// Қосымша түсіндірме мәтін.
   static const bodyMuted = TextStyle(
-      fontSize: 13.5, height: 1.5, color: textSecondary);
+      fontSize: 14, height: 1.5, color: textSecondary);
 
   /// Ұсақ белгі (күн, сан, статус астындағы жазу).
   static const caption = TextStyle(
@@ -165,7 +271,7 @@ class Gz {
 
   /// Өріс/блок үстіндегі МИКРО тақырып — БАС ӘРІППЕН жазуға арналған.
   static const label = TextStyle(
-      fontSize: 10.5,
+      fontSize: 11,
       fontWeight: FontWeight.w800,
       height: 1.2,
       letterSpacing: 0.8,
@@ -173,7 +279,15 @@ class Gz {
 
   /// Ақша сомасы — сандар тығыз әрі салмақты тұруы керек.
   static const money = TextStyle(
-      fontSize: 19, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.6);
+      fontSize: 20, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.6);
+
+  /// Үлкен сома (заказ бетінің басындағы баға).
+  static const moneyLg = TextStyle(
+      fontSize: 24, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.8);
+
+  /// Ең үлкен сома (баланс hero-картасы, баға степпері).
+  static const moneyXl = TextStyle(
+      fontSize: 28, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.8);
 
   static const TextTheme _textTheme = TextTheme(
     displaySmall: display,
@@ -183,16 +297,16 @@ class Gz {
     titleLarge: TextStyle(
         fontSize: 18, fontWeight: FontWeight.w800, height: 1.25, letterSpacing: -0.3),
     titleMedium: TextStyle(
-        fontSize: 15.5, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15),
+        fontSize: 16, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15),
     titleSmall: TextStyle(
-        fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.3),
-    bodyLarge: TextStyle(fontSize: 15.5, height: 1.5, letterSpacing: 0),
+        fontSize: 14, fontWeight: FontWeight.w700, height: 1.3),
+    bodyLarge: TextStyle(fontSize: 16, height: 1.5, letterSpacing: 0),
     bodyMedium: TextStyle(fontSize: 14, height: 1.48, letterSpacing: 0),
-    bodySmall: TextStyle(fontSize: 12.5, height: 1.42, letterSpacing: 0.1),
+    bodySmall: TextStyle(fontSize: 13, height: 1.42, letterSpacing: 0.1),
     labelLarge: TextStyle(
         fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 0.1),
     labelMedium: TextStyle(
-        fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: 0.1),
+        fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.1),
     labelSmall: label,
   );
 
@@ -231,7 +345,7 @@ class Gz {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: ink,
-          fontSize: 19.5,
+          fontSize: 20,
           fontWeight: FontWeight.w900,
           fontFamily: fontFamily,
           letterSpacing: -0.4,
@@ -254,7 +368,7 @@ class Gz {
           // Көлеңке БРЕНД ТҮСІМЕН — батырманың астынан жылы сәуле шыққандай
           // болады. Сұр көлеңке батырманы «кірлеткен» болып көрсететін.
           shadowColor: yellow.withValues(alpha: 0.55),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
           textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -285,7 +399,7 @@ class Gz {
           minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(horizontal: 18),
           side: const BorderSide(color: border, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
           textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -311,7 +425,7 @@ class Gz {
         style: TextButton.styleFrom(
           foregroundColor: ink,
           disabledForegroundColor: disabledFg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
           textStyle: const TextStyle(
               fontWeight: FontWeight.w800,
               letterSpacing: 0.1,
@@ -333,24 +447,24 @@ class Gz {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: border, width: 1.4),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: border, width: 1.4),
         ),
         // Фокус — БРЕНД сақинасы: қай өрісте тұрғаны бірден көзге түседі.
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: yellow, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: red, width: 1.4),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: red, width: 2),
         ),
         hintStyle: const TextStyle(color: textTertiary, fontWeight: FontWeight.w400),
@@ -377,16 +491,16 @@ class Gz {
         surfaceTintColor: Colors.transparent,
         elevation: 12,
         shadowColor: const Color(0x40101828),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rXl)),
         titleTextStyle: const TextStyle(
             color: ink,
-            fontSize: 18.5,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.3,
             fontFamily: fontFamily),
         contentTextStyle: const TextStyle(
             color: textSecondary,
-            fontSize: 13.5,
+            fontSize: 14,
             height: 1.55,
             fontFamily: fontFamily),
       ),
@@ -396,7 +510,7 @@ class Gz {
         elevation: 16,
         shadowColor: Color(0x33101828),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(rXl)),
         ),
       ),
       dividerTheme: const DividerThemeData(color: border, thickness: 1),
@@ -411,29 +525,29 @@ class Gz {
             height: 1.4,
             fontWeight: FontWeight.w600,
             fontFamily: fontFamily),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: textSecondary,
         titleTextStyle: const TextStyle(
             color: ink,
-            fontSize: 14.5,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
             fontFamily: fontFamily),
         subtitleTextStyle: const TextStyle(
             color: textSecondary,
-            fontSize: 12.5,
+            fontSize: 13,
             height: 1.4,
             fontFamily: fontFamily),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceAlt,
         selectedColor: yellow,
         side: const BorderSide(color: border),
         labelStyle: const TextStyle(
-            fontSize: 12.5, fontWeight: FontWeight.w700, fontFamily: fontFamily),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            fontSize: 13, fontWeight: FontWeight.w700, fontFamily: fontFamily),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: yellowDark,
@@ -468,7 +582,7 @@ class Gz {
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            fontSize: 11.5,
+            fontSize: 12,
             letterSpacing: 0.1,
             fontFamily: fontFamily,
             fontWeight: states.contains(WidgetState.selected)

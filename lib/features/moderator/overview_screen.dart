@@ -282,7 +282,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                         : t('Хабарландырулар тақтасы өшулі'),
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                      fontSize: 14,
                       color: boardOn ? Gz.green : Gz.textSecondary,
                     ),
                   ),
@@ -480,7 +480,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
             hint,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.5, color: Gz.textSecondary),
+            style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
           ),
         ],
       ),
@@ -538,13 +538,13 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
           ),
           const SizedBox(height: 8),
           if (rows.isEmpty || total == 0)
             Text(
               t('Дерек жоқ'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             )
           else
             for (final r in rows)

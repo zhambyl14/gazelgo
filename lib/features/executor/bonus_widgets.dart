@@ -37,14 +37,14 @@ class BonusStrip extends ConsumerWidget {
       padding: padding,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => showBonusSheet(context, b),
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 12, 13),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -64,7 +64,7 @@ class BonusStrip extends ConsumerWidget {
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
                         color: _bonusColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(11),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         done
@@ -100,7 +100,7 @@ class BonusStrip extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               color: Gz.textSecondary,
                             ),
                           ),
@@ -166,14 +166,9 @@ class BonusProgressBar extends StatelessWidget {
 
 /// Бонустың ТОЛЫҚ шарттары мен прогресі — түсіндірме парақ.
 void showBonusSheet(BuildContext context, BonusInfo b) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (_) => _BonusSheet(b),
+  showGzSheet(
+      context,
+      builder: (_) => _BonusSheet(b),
   );
 }
 
@@ -208,7 +203,7 @@ class _BonusSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: _bonusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
                     Icons.card_giftcard_rounded,
@@ -247,7 +242,7 @@ class _BonusSheet extends StatelessWidget {
                 Text(
                   '${b.finished ? b.target : b.inCycle}',
                   style: const TextStyle(
-                    fontSize: 30,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900,
                     color: _bonusColor,
                     height: 1,
@@ -256,7 +251,7 @@ class _BonusSheet extends StatelessWidget {
                 Text(
                   ' / ${b.target}',
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Gz.textSecondary,
                   ),
@@ -267,7 +262,7 @@ class _BonusSheet extends StatelessWidget {
                     '${t('Қалды')}: ${b.left}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                      fontSize: 14,
                     ),
                   ),
               ],
@@ -314,7 +309,7 @@ class _BonusSheet extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Gz.bg,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
@@ -368,14 +363,14 @@ class _BonusSheet extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
+                  fontSize: 14,
                 ),
               ),
               Text(
                 body,
                 style: const TextStyle(
                   color: Gz.textSecondary,
-                  fontSize: 12.5,
+                  fontSize: 13,
                   height: 1.4,
                 ),
               ),
@@ -390,7 +385,7 @@ class _BonusSheet extends StatelessWidget {
     children: [
       Text(
         label,
-        style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+        style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
       ),
       const SizedBox(height: 3),
       FittedBox(
@@ -485,7 +480,7 @@ class BonusHistoryScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: _bonusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(11),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.card_giftcard_rounded,
@@ -519,7 +514,7 @@ class BonusHistoryScreen extends StatelessWidget {
                       '+${fmtT(a.amount)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 14.5,
+                        fontSize: 15,
                         color: Gz.green,
                       ),
                     ),

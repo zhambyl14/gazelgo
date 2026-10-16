@@ -69,7 +69,7 @@ class ListingCard extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: Gz.textSecondary,
                                   ),
@@ -83,7 +83,7 @@ class ListingCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 16.5,
+                              fontSize: 16,
                               fontWeight: FontWeight.w900,
                               height: 1.2,
                               letterSpacing: -0.5,
@@ -151,12 +151,12 @@ class ListingCard extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
     decoration: BoxDecoration(
       color: filled ? color : Gz.tint(color, 0.12),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
     ),
     child: Text(
       text,
       style: TextStyle(
-        fontSize: 10.5,
+        fontSize: 11,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.2,
         color: filled ? Colors.white : color,
@@ -168,7 +168,7 @@ class ListingCard extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
     decoration: BoxDecoration(
       color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
-      borderRadius: BorderRadius.circular(9),
+      borderRadius: BorderRadius.circular(8),
       border: Border.all(
           color: color == null ? Gz.border : Gz.tint(color, 0.25)),
     ),
@@ -180,7 +180,7 @@ class ListingCard extends StatelessWidget {
         Text(
           text,
           style: TextStyle(
-            fontSize: 11.5,
+            fontSize: 12,
             color: color ?? Gz.ink,
             letterSpacing: -0.05,
             fontWeight: FontWeight.w700,
@@ -206,7 +206,7 @@ class _Thumb extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           color: Gz.surfaceAlt,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Gz.border),
         ),
         child: Center(child: vehicleIcon(listing.vehicleType, size: 32)),
@@ -214,7 +214,7 @@ class _Thumb extends StatelessWidget {
     }
     final px = (size * MediaQuery.devicePixelRatioOf(context)).round();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(12),
       child: Image.network(
         Repo.listingPhotoUrl(listing.photos.first),
         width: size,

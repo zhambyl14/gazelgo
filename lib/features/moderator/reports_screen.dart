@@ -194,20 +194,20 @@ class _ReportTileState extends State<_ReportTile> {
                 ),
               ),
               Text(fmtDate(r.createdAt),
-                  style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary)),
+                  style: const TextStyle(fontSize: 12, color: Gz.textSecondary)),
             ],
           ),
           if (r.reason.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text('«${r.reason}»',
                 style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: Gz.textSecondary,
                     fontStyle: FontStyle.italic)),
           ],
           if (o != null) ...[
             const SizedBox(height: 10),
-            Text(o.cargoDesc, style: const TextStyle(fontSize: 12.5)),
+            Text(o.cargoDesc, style: const TextStyle(fontSize: 13)),
             const SizedBox(height: 4),
             Text('${o.fromDisplay} → ${o.toDisplay}',
                 maxLines: 1,
@@ -231,7 +231,7 @@ class _ReportTileState extends State<_ReportTile> {
                     Expanded(
                       child: Text('${t('Хабарланған:')} ${_reported!.fullName}',
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 12.5)),
+                              fontWeight: FontWeight.w700, fontSize: 13)),
                     ),
                     TrustBadge(
                         score: _reported!.trustScore,
@@ -252,7 +252,7 @@ class _ReportTileState extends State<_ReportTile> {
                   child: OutlinedButton(
                     onPressed: () => showOrderAdminSheet(context, o.id),
                     child: BtnLabel(t('Заказды ашу'),
-                        style: const TextStyle(fontSize: 12.5)),
+                        style: const TextStyle(fontSize: 13)),
                   ),
                 ),
               if (o != null && r.status == 'open') const SizedBox(width: 8),
@@ -261,7 +261,7 @@ class _ReportTileState extends State<_ReportTile> {
                   child: OutlinedButton(
                     onPressed: () => _setStatus('dismissed'),
                     child: BtnLabel(t('Елеусіз қалдыру'),
-                        style: const TextStyle(fontSize: 12.5)),
+                        style: const TextStyle(fontSize: 13)),
                   ),
                 ),
               if (r.status == 'open') const SizedBox(width: 8),
@@ -270,7 +270,7 @@ class _ReportTileState extends State<_ReportTile> {
                   child: FilledButton(
                     onPressed: () => _setStatus('reviewed'),
                     child: BtnLabel(t('Қаралды'),
-                        style: const TextStyle(fontSize: 12.5)),
+                        style: const TextStyle(fontSize: 13)),
                   ),
                 ),
             ],

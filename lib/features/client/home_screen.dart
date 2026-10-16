@@ -473,7 +473,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
                                     color: Gz.disabledBg,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
                                 Row(
@@ -485,7 +485,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         gradient: Gz.brandGradient,
-                                        borderRadius: BorderRadius.circular(13),
+                                        borderRadius: BorderRadius.circular(12),
                                         boxShadow: Gz.glow(
                                           Gz.yellow,
                                           alpha: 0.4,
@@ -511,7 +511,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 16.5,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.w900,
                                               height: 1.2,
                                               letterSpacing: -0.35,
@@ -766,7 +766,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
               // Жалаң қара тіктөртбұрыштың орнына градиент + тереңдік:
               // банер картаның үстінде «қалқып» тұрғандай көрінеді.
               gradient: Gz.heroGradient,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: Gz.liftShadow,
             ),
             child: Row(
@@ -823,7 +823,7 @@ class _ActiveOrdersBanner extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white24,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '+${active.length - 1}',

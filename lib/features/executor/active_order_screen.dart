@@ -148,35 +148,24 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   Future<void> _showLocationNeeded(BuildContext context) async {
     final serviceOn = await Geolocator.isLocationServiceEnabled();
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Геолокация керек')),
-        content: Text(
-          t(
-            '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
-            '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
-            'қосыңыз.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(t('Жабу')),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (serviceOn) {
-                Geolocator.openAppSettings();
-              } else {
-                Geolocator.openLocationSettings();
-              }
-            },
-            child: Text(t('Параметрлерді ашу')),
-          ),
-        ],
+    await gzInfoDialog(
+      context,
+      icon: Icons.location_off_outlined,
+      color: Gz.warning,
+      title: t('Геолокация керек'),
+      message: t(
+        '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
+        '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
+        'қосыңыз.',
       ),
+      actionLabel: t('Параметрлерді ашу'),
+      onAction: () {
+        if (serviceOn) {
+          Geolocator.openAppSettings();
+        } else {
+          Geolocator.openLocationSettings();
+        }
+      },
     );
   }
 
@@ -470,7 +459,7 @@ class _NavToggle extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Gz.bg,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.border, width: 1.4),
       ),
       child: Row(
@@ -607,7 +596,7 @@ class _ClientCard extends StatelessWidget {
                       p?.fullName ?? '…',
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 15.5,
+                        fontSize: 16,
                       ),
                     ),
                     // Орындаушы КЛИЕНТТІ көреді → клиенттік рейтинг/рейс
@@ -624,7 +613,7 @@ class _ClientCard extends StatelessWidget {
                             Text(
                               '  · ${p.tripsAs('client')} ${t('рейс')}',
                               style: const TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 12,
                                 color: Gz.textSecondary,
                               ),
                             ),

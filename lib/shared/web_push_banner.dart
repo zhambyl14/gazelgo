@@ -50,7 +50,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
     return Material(
       color: Gz.ink,
       elevation: 8,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
         child: Row(
@@ -71,7 +71,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      fontSize: 14.5,
+                      fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -87,8 +87,8 @@ class _WebPushBannerState extends State<WebPushBanner> {
                             'дереу білесіз.',
                           ),
                     style: const TextStyle(
-                      color: Color(0xFFCBD5E1),
-                      fontSize: 12.5,
+                      color: Gz.onDarkMuted,
+                      fontSize: 13,
                       height: 1.35,
                     ),
                   ),
@@ -110,7 +110,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
                 ),
               ),
             IconButton(
-              icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+              icon: const Icon(Icons.close, color: Gz.textTertiary),
               onPressed: () => setState(() => _dismissed = true),
             ),
           ],

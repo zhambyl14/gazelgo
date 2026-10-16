@@ -176,7 +176,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       child: Text(
                         fmtT(o.displayPrice),
                         style: const TextStyle(
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
                         ),
@@ -433,7 +433,7 @@ class _ScheduledBadge extends StatelessWidget {
                   t('Орындаушыларға көрінбейді'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -441,7 +441,7 @@ class _ScheduledBadge extends StatelessWidget {
                   fmtDate(scheduledAt),
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: Gz.violet,
                   ),
                 ),
@@ -505,7 +505,7 @@ class _ConfirmLoadingCard extends StatelessWidget {
                     'Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
                     'орындаушы жолға шыға алмайды.',
                   ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
           BusyButton(
@@ -595,7 +595,7 @@ class _OffersSection extends StatelessWidget {
                   ),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 13.5,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -671,41 +671,24 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
     // пайда болады (бөлек Timer қажет емес).
     if (_snoozed) return const SizedBox.shrink();
     final custom = int.tryParse(_customCtrl.text.trim()) ?? 0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7E0),
-        borderRadius: BorderRadius.circular(Gz.radius),
-        border: Border.all(color: Gz.yellowDark.withValues(alpha: 0.4)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GzNotice(
+        tone: NoticeTone.warning,
+        title: t('Бағаны сәл көтеріп көріңіз'),
+        message: t(
+          'Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
+          'Бағаны көтерсеңіз, тезірек табыласыз.',
+        ),
+        child: _raiseControls(custom),
       ),
-      child: Column(
+    );
+  }
+
+  Widget _raiseControls(int custom) {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.lightbulb, color: Gz.yellowDark, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  t('Бағаны сәл көтеріп көріңіз'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            t(
-              'Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
-              'Бағаны көтерсеңіз, тезірек табыласыз.',
-            ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-          ),
-          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -726,15 +709,16 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
             t('Немесе өзіңіз көтеріңіз'),
             style: const TextStyle(
               fontWeight: FontWeight.w700,
-              fontSize: 12.5,
+              fontSize: 13,
               color: Gz.textSecondary,
             ),
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              _StepBtn(
+              GzStepButton(
                 icon: Icons.remove_rounded,
+                size: 40,
                 onTap: _busy ? null : () => _stepCustom(-100),
               ),
               const SizedBox(width: 8),
@@ -759,8 +743,9 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
                 ),
               ),
               const SizedBox(width: 8),
-              _StepBtn(
+              GzStepButton(
                 icon: Icons.add_rounded,
+                size: 40,
                 onTap: _busy ? null : () => _stepCustom(100),
               ),
               const SizedBox(width: 10),
@@ -777,33 +762,7 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Баптау степперіндегі дөңгелек +/- батырмасы.
-class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  const _StepBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Gz.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Gz.yellowDark.withValues(alpha: 0.4)),
-        ),
-        child: Icon(icon, size: 20, color: Gz.yellowDark),
-      ),
-    );
+      );
   }
 }
 
@@ -828,7 +787,7 @@ class _OfferCard extends StatelessWidget {
                   Text(
                     fmtT(offer.price),
                     style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: samePrice ? Gz.green : Gz.ink,
                     ),
@@ -836,7 +795,7 @@ class _OfferCard extends StatelessWidget {
                   Text(
                     samePrice ? t('Бағаңызға келісті') : t('Қарсы ұсыныс'),
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: samePrice ? Gz.green : Gz.textSecondary,
                     ),
                   ),
@@ -940,7 +899,7 @@ class _ExecutorBrief extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 14.5,
+                      fontSize: 15,
                     ),
                   ),
                   // Клиент ОРЫНДАУШЫНЫ көреді → орындаушылық рейтинг/рейс
@@ -956,7 +915,7 @@ class _ExecutorBrief extends StatelessWidget {
                         Text(
                           '  · ${p!.tripsAs('executor')} ${t('рейс')}',
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             color: Gz.textSecondary,
                           ),
                         ),
@@ -1044,7 +1003,7 @@ class _ExecutorCard extends StatelessWidget {
                           Text(
                             '${ep.vehicleTitle} · ${ep.vehiclePlate}',
                             style: const TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 13,
                               color: Gz.textSecondary,
                             ),
                           ),

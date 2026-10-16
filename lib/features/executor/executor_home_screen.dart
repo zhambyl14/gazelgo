@@ -277,14 +277,14 @@ class _LineControlBar extends ConsumerWidget {
         Material(
           color: Gz.surface,
           elevation: 0,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             onTap: () => _openTariffs(context),
             child: Container(
               padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
                 // «Бәрі дұрыс» күйі — карта ЖАСЫЛ реңкке аздап боялады:
                 // ақ карточкалардың арасында бірден көзге түседі.
                 gradient: LinearGradient(
@@ -336,7 +336,7 @@ class _LineControlBar extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Gz.green,
-                                fontSize: 12.5,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 height: 1.3,
                               ),
@@ -424,7 +424,7 @@ class _StatusCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Gz.tint(color, 0.09), Gz.surface],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.32)),
         boxShadow: Gz.cardShadow,
       ),
@@ -438,7 +438,7 @@ class _StatusCard extends StatelessWidget {
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   color: Gz.tint(color, 0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Gz.tint(color, 0.22), width: 1.2),
                 ),
                 child: Icon(icon, color: color, size: 21),
@@ -463,7 +463,7 @@ class _StatusCard extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(
                         color: Gz.textSecondary,
-                        fontSize: 12.5,
+                        fontSize: 13,
                         height: 1.5,
                       ),
                     ),
@@ -651,7 +651,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Gz.blue.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -663,7 +663,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
               '${t('Қазір')} $city ${t('қаласындасыз (тіркелген:')} '
               '${widget.ep.city ?? '—'}). ${t('Ауыстырайық па?')}',
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),

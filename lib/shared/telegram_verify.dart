@@ -123,7 +123,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: Gz.green.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Gz.green, width: 1.4),
         ),
         child: Row(
@@ -137,7 +137,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                   Text(t('Нөмір расталды'),
                       style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
+                          fontSize: 14,
                           color: Gz.green)),
                   Text(Phone.pretty(_phone!),
                       style: const TextStyle(
@@ -155,9 +155,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF4E5),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: const Color(0xFFF0C088)),
+          color: Gz.tint(Gz.yellow, 0.14),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Gz.tint(Gz.yellowDark, 0.40)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,14 +166,14 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(Icons.info_outline,
-                    size: 18, color: Color(0xFFB26A00)),
+                    size: 18, color: Gz.warning),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
                     t('Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
                         'түймесін басыңыз.'),
                     style: const TextStyle(
-                        color: Color(0xFF8A5200), fontSize: 12.5, height: 1.4),
+                        color: Gz.ink, fontSize: 13, height: 1.4),
                   ),
                 ),
               ],
@@ -181,7 +181,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             const SizedBox(height: 10),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2B7DC4),
+                backgroundColor: Gz.telegram,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(46),
               ),
@@ -203,9 +203,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF4FF),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFF9DCBF5)),
+        color: Gz.telegramSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Gz.telegramBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,7 +213,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.telegram, size: 18, color: Color(0xFF2B7DC4)),
+              const Icon(Icons.telegram, size: 18, color: Gz.telegram),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
@@ -221,7 +221,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                       ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз')
                       : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
                   style: const TextStyle(
-                      color: Color(0xFF1C5A91), fontSize: 12.5, height: 1.4),
+                      color: Gz.telegramDark, fontSize: 13, height: 1.4),
                 ),
               ),
             ],
@@ -229,7 +229,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
           const SizedBox(height: 10),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2B7DC4),
+              backgroundColor: Gz.telegram,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(46),
             ),
@@ -258,7 +258,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                     child: CircularProgressIndicator(strokeWidth: 2)),
                 const SizedBox(width: 8),
                 Text(t('Растауды күтудеміз…'),
-                    style: const TextStyle(color: Color(0xFF1C5A91), fontSize: 12)),
+                    style: const TextStyle(color: Gz.telegramDark, fontSize: 12)),
               ],
             ),
             // Веб-те t.me DNS-пен бұғатталуы мүмкін (кейбір желілерде) —
@@ -266,13 +266,13 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             // (Telegram-ның ішкі іздеуі t.me доменін пайдаланбайды).
             if (kIsWeb) ...[
               const SizedBox(height: 12),
-              const Divider(height: 1, color: Color(0xFF9DCBF5)),
+              const Divider(height: 1, color: Gz.telegramBorder),
               const SizedBox(height: 10),
               Text(
                 t('Сілтеме ашылмаса: Telegram-ды қолмен ашып, ботты іздеңіз '
                     'де, кодты жіберіңіз.'),
                 style: const TextStyle(
-                    color: Color(0xFF1C5A91), fontSize: 12, height: 1.4),
+                    color: Gz.telegramDark, fontSize: 12, height: 1.4),
               ),
               const SizedBox(height: 8),
               _CopyRow(label: t('Бот'), value: '@${Env.telegramBot}'),
@@ -295,7 +295,7 @@ class _CopyRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       onTap: () {
         Clipboard.setData(ClipboardData(text: value));
         showSnack(context, t('Көшірілді'));
@@ -304,24 +304,24 @@ class _CopyRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF9DCBF5)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Gz.telegramBorder),
         ),
         child: Row(
           children: [
             Text('$label: ',
                 style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1C5A91))),
+                    color: Gz.telegramDark)),
             Expanded(
               child: Text(value,
                   style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontFamily: 'monospace',
-                      color: Color(0xFF0F1720))),
+                      color: Gz.ink)),
             ),
-            const Icon(Icons.copy, size: 15, color: Color(0xFF2B7DC4)),
+            const Icon(Icons.copy, size: 15, color: Gz.telegram),
           ],
         ),
       ),

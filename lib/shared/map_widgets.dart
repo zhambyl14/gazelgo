@@ -6,11 +6,22 @@ import 'package:latlong2/latlong.dart';
 
 import '../core/geo.dart';
 import '../core/lang.dart';
+import '../core/models.dart';
 import '../core/theme.dart';
+import 'vehicle_picker.dart';
 
-TileLayer osmTileLayer() => TileLayer(
-      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'kz.gazelgo.app',
+/// Картаның тайл қабаты — тегін OSM серверінен, бірақ Tasu СТИЛІНДЕ.
+///
+/// Тайлдың өзі өзгермейді (сол OSM), тек бүкіл қабатқа БІР [ColorFiltered]
+/// қолданылады ([Gz.mapFilter]): карта жұмсақ, ашық, сәл суық реңкте
+/// болады да, үстіндегі брендтік белгілер (сары, жасыл, қызыл) айқын
+/// көрінеді. Әр тайлға жеке сүзгі салмаймыз — бір қабат әлдеқайда жеңіл.
+Widget osmTileLayer() => ColorFiltered(
+      colorFilter: Gz.mapFilter,
+      child: TileLayer(
+        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        userAgentPackageName: 'kz.gazelgo.app',
+      ),
     );
 
 /// Түстің ЖАРЫҚ сыңары — градиенттің үстіңгі шеті («жарық жақ»).
@@ -234,13 +245,13 @@ class MapPin extends StatelessWidget {
                 boxShadow: [
                   // Тығыз көлеңке — жиекті айқындайды.
                   BoxShadow(
-                    color: const Color(0x38101828),
+                    color: Gz.shadowTight,
                     blurRadius: 4,
                     offset: _down(1.5),
                   ),
                   // Жайылған көлеңке — пинді картаға «қондырады».
                   BoxShadow(
-                    color: const Color(0x24101828),
+                    color: Gz.shadowWide,
                     blurRadius: 12,
                     offset: _down(5),
                   ),
@@ -291,7 +302,7 @@ class MapPin extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: ring),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x33101828),
+                    color: Gz.shadowTight,
                     blurRadius: 5,
                     offset: Offset(0, 2),
                   ),
@@ -347,12 +358,12 @@ class MapPin extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: ring),
                 boxShadow: [
                   const BoxShadow(
-                    color: Color(0x38101828),
+                    color: Gz.shadowTight,
                     blurRadius: 4,
                     offset: Offset(0, 1.5),
                   ),
                   const BoxShadow(
-                    color: Color(0x24101828),
+                    color: Gz.shadowWide,
                     blurRadius: 12,
                     offset: Offset(0, 5),
                   ),
@@ -421,21 +432,132 @@ Marker originMarker(LatLng p, {Color color = Gz.green, double size = 28}) =>
       child: MapPin.origin(size: size, color: color),
     );
 
-/// Орындаушының тірі орнына арналған маркер (көлік «шайбасы»).
-/// [icon] арқылы такси/жүк көлігін ажыратуға болады.
+/// Орындаушының тірі орнына арналған маркер.
+///
+/// [vehicleType] берілсе — белгінің ішінде ОРЫНДАУШЫНЫҢ ӨЗ КӨЛІГІНІҢ
+/// суреті тұрады (газель, такси, фура…), [heading] берілсе — қозғалыс
+/// бағытын көрсететін нұсқар. Берілмесе — ескі «шайба» иконкасы.
 Marker executorLiveMarker(
   LatLng p, {
+  VehicleType? vehicleType,
+  double? heading,
   Color color = Gz.blue,
   IconData icon = Icons.local_shipping_rounded,
   double size = 38,
-}) =>
-    Marker(
+}) {
+  if (vehicleType != null) {
+    final s = size < 44 ? 46.0 : size;
+    return Marker(
       point: p,
-      width: size,
-      height: size,
+      width: s,
+      height: s,
       alignment: Alignment.center,
-      child: MapPin.vehicle(size: size, color: color, icon: icon),
+      child: VehicleMarker(type: vehicleType, size: s, heading: heading),
     );
+  }
+  return Marker(
+    point: p,
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    child: MapPin.vehicle(size: size, color: color, icon: icon),
+  );
+}
+
+/// Картадағы көліктің белгісі — ӨЗ ТҮРІНІҢ суретімен.
+///
+/// Ақ дөңгелек «шайба» + брендтік сары сақина, ішінде көлік түрінің түрлі-
+/// түсті суреті ([vehicleIcon] — модератор жүктеген иконка, кірістірілген
+/// PNG не эмодзи). Клиент картада «маған газель келе жатыр» дегенді бір
+/// қарағанда көреді. [heading] (градус, 0 = солтүстік) берілсе — сақинаның
+/// сыртында қозғалыс бағытын көрсететін үшбұрыш нұсқар тұрады.
+class VehicleMarker extends StatelessWidget {
+  final VehicleType type;
+  final double size;
+  final double? heading;
+
+  const VehicleMarker({
+    super.key,
+    required this.type,
+    this.size = 46,
+    this.heading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final d = size;
+    final puck = d * 0.78;
+    return SizedBox(
+      width: d,
+      height: d,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Солғын ореол — белгі «тірі» екенін білдіреді.
+          Container(
+            width: d,
+            height: d,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Gz.yellow.withValues(alpha: 0.18),
+            ),
+          ),
+          if (heading != null)
+            Transform.rotate(
+              angle: heading! * math.pi / 180,
+              child: SizedBox(
+                width: d,
+                height: d,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Icon(
+                    Icons.navigation_rounded,
+                    size: d * 0.3,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+            ),
+          Container(
+            width: puck,
+            height: puck,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: Gz.yellow, width: _clampD(d * 0.06, 2, 3.2)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Gz.shadowTight,
+                  blurRadius: 4,
+                  offset: Offset(0, 1.5),
+                ),
+                BoxShadow(
+                  color: Gz.shadowWide,
+                  blurRadius: 12,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: vehicleIcon(type, size: puck * 0.62),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Екі нүкте арасындағы бағыт (градус, 0 = солтүстік, сағат тілімен) —
+/// орындаушының соңғы екі орнынан қозғалыс бағытын есептеу үшін.
+double bearingDeg(LatLng a, LatLng b) {
+  final lat1 = a.latitude * math.pi / 180;
+  final lat2 = b.latitude * math.pi / 180;
+  final dLng = (b.longitude - a.longitude) * math.pi / 180;
+  final y = math.sin(dLng) * math.cos(lat2);
+  final x = math.cos(lat1) * math.sin(lat2) -
+      math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
+  return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+}
 
 /// Экранның дәл ортасында тұратын пин (мекенжай таңдау экрандары үшін).
 ///
@@ -475,7 +597,7 @@ class MapCenterPin extends StatelessWidget {
               height: 5,
               decoration: BoxDecoration(
                 color: Gz.ink.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
             Column(
@@ -699,7 +821,7 @@ class RouteMap extends StatelessWidget {
                         Text(
                           t('Картаны ашу'),
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             height: 1.1,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.1,
@@ -992,7 +1114,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                           t('Маршрут'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 13.5,
+                            fontSize: 14,
                             height: 1.1,
                             letterSpacing: -0.2,
                           ),
@@ -1022,7 +1144,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   Container(
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(21),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: Gz.cardShadow,
                     ),
                     clipBehavior: Clip.antiAlias,
@@ -1059,12 +1181,12 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Gz.surface.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
                     '© OpenStreetMap',
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 10,
                       height: 1.1,
                       fontWeight: FontWeight.w700,
                       color: Gz.textSecondary,
@@ -1113,7 +1235,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                   height: 5,
                                   decoration: BoxDecoration(
                                     color: Gz.disabledBg,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -1145,7 +1267,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w800,
-                                          fontSize: 13.5,
+                                          fontSize: 14,
                                           height: 1.2,
                                           letterSpacing: -0.2,
                                         ),
@@ -1257,7 +1379,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       height: 1.3,
                       letterSpacing: -0.1,
@@ -1276,7 +1398,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
           width: 2,
           height: 12,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(1),
+            borderRadius: BorderRadius.circular(2),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,

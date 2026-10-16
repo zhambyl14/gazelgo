@@ -79,7 +79,7 @@ class PendingScreen extends ConsumerWidget {
               Text(
                 text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 15),
               ),
               const SizedBox(height: 28),
               if (profile.status == 'rejected')

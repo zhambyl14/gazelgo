@@ -320,26 +320,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       showSnack(context, t('Ең көбі 5 фото'), error: true);
       return;
     }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: Text(t('Камерамен түсіру')),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: Text(t('Галереядан таңдау')),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await pickImageSource(context);
     if (source == null) return;
     final f = await _picker.pickImage(
       source: source,
@@ -401,7 +382,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               Text(t('Қашан керек?'),
                   style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                      fontSize: 14,
                       letterSpacing: -0.2)),
             ],
           ),
@@ -428,7 +409,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             const SizedBox(height: 6),
             Text(
               t('Заказ дәл сол уақытқа дейін орындаушыларға көрінбейді.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
           ],
         ],
@@ -574,7 +555,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           child: Container(
             decoration: const BoxDecoration(
               color: Gz.bg,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
@@ -584,7 +565,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   height: 5,
                   decoration: BoxDecoration(
                     color: Gz.disabledBg,
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 Padding(
@@ -638,7 +619,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             decoration: BoxDecoration(
                               color: Gz.tint(
                                   _intercity ? Gz.violet : Gz.green, 0.10),
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: Gz.tint(
                                     _intercity ? Gz.violet : Gz.green, 0.25),
@@ -664,7 +645,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 12.5,
+                                      fontSize: 13,
                                       letterSpacing: -0.1,
                                       color: _intercity ? Gz.violet : Gz.green,
                                     ),
@@ -997,7 +978,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           t('Орындаушылар келіседі не өз бағасын ұсынады'),
                           style: const TextStyle(
                             color: Gz.textSecondary,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -1025,7 +1006,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               color: Gz.textSecondary,
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius: BorderRadius.circular(16),
                               borderSide: const BorderSide(
                                 color: Gz.ink,
                                 width: 1.6,
@@ -1055,7 +1036,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             label: Text.rich(
                               TextSpan(
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   height: 1.4,
                                   color: Gz.textSecondary,
                                 ),
@@ -1179,7 +1160,7 @@ class _EditableAddr extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(

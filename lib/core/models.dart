@@ -93,7 +93,7 @@ class Profile {
   /// backend-пен қосымша «жаңа» деп бос рейтинг көрсетіп қалмайды.
   final bool _dualRole;
 
-  /// Жаттыққа шақыру бонусы (0060) — тек ұпай/санақ, ақшаға тимейді.
+  /// Дос шақыру бонусы (0060) — тек ұпай/санақ, ақшаға тимейді.
   final String? referralCode;
   final int referralCount;
   final String? referredBy;

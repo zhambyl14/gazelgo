@@ -168,13 +168,8 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       _showGate(gate);
       return;
     }
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    showGzSheet(
+      context,
       builder: (_) => _OrderSheet(
         order: o,
         myPos: _pos,
@@ -307,28 +302,14 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: Icon(icon, color: color, size: 34),
-        title: Text(title, textAlign: TextAlign.center),
-        content: Text(text, textAlign: TextAlign.center),
-        actions: [
-          if (actionLabel != null && onAction != null)
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                onAction();
-              },
-              child: Text(actionLabel),
-            )
-          else
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(t('Түсінікті')),
-            ),
-        ],
-      ),
+    gzInfoDialog(
+      context,
+      icon: icon,
+      color: color,
+      title: title,
+      message: text,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -346,9 +327,8 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   }
 
   Future<void> _counterOffer(Order o) async {
-    final result = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
+    final result = await showGzSheet<int>(
+      context,
       builder: (ctx) => PriceStepperSheet(order: o),
     );
     if (result == null || !mounted) return;
@@ -480,7 +460,7 @@ class _FeedCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
         color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
             color: color == null ? Gz.border : Gz.tint(color, 0.25)),
       ),
@@ -495,7 +475,7 @@ class _FeedCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 color: color ?? Gz.ink,
                 letterSpacing: -0.05,
                 fontWeight: FontWeight.w700,
@@ -542,7 +522,7 @@ class _ClientMini extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                      fontSize: 14,
                     ),
                   ),
                   // Лентада ОРЫНДАУШЫ клиентті көреді → клиенттік рейтинг
@@ -599,7 +579,7 @@ class _CompactRoute extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               height: 1.3,
               letterSpacing: -0.1),
@@ -644,7 +624,7 @@ class _OrderSheet extends StatelessWidget {
               height: 5,
               decoration: BoxDecoration(
                 color: Gz.disabledBg,
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
@@ -656,7 +636,7 @@ class _OrderSheet extends StatelessWidget {
                 child: Text(
                   fmtT(o.displayPrice),
                   style: const TextStyle(
-                    fontSize: 26,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
                     letterSpacing: -1,
@@ -816,7 +796,7 @@ class _DirectionStrip extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Gz.tint(accent, 0.10), Gz.surfaceAlt],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Gz.tint(accent, 0.24)),
       ),
       child: Column(
@@ -866,7 +846,7 @@ class _DirectionStrip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 13,
               height: 1.2,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.1,
@@ -957,14 +937,14 @@ class _PriceStepperSheetState extends State<PriceStepperSheet> {
                   Text(
                     fmtT(_price),
                     style: const TextStyle(
-                      fontSize: 30,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
                     t('±100 ₸ қадам'),
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: Gz.textSecondary,
                     ),
                   ),

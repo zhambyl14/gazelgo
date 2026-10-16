@@ -244,7 +244,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
               '«Хабарландырулардың» үстінен көрінеді. Реті — осы тізімдегідей '
               '(сүйреп ауыстырыңыз). Бөлімнің ӨЗІН «Баптаулар» табынан '
               'қосасыз.'),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
         ),
         if (_items.isEmpty) ...[
           const SizedBox(height: 40),
@@ -287,7 +287,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
+                    fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -309,7 +309,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
                   _windowLabel(s),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 11.5,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -381,7 +381,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
           end: Alignment.bottomRight,
           colors: newsStoryGradient(s.bgIndex),
         ),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: inner,
     );
@@ -424,7 +424,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
       text,
       style: TextStyle(
         color: color,
-        fontSize: 10.5,
+        fontSize: 11,
         fontWeight: FontWeight.w700,
       ),
     ),
@@ -1050,7 +1050,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.black54,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1240,7 +1240,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
               ),
@@ -1264,7 +1264,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Color(0xF2000000)],
+          colors: [Colors.transparent, Gz.scrimStrong],
         ),
       ),
       padding: const EdgeInsets.fromLTRB(14, 30, 14, 8),
@@ -1288,7 +1288,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black45,
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(28),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1303,7 +1303,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                           _active ? t('Эфирде') : t('Жоба'),
                           style: TextStyle(
                             color: _active ? Gz.green : Colors.white54,
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1319,7 +1319,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                       maxLines: 2,
                       style: const TextStyle(
                         color: Gz.yellow,
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
                       ),
@@ -1341,7 +1341,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                 _isNew ? t('ЖАРИЯЛАУ') : t('САҚТАУ'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 15.5,
+                  fontSize: 16,
                   letterSpacing: 0.4,
                 ),
               ),
@@ -1360,13 +1360,8 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
   /// `setSheet` — парақшаның ІШІН қайта салуға (қосқыш басылғаны сол
   /// жерде көрінуі үшін); `setState` — АРТЫНДАҒЫ стористі жаңартуға.
   Future<void> _sheet(String title, Widget Function(StateSetter) body) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+    await showGzSheet<void>(
+      context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
           padding: EdgeInsets.only(

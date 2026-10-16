@@ -146,13 +146,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   }
 
   Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    final picked = await showGzSheet<String>(
+      context,
       builder: (_) => const CityPickerSheet(),
     );
     if (picked != null && mounted) {
@@ -451,7 +446,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: selected ? Gz.yellow : Gz.bg,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? Gz.yellowDark : Gz.border,
             width: 1.4,
@@ -516,7 +511,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Text(
                     t(hint),
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: Gz.textSecondary,
                     ),
                   ),
@@ -588,7 +583,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 label: BtnLabel(
                   t('Клиентке'),
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -642,7 +637,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                                   'жоғалмайды.',
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   height: 1.4,
                                 ),
                               ),
@@ -667,7 +662,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F0),
+                      color: Gz.tint(Gz.red, 0.06),
                       borderRadius: BorderRadius.circular(Gz.radius),
                       border: Border.all(color: Gz.red.withValues(alpha: 0.35)),
                     ),
@@ -736,13 +731,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
                   onTap: _pickCity,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -751,7 +746,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: _city == null ? Gz.border : Gz.green,
                         width: _city == null ? 1.2 : 1.6,
@@ -798,7 +793,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -820,7 +815,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   t('Тек осы түрдегі заказдарды көресіз'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1001,7 +996,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1052,7 +1047,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     fontWeight: _missing == null
                         ? FontWeight.w400
                         : FontWeight.w700,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
               ],

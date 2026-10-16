@@ -414,7 +414,7 @@ class _SplashState extends State<_Splash> {
               child: Text(
                 t('Жүк тасымалы және арнайы техника платформасы'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 15),
               ),
             ),
           ],
@@ -442,7 +442,7 @@ class _RetryScreen extends StatelessWidget {
               Text(
                 t('Жүктеу мүмкін болмады'),
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
               ),

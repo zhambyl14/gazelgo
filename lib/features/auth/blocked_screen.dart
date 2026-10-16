@@ -56,7 +56,7 @@ class BlockedScreen extends ConsumerWidget {
                     : t('Қауіпсіздік себебімен аккаунтыңызға уақытша шектеу '
                         'қойылды.'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 15),
               ),
               const SizedBox(height: 8),
               Text(

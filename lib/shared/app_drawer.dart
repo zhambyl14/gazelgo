@@ -63,11 +63,11 @@ class AppDrawer extends ConsumerWidget {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
+                      borderRadius: BorderRadius.circular(12),
                       child: Image.asset(
                         'assets/icon/icon.png',
                         width: 44,
@@ -87,7 +87,7 @@ class AppDrawer extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 15.5,
+                            fontSize: 16,
                           ),
                         ),
                         // Белсенді рөл + СОЛ РӨЛДЕГІ рейтинг (қос рөлде
@@ -98,7 +98,7 @@ class AppDrawer extends ConsumerWidget {
                           Text(
                             t('Сіз әлі аккаунтқа кірмегенсіз'),
                             style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               color: Gz.textSecondary,
                             ),
                           )
@@ -119,7 +119,7 @@ class AppDrawer extends ConsumerWidget {
                                 child: Text(
                                   isExecutor ? t('Орындаушы') : t('Клиент'),
                                   style: const TextStyle(
-                                    fontSize: 10.5,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.2,
                                     color: Gz.ink,
@@ -256,7 +256,7 @@ class AppDrawer extends ConsumerWidget {
                             t('Тіл'),
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14.5,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -314,14 +314,14 @@ class AppDrawer extends ConsumerWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         horizontalTitleGap: 12,
         minLeadingWidth: 34,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         leading: Container(
           width: 34,
           height: 34,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Gz.surfaceAlt,
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Gz.border),
           ),
           child: Icon(icon, size: 18, color: Gz.ink),
@@ -332,7 +332,7 @@ class AppDrawer extends ConsumerWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 14.5,
+            fontSize: 15,
             letterSpacing: -0.15,
           ),
         ),
@@ -443,13 +443,13 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
     return PressScale(
       enabled: !_busy,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         onTap: _busy ? null : _switch,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
             color: Gz.surfaceAlt,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Gz.border, width: 1.2),
           ),
           child: Row(
@@ -494,7 +494,7 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
                       child: BtnLabel(
                         _subtitle,
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 12,
                           color: Gz.textSecondary,
                         ),
                       ),
@@ -548,7 +548,7 @@ class _BoardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(14),
@@ -561,7 +561,7 @@ class _BoardCard extends StatelessWidget {
                 Gz.yellow.withValues(alpha: 0.12),
               ],
             ),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Gz.yellow, width: 1.4),
             boxShadow: Gz.glow(Gz.yellow, alpha: 0.22, blur: 14),
           ),
@@ -590,7 +590,7 @@ class _BoardCard extends StatelessWidget {
                           // берілмесе, FittedBox жазуды бекер кішірейтеді.
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 14.5,
+                            fontSize: 15,
                             height: 1.1,
                             letterSpacing: -0.2,
                           ),

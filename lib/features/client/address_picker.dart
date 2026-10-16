@@ -246,7 +246,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
         Text(
           t('Осы жерде — түртіп таңдаңыз:'),
           style: const TextStyle(
-            fontSize: 11.5,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: Gz.textSecondary,
           ),
@@ -263,13 +263,13 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
               final active = chosen.contains(p.name.toLowerCase());
               return InkWell(
                 onTap: () => _selectNearby(p),
-                borderRadius: BorderRadius.circular(17),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: active ? Gz.yellow : Gz.bg,
-                    borderRadius: BorderRadius.circular(17),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: active ? Gz.yellowDark : Gz.border,
                     ),
@@ -286,7 +286,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -385,7 +385,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
               children: [
                 Material(
                   elevation: 3,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   child: TextField(
                     controller: _search,
                     onChanged: _onSearchChanged,
@@ -422,7 +422,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: const [
                         BoxShadow(color: Colors.black26, blurRadius: 10),
                       ],
@@ -448,7 +448,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                     constraints: const BoxConstraints(maxHeight: 260),
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: const [
                         BoxShadow(color: Colors.black26, blurRadius: 10),
                       ],
@@ -533,7 +533,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                             child: Text(
                               '${t('Елді мекен:')} $_centerCity',
                               style: const TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: Gz.blue,
                               ),
@@ -557,7 +557,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                                   )
                                 : t('Атау қате болса — жолда түзетіңіз.')),
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: _unresolved
                             ? Gz.red
                             : (_corrected ? Gz.green : Gz.textSecondary),

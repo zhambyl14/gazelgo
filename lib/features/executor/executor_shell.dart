@@ -8,7 +8,6 @@ import '../../core/notify.dart';
 import '../../core/prefs.dart';
 import '../../core/push.dart';
 import '../../core/repo.dart';
-import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
@@ -100,8 +99,16 @@ class _ExecutorShellState extends State<ExecutorShell> {
 /// заказ болуы мүмкін (`executor_profiles.busy_order_id` тек біреуін ғана
 /// сақтайды) — сол себепті тікелей `orders` тізімін қолданамыз: біреу
 /// болса дереу ашамыз, екеу болса таңдау терезесін көрсетеміз.
-class _BusyOrderBanner extends StatelessWidget {
+class _BusyOrderBanner extends StatefulWidget {
   const _BusyOrderBanner();
+
+  @override
+  State<_BusyOrderBanner> createState() => _BusyOrderBannerState();
+}
+
+class _BusyOrderBannerState extends State<_BusyOrderBanner> {
+  /// Стрим БІР РЕТ құрылады — build сайын жаңа polling-цикл ашылмауы үшін.
+  final Stream<List<Order>> _stream = Repo.myActiveExecutorOrdersStream();
 
   void _open(BuildContext context, List<Order> active) {
     if (active.length == 1) {
@@ -109,47 +116,31 @@ class _BusyOrderBanner extends StatelessWidget {
           builder: (_) => ActiveOrderScreen(orderId: active.first.id)));
       return;
     }
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      // Карточкалар (маршрут+тегтер) экранға сыймай қалса — тізім өзі
-      // скроллданады, тек Column-ды толтырмайды (2+ белсенді заказ §5
-      // межгород маршрут-стектеу арқылы болады).
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.85),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(t('Белсенді заказдар'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 18)),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: active.length,
-                    separatorBuilder: (_, i) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      final o = active[i];
-                      return OrderCard(
-                        order: o,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) =>
-                                  ActiveOrderScreen(orderId: o.id)));
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+    // 2+ белсенді заказ (§5 межгород маршрут-стектеу) — таңдау терезесі.
+    // Карточкалар экранға сыймаса тізім өзі айналады.
+    showGzSheet(
+      context,
+      builder: (ctx) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+        ),
+        child: GzSheetBody(
+          title: t('Белсенді заказдар'),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: active.length,
+            separatorBuilder: (_, i) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final o = active[i];
+              return OrderCard(
+                order: o,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ActiveOrderScreen(orderId: o.id)));
+                },
+              );
+            },
           ),
         ),
       ),
@@ -159,55 +150,20 @@ class _BusyOrderBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Order>>(
-      stream: Repo.myActiveExecutorOrdersStream(),
+      stream: _stream,
       builder: (context, snap) {
         final active = snap.data ?? const <Order>[];
         if (active.isEmpty) return const SizedBox.shrink();
-        return GestureDetector(
-          onTap: () => _open(context, active),
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Gz.green, Color(0xFF0E8A3E)],
-              ),
-            ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: Row(
-                children: [
-                  const Icon(Icons.local_shipping,
-                      color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      active.length > 1
-                          ? '${active.length} ${t('белсенді заказ бар — ашу үшін басыңыз')}'
-                          : t('Белсенді заказ бар — ашу үшін басыңыз'),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14),
-                    ),
-                  ),
-                  if (active.length > 1)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text('+${active.length - 1}',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
-                    ),
-                  const Icon(Icons.chevron_right, color: Colors.white),
-                ],
-              ),
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+            child: ActiveOrderBanner(
+              orders: active,
+              title: active.length > 1
+                  ? '${active.length} ${t('белсенді заказ бар — ашу үшін басыңыз')}'
+                  : null,
+              onTap: () => _open(context, active),
             ),
           ),
         );

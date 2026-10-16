@@ -67,7 +67,7 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(
           gradient: Gz.heroGradient,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: Gz.cardShadow,
         ),
         child: Column(
@@ -98,7 +98,7 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
-                          fontSize: 14.5,
+                          fontSize: 15,
                           height: 1.1,
                         ),
                       ),
@@ -211,7 +211,7 @@ class _StoryBubble extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: unseen ? Colors.white : Colors.white54,
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),

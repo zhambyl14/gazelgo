@@ -103,7 +103,7 @@ class ExecutorOrderScreen extends StatelessWidget {
                   ? t('Заказды басқа орындаушы алды')
                   : t('Заказ енді қолжетімсіз'),
               style: const TextStyle(
-                  fontWeight: FontWeight.w800, fontSize: 15.5),
+                  fontWeight: FontWeight.w800, fontSize: 16),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
@@ -139,7 +139,7 @@ class ExecutorOrderScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(t('Ұсынысыңыз қабылданбады'),
                     style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15.5)),
+                        fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -208,9 +208,8 @@ class _OfferActions extends StatelessWidget {
   }
 
   Future<void> _counter(BuildContext context) async {
-    final price = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
+    final price = await showGzSheet<int>(
+      context,
       builder: (_) => PriceStepperSheet(order: order),
     );
     if (price == null || !context.mounted) return;

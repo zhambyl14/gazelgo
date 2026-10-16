@@ -193,7 +193,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
               t('Тізімді сүйреп РЕТІН ауыстырыңыз — каруселде дәл осы ретпен '
                   'тұрады. Қосқыш өшірулі түр клиентке КӨРІНБЕЙДІ. Түрді '
                   'басып атауын, анықтамасын және иконкасын өзгертесіз.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           ],
         ),
@@ -206,7 +206,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Gz.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.border),
       ),
       child: Padding(
@@ -258,7 +258,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 11.5),
+                              color: Gz.textSecondary, fontSize: 12),
                         ),
                     ],
                   ),
@@ -284,12 +284,12 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           text,
           style: TextStyle(
-              fontSize: 9.5, fontWeight: FontWeight.w800, color: color),
+              fontSize: 10, fontWeight: FontWeight.w800, color: color),
         ),
       );
 }
@@ -494,7 +494,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                       'өлшемі автоматты келтіріледі.'),
                   textAlign: TextAlign.center,
                   style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+                      const TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -585,7 +585,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                           fontWeight: FontWeight.w700, fontSize: 14)),
                   subtitle: Text(
                     t('Өшірулі болса клиент те, орындаушы да бұл түрді таппайды.'),
-                    style: const TextStyle(fontSize: 11.5),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 const Divider(height: 1),
@@ -600,7 +600,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                     t('Қосулы болса — спецтехника каруселінде емес, «Такси» '
                         'санатында тұрады және такси бөлімі өшірулі кезде '
                         'мүлдем көрінбейді.'),
-                    style: const TextStyle(fontSize: 11.5),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
               ],

@@ -200,6 +200,7 @@ class Repo {
     int delta,
     String reason,
   ) async {
+    forgetProfile(userId);
     final res = await c.rpc(
       'mod_adjust_trust_score',
       params: {'p_user': userId, 'p_delta': delta, 'p_reason': reason},
@@ -213,10 +214,13 @@ class Repo {
     String userId,
     bool blocked,
     String reason,
-  ) => c.rpc(
-    'mod_set_account_blocked',
-    params: {'p_user': userId, 'p_blocked': blocked, 'p_reason': reason},
-  );
+  ) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_set_account_blocked',
+      params: {'p_user': userId, 'p_blocked': blocked, 'p_reason': reason},
+    );
+  }
 
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
@@ -245,10 +249,61 @@ class Repo {
     return m == null ? null : Profile.fromMap(m);
   }
 
-  static Future<Profile?> profileOf(String id) async {
-    final m = await c.from('profiles').select().eq('id', id).maybeSingle();
-    return m == null ? null : Profile.fromMap(m);
+  /// Басқа адамның профилі — 60 секундтық ЖАДТАҒЫ КЭШПЕН.
+  ///
+  /// Бұрын лентадағы, ұсыныстардағы, модератор тізімдеріндегі әр карточка
+  /// `FutureBuilder(future: Repo.profileOf(id))` арқылы профильді build
+  /// сайын ҚАЙТА сұрайтын — лента әр 4 секунд жаңарғанда әр карточка
+  /// желіге қайта шығып, трафик пен батареяны жейтін. Енді бір id-ге бір
+  /// Future қайтарылады (FutureBuilder оны «сол Future» деп таниды да,
+  /// жыпылықтамайды), ал 60 секундтан кейін ғана жаңартылады.
+  static Future<Profile?> profileOf(String id, {bool fresh = false}) {
+    final hit = _profileCache[id];
+    if (!fresh &&
+        hit != null &&
+        DateTime.now().difference(hit.$1) < _profileTtl) {
+      return hit.$2;
+    }
+    final f = c
+        .from('profiles')
+        .select()
+        .eq('id', id)
+        .maybeSingle()
+        .then((m) => m == null ? null : Profile.fromMap(m));
+    _profileCache[id] = (DateTime.now(), f);
+    // Қате болса кэште қалдырмаймыз — келесі сұрау қайта байқап көреді.
+    f.catchError((Object _) {
+      _profileCache.remove(id);
+      return null;
+    });
+    return f;
   }
+
+  /// Бірнеше профильді БІР сұраумен алу (модератор тізімдері) — кэшті де
+  /// толтырады, сол себепті кейінгі `profileOf` желіге шықпайды.
+  static Future<Map<String, Profile>> profilesByIds(List<String> ids) async {
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return const {};
+    final rows = await c.from('profiles').select().inFilter('id', unique);
+    final out = <String, Profile>{};
+    final now = DateTime.now();
+    for (final m in rows as List) {
+      final p = Profile.fromMap(Map<String, dynamic>.from(m));
+      out[p.id] = p;
+      _profileCache[p.id] = (now, Future.value(p));
+    }
+    return out;
+  }
+
+  /// Модератор әрекетінен (бұғаттау, сенім, баланс) кейін — сол адамның
+  /// кэштегі профилін тастаймыз, келесі көрсетілімде жаңасы келеді.
+  static void forgetProfile(String id) {
+    _profileCache.remove(id);
+    _execProfileCache.remove(id);
+  }
+
+  static const _profileTtl = Duration(seconds: 60);
+  static final Map<String, (DateTime, Future<Profile?>)> _profileCache = {};
 
   // ================= MODERATOR WORKSPACE =================
   /// Барлық клиенттер. Moderator RLS policy барлық profile өрістерін оқуға
@@ -267,12 +322,14 @@ class Repo {
   }
 
   /// Платформадағы барлық заказдар — архивті қоса.
-  static Future<List<Order>> modAllOrders() async {
-    final rows = await c
-        .from('orders')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(500);
+  /// [since] берілсе — тек сол уақыттан бергі заказдар (модератордың
+  /// «Бүгін / 7 күн / 30 күн» сүзгісі серверде қолданылады).
+  static Future<List<Order>> modAllOrders({DateTime? since}) async {
+    var q = c.from('orders').select();
+    if (since != null) {
+      q = q.gte('created_at', since.toUtc().toIso8601String());
+    }
+    final rows = await q.order('created_at', ascending: false).limit(1000);
     return (rows as List)
         .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
         .toList();
@@ -409,14 +466,34 @@ class Repo {
     return m == null ? null : ExecutorProfile.fromMap(m);
   }
 
-  static Future<ExecutorProfile?> executorProfileOf(String id) async {
-    final m = await c
+  /// Басқа орындаушының профилі (көлігі, нөмірі) — [profileOf] сияқты
+  /// 60 секундтық кэшпен.
+  static Future<ExecutorProfile?> executorProfileOf(
+    String id, {
+    bool fresh = false,
+  }) {
+    final hit = _execProfileCache[id];
+    if (!fresh &&
+        hit != null &&
+        DateTime.now().difference(hit.$1) < _profileTtl) {
+      return hit.$2;
+    }
+    final f = c
         .from('executor_profiles')
         .select()
         .eq('user_id', id)
-        .maybeSingle();
-    return m == null ? null : ExecutorProfile.fromMap(m);
+        .maybeSingle()
+        .then((m) => m == null ? null : ExecutorProfile.fromMap(m));
+    _execProfileCache[id] = (DateTime.now(), f);
+    f.catchError((Object _) {
+      _execProfileCache.remove(id);
+      return null;
+    });
+    return f;
   }
+
+  static final Map<String, (DateTime, Future<ExecutorProfile?>)>
+  _execProfileCache = {};
 
   /// Орындаушы өтінімі (жаңа немесе қайта жіберу). Көлік ТҮРІ таңдалады.
   static Future<void> submitExecutorApplication({
@@ -870,14 +947,14 @@ class Repo {
     return res == null ? null : Map<String, dynamic>.from(res as Map);
   }, every: const Duration(seconds: 12));
 
-  /// Жаттыққа шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
+  /// Дос шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
   /// қорғаныс). Сыйақы (орындаушыға баланс/клиентке санақ) шақырылған
   /// адам ӨЗІНІҢ БІРІНШІ заказын аяқтағанда ғана беріледі. Тіркелген
   /// соң (не тіркелу экранында) БІР РЕТ шақырылады.
   static Future<void> redeemReferralCode(String code) =>
       c.rpc('redeem_referral_code', params: {'p_code': code});
 
-  /// Жаттыққа шақыру фичасы қосулы ма (0061) — АВТОРИЗАЦИЯСЫЗ да
+  /// Дос шақыру фичасы қосулы ма (0061) — АВТОРИЗАЦИЯСЫЗ да
   /// шақырылады (тіркелу экраны әлі кірмеген қолданушыда). Желі қатесінде
   /// `false` — өріс жай ғана жасырылады.
   static Future<bool> referralEnabled() async {
@@ -889,14 +966,26 @@ class Repo {
   }
 
   // ---- moderator ----
+  /// Орындаушының балансын қолмен түзету (теріс сома — шегеру).
+  static Future<void> modAdjustBalance(String userId, int amount, String note) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_adjust_balance',
+      params: {'p_user': userId, 'p_amount': amount, 'p_note': note},
+    );
+  }
+
   static Future<void> modSetExecutorStatus(
     String userId,
     String status,
     String comment,
-  ) => c.rpc(
-    'mod_set_executor_status',
-    params: {'p_user': userId, 'p_status': status, 'p_comment': comment},
-  );
+  ) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_set_executor_status',
+      params: {'p_user': userId, 'p_status': status, 'p_comment': comment},
+    );
+  }
 
   static Future<void> modReviewTopup(
     String id,
@@ -1297,6 +1386,37 @@ class Repo {
         .toList();
   }
 
+  /// Көлік нөмірін салыстыруға келтіру: бос орын/сызықша алынып, бас
+  /// әріпке, кириллицадағы «ұқсас» әріптер латыншаға айналады (А→A, В→B…)
+  /// — «123 АВС 02» мен «123ABC02» бір нөмір болып саналады.
+  static String normPlate(String raw) {
+    const map = {
+      'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', //
+      'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'У': 'Y', //
+    };
+    final up = raw.toUpperCase().replaceAll(RegExp(r'[\s\-_.]'), '');
+    return up.split('').map((ch) => map[ch] ?? ch).join();
+  }
+
+  /// Модератор: осы көлік нөмірімен ТАҒЫ қай орындаушылар тіркелген
+  /// (өзінен басқа). Бос тізім — қайталану жоқ.
+  static Future<List<String>> modPlateDuplicates(
+    String userId,
+    String plate,
+  ) async {
+    final target = normPlate(plate);
+    if (target.length < 4) return const [];
+    final rows = await c
+        .from('executor_profiles')
+        .select('user_id, vehicle_plate')
+        .neq('user_id', userId);
+    return [
+      for (final m in rows as List)
+        if (normPlate('${m['vehicle_plate'] ?? ''}') == target)
+          m['user_id'] as String,
+    ];
+  }
+
   // ---- moderator queries ----
   static Future<List<ExecutorProfile>> executorsByStatus(String? status) async {
     var q = c.from('executor_profiles').select();
@@ -1673,8 +1793,25 @@ class Repo {
     return 'image/jpeg';
   }
 
-  static Future<String> signedDocUrl(String path) =>
-      c.storage.from('docs').createSignedUrl(path, 3600);
+  /// Жабық құжаттың уақытша сілтемесі (1 сағат). 50 минут бойы КЭШТЕ
+  /// сақталады: құжат суреті build сайын жаңа сілтеме сұрамайды (әрі жаңа
+  /// сілтеме = кэштелмеген жаңа сурет → жыпылықтау).
+  static Future<String> signedDocUrl(String path) {
+    final hit = _signedCache[path];
+    if (hit != null &&
+        DateTime.now().difference(hit.$1) < const Duration(minutes: 50)) {
+      return hit.$2;
+    }
+    final f = c.storage.from('docs').createSignedUrl(path, 3600);
+    _signedCache[path] = (DateTime.now(), f);
+    f.catchError((Object _) {
+      _signedCache.remove(path);
+      return '';
+    });
+    return f;
+  }
+
+  static final Map<String, (DateTime, Future<String>)> _signedCache = {};
 
   // ============ ТОЛТЫРУ ЧЕГІН ТЕКСЕРЕТІН БОТ (0051) ============
   /// Kaspi Pay выпискасын `docs` бакетіне жүктейді. Бөлек bucket құрылмайды:

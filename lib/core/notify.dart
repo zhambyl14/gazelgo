@@ -1,7 +1,7 @@
-import 'dart:ui' show Color;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import 'theme.dart';
 
 /// Локал уведомлениелер: жаңа заказ, заказ статусы.
 /// Қосымша ашық/минимизацияда тұрғанда жұмыс істейді (Android foreground-та
@@ -72,7 +72,7 @@ class Notify {
           priority: Priority.high,
           icon: 'ic_stat_notify',
           // Бренд сарысы (Gz.yellow) — хабарлама тақтасындағы акцент түсі.
-          color: Color(0xFFFFC61A),
+          color: Gz.yellow,
         ),
         // iOS-та presentSound анық true болмаса, локал хабарлама
         // дыбыссыз (тек баннер) көрсетіледі — flutter_local_notifications-тың

@@ -21,13 +21,8 @@ Future<void> showListingSheet(
   String listingId, {
   VoidCallback? onChanged,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
+  return showGzSheet<void>(
+    context,
     builder: (_) => _ListingSheet(listingId: listingId, onChanged: onChanged),
   );
 }
@@ -71,50 +66,21 @@ class _ListingSheetState extends State<_ListingSheet> {
   /// кестеге түседі: модератор оны «Шағымдар» табынан көріп, хабарландыруды
   /// сол жерден бірден өшіре алады.
   Future<void> _report(Listing l) async {
-    final ctrl = TextEditingController();
-    final send = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Хабарландыруға шағым')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t(
-                'Шағымыңыз модераторға жіберіледі. Ол хабарландыруды тексеріп, '
-                'қажет болса өшіреді.',
-              ),
-              style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              maxLines: 3,
-              decoration: InputDecoration(hintText: t('Не дұрыс емес?')),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('Болдырмау')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Gz.red,
-              foregroundColor: Colors.white,
-              shadowColor: const Color(0x59DC2626),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t('Жіберу')),
-          ),
-        ],
+    final reason = await gzInputDialog(
+      context,
+      icon: Icons.flag_outlined,
+      confirmColor: Gz.red,
+      title: t('Хабарландыруға шағым'),
+      message: t(
+        'Шағымыңыз модераторға жіберіледі. Ол хабарландыруды тексеріп, '
+        'қажет болса өшіреді.',
       ),
+      hint: t('Не дұрыс емес?'),
+      confirmLabel: t('Жіберу'),
     );
-    if (send != true || !mounted) return;
+    if (reason == null || !mounted) return;
     try {
-      await Repo.reportListing(l.id, ctrl.text.trim());
+      await Repo.reportListing(l.id, reason);
       if (mounted) showSnack(context, t('Шағым модераторға жіберілді'));
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -235,7 +201,7 @@ class _ListingSheetState extends State<_ListingSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
               decoration: BoxDecoration(
                 color: listingKindColor(l.kind),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 listingKindLabel(l.kind),
@@ -271,7 +237,7 @@ class _ListingSheetState extends State<_ListingSheet> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(l.body, style: const TextStyle(fontSize: 14.5, height: 1.55)),
+        Text(l.body, style: const TextStyle(fontSize: 15, height: 1.55)),
         const SizedBox(height: 14),
         Wrap(
           spacing: 6,
@@ -308,7 +274,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Gz.bg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
               children: [
@@ -344,7 +310,7 @@ class _ListingSheetState extends State<_ListingSheet> {
                                 ? t('Орындаушы')
                                 : t('Клиент'),
                             style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               color: Gz.textSecondary,
                             ),
                           ),
@@ -372,12 +338,12 @@ class _ListingSheetState extends State<_ListingSheet> {
                 'хабарландыруға делдал емес. Алдын ала ақша аудармаңыз.',
               ),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
           ] else
             Text(
               t('Байланыс нөмірі қолжетімсіз — хабарландырудың мерзімі өткен.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           const SizedBox(height: 10),
           TextButton.icon(
@@ -393,7 +359,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Gz.blue.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Gz.blue.withValues(alpha: 0.25)),
             ),
             child: Row(
@@ -414,7 +380,7 @@ class _ListingSheetState extends State<_ListingSheet> {
                       Text(
                         t('Бұл санды тек сіз көресіз.'),
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 12,
                           color: Gz.textSecondary,
                         ),
                       ),
@@ -455,7 +421,7 @@ class _ListingSheetState extends State<_ListingSheet> {
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
       color: color == null ? Gz.bg : color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(9),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -500,7 +466,7 @@ class _PhotoGallery extends StatelessWidget {
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Image.network(
                 url,
                 width: paths.length == 1 ? 300 : 220,

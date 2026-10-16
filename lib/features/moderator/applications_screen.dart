@@ -120,7 +120,7 @@ class _DocsReviewTile extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text('${t('Жаңартылды')}: $fields',
                     style: const TextStyle(
-                        fontSize: 12.5, color: Gz.textSecondary)),
+                        fontSize: 13, color: Gz.textSecondary)),
               ],
               const SizedBox(height: 10),
               // Жаңартылған құжаттар
@@ -193,25 +193,18 @@ class _DocsReviewTile extends StatelessWidget {
   }
 
   Future<void> _reject(BuildContext context) async {
-    final c = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Қайтару себебі')),
-        content: TextField(controller: c, autofocus: true),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Қайтару'))),
-        ],
-      ),
+    final reason = await gzInputDialog(
+      context,
+      icon: Icons.undo_rounded,
+      confirmColor: Gz.red,
+      title: t('Қайтару себебі'),
+      hint: t('Мыс: техпаспорт фотосы анық емес'),
+      presets: [for (final p in kDocRejectPresets) t(p)],
+      confirmLabel: t('Қайтару'),
     );
-    if (ok != true) return;
+    if (reason == null) return;
     try {
-      await Repo.modRejectDocs(ep.userId, c.text);
+      await Repo.modRejectDocs(ep.userId, reason);
       if (context.mounted) showSnack(context, t('Қайтарылды'));
       onChanged();
     } catch (e) {
@@ -241,7 +234,7 @@ class _ApplicationTile extends StatelessWidget {
             subtitle: Text(
               '${ep.vehicleTitle} · ${ep.vehiclePlate}\n'
               '${ep.city ?? '—'} · ${fmtDate(ep.createdAt)}',
-              style: const TextStyle(fontSize: 12.5),
+              style: const TextStyle(fontSize: 13),
             ),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),
@@ -277,24 +270,35 @@ class ApplicationDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SectionCard(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  InitialsAvatar(profile?.fullName ?? '?',
-                      radius: 24, imageUrl: profile?.avatarUrl),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(profile?.fullName ?? '…',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 16)),
-                        Text(profile?.phone ?? '',
-                            style: const TextStyle(
-                                color: Gz.textSecondary, fontSize: 13)),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      InitialsAvatar(profile?.fullName ?? '?',
+                          radius: 24, imageUrl: profile?.avatarUrl),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(profile?.fullName ?? '…',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 16)),
+                            Text(profile?.phone ?? '',
+                                style: const TextStyle(
+                                    color: Gz.textSecondary, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                  // Өтінімде сұрақ туса — модератор иесімен бірден
+                  // хабарласады (бұрын нөмірді қолмен теру керек еді).
+                  if (profile?.phone.isNotEmpty == true) ...[
+                    const SizedBox(height: 12),
+                    ContactButtons(phone: profile!.phone),
+                  ],
                 ],
               ),
             ),
@@ -303,10 +307,8 @@ class ApplicationDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t('Көлік'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
-                  const SizedBox(height: 8),
+                  SectionTitle(t('Көлік')),
+                  _DuplicatePlateWarning(ep: ep),
                   InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                   InfoRow(t('Маркасы'), ep.vehicleTitle),
                   if (ep.city != null) InfoRow(t('Қала'), ep.city!),
@@ -315,100 +317,37 @@ class ApplicationDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Text(t('Құжаттар'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 16)),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Gz.bg,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    ep.isForeignCitizen ? t('Шетел азаматы') : t('ҚР азаматы'),
-                    style: const TextStyle(
-                        fontSize: 11.5, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: DocImage(
-                        path: ep.licensePath, label: t('Жүргізуші куәлігі'))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: DocImage(
-                        path: ep.licenseSelfiePath, label: t('Правамен селфи'))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (!ep.isForeignCitizen)
-              Row(
-                children: [
-                  Expanded(
-                      child: DocImage(
-                          path: ep.idDocPath, label: t('Жеке куәлік'))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: DocImage(
-                          path: ep.idSelfiePath, label: t('Куәлікпен селфи'))),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                      child: DocImage(
-                          path: ep.passportPath, label: t('Шетел паспорты'))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: DocImage(
-                          path: ep.passportSelfiePath,
-                          label: t('Паспортпен селфи'))),
-                ],
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: DocImage(
-                        path: ep.techPassportPath, label: t('Техпаспорт'))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: DocImage(
-                        path: ep.techPassportSelfiePath,
-                        label: t('Техпаспортпен фото'))),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(t('Көлік фотолары'),
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 8),
-            if (ep.vehiclePhotos.isEmpty)
-              Text(t('Фото жоқ'),
-                  style: const TextStyle(color: Gz.textSecondary)),
-            SizedBox(
-              height: 130,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: ep.vehiclePhotos.length,
-                separatorBuilder: (_, i) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => SizedBox(
-                  width: 170,
-                  child: DocImage(
-                      path: ep.vehiclePhotos[i],
-                      label: '${t('Фото')} ${i + 1}'),
-                ),
+            const SizedBox(height: 16),
+            SectionTitle(
+              t('Құжаттар'),
+              subtitle: t('Басса — толық экранда ашылады, сырғытып қарауға болады'),
+              trailing: InfoChip(
+                text: ep.isForeignCitizen
+                    ? t('Шетел азаматы')
+                    : t('ҚР азаматы'),
               ),
             ),
+            DocGallery(
+              docs: [
+                (ep.licensePath, t('Жүргізуші куәлігі')),
+                (ep.licenseSelfiePath, t('Правамен селфи')),
+                if (!ep.isForeignCitizen) ...[
+                  (ep.idDocPath, t('Жеке куәлік')),
+                  (ep.idSelfiePath, t('Куәлікпен селфи')),
+                ] else ...[
+                  (ep.passportPath, t('Шетел паспорты')),
+                  (ep.passportSelfiePath, t('Паспортпен селфи')),
+                ],
+                (ep.techPassportPath, t('Техпаспорт')),
+                (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+                for (var i = 0; i < ep.vehiclePhotos.length; i++)
+                  (ep.vehiclePhotos[i], '${t('Фото')} ${i + 1}'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Модератордың өзін тексеру парағы — өтінімді растамас бұрын
+            // не қарау керегін еске салады (тек көмекші, серверге жіберілмейді).
+            const _ReviewChecklist(),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -449,35 +388,21 @@ class ApplicationDetailScreen extends StatelessWidget {
   }
 
   Future<void> _reject(BuildContext context) async {
-    final c = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Қабылдамау себебі')),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          decoration: InputDecoration(
-              hintText: t('Мыс: техпаспорт фотосы анық емес')),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау'))),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Gz.red,
-                foregroundColor: Colors.white,
-                shadowColor: const Color(0x59DC2626)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t('Қабылдамау')),
-          ),
-        ],
-      ),
+    final reason = await gzInputDialog(
+      context,
+      icon: Icons.cancel_outlined,
+      confirmColor: Gz.red,
+      title: t('Қабылдамау себебі'),
+      message: t('Себебі орындаушыға көрсетіледі — нені түзету керегін '
+          'нақты жазыңыз.'),
+      hint: t('Мыс: техпаспорт фотосы анық емес'),
+      presets: [for (final p in kDocRejectPresets) t(p)],
+      required: true,
+      confirmLabel: t('Қабылдамау'),
     );
-    if (ok != true || !context.mounted) return;
+    if (reason == null || !context.mounted) return;
     try {
-      await Repo.modSetExecutorStatus(ep.userId, 'rejected', c.text);
+      await Repo.modSetExecutorStatus(ep.userId, 'rejected', reason);
       if (context.mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
@@ -485,126 +410,357 @@ class ApplicationDetailScreen extends StatelessWidget {
   }
 }
 
-/// Қорғалған құжат суреті (signed URL арқылы), басқанда үлкейеді.
-class DocImage extends StatelessWidget {
-  final String? path;
-  final String label;
-  const DocImage({super.key, required this.path, required this.label});
+/// Модератордың өтінімді тексеру парағы — растамас бұрын НЕ қарау керегін
+/// еске салады. Тек көмекші құрал: белгілер серверге жіберілмейді.
+class _ReviewChecklist extends StatefulWidget {
+  const _ReviewChecklist();
+
+  @override
+  State<_ReviewChecklist> createState() => _ReviewChecklistState();
+}
+
+class _ReviewChecklistState extends State<_ReviewChecklist> {
+  static const _items = [
+    'Аты-жөні құжаттармен сәйкес',
+    'Селфидегі адам құжаттағы адам',
+    'Құжаттардың мерзімі өтпеген',
+    'Көлік нөмірі фотода анық көрінеді',
+    'Көлік түрі фотомен сәйкес',
+  ];
+  final _done = <int>{};
 
   @override
   Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionTitle(
+            t('Тексеру парағы'),
+            trailing: CountBadge(_items.length - _done.length),
+          ),
+          for (var i = 0; i < _items.length; i++)
+            ConfirmCheck(
+              value: _done.contains(i),
+              onChanged: (v) => setState(() {
+                if (v) {
+                  _done.add(i);
+                } else {
+                  _done.remove(i);
+                }
+              }),
+              label: Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(t(_items[i]), style: const TextStyle(fontSize: 14)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Бұл көлік нөмірі БАСҚА орындаушыда да тіркелген бе — тіркелгенде
+/// модераторға ескерту (бір көлікпен бірнеше аккаунт ашу — алаяқтық
+/// белгісі). Сервер өзгерісі керек емес: модератор барлық өтінімді оқи алады.
+class _DuplicatePlateWarning extends StatelessWidget {
+  final ExecutorProfile ep;
+  const _DuplicatePlateWarning({required this.ep});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>>(
+      future: Repo.modPlateDuplicates(ep.userId, ep.vehiclePlate),
+      builder: (context, snap) {
+        final dups = snap.data ?? const <String>[];
+        if (dups.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: GzNotice(
+            tone: NoticeTone.danger,
+            icon: Icons.content_copy_rounded,
+            title: t('Бұл көлік нөмірі басқа аккаунтта да бар'),
+            message: '${t('Сәйкес аккаунттар саны')}: ${dups.length}. '
+                '${t('Бір көлікпен бірнеше аккаунт ашылмағанын тексеріңіз.')}',
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Өтінімді/құжатты қабылдамау себептерінің ДАЙЫН тізімі — модератор әр
+/// жолы қолмен термейді (диалогта чип болып шығады, біреуін басса өріс
+/// толады, қаласа түзетеді).
+const kDocRejectPresets = [
+  'Фото анық емес — қайта түсіріңіз',
+  'Селфиде бет анық көрінбейді',
+  'Құжат мерзімі өткен',
+  'Аты-жөні құжатпен сәйкес емес',
+  'Көлік нөмірі фотода көрінбейді',
+  'Құжаттың бір беті жоқ',
+];
+
+/// Қорғалған құжат суреті (signed URL арқылы). Басқанда — [onTap] берілсе
+/// сол (галерея), әйтпесе толық экранды көрсеткіш бір құжатпен ашылады.
+class DocImage extends StatelessWidget {
+  final String? path;
+  final String label;
+  final VoidCallback? onTap;
+  final double height;
+
+  const DocImage({
+    super.key,
+    required this.path,
+    required this.label,
+    this.onTap,
+    this.height = 110,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final box = BoxDecoration(
+      color: Gz.surfaceAlt,
+      borderRadius: BorderRadius.circular(Gz.rSm),
+      border: Border.all(color: Gz.border),
+    );
+    Widget caption() => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        );
+
     if (path == null) {
-      return Container(
-        height: 110,
-        decoration: BoxDecoration(
-          color: Gz.bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text('$label\n${t('жоқ')}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12)),
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: height,
+            width: double.infinity,
+            decoration: box,
+            child: Center(
+              child: Text(
+                t('жоқ'),
+                style: const TextStyle(color: Gz.textTertiary, fontSize: 12),
+              ),
+            ),
+          ),
+          caption(),
+        ],
       );
     }
     // Kaspi кейде скриншот түсіруге тыйым салады (қаржы қауіпсіздігі) —
     // сол кезде орындаушы чекті PDF ретінде «Поделиться» арқылы жүктейді.
-    // PDF-ты Image.network аша алмайды, сондықтан бөлек, сыртқы қосымшада
-    // (браузер/PDF көрсеткіш) ашылатын карточка көрсетеміз.
     final isPdf = path!.toLowerCase().endsWith('.pdf');
 
     return FutureBuilder<String>(
       future: Repo.signedDocUrl(path!),
       builder: (context, snap) {
         final url = snap.data;
-        if (isPdf) {
-          return GestureDetector(
-            onTap: url == null
-                ? null
-                : () => launchUrl(Uri.parse(url),
-                    mode: LaunchMode.externalApplication),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 110,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Gz.bg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: url == null
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.picture_as_pdf,
-                                  color: Gz.red, size: 32),
-                              const SizedBox(height: 4),
-                              Text(t('PDF ашу'),
-                                  style: const TextStyle(
-                                      fontSize: 11.5,
-                                      color: Gz.textSecondary)),
-                            ],
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          );
-        }
-        return GestureDetector(
-          onTap: url == null
-              ? null
-              : () => showDialog(
-                    context: context,
-                    builder: (_) => Dialog(
-                      insetPadding: const EdgeInsets.all(10),
-                      child: InteractiveViewer(
-                        child: Image.network(url),
-                      ),
+        final tap = url == null || url.isEmpty
+            ? null
+            : (onTap ??
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DocViewerScreen(docs: [(path, label)]),
                     ),
-                  ),
+                  ));
+        return GestureDetector(
+          onTap: tap,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 110,
+                height: height,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Gz.bg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: box,
                 clipBehavior: Clip.antiAlias,
                 child: url == null
                     ? const Center(
                         child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2)))
-                    : Image.network(url,
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : isPdf
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.picture_as_pdf_rounded,
+                            color: Gz.red,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            t('PDF ашу'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Gz.textSecondary,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Image.network(
+                        url,
                         fit: BoxFit.cover,
                         cacheHeight:
-                            (110 * MediaQuery.devicePixelRatioOf(context))
-                                .round()),
+                            (height * MediaQuery.devicePixelRatioOf(context))
+                                .round(),
+                        errorBuilder: (_, _, _) => const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: Gz.textTertiary,
+                          ),
+                        ),
+                      ),
               ),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+              caption(),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Құжаттар торы (2 баған). Кез келгенін басса — толық экранды
+/// [DocViewerScreen] сол құжаттан ашылады да, қалғандарына СЫРҒЫТЫП
+/// өтуге болады (бұрын әр құжат бөлек терезеде ашылып, жабылатын).
+class DocGallery extends StatelessWidget {
+  final List<(String?, String)> docs;
+  const DocGallery({super.key, required this.docs});
+
+  @override
+  Widget build(BuildContext context) {
+    final present = [for (final d in docs) if (d.$1 != null) d];
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = (c.maxWidth - 8) / 2;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 10,
+          children: [
+            for (final d in docs)
+              SizedBox(
+                width: w,
+                child: DocImage(
+                  path: d.$1,
+                  label: d.$2,
+                  onTap: d.$1 == null
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => DocViewerScreen(
+                              docs: present,
+                              initial: present.indexOf(d),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Құжаттарды толық экранда қарау: сырғыту (келесі/алдыңғы), саусақпен
+/// үлкейту, 90°-қа бұру (селфи мен құжат көбіне жанынан түсіріледі).
+class DocViewerScreen extends StatefulWidget {
+  final List<(String?, String)> docs;
+  final int initial;
+  const DocViewerScreen({super.key, required this.docs, this.initial = 0});
+
+  @override
+  State<DocViewerScreen> createState() => _DocViewerScreenState();
+}
+
+class _DocViewerScreenState extends State<DocViewerScreen> {
+  late final _pages = PageController(initialPage: widget.initial);
+  late int _index = widget.initial;
+  final Map<int, int> _turns = {};
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final docs = widget.docs;
+    return Scaffold(
+      backgroundColor: Gz.ink,
+      appBar: AppBar(
+        backgroundColor: Gz.ink,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_index + 1}/${docs.length} · ${docs[_index].$2}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: t('Бұру'),
+            onPressed: () => setState(
+              () => _turns[_index] = ((_turns[_index] ?? 0) + 1) % 4,
+            ),
+            icon: const Icon(Icons.rotate_90_degrees_cw_outlined),
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pages,
+        itemCount: docs.length,
+        onPageChanged: (i) => setState(() => _index = i),
+        itemBuilder: (_, i) {
+          final path = docs[i].$1;
+          if (path == null) return const SizedBox.shrink();
+          return FutureBuilder<String>(
+            future: Repo.signedDocUrl(path),
+            builder: (context, snap) {
+              final url = snap.data;
+              if (url == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (path.toLowerCase().endsWith('.pdf')) {
+                return Center(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(200, 52),
+                    ),
+                    onPressed: () => launchUrl(
+                      Uri.parse(url),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf_rounded),
+                    label: Text(t('PDF ашу')),
+                  ),
+                );
+              }
+              return InteractiveViewer(
+                maxScale: 5,
+                child: Center(
+                  child: RotatedBox(
+                    quarterTurns: _turns[i] ?? 0,
+                    child: Image.network(url, fit: BoxFit.contain),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

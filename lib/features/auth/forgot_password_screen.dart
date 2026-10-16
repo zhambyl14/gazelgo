@@ -86,13 +86,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     const SizedBox(height: 20),
                     Text(t('Құпиясөзді ұмыттыңыз ба?'),
                         style: const TextStyle(
-                            fontSize: 23, fontWeight: FontWeight.w900)),
+                            fontSize: 22, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 10),
                     Text(
                       t('Нөміріңізді Telegram арқылы растап, жаңа құпиясөз '
                           'орнатыңыз — SMS қажет емес.'),
                       style: const TextStyle(
-                          color: Gz.textSecondary, fontSize: 14.5, height: 1.5),
+                          color: Gz.textSecondary, fontSize: 15, height: 1.5),
                     ),
                     const SizedBox(height: 20),
                     TelegramVerify(

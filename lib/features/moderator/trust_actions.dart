@@ -17,7 +17,7 @@ class TrustBadge extends StatelessWidget {
     final color = blocked
         ? Gz.red
         : score < 80
-            ? const Color(0xFFB86E00)
+            ? Gz.warning
             : Gz.green;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -44,13 +44,8 @@ class TrustBadge extends StatelessWidget {
 /// қолмен балл қосу/азайту (±15) және аккаунтты блоктау/блоктан шығару.
 Future<void> showTrustActionsSheet(BuildContext context, Profile profile,
     {VoidCallback? onChanged}) async {
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+  await showGzSheet(
+    context,
     builder: (_) => _TrustSheet(profile: profile, onChanged: onChanged),
   );
 }
@@ -98,31 +93,17 @@ class _TrustSheetState extends State<_TrustSheet> {
     final blocking = !_blocked;
     var reason = '';
     if (blocking) {
-      final c = TextEditingController();
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t('Блоктау себебі')),
-          content: TextField(
-            controller: c,
-            autofocus: true,
-            decoration: InputDecoration(hintText: t('Мыс: тыйым салынған жүкке күдік')),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('Болдырмау'))),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red, foregroundColor: Colors.white),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Блоктау')),
-            ),
-          ],
-        ),
+      final r = await gzInputDialog(
+        context,
+        icon: Icons.block_rounded,
+        confirmColor: Gz.red,
+        title: t('Блоктау себебі'),
+        hint: t('Мыс: тыйым салынған жүкке күдік'),
+        presets: [for (final p in kBlockReasonPresets) t(p)],
+        confirmLabel: t('Блоктау'),
       );
-      if (ok != true) return;
-      reason = c.text.trim();
+      if (r == null) return;
+      reason = r;
     }
     setState(() => _busy = true);
     try {
@@ -145,9 +126,8 @@ class _TrustSheetState extends State<_TrustSheet> {
   @override
   Widget build(BuildContext context) {
     final p = widget.profile;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+    return GzSheetBody(
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,7 +146,7 @@ class _TrustSheetState extends State<_TrustSheet> {
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       Text(p.phone,
                           style: const TextStyle(
-                              color: Gz.textSecondary, fontSize: 12.5)),
+                              color: Gz.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -177,24 +157,25 @@ class _TrustSheetState extends State<_TrustSheet> {
               const SizedBox(height: 8),
               Text('${t('Себебі:')} $_reason',
                   style:
-                      const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+                      const TextStyle(color: Gz.textSecondary, fontSize: 13)),
+            ],
+            if (p.phone.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ContactButtons(phone: p.phone),
             ],
             const SizedBox(height: 18),
-            Text(t('Сенім деңгейі'),
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(
-              t('Хабарлама түскен сайын автоматты −15. 50-ден төмен түссе '
+            SectionTitle(
+              t('Сенім деңгейі'),
+              subtitle: t('Хабарлама түскен сайын автоматты −15. 50-ден төмен түссе '
                   'аккаунт автоматты бұғатталады (жаңа заказ/ұсыныс бере алмайды).'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              padding: const EdgeInsets.only(bottom: 10),
             ),
-            const SizedBox(height: 10),
             Row(children: [
               Expanded(
                 child: OutlinedButton(
                   onPressed: _busy ? null : () => _adjust(-15),
                   child: BtnLabel(t('−15 (күдікті)'),
-                      style: const TextStyle(fontSize: 12.5)),
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -202,7 +183,7 @@ class _TrustSheetState extends State<_TrustSheet> {
                 child: OutlinedButton(
                   onPressed: _busy ? null : () => _adjust(15),
                   child: BtnLabel(t('+15 (сенімді қалпына келтіру)'),
-                      style: const TextStyle(fontSize: 12.5)),
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ),
             ]),
@@ -224,3 +205,13 @@ class _TrustSheetState extends State<_TrustSheet> {
     );
   }
 }
+
+/// Модератордың бұғаттау/қабылдамау себептерінің ДАЙЫН тізімі — әр жолы
+/// қолмен термеу үшін (диалогта чип болып шығады).
+const kBlockReasonPresets = [
+  'Тыйым салынған жүкке күдік',
+  'Алаяқтыққа күдік',
+  'Дөрекі мінез-құлық',
+  'Жалған деректер',
+  'Бірнеше шағым түсті',
+];

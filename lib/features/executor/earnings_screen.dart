@@ -41,7 +41,7 @@ class EarningsScreen extends ConsumerWidget {
             Text(
               t('Табыс — аяқталған заказдардың келісілген бағасы. '
                   'Төлемді клиенттен тікелей аласыз; бұл сома балансқа қосылмайды.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 18),
             Text(t('Тарих'),
@@ -83,7 +83,7 @@ class EarningsScreen extends ConsumerWidget {
                           subtitle: Text(
                             fmtDate(DateTime.tryParse(
                                 r['created_at'] as String? ?? '')),
-                            style: const TextStyle(fontSize: 12.5),
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
                     ],
@@ -106,7 +106,7 @@ class EarningsScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5)),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(

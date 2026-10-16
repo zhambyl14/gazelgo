@@ -52,7 +52,7 @@ class DrawerEdgeHandle extends StatelessWidget {
             decoration: BoxDecoration(
               color: Gz.ink.withValues(alpha: 0.22),
               borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(5),
+                right: Radius.circular(4),
               ),
             ),
           ),
@@ -146,7 +146,7 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
                         padding: const EdgeInsets.all(9),
                         decoration: BoxDecoration(
                           color: Gz.ink,
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(28),
                           boxShadow: Gz.cardShadow,
                         ),
                         child: const Icon(
@@ -194,7 +194,7 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 13.5,
+                                  fontSize: 14,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -205,7 +205,7 @@ class _DrawerHintOverlayState extends State<DrawerHintOverlay>
                                     'сонда.'),
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.82),
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   height: 1.35,
                                 ),
                               ),

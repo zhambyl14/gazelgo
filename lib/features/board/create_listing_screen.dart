@@ -69,13 +69,8 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       (ref.read(myProfileProvider).value?.role ?? 'client') == 'executor';
 
   Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    final picked = await showGzSheet<String>(
+      context,
       builder: (_) => const CityPickerSheet(),
     );
     if (picked != null && mounted) setState(() => _city = picked);
@@ -90,26 +85,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       );
       return;
     }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: Text(t('Камерамен түсіру')),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: Text(t('Галереядан таңдау')),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await pickImageSource(context);
     if (source == null) return;
     final f = await _picker.pickImage(
       source: source,
@@ -243,7 +219,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                               : t('Сіз жұмысыңызды жариялайсыз'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 14.5,
+                            fontSize: 15,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -254,7 +230,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                               : t('Оны орындаушылар «Жұмыстар» бөлімінен көреді '
                                   'де, өздері хабарласады.'),
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             height: 1.35,
                             color: Gz.textSecondary,
                           ),
@@ -285,7 +261,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             const SizedBox(height: 8),
             InkWell(
               onTap: _pickCity,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -293,7 +269,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: Gz.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _city == null ? Gz.border : Gz.ink,
                     width: 1.5,
@@ -311,7 +287,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                       child: Text(
                         _city ?? t('Қаланы таңдаңыз'),
                         style: TextStyle(
-                          fontSize: 14.5,
+                          fontSize: 15,
                           fontWeight: _city == null
                               ? FontWeight.w500
                               : FontWeight.w700,
@@ -334,7 +310,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                       'Қала ішінде және маңайға шығамын.')
                   : t('мыс: Құрылыс алаңына 10 күн бойы құм тасу керек. '
                       'Ұзақ мерзімге фура іздеймін.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -354,7 +330,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             const SizedBox(height: 4),
             Text(
               t('Бос қалдырсаңыз — «Келісім бойынша» деп көрсетіледі.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -375,7 +351,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
                 decoration: BoxDecoration(
                   color: Gz.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Gz.border),
                 ),
                 child: Row(
@@ -394,7 +370,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                           Text(
                             t('мыс: «10 күнге фура керек»'),
                             style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               color: Gz.textSecondary,
                             ),
                           ),
@@ -415,7 +391,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color: Gz.bg,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
