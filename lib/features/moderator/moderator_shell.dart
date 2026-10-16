@@ -14,6 +14,7 @@ import 'clients_screen.dart';
 import 'executors_screen.dart';
 import 'line_screen.dart';
 import 'listings_admin_screen.dart';
+import 'live_map_screen.dart';
 import 'news_admin_screen.dart';
 import 'order_chats_screen.dart';
 import 'orders_screen.dart';
@@ -51,6 +52,7 @@ class ModeratorShell extends StatefulWidget {
   static const int tabOrderChats = 12;
   static const int tabBroadcast = 13;
   static const int tabAudit = 14;
+  static const int tabLiveMap = 15;
 
   /// Бөлімге өту сұранысы (push-хабарламаны басқанда, Шолудан).
   static final ValueNotifier<int?> tabRequest = ValueNotifier<int?>(null);
@@ -113,6 +115,13 @@ class _ModeratorShellState extends State<ModeratorShell> {
           Gz.green,
           () => t('Линия'),
           () => const LineScreen(),
+        ),
+        _Section(
+          ModeratorShell.tabLiveMap,
+          Icons.map_outlined,
+          Gz.blue,
+          () => t('Тірі карта'),
+          () => const LiveMapScreen(),
         ),
         _Section(
           ModeratorShell.tabOrders,

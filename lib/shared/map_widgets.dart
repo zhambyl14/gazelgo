@@ -1590,7 +1590,13 @@ class _LiveTrackMapState extends State<LiveTrackMap>
     } else if (widget.heading != null) {
       _bearing = widget.heading;
     }
-    if (refit) _fit();
+    // Камераны build аяқталған соң ғана жылжытамыз (didUpdateWidget build
+    // ішінде шақырылады — MapController-ді сол сәтте қозғау қауіпті).
+    if (refit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fit();
+      });
+    }
   }
 
   @override

@@ -1152,6 +1152,18 @@ class Repo {
   static Future<Map<String, dynamic>> modLineStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_line_stats') as Map);
 
+  /// Модератордың тірі картасы (0081): {executors: [...], orders: [...]}.
+  /// Миграция жоқ болса — null (экран тек заказдарды көрсетеді).
+  static Future<Map<String, dynamic>?> modLiveMap() async {
+    try {
+      final res = await c.rpc('mod_live_map');
+      return res == null ? null : Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      if (isMissingFunction(e)) return null;
+      rethrow;
+    }
+  }
+
   /// Модератор: барлық іздеудегі заказдар (линия көрінісі үшін).
   static Future<List<Order>> searchingOrders() async {
     final rows = await c
