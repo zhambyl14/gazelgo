@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/widgets.dart' show AppLifecycleListener, ValueNotifier;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1281,7 +1283,12 @@ class Repo {
     Future<T> Function() fetch, {
     Duration every = const Duration(seconds: 4),
   }) async* {
+    _watchLifecycle();
     while (true) {
+      // Қосымша фонда (телефон құлыпта, веб-қойынды жасырын) — сұрамаймыз:
+      // бұрын жабық қосымша да әр 3–6 секунд сайын серверге сұрау жіберіп,
+      // батарея мен трафикті бекер жейтін. Қайта ашылғанда бірден жаңарады.
+      await _untilVisible();
       try {
         yield await fetch();
       } catch (_) {
@@ -1289,6 +1296,33 @@ class Repo {
       }
       await Future.delayed(every);
     }
+  }
+
+  /// Қосымша көрініп тұр ма (алдыңғы планда).
+  static final ValueNotifier<bool> _visible = ValueNotifier(true);
+  static AppLifecycleListener? _life;
+
+  static void _watchLifecycle() {
+    _life ??= AppLifecycleListener(
+      onShow: () => _visible.value = true,
+      onResume: () => _visible.value = true,
+      onHide: () => _visible.value = false,
+      onPause: () => _visible.value = false,
+    );
+  }
+
+  static Future<void> _untilVisible() {
+    if (_visible.value) return Future.value();
+    final done = Completer<void>();
+    void listener() {
+      if (_visible.value && !done.isCompleted) {
+        _visible.removeListener(listener);
+        done.complete();
+      }
+    }
+
+    _visible.addListener(listener);
+    return done.future;
   }
 
   /// Клиенттің соңғы 100 заказы (ескіден жаңаға қарай реттелген — бұрынғы
