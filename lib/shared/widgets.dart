@@ -16,6 +16,7 @@ import 'vehicle_picker.dart';
 // Бірыңғай дизайн-жүйенің компоненттері (баннер, терезе, диалог, тег,
 // көрсеткіш…). Экрандар тек `widgets.dart`-ты импорттайды — бәрі осы жерден
 // қолжетімді болады.
+export 'ui/bar_chart.dart';
 export 'ui/bits.dart';
 export 'ui/contact.dart';
 export 'ui/dialogs.dart';
@@ -1174,10 +1175,22 @@ class ActiveOrderBanner extends StatelessWidget {
     this.subtitle,
   });
 
+  /// Қабылданған заказда — уәде еткен келу уақытына дейін қанша минут
+  /// қалды (0073): «Орындаушы жолда · ~6 мин». Кешіксе — тек күйі.
+  static String? _etaTitle(Order o) {
+    final by = o.arriveBy;
+    if (o.status != 'accepted' || by == null) return null;
+    final min = by.difference(DateTime.now()).inSeconds / 60;
+    if (min <= 0) return null;
+    return '${statusLabel(o.status, vehicleType: o.vehicleType)} · '
+        '~${min.ceil()} ${t('мин')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) return const SizedBox.shrink();
     final o = orders.first;
+    final etaTitle = orders.length == 1 ? _etaTitle(o) : null;
     return PressScale(
       child: Material(
         color: Colors.transparent,
@@ -1211,6 +1224,7 @@ class ActiveOrderBanner extends StatelessWidget {
                     children: [
                       Text(
                         title ??
+                            etaTitle ??
                             statusLabel(o.status, vehicleType: o.vehicleType),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

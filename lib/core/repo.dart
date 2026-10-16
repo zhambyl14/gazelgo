@@ -1430,6 +1430,40 @@ class Repo {
         .toList();
   }
 
+  /// Кезеңдегі табыс жазбалары (график үшін) — [myEarnings]-тен үлкен шек.
+  static Future<List<Map<String, dynamic>>> myEarningsSince(
+    DateTime since,
+  ) async {
+    final id = uid;
+    if (id == null) return [];
+    final rows = await c
+        .from('earnings')
+        .select('amount, created_at')
+        .eq('executor_id', id)
+        .gte('created_at', since.toUtc().toIso8601String())
+        .order('created_at', ascending: false)
+        .limit(1000);
+    return (rows as List).map((m) => Map<String, dynamic>.from(m)).toList();
+  }
+
+  /// Кезеңде тарифке жұмсалған сома (оң сан) — «таза табыс» үшін.
+  static Future<int> myTariffSpendSince(DateTime since) async {
+    final id = uid;
+    if (id == null) return 0;
+    final rows = await c
+        .from('balance_txns')
+        .select('amount')
+        .eq('executor_id', id)
+        .eq('type', 'tariff_fee')
+        .gte('created_at', since.toUtc().toIso8601String())
+        .limit(1000);
+    var sum = 0;
+    for (final m in rows as List) {
+      sum += ((m['amount'] as num?) ?? 0).toInt().abs();
+    }
+    return sum;
+  }
+
   static Future<List<Map<String, dynamic>>> myEarnings() async {
     final id = uid;
     if (id == null) return [];
