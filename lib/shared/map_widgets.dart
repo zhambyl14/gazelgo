@@ -1459,8 +1459,46 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
 /// (жүргізуші сізге келе жатыр), жолға шыққан соң — көлік пен B нүктесі.
 /// Ішкі карта интерактивті ЕМЕС ([RouteMap]-дегі себеппен — бет
 /// айналмай қалады); түртсе — толық экран.
+/// Тірі картаға керек маршрут деректері (заказ моделінен не алушының
+/// веб-бетіндегі JSON-нан).
+class TrackRoute {
+  final LatLng from;
+  final LatLng to;
+  final List<LatLng> stops;
+  final String status;
+  final VehicleType vehicleType;
+  final String? fromLabel;
+  final String? toLabel;
+  final List<String> stopLabels;
+  final double? distanceKm;
+
+  const TrackRoute({
+    required this.from,
+    required this.to,
+    this.stops = const [],
+    required this.status,
+    required this.vehicleType,
+    this.fromLabel,
+    this.toLabel,
+    this.stopLabels = const [],
+    this.distanceKm,
+  });
+
+  factory TrackRoute.of(Order o) => TrackRoute(
+    from: LatLng(o.fromLat, o.fromLng),
+    to: LatLng(o.toLat, o.toLng),
+    stops: [for (final s in o.stops) LatLng(s.lat, s.lng)],
+    status: o.status,
+    vehicleType: o.vehicleType,
+    fromLabel: o.fromDisplay,
+    toLabel: o.toDisplay,
+    stopLabels: [for (final s in o.stops) s.display],
+    distanceKm: o.distanceKm,
+  );
+}
+
 class LiveTrackMap extends StatefulWidget {
-  final Order order;
+  final TrackRoute route;
 
   /// Көліктің соңғы белгілі нүктесі (null — әлі белгісіз).
   final LatLng? vehicle;
@@ -1473,9 +1511,19 @@ class LiveTrackMap extends StatefulWidget {
 
   final double height;
 
-  const LiveTrackMap({
+  LiveTrackMap({
     super.key,
-    required this.order,
+    required Order order,
+    this.vehicle,
+    this.heading,
+    this.ageSec,
+    this.height = 230,
+  }) : route = TrackRoute.of(order);
+
+  /// Заказ моделі жоқ жерде (алушының веб-беті) — жеке мәндермен.
+  const LiveTrackMap.route({
+    super.key,
+    required this.route,
     this.vehicle,
     this.heading,
     this.ageSec,
@@ -1498,9 +1546,9 @@ class _LiveTrackMapState extends State<LiveTrackMap>
   LatLng? _animTo;
   double? _bearing;
 
-  Order get _o => widget.order;
-  LatLng get _a => LatLng(_o.fromLat, _o.fromLng);
-  LatLng get _b => LatLng(_o.toLat, _o.toLng);
+  TrackRoute get _o => widget.route;
+  LatLng get _a => _o.from;
+  LatLng get _b => _o.to;
   bool get _toPickup => _o.status == 'accepted' || _o.status == 'arrived';
   LatLng get _target => _toPickup ? _a : _b;
 
@@ -1527,7 +1575,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
   void didUpdateWidget(LiveTrackMap old) {
     super.didUpdateWidget(old);
     final v = widget.vehicle;
-    var refit = widget.order.status != old.order.status;
+    var refit = widget.route.status != old.route.status;
     final last = _animTo;
     if (v != null && (last == null || Geo.haversineKm(last, v) > 0.003)) {
       final prev = _current ?? v;
@@ -1579,7 +1627,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
       builder: (_) => RouteMapScreen(
         from: _a,
         to: _b,
-        stops: [for (final s in _o.stops) LatLng(s.lat, s.lng)],
+        stops: _o.stops,
         extraMarkers: [
           if (v != null)
             executorLiveMarker(
@@ -1588,9 +1636,9 @@ class _LiveTrackMapState extends State<LiveTrackMap>
               heading: _bearing,
             ),
         ],
-        fromLabel: _o.fromDisplay,
-        toLabel: _o.toDisplay,
-        stopLabels: [for (final s in _o.stops) s.display],
+        fromLabel: _o.fromLabel,
+        toLabel: _o.toLabel,
+        stopLabels: _o.stopLabels,
         distanceKm: _o.distanceKm,
       ),
     ));
@@ -1598,7 +1646,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
 
   @override
   Widget build(BuildContext context) {
-    final stops = [for (final s in _o.stops) LatLng(s.lat, s.lng)];
+    final stops = _o.stops;
     final stale = (widget.ageSec ?? 0) > 180;
     return Container(
       height: widget.height,
