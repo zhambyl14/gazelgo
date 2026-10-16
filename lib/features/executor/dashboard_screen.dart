@@ -113,6 +113,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              ..._notices(context, s),
               const SizedBox(height: 20),
               Text(t('Тариф'),
                   style: const TextStyle(
@@ -150,6 +151,54 @@ class ExecutorDashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Алдын ала ескертулер: баланс тарифке жетпейді, ауысым жақында бітеді,
+  /// заказ лимиті таусылуға жақын — орындаушы кенеттен «заказ ала алмай»
+  /// қалмауы үшін.
+  List<Widget> _notices(BuildContext context, ExecutorStats s) {
+    final out = <Widget>[];
+    void add(Widget w) => out.addAll([const SizedBox(height: 12), w]);
+    if (!s.hasTariff && s.price > 0 && s.balance < s.price) {
+      add(
+        GzNotice(
+          tone: NoticeTone.warning,
+          icon: Icons.account_balance_wallet_outlined,
+          title: t('Баланс тарифке жетпейді'),
+          message: '${t('Тариф бағасы')} ${fmtT(s.price)}, '
+              '${t('балансыңызда')} ${fmtT(s.balance)}. '
+              '${t('Заказ алу үшін балансты толтырыңыз.')}',
+          actionLabel: t('Баланс толтыру'),
+          onAction: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BalanceScreen()),
+          ),
+        ),
+      );
+    }
+    final until = s.until;
+    if (s.hasTariff && until != null) {
+      final left = until.difference(DateTime.now());
+      if (left.inMinutes > 0 && left.inMinutes <= 30) {
+        add(
+          GzNotice(
+            tone: NoticeTone.info,
+            icon: Icons.timer_outlined,
+            message: '${t('Ауысымның аяқталуына:')} '
+                '${left.inMinutes} ${t('мин')} (${fmtTime(until)})',
+          ),
+        );
+      }
+    }
+    if (s.hasTariff && s.ordersLeft == 1) {
+      add(
+        GzNotice(
+          tone: NoticeTone.info,
+          icon: Icons.looks_one_outlined,
+          message: t('Осы ауысымда тек 1 заказ қалды.'),
+        ),
+      );
+    }
+    return out;
   }
 
   Future<void> _buy(
