@@ -2021,6 +2021,34 @@ class Repo {
         : OrderRecipient.fromMap(Map<String, dynamic>.from(res as Map));
   }
 
+  /// Серверде алушы/жеткізу коды бар ма (0074) — сессияда бір рет.
+  /// Жоқ заказға сұрау жібереміз: NOT_FOUND келсе — функция бар.
+  static Future<bool> recipientsAvailable() => _recipAvailable ??= () async {
+    try {
+      await c.rpc(
+        'get_order_recipient',
+        params: {'p_order': '00000000-0000-0000-0000-000000000000'},
+      );
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _recipAvailable;
+
+  /// Таңдаулы/бұғат тізімдері бар ма (0077) — сессияда бір рет.
+  static Future<bool> executorPrefsAvailable() => _prefsAvailable ??= () async {
+    try {
+      await c.from('client_favorites').select('executor_id').limit(1);
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _prefsAvailable;
+
   /// Заказдың алушысы (клиентке — кодымен, орындаушыға — кодсыз).
   /// Алушы жоқ не 0074 қолданылмаған — `null`.
   static Future<OrderRecipient?> orderRecipient(String orderId) async {
