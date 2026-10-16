@@ -100,6 +100,42 @@ class Prefs {
     await p.setString(_kNavApp, v);
   }
 
+  static const _kFeedSort = 'executor_feed_sort';
+  static const _kFeedScope = 'executor_feed_scope';
+  static const _kHiddenOrders = 'executor_hidden_orders';
+
+  /// Орындаушы лентасының сұрыптауы мен сүзгісі (соңғы таңдау есте қалады).
+  static Future<(String?, String?)> feedView() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getString(_kFeedSort), p.getString(_kFeedScope));
+  }
+
+  static Future<void> setFeedView(String sort, String scope) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kFeedSort, sort);
+    await p.setString(_kFeedScope, scope);
+  }
+
+  /// Орындаушы лентадан ЖАСЫРҒАН заказдар (қызық емес) — ең көбі 200.
+  static Future<Set<String>> hiddenOrders() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList(_kHiddenOrders) ?? const <String>[]).toSet();
+  }
+
+  static Future<void> hideOrder(String id) async {
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_kHiddenOrders) ?? <String>[];
+    if (list.contains(id)) return;
+    list.add(id);
+    if (list.length > 200) list.removeRange(0, list.length - 200);
+    await p.setStringList(_kHiddenOrders, list);
+  }
+
+  static Future<void> unhideAllOrders() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_kHiddenOrders);
+  }
+
   static const _kSeenNews = 'seen_news_ids';
 
   /// Тізімде сақталатын ең көп сторис id-і. Ескілері шетінен шығып отырады
