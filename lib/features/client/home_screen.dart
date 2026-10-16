@@ -81,17 +81,51 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       ? _taxiVehicle
       : _cargoVehicle;
 
+  /// Жақын маңдағы БОС көліктер (0073) — таңдалған көлік түрі бойынша.
+  /// Клиент «қазір маңайда көлік бар ма» дегенді заказ бермей-ақ көреді.
+  List<NearbyExecutor> _nearby = const [];
+  Timer? _nearbyTimer;
+  int _nearbySeq = 0;
+
   @override
   void initState() {
     super.initState();
     _resolveFrom(Geo.almaty);
     _initStart();
+    _nearbyTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _loadNearby(),
+    );
   }
 
   @override
   void dispose() {
     _moveDebounce?.cancel();
+    _nearbyTimer?.cancel();
     super.dispose();
+  }
+
+  bool get _nearbyEnabled {
+    final v = ref.read(appSettingsProvider).value?['nearby_map'];
+    return v is! Map || v['enabled'] != false;
+  }
+
+  Future<void> _loadNearby() async {
+    final c = _from?.point;
+    if (c == null || !mounted || !_nearbyEnabled) return;
+    final seq = ++_nearbySeq;
+    final list = await Repo.nearbyExecutors(
+      c.latitude,
+      c.longitude,
+      vehicle: _vehicle,
+    );
+    if (!mounted || seq != _nearbySeq) return;
+    setState(() => _nearby = list);
+  }
+
+  void _setVehicle(VoidCallback change) {
+    setState(change);
+    _loadNearby();
   }
 
   Future<void> _initStart() async {
@@ -155,6 +189,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       _from = PickedAddress(label, center, anchor);
       _resolvingFrom = false;
     });
+    _loadNearby();
     // Клиент өзі белгілеген орынды есте сақтаймыз (келесі ашылудың әдепкісі).
     if (persist) {
       unawaited(Prefs.setLastLocation(center.latitude, center.longitude));
@@ -349,7 +384,24 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                 initialZoom: 13,
                 onPositionChanged: _onMapMove,
               ),
-              children: [osmTileLayer()],
+              children: [
+                osmTileLayer(),
+                MarkerLayer(
+                  markers: [
+                    for (final e in _nearby)
+                      Marker(
+                        point: LatLng(e.lat, e.lng),
+                        width: 34,
+                        height: 34,
+                        child: VehicleMarker(
+                          type: e.vehicleType,
+                          size: 34,
+                          heading: e.heading,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
           ),
           // Экранның ортасындағы пин — картаның `camera.center`-і, яғни
@@ -388,7 +440,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                           _scaffoldKey.currentState?.openDrawer();
                         },
                       ),
-                      const Spacer(),
+                      Expanded(
+                        child: Center(
+                          child: _NearbyPill(
+                            count: _nearby.length,
+                            vehicle: _vehicle,
+                          ),
+                        ),
+                      ),
                       _ProfileButton(isGuest: widget.isGuest),
                     ],
                   ),
@@ -558,7 +617,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         VehicleCategoryTabs(
                                           selected: _category,
                                           onChanged: (c) =>
-                                              setState(() => _category = c),
+                                              _setVehicle(() => _category = c),
                                           // «ЖАҢА» белгісін модератор алып
                                           // тастай алады (0058).
                                           showNewBadge: ref
@@ -579,14 +638,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         VehicleTypeCarousel(
                                           selected: _taxiVehicle,
                                           types: kTaxiVehicleTypes,
-                                          onChanged: (v) => setState(
+                                          onChanged: (v) => _setVehicle(
                                             () => _taxiVehicle = v,
                                           ),
                                         )
                                       else
                                         VehicleTypeCarousel(
                                           selected: _cargoVehicle,
-                                          onChanged: (v) => setState(
+                                          onChanged: (v) => _setVehicle(
                                             () => _cargoVehicle = v,
                                           ),
                                         ),
@@ -749,6 +808,51 @@ class _ActiveOrdersBanner extends ConsumerWidget {
 
 /// «☰» мәзір батырмасы. Белсенді заказ болса бұрышында сол саны тұрады —
 /// «мәзірде менің заказым бар» дегенді бірден көрсетеді.
+/// «Жақын маңда N бос көлік» — картаның үстіндегі шағын белгі. Көлік жоқ
+/// болса мүлдем көрінбейді (клиентті «ешкім жоқ» деп үркітпеу үшін).
+class _NearbyPill extends StatelessWidget {
+  final int count;
+  final VehicleType vehicle;
+  const _NearbyPill({required this.count, required this.vehicle});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: count == 0
+          ? const SizedBox.shrink()
+          : Container(
+              key: ValueKey(count),
+              padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+              decoration: BoxDecoration(
+                color: Gz.surface,
+                borderRadius: BorderRadius.circular(Gz.rLg),
+                boxShadow: Gz.cardShadow,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  vehicleIcon(vehicle, size: 18),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '${t('Жақын маңда')} $count ${t('бос көлік')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Gz.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
 class _MenuButton extends ConsumerWidget {
   final bool isGuest;
   final VoidCallback onTap;

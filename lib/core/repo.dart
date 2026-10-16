@@ -2037,6 +2037,22 @@ class Repo {
 
   static Future<bool>? _recipAvailable;
 
+  /// Заказдың қосымша талаптары бар ма (0075) — сессияда бір рет. Жоқ
+  /// болса, жаңа заказдың талаптары түсініктемеге мәтін болып қосылады.
+  static Future<bool> orderExtrasAvailable() => _extrasAvailable ??= () async {
+    try {
+      await c.rpc(
+        'update_order_details',
+        params: {'p_order': '00000000-0000-0000-0000-000000000000'},
+      );
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _extrasAvailable;
+
   /// Таңдаулы/бұғат тізімдері бар ма (0077) — сессияда бір рет.
   static Future<bool> executorPrefsAvailable() => _prefsAvailable ??= () async {
     try {

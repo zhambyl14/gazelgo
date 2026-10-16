@@ -1102,6 +1102,22 @@ class OrderCard extends StatelessWidget {
                       icon: Icons.route,
                       text: '${order.distanceKm.toStringAsFixed(1)} км',
                     ),
+                  // Қосымша талаптар (0075) — орындаушы лентада бірден
+                  // көреді: тиеуші керек пе, қай қабат, лифт бар ма.
+                  if (order.loaders > 0)
+                    InfoChip(
+                      icon: Icons.groups_rounded,
+                      text: '${order.loaders} ${t('тиеуші')}',
+                      color: Gz.violet,
+                    ),
+                  if (order.floorFrom != null || order.floorTo != null)
+                    InfoChip(
+                      icon: Icons.stairs_rounded,
+                      text: '${order.floorFrom ?? '—'} → '
+                          '${order.floorTo ?? '—'} ${t('қабат')}'
+                          '${order.hasElevator == true ? ' · ${t('лифт')}' : ''}',
+                      color: Gz.blue,
+                    ),
                   if (order.createdAt != null && trailing == null)
                     InfoChip(
                       icon: showDate ? Icons.event_outlined : Icons.schedule,
