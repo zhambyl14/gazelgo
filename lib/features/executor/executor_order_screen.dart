@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
@@ -8,7 +9,7 @@ import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
-import 'feed_screen.dart' show PriceStepperSheet;
+import 'offer_sheet.dart';
 
 /// Ұсыныс жібергеннен кейінгі орындаушы экраны:
 /// клиент жауабын күту → қабылданса белсенді заказға өту.
@@ -199,21 +200,28 @@ class _OfferActions extends StatelessWidget {
   final Order order;
   const _OfferActions({required this.order});
 
-  Future<void> _send(BuildContext context, int price) async {
+  /// Баға + келу уақыты + хабар — лентадағыдай бір терезеде.
+  Future<void> _offer(BuildContext context, {required bool counter}) async {
+    final pos = await Geo.currentPosition();
+    if (!context.mounted) return;
+    final km = pos == null
+        ? null
+        : Geo.haversineKm(
+            LatLng(pos.latitude, pos.longitude),
+            LatLng(order.fromLat, order.fromLng),
+          );
+    final d = await showOfferSheet(
+      context,
+      order: order,
+      counter: counter,
+      kmToPickup: km,
+    );
+    if (d == null || !context.mounted) return;
     try {
-      await Repo.placeOffer(order.id, price, '');
+      await Repo.placeOffer(order.id, d.price, d.message, etaMin: d.etaMin);
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
-  }
-
-  Future<void> _counter(BuildContext context) async {
-    final price = await showGzSheet<int>(
-      context,
-      builder: (_) => PriceStepperSheet(order: order),
-    );
-    if (price == null || !context.mounted) return;
-    await _send(context, price);
   }
 
   @override
@@ -226,7 +234,7 @@ class _OfferActions extends StatelessWidget {
             flex: 3,
             child: BusyButton(
               label: '${t('Келісу')} · ${fmtT(base)}',
-              onPressed: () => _send(context, base),
+              onPressed: () => _offer(context, counter: false),
             ),
           ),
           const SizedBox(width: 8),
@@ -238,7 +246,7 @@ class _OfferActions extends StatelessWidget {
                 minimumSize: const Size.fromHeight(54),
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 side: const BorderSide(color: Gz.ink, width: 1.6)),
-            onPressed: () => _counter(context),
+            onPressed: () => _offer(context, counter: true),
             child: BtnLabel(t('Өз бағам')),
           ),
         ),

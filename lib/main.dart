@@ -18,6 +18,7 @@ import 'core/theme.dart';
 import 'features/auth/blocked_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
+import 'features/chat/order_chat_screen.dart';
 import 'features/client/client_shell.dart';
 import 'features/client/order_detail_screen.dart';
 import 'features/client/track_screen.dart';
@@ -104,6 +105,10 @@ void _navigateFromData(Map<String, dynamic> data) {
           type == 'order_reminder' ||
           type == 'new_offer')) {
     screen = OrderDetailScreen(orderId: orderId);
+  } else if (hasOrder && type == 'order_chat') {
+    // Заказ чатындағы жаңа хабар (0076): рөл мен екінші тараптың атын
+    // чат экраны заказдан өзі анықтайды.
+    screen = OrderChatScreen(orderId: orderId);
   } else if (type == 'support_reply') {
     screen = const SupportScreen();
   } else if (type == 'support_message') {

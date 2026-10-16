@@ -15,6 +15,7 @@ import '../auth/executor_apply_screen.dart';
 import 'bonus_widgets.dart';
 import 'dashboard_screen.dart';
 import 'executor_order_screen.dart';
+import 'offer_sheet.dart';
 
 /// Орындаушының заказға ұсыныс беруіне кедергі себебі (feed гейті).
 enum _Gate {
@@ -173,8 +174,8 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       builder: (_) => _OrderSheet(
         order: o,
         myPos: _pos,
-        onAgree: () => _offer(o, o.clientPrice!, ''),
-        onCounter: () => _counterOffer(o),
+        onAgree: () => _makeOffer(o, counter: false),
+        onCounter: () => _makeOffer(o, counter: true),
       ),
     );
   }
@@ -313,9 +314,25 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     );
   }
 
-  Future<void> _offer(Order o, int price, String message) async {
+  /// Ұсыныс: баға (келісу не өз бағам) + келу уақыты + қысқа хабар —
+  /// бір терезеде ([showOfferSheet]).
+  Future<void> _makeOffer(Order o, {required bool counter}) async {
+    final p = _pos;
+    final km = p == null
+        ? null
+        : Geo.haversineKm(
+            LatLng(p.latitude, p.longitude),
+            LatLng(o.fromLat, o.fromLng),
+          );
+    final d = await showOfferSheet(
+      context,
+      order: o,
+      counter: counter,
+      kmToPickup: km,
+    );
+    if (d == null || !mounted) return;
     try {
-      await Repo.placeOffer(o.id, price, message);
+      await Repo.placeOffer(o.id, d.price, d.message, etaMin: d.etaMin);
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => ExecutorOrderScreen(orderId: o.id)),
@@ -324,15 +341,6 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }
-  }
-
-  Future<void> _counterOffer(Order o) async {
-    final result = await showGzSheet<int>(
-      context,
-      builder: (ctx) => PriceStepperSheet(order: o),
-    );
-    if (result == null || !mounted) return;
-    await _offer(o, result, '');
   }
 }
 
@@ -874,124 +882,6 @@ class _SheetClient extends StatelessWidget {
           subtitle: t('Клиент'),
           asRole: 'client',
         ),
-      ),
-    );
-  }
-}
-
-/// −/+ батырмаларымен баға ұсыну терезесі (100 ₸ қадаммен).
-///
-/// Лентадан да, хабарландыруды басып ашылған заказ бетінен де
-/// ([ExecutorOrderScreen]) қолданылады — сол себепті ашық (public).
-class PriceStepperSheet extends StatefulWidget {
-  final Order order;
-  const PriceStepperSheet({super.key, required this.order});
-
-  @override
-  State<PriceStepperSheet> createState() => _PriceStepperSheetState();
-}
-
-class _PriceStepperSheetState extends State<PriceStepperSheet> {
-  late int _price = widget.order.clientPrice ?? 1000;
-  static const _step = 100;
-
-  void _bump(int delta) {
-    setState(() => _price = (_price + delta).clamp(100, 100000000));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final base = widget.order.clientPrice;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            t('Өз бағаңызды ұсыныңыз'),
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-          if (base != null)
-            Text(
-              '${t('Клиенттің бағасы:')} ${fmtT(base)}',
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
-            ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _StepBtn(
-                icon: Icons.remove,
-                onTap: () => _bump(-_step),
-                onLong: () => _bump(-1000),
-              ),
-              Column(
-                children: [
-                  Text(
-                    fmtT(_price),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    t('±100 ₸ қадам'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Gz.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              _StepBtn(
-                icon: Icons.add,
-                onTap: () => _bump(_step),
-                onLong: () => _bump(1000),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, _price),
-            child: Text('${t('Ұсыну')} · ${fmtT(_price)}'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final VoidCallback onLong;
-  const _StepBtn({
-    required this.icon,
-    required this.onTap,
-    required this.onLong,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLong,
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          color: Gz.bg,
-          shape: BoxShape.circle,
-          border: Border.all(color: Gz.border, width: 1.4),
-        ),
-        child: Icon(icon, size: 28, color: Gz.ink),
       ),
     );
   }

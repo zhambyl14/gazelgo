@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/notify.dart';
@@ -12,21 +14,48 @@ import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
 
-class ExecutorShell extends StatefulWidget {
+class ExecutorShell extends ConsumerStatefulWidget {
   const ExecutorShell({super.key});
 
   @override
-  State<ExecutorShell> createState() => _ExecutorShellState();
+  ConsumerState<ExecutorShell> createState() => _ExecutorShellState();
 }
 
-class _ExecutorShellState extends State<ExecutorShell> {
+class _ExecutorShellState extends ConsumerState<ExecutorShell> {
   final Set<String> _notifiedOrders = {};
   Timer? _feedWatch;
   bool _feedPrimed = false;
 
+  /// Соңғы белгілі статистика (жаңа заказ тексерісі 25с сайын жаңартады) —
+  /// орын жіберу жиілігін таңдау үшін.
+  ExecutorStats? _stats;
+
+  /// ОРЫН ЖІБЕРУ (0073): белсенді заказда — 15с сайын (клиент картада
+  /// көліктің қалай келе жатқанын көреді), бос әрі тарифте болса — 60с
+  /// сайын (клиенттердің картасында «жақын маңдағы көліктер»). Бұрын орын
+  /// тек «Белсенді заказ» экраны АШЫҚ тұрғанда жіберілетін — орындаушы
+  /// лентаға не басқа бетке шыққан бойда клиенттің картасы «қатып» қалатын.
+  Timer? _locTimer;
+  int _locTick = 0;
+  bool _foreground = true;
+  AppLifecycleListener? _life;
+
   @override
   void initState() {
     super.initState();
+    _life = AppLifecycleListener(
+      onShow: () => _foreground = true,
+      onResume: () {
+        _foreground = true;
+        _publishLocation(force: true);
+      },
+      onHide: () => _foreground = false,
+      onPause: () => _foreground = false,
+    );
+    _locTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _publishLocation(),
+    );
     // Линиядағы орындаушыға жаңа заказ туралы хабарлау (әр 25с)
     _feedWatch = Timer.periodic(
         const Duration(seconds: 25), (_) => _checkNewOrders());
@@ -36,12 +65,46 @@ class _ExecutorShellState extends State<ExecutorShell> {
   @override
   void dispose() {
     _feedWatch?.cancel();
+    _locTimer?.cancel();
+    _life?.dispose();
     super.dispose();
+  }
+
+  bool _settingOn(String key) {
+    final v = ref.read(appSettingsProvider).value?[key];
+    // Кілт жоқ болса — әдепкі ҚОСУЛЫ (0073/0080 миграцияларындағыдай).
+    return v is! Map || v['enabled'] != false;
+  }
+
+  Future<void> _publishLocation({bool force = false}) async {
+    if (!_foreground) return;
+    _locTick++;
+    final s = _stats;
+    if (s == null) return;
+    final active = s.busyOrderId != null;
+    if (active) {
+      if (!_settingOn('live_tracking')) return;
+    } else {
+      // Бос кезде — минутына бір рет, тек тарифте әрі линияда болса.
+      if (!s.hasTariff || !s.onLine || !_settingOn('nearby_map')) return;
+      if (!force && _locTick % 4 != 0) return;
+    }
+    final pos = await Geo.quietPosition();
+    if (pos == null) return;
+    await Repo.updateExecutorLocation(
+      pos.latitude,
+      pos.longitude,
+      heading: pos.heading >= 0 ? pos.heading : null,
+      speed: pos.speed >= 0 ? pos.speed : null,
+    );
   }
 
   Future<void> _checkNewOrders() async {
     try {
       final stats = await Repo.executorStats();
+      final firstStats = _stats == null;
+      _stats = stats;
+      if (firstStats) unawaited(_publishLocation(force: true));
       if (!stats.hasTariff || !stats.onLine || stats.busyOrderId != null) {
         return;
       }

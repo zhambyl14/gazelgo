@@ -364,6 +364,21 @@ class Order {
   /// көрінбейді. `null` — әдеттегідей «дәл қазір» заказ.
   final DateTime? scheduledAt;
 
+  /// Орындаушы ұсыныспен бірге уәде еткен келу уақыты, минут (0073).
+  final int? executorEtaMin;
+
+  /// Уәде бойынша келуі керек сәт (қабылданған сәт + ETA) (0073).
+  final DateTime? arriveBy;
+
+  /// «Келдім» басылған сәт — күту таймері осыдан саналады (0073).
+  final DateTime? arrivedAt;
+
+  /// Қосымша қызметтер (0075, міндетті емес): тиеуші саны, қабат, лифт.
+  final int loaders;
+  final int? floorFrom;
+  final int? floorTo;
+  final bool? hasElevator;
+
   Order.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       clientId = m['client_id'] as String,
@@ -393,9 +408,29 @@ class Order {
       cancelReason = m['cancel_reason'] as String?,
       cancelledBy = m['cancelled_by'] as String?,
       stops = OrderStop.listFrom(m['stops']),
-      scheduledAt = _dt(m['scheduled_at']);
+      scheduledAt = _dt(m['scheduled_at']),
+      executorEtaMin =
+          m['executor_eta_min'] == null ? null : _i(m['executor_eta_min']),
+      arriveBy = _dt(m['arrive_by']),
+      arrivedAt = _dt(m['arrived_at']),
+      loaders = m['loaders'] == null ? 0 : _i(m['loaders']),
+      floorFrom = m['floor_from'] == null ? null : _i(m['floor_from']),
+      floorTo = m['floor_to'] == null ? null : _i(m['floor_to']),
+      hasElevator = m['has_elevator'] as bool?;
 
   bool get isActive => kActiveOrderStatuses.contains(status);
+
+  /// Қосымша қызмет таңдалған ба (тиеуші, қабат не лифт).
+  bool get hasExtras =>
+      loaders > 0 || floorFrom != null || floorTo != null || hasElevator != null;
+
+  /// Чат ашық па: заказ қабылданған соң, аяқталғаннан кейін 24 сағатқа дейін
+  /// (сервер `order_chat_send` дәл осылай тексереді).
+  bool get chatOpen =>
+      const ['accepted', 'arrived', 'loading', 'in_transit'].contains(status) ||
+      (status == 'completed' &&
+          completedAt != null &&
+          DateTime.now().difference(completedAt!).inHours < 24);
   bool get isVip => tariff == 'vip';
 
   /// Алдын ала тапсырыс, белгіленген уақыты әлі келмеген — орындаушыға
@@ -440,6 +475,10 @@ class Offer {
   final String status; // pending | accepted | rejected | withdrawn
   final DateTime? createdAt;
 
+  /// Орындаушы уәде еткен келу уақыты, минут (0073). Сервер 0073-сіз
+  /// болса — хабарламадан («~7 мин») оқылады.
+  final int? etaMin;
+
   Offer.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       orderId = m['order_id'] as String,
@@ -447,7 +486,122 @@ class Offer {
       price = _i(m['price']),
       message = m['message'] as String? ?? '',
       status = m['status'] as String? ?? 'pending',
+      createdAt = _dt(m['created_at']),
+      etaMin = m['eta_min'] == null
+          ? _etaFromMessage(m['message'] as String?)
+          : _i(m['eta_min']);
+
+  static int? _etaFromMessage(String? msg) {
+    final m = RegExp(r'^~(\d{1,3}) ').firstMatch(msg ?? '');
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
+
+  /// Хабарламаның ETA-сыз бөлігі (ескі сервер үшін ETA мәтін басында).
+  String get note => message.replaceFirst(RegExp(r'^~\d{1,3} [^\s·]+( · )?'), '');
+}
+
+// ---------- Order chat (0076) ----------
+class OrderMessage {
+  final String id;
+  final String orderId;
+  final String senderId;
+  final String senderRole; // client | executor | moderator
+  final String body;
+  final bool flagged;
+  final DateTime? readAt;
+  final DateTime? createdAt;
+
+  OrderMessage.fromMap(Map<String, dynamic> m)
+    : id = m['id'] as String,
+      orderId = m['order_id'] as String,
+      senderId = m['sender_id'] as String,
+      senderRole = m['sender_role'] as String? ?? 'client',
+      body = m['body'] as String? ?? '',
+      flagged = m['flagged'] as bool? ?? false,
+      readAt = _dt(m['read_at']),
       createdAt = _dt(m['created_at']);
+}
+
+// ---------- Notifications inbox (0078) ----------
+class AppNotification {
+  final String id;
+  final String title;
+  final String body;
+  final String? titleRu;
+  final String? bodyRu;
+  final Map<String, dynamic> data;
+  final DateTime? readAt;
+  final DateTime? createdAt;
+
+  AppNotification.fromMap(Map<String, dynamic> m)
+    : id = m['id'] as String,
+      title = m['title'] as String? ?? '',
+      body = m['body'] as String? ?? '',
+      titleRu = m['title_ru'] as String?,
+      bodyRu = m['body_ru'] as String?,
+      data = m['data'] is Map
+          ? Map<String, dynamic>.from(m['data'] as Map)
+          : const {},
+      readAt = _dt(m['read_at']),
+      createdAt = _dt(m['created_at']);
+
+  bool get unread => readAt == null;
+}
+
+// ---------- Recipient (0074) ----------
+class OrderRecipient {
+  final String name;
+  final String phone;
+
+  /// 4 таңбалы код — тек клиент пен модераторға келеді (орындаушыға жоқ).
+  final String? code;
+
+  /// Алушының жеке сілтемесінің токені (тек клиентке).
+  final String? token;
+
+  /// Орындаушыға: код керек пе.
+  final bool hasCode;
+  final DateTime? verifiedAt;
+  final int attempts;
+
+  OrderRecipient.fromMap(Map<String, dynamic> m)
+    : name = m['name'] as String? ?? '',
+      phone = m['phone'] as String? ?? '',
+      code = m['code'] as String?,
+      token = m['token'] as String?,
+      hasCode = (m['has_code'] as bool?) ?? (m['code'] != null),
+      verifiedAt = _dt(m['verified_at']),
+      attempts = m['attempts'] == null ? 0 : _i(m['attempts']);
+
+  bool get verified => verifiedAt != null;
+}
+
+// ---------- Price hint (0075) ----------
+class PriceHint {
+  final int low;
+  final int typical;
+  final int high;
+  final int samples;
+
+  PriceHint.fromMap(Map<String, dynamic> m)
+    : low = _i(m['low']),
+      typical = _i(m['typical']),
+      high = _i(m['high']),
+      samples = _i(m['samples']);
+}
+
+// ---------- Nearby executor (0073) ----------
+class NearbyExecutor {
+  final double lat;
+  final double lng;
+  final VehicleType vehicleType;
+  final double? heading;
+
+  NearbyExecutor.fromMap(Map<String, dynamic> m)
+    : lat = _d(m['lat']),
+      lng = _d(m['lng']),
+      vehicleType = vehicleTypeFrom(m['vehicle_type'] as String?),
+      heading = m['heading'] == null ? null : _d(m['heading']);
 }
 
 // ---------- Topup ----------
@@ -508,6 +662,9 @@ class Review {
   final String comment;
   final DateTime? createdAt;
 
+  /// Бағалау тегтерінің кодтары (0079): 'punctual', 'careful'…
+  final List<String> tags;
+
   Review.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       orderId = m['order_id'] as String,
@@ -516,7 +673,8 @@ class Review {
       authorRole = m['author_role'] as String?,
       rating = _i(m['rating']),
       comment = m['comment'] as String? ?? '',
-      createdAt = _dt(m['created_at']);
+      createdAt = _dt(m['created_at']),
+      tags = (m['tags'] as List?)?.cast<String>() ?? const [];
 }
 
 // ---------- Support chat ----------

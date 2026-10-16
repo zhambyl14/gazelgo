@@ -876,11 +876,28 @@ class Repo {
     params: {'p_order': orderId, 'p_price': price},
   );
 
-  static Future<void> placeOffer(String orderId, int price, String message) =>
-      c.rpc(
-        'place_offer',
-        params: {'p_order': orderId, 'p_price': price, 'p_message': message},
-      );
+  /// Ұсыныс беру. [etaMin] — «неше минутта жетемін» (0073). Сервер 0073-сіз
+  /// болса — ETA хабарламаның басына «~7 мин» болып жазылады (клиент оны
+  /// бәрібір көреді, [Offer.etaMin] оқиды).
+  static Future<void> placeOffer(
+    String orderId,
+    int price,
+    String message, {
+    int? etaMin,
+  }) async {
+    final base = {'p_order': orderId, 'p_price': price, 'p_message': message};
+    if (etaMin == null) {
+      await c.rpc('place_offer', params: base);
+      return;
+    }
+    try {
+      await c.rpc('place_offer', params: {...base, 'p_eta_min': etaMin});
+    } catch (e) {
+      if (!isMissingFunction(e)) rethrow;
+      final msg = '~$etaMin мин${message.isEmpty ? '' : ' · $message'}';
+      await c.rpc('place_offer', params: {...base, 'p_message': msg});
+    }
+  }
 
   static Future<void> withdrawOffer(String offerId) =>
       c.rpc('withdraw_offer', params: {'p_offer': offerId});
@@ -894,14 +911,26 @@ class Repo {
   static Future<void> cancelOrder(String orderId, String reason) =>
       c.rpc('cancel_order', params: {'p_order': orderId, 'p_reason': reason});
 
+  /// Пікір қалдыру. [tags] — бағалау тегтері (0079); сервер 0079-сыз болса
+  /// тегсіз жіберіледі (пікір бәрібір сақталады).
   static Future<void> submitReview(
     String orderId,
     int rating,
-    String comment,
-  ) => c.rpc(
-    'submit_review',
-    params: {'p_order': orderId, 'p_rating': rating, 'p_comment': comment},
-  );
+    String comment, {
+    List<String> tags = const [],
+  }) async {
+    final base = {'p_order': orderId, 'p_rating': rating, 'p_comment': comment};
+    if (tags.isEmpty) {
+      await c.rpc('submit_review', params: base);
+      return;
+    }
+    try {
+      await c.rpc('submit_review', params: {...base, 'p_tags': tags});
+    } catch (e) {
+      if (!isMissingFunction(e)) rethrow;
+      await c.rpc('submit_review', params: base);
+    }
+  }
 
   static Future<void> requestTopup(int amount, String? receiptPath) => c.rpc(
     'request_topup',
@@ -927,14 +956,32 @@ class Repo {
   /// Орындаушы ағымдағы GPS нүктесін жібереді (белсенді заказы болса
   /// серверде сол заказға байланады). Тыныш сәтсіздікке шыдайды — GPS
   /// уақытша жоқ болса белсенді заказ экраны сынбауы керек.
-  static Future<void> updateExecutorLocation(double lat, double lng) async {
+  static Future<void> updateExecutorLocation(
+    double lat,
+    double lng, {
+    double? heading,
+    double? speed,
+  }) async {
     try {
       await c.rpc(
         'update_executor_location',
-        params: {'p_lat': lat, 'p_lng': lng},
+        params: {
+          'p_lat': lat,
+          'p_lng': lng,
+          if (heading != null && _locationV2) 'p_heading': heading,
+          if (speed != null && _locationV2) 'p_speed': speed,
+        },
       );
-    } catch (_) {}
+    } catch (e) {
+      // 0073 қолданылмаған — бағытсыз нұсқаға біржола ауысамыз.
+      if (_locationV2 && isMissingFunction(e)) {
+        _locationV2 = false;
+        await updateExecutorLocation(lat, lng);
+      }
+    }
   }
+
+  static bool _locationV2 = true;
 
   /// Клиент өз заказының орындаушысының орнын polling арқылы қадағалайды.
   static Stream<Map<String, dynamic>?> orderExecutorLocationStream(
@@ -1933,6 +1980,323 @@ class Repo {
   /// Модератордың бонус есебі: барлығы / осы айда берілген + топ-5.
   static Future<Map<String, dynamic>> modBonusStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_bonus_stats') as Map);
+
+  // ================= ЖАҢА МҮМКІНДІКТЕР (0073–0080) =================
+  // Барлығы «миграция әлі қолданылмаған» жағдайға шыдайды: оқитын
+  // функциялар бос мән қайтарады, жазатындары қатені жоғары береді
+  // (экран оны түсінікті мәтінмен көрсетеді).
+
+  /// Клиенттің картасындағы жақын маңдағы бос орындаушылар (0073).
+  static Future<List<NearbyExecutor>> nearbyExecutors(
+    double lat,
+    double lng, {
+    VehicleType? vehicle,
+  }) async {
+    try {
+      final res = await c.rpc(
+        'nearby_executors',
+        params: {'p_lat': lat, 'p_lng': lng, 'p_vehicle': vehicle?.db},
+      );
+      return [
+        for (final m in (res as List? ?? const []))
+          NearbyExecutor.fromMap(Map<String, dynamic>.from(m as Map)),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Алушыны қосу/өзгерту (бос телефон — алып тастау) (0074).
+  static Future<OrderRecipient?> setOrderRecipient(
+    String orderId,
+    String name,
+    String phone,
+  ) async {
+    final res = await c.rpc(
+      'set_order_recipient',
+      params: {'p_order': orderId, 'p_name': name, 'p_phone': phone},
+    );
+    return res == null
+        ? null
+        : OrderRecipient.fromMap(Map<String, dynamic>.from(res as Map));
+  }
+
+  /// Заказдың алушысы (клиентке — кодымен, орындаушыға — кодсыз).
+  /// Алушы жоқ не 0074 қолданылмаған — `null`.
+  static Future<OrderRecipient?> orderRecipient(String orderId) async {
+    try {
+      final res = await c.rpc(
+        'get_order_recipient',
+        params: {'p_order': orderId},
+      );
+      return res == null
+          ? null
+          : OrderRecipient.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (e) {
+      if (isMissingFunction(e)) return null;
+      rethrow;
+    }
+  }
+
+  /// Орындаушы алушыдан алған кодты тексертеді. (дұрыс па, қалған әрекет).
+  static Future<(bool, int?)> verifyDeliveryCode(
+    String orderId,
+    String code,
+  ) async {
+    final res = Map<String, dynamic>.from(
+      await c.rpc(
+            'verify_delivery_code',
+            params: {'p_order': orderId, 'p_code': code},
+          )
+          as Map,
+    );
+    final left = res['left'];
+    return (res['ok'] == true, left is num ? left.toInt() : null);
+  }
+
+  /// Клиент «жүк жетті» деп өзі растайды (алушы кодты жоғалтса).
+  static Future<void> clientConfirmDelivery(String orderId) =>
+      c.rpc('client_confirm_delivery', params: {'p_order': orderId});
+
+  /// Заказды іздеу кезінде өңдеу (0075). null — өзгертпе. [loaders]
+  /// берілсе, қабат пен лифт те сол мәнге ауысады (null — тазалау).
+  static Future<void> updateOrderDetails(
+    String orderId, {
+    String? cargo,
+    String? comment,
+    int? loaders,
+    int? floorFrom,
+    int? floorTo,
+    bool? elevator,
+  }) => c.rpc(
+    'update_order_details',
+    params: {
+      'p_order': orderId,
+      'p_cargo': cargo,
+      'p_comment': comment,
+      'p_loaders': loaders,
+      'p_floor_from': floorFrom,
+      'p_floor_to': floorTo,
+      'p_elevator': elevator,
+    },
+  );
+
+  /// Ұсынылатын баға (0075). Дерек аз не функция жоқ — `null`.
+  static Future<PriceHint?> orderPriceHint({
+    required VehicleType vehicle,
+    required double distanceKm,
+    String? city,
+    bool intercity = false,
+  }) async {
+    try {
+      final res = await c.rpc(
+        'order_price_hint',
+        params: {
+          'p_vehicle': vehicle.db,
+          'p_distance_km': double.parse(distanceKm.toStringAsFixed(2)),
+          'p_city': city,
+          'p_intercity': intercity,
+        },
+      );
+      return res == null
+          ? null
+          : PriceHint.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ---- Заказ чаты (0076) ----
+
+  /// Серверде заказ чаты бар ма (0076 қолданылған ба) — сессияда бір рет
+  /// тексеріледі. Жоқ болса чат батырмалары мүлдем көрінбейді (басқанда
+  /// түсініксіз қате шықпауы үшін).
+  static Future<bool> orderChatAvailable() => _chatAvailable ??= () async {
+    try {
+      await c.from('order_messages').select('id').limit(1);
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _chatAvailable;
+
+  static Stream<List<OrderMessage>> orderMessagesStream(String orderId) =>
+      _poll(() async {
+        final rows = await c
+            .from('order_messages')
+            .select()
+            .eq('order_id', orderId)
+            .order('created_at')
+            .limit(300);
+        return (rows as List)
+            .map((m) => OrderMessage.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }, every: const Duration(seconds: 4));
+
+  static Future<void> orderChatSend(String orderId, String body) => c.rpc(
+    'order_chat_send',
+    params: {'p_order': orderId, 'p_body': body},
+  );
+
+  static Future<void> orderChatMarkRead(String orderId) async {
+    try {
+      await c.rpc('order_chat_mark_read', params: {'p_order': orderId});
+    } catch (_) {}
+  }
+
+  /// Заказдағы оқылмаған хабар саны (маған келгендер).
+  static Future<int> orderChatUnread(String orderId) async {
+    final me = uid;
+    if (me == null) return 0;
+    try {
+      final rows = await c
+          .from('order_messages')
+          .select('id')
+          .eq('order_id', orderId)
+          .neq('sender_id', me)
+          .isFilter('read_at', null);
+      return (rows as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Модератор: соңғы заказ чаттары.
+  static Future<List<Map<String, dynamic>>> modOrderChats({
+    bool flaggedOnly = false,
+  }) async {
+    final res = await c.rpc(
+      'mod_order_chats',
+      params: {'p_limit': 80, 'p_flagged_only': flaggedOnly},
+    );
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  // ---- Таңдаулы / бұғатталған орындаушылар (0077) ----
+
+  /// (таңдаулылар, бұғатталғандар) — клиенттің өз тізімдері.
+  static Future<(Set<String>, Set<String>)> myExecutorPrefs() async {
+    final me = uid;
+    if (me == null) return (<String>{}, <String>{});
+    try {
+      final fav = await c.from('client_favorites').select('executor_id');
+      final blk = await c.from('client_blocks').select('executor_id');
+      return (
+        {for (final m in fav as List) m['executor_id'] as String},
+        {for (final m in blk as List) m['executor_id'] as String},
+      );
+    } catch (_) {
+      return (<String>{}, <String>{});
+    }
+  }
+
+  /// [kind]: 'favorite' | 'block' | 'none'.
+  static Future<void> setExecutorPref(String executorId, String kind) =>
+      c.rpc(
+        'set_executor_pref',
+        params: {'p_executor': executorId, 'p_kind': kind},
+      );
+
+  // ---- Хабарламалар орталығы (0078) ----
+
+  static Future<List<AppNotification>> myNotifications() async {
+    final me = uid;
+    if (me == null) return const [];
+    try {
+      final rows = await c
+          .from('notifications')
+          .select()
+          .eq('user_id', me)
+          .order('created_at', ascending: false)
+          .limit(60);
+      return (rows as List)
+          .map((m) => AppNotification.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Stream<int> unreadNotificationsStream() {
+    final me = uid;
+    if (me == null) return const Stream.empty();
+    return _poll(() async {
+      try {
+        final rows = await c
+            .from('notifications')
+            .select('id')
+            .eq('user_id', me)
+            .isFilter('read_at', null)
+            .limit(100);
+        return (rows as List).length;
+      } catch (_) {
+        return 0;
+      }
+    }, every: const Duration(seconds: 30));
+  }
+
+  static Future<void> markAllNotificationsRead() async {
+    try {
+      await c.rpc('notifications_mark_all_read');
+    } catch (_) {}
+  }
+
+  // ---- Бағалау тегтері (0079) ----
+
+  /// Адамның [role] рөліндегі алған тегтері: код → саны.
+  static Future<Map<String, int>> userReviewTags(
+    String userId, {
+    String role = 'executor',
+  }) async {
+    try {
+      final res = await c.rpc(
+        'user_review_tags',
+        params: {'p_user': userId, 'p_role': role},
+      );
+      final m = Map<String, dynamic>.from(res as Map? ?? const {});
+      return {for (final e in m.entries) e.key: (e.value as num).toInt()};
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  // ---- Модератор құралдары (0080) ----
+
+  /// Жаппай хабарлама. Қайтарады: алушылар саны.
+  static Future<int> modBroadcast({
+    required String audience,
+    required String title,
+    required String body,
+    String? city,
+    VehicleType? vehicle,
+  }) async {
+    final res = await c.rpc(
+      'mod_broadcast',
+      params: {
+        'p_audience': audience,
+        'p_title': title,
+        'p_body': body,
+        'p_city': city,
+        'p_vehicle': vehicle?.db,
+      },
+    );
+    return (res as num?)?.toInt() ?? 0;
+  }
+
+  /// Модератор әрекеттерінің журналы (жаңасы алдында).
+  static Future<List<Map<String, dynamic>>> modAuditLog({int limit = 150}) async {
+    final rows = await c
+        .from('mod_audit_log')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return [for (final m in rows as List) Map<String, dynamic>.from(m)];
+  }
 }
 
 // ================= RIVERPOD PROVIDERS =================
