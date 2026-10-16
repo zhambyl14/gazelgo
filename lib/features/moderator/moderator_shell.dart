@@ -8,11 +8,14 @@ import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'app_settings_screen.dart';
 import 'applications_screen.dart';
+import 'audit_log_screen.dart';
+import 'broadcast_screen.dart';
 import 'clients_screen.dart';
 import 'executors_screen.dart';
 import 'line_screen.dart';
 import 'listings_admin_screen.dart';
 import 'news_admin_screen.dart';
+import 'order_chats_screen.dart';
 import 'orders_screen.dart';
 import 'overview_screen.dart';
 import 'reports_screen.dart';
@@ -45,6 +48,9 @@ class ModeratorShell extends StatefulWidget {
   static const int tabSettings = 9;
   static const int tabClients = 10;
   static const int tabOrders = 11;
+  static const int tabOrderChats = 12;
+  static const int tabBroadcast = 13;
+  static const int tabAudit = 14;
 
   /// Бөлімге өту сұранысы (push-хабарламаны басқанда, Шолудан).
   static final ValueNotifier<int?> tabRequest = ValueNotifier<int?>(null);
@@ -177,6 +183,20 @@ class _ModeratorShellState extends State<ModeratorShell> {
           () => const ReportsScreen(),
           badge: (s) => _n(s, 'reports_open') + _n(s, 'listing_reports_open'),
         ),
+        _Section(
+          ModeratorShell.tabOrderChats,
+          Icons.forum_outlined,
+          Gz.blue,
+          () => t('Заказ чаттары'),
+          () => const OrderChatsScreen(),
+        ),
+        _Section(
+          ModeratorShell.tabBroadcast,
+          Icons.campaign_outlined,
+          Gz.yellowDeep,
+          () => t('Жаппай хабарлама'),
+          () => const BroadcastScreen(),
+        ),
       ],
     ),
     (
@@ -207,6 +227,13 @@ class _ModeratorShellState extends State<ModeratorShell> {
           Gz.textSecondary,
           () => t('Баптаулар'),
           () => const AppSettingsScreen(),
+        ),
+        _Section(
+          ModeratorShell.tabAudit,
+          Icons.history_rounded,
+          Gz.textSecondary,
+          () => t('Әрекеттер журналы'),
+          () => const AuditLogScreen(),
         ),
       ],
     ),

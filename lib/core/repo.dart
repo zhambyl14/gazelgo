@@ -2423,6 +2423,12 @@ final myOrdersStreamProvider = StreamProvider.autoDispose<List<Order>>((ref) {
   return Repo.myOrdersStream();
 });
 
+/// Оқылмаған хабарламалар саны (0078) — мәзірдегі 🔔 белгісі үшін.
+final unreadNotificationsProvider = StreamProvider.autoDispose<int>((ref) {
+  ref.watch(authStateProvider);
+  return Repo.unreadNotificationsStream();
+});
+
 /// Орындаушының белсенді заказдары (баннер, мәзір белгісі) — бір цикл.
 final myActiveExecutorOrdersProvider =
     StreamProvider.autoDispose<List<Order>>((ref) {

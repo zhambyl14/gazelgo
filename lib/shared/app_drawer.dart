@@ -14,6 +14,7 @@ import '../features/executor/bonus_widgets.dart';
 import '../features/executor/earnings_screen.dart';
 import '../features/legal/legal_screen.dart';
 import '../features/news/news_card.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/support/support_screen.dart';
 import 'widgets.dart';
@@ -269,6 +270,14 @@ class AppDrawer extends ConsumerWidget {
                         () => _open(context, const MyAddressesScreen()),
                       ),
                     ],
+                    _item(
+                      context,
+                      Icons.notifications_none_rounded,
+                      Gz.yellowDeep,
+                      t('Хабарламалар'),
+                      () => _open(context, const NotificationsScreen()),
+                      badge: ref.watch(unreadNotificationsProvider).value ?? 0,
+                    ),
                     _item(
                       context,
                       Icons.support_agent_rounded,

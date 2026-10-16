@@ -58,7 +58,9 @@ class ExecutorHomeScreen extends ConsumerWidget {
                                   .watch(myActiveExecutorOrdersProvider)
                                   .value
                                   ?.length ??
-                              0,
+                              0 +
+                              (ref.watch(unreadNotificationsProvider).value ??
+                                  0),
                           onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),

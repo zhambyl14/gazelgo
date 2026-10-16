@@ -4,7 +4,9 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/order_live.dart';
 import '../../shared/widgets.dart';
+import '../chat/order_chat_screen.dart';
 import 'trust_actions.dart';
 
 /// Модератордың заказ басқару терезесі: детальдар + статусты өзгерту /
@@ -165,9 +167,30 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                       InfoRow(t('Бағыты'),
                           o.intercity ? t('Қалааралық') : t('Қала ішінде')),
                       InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
+                      if (o.hasExtras) ...[
+                        const SizedBox(height: 6),
+                        OrderExtrasChips(order: o),
+                      ],
                     ],
                   ),
                 ),
+                if (o.executorId != null) ...[
+                  const SizedBox(height: 10),
+                  // Заказ чаты (0076): модератор оқиды, қажет болса жазады.
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OrderChatScreen(
+                          orderId: o.id,
+                          title: '#${o.id.substring(0, 8)}',
+                          myRole: 'moderator',
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.forum_outlined),
+                    label: Text(t('Заказ чатын ашу')),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 // Тараптар (басу арқылы сенім деңгейі/блок әрекеттері ашылады)
                 FutureBuilder<Profile?>(

@@ -865,10 +865,15 @@ class _MenuButton extends ConsumerWidget {
         : (ref.watch(myOrdersStreamProvider).value ?? const <Order>[])
               .where((o) => o.isActive)
               .length;
+    // Белсенді заказдар + оқылмаған хабарламалар (0078) — мәзірде не күтіп
+    // тұрғаны бір белгіден көрінеді.
+    final unread = isGuest
+        ? 0
+        : (ref.watch(unreadNotificationsProvider).value ?? 0);
     return MapRoundButton(
       icon: Icons.menu_rounded,
       tooltip: t('Мәзір'),
-      badge: active,
+      badge: active + unread,
       onTap: onTap,
     );
   }

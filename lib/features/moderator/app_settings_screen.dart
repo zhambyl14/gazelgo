@@ -96,6 +96,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _schedMaxDays = TextEditingController();
   bool _liveTrackingEnabled = false;
   bool _liveTrackingSaving = false;
+
+  /// Заказ чаты (0076) мен картадағы бос көліктер (0073) — әдепкі қосулы.
+  bool _orderChatEnabled = true;
+  bool _orderChatSaving = false;
+  bool _nearbyMapEnabled = true;
+  bool _nearbyMapSaving = false;
   bool _shareTripEnabled = false;
   bool _shareTripSaving = false;
   bool _referralEnabled = false;
@@ -226,6 +232,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _schedMaxDays.text = '${sched['max_days_ahead'] ?? 14}';
       final live = (s['live_tracking'] as Map?) ?? {};
       _liveTrackingEnabled = live['enabled'] == true;
+      final chat = (s['order_chat'] as Map?) ?? {};
+      _orderChatEnabled = chat['enabled'] != false;
+      final nearby = (s['nearby_map'] as Map?) ?? {};
+      _nearbyMapEnabled = nearby['enabled'] != false;
       final share = (s['share_trip'] as Map?) ?? {};
       _shareTripEnabled = share['enabled'] == true;
       final referral = (s['referral'] as Map?) ?? {};
@@ -719,6 +729,18 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         'live_tracking', v,
         apply: (v) => _liveTrackingEnabled = v,
         setSaving: (v) => _liveTrackingSaving = v,
+      );
+
+  Future<void> _toggleOrderChat(bool v) => _toggleSimple(
+        'order_chat', v,
+        apply: (v) => _orderChatEnabled = v,
+        setSaving: (v) => _orderChatSaving = v,
+      );
+
+  Future<void> _toggleNearbyMap(bool v) => _toggleSimple(
+        'nearby_map', v,
+        apply: (v) => _nearbyMapEnabled = v,
+        setSaving: (v) => _nearbyMapSaving = v,
       );
 
   Future<void> _toggleShareTrip(bool v) => _toggleSimple(
@@ -1409,7 +1431,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Орындаушыны картада тірі көрсету')),
           Text(
             t('Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
-                'көреді (орындаушы GPS-і 20 секунд сайын жіберіледі).'),
+                'көреді (орындаушы GPS-і 15 секунд сайын жіберіледі).'),
             style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
@@ -1420,6 +1442,40 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             onLabel: t('Орындаушының орны картада көрінеді'),
             offLabel: t('Тек статикалық маршрут'),
             onChanged: _toggleLiveTracking,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Картадағы бос көліктер')),
+          Text(
+            t('Клиенттің басты картасында жақын маңдағы бос орындаушылардың '
+                'көліктері көрінеді (нақты орны емес, ~100 м дәлдікпен).'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _nearbyMapEnabled,
+            saving: _nearbyMapSaving,
+            icon: Icons.local_taxi_outlined,
+            onLabel: t('Бос көліктер картада көрінеді'),
+            offLabel: t('Картада көліктер жоқ'),
+            onChanged: _toggleNearbyMap,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Заказ чаты')),
+          Text(
+            t('Клиент пен орындаушы заказ ішінде жазыса алады. Барлық чатты '
+                'модератор «Заказ чаттары» бөлімінде көреді.'),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _orderChatEnabled,
+            saving: _orderChatSaving,
+            icon: Icons.forum_outlined,
+            onLabel: t('Чат батырмасы көрінеді'),
+            offLabel: t('Тек қоңырау арқылы'),
+            onChanged: _toggleOrderChat,
           ),
           const SizedBox(height: 24),
 
