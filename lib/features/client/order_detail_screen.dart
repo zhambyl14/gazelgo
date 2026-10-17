@@ -5,23 +5,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/env.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
-import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
+import '../../shared/order_live.dart';
 import '../../shared/widgets.dart';
+import '../chat/order_chat_screen.dart';
 import '../support/support_screen.dart';
 import 'address_picker.dart';
 import 'create_order_screen.dart';
+import 'executor_sheet.dart';
+import 'order_extras_editor.dart';
+import 'recipient_card.dart';
 import 'searching_view.dart';
 
-/// Клиенттің заказ экраны: ұсыныстар, барыс, пікір.
+/// Клиенттің заказ экраны: ұсыныстар → көліктің тірі картасы мен келу
+/// уақыты → барыс → пікір.
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
   const OrderDetailScreen({super.key, required this.orderId});
@@ -31,6 +35,13 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  /// Заказ стримі БІР рет құрылады: экран қайта салынғанда (мыс. баптау
+  /// жүктелгенде) жаңа сұрау тізбегі басталып кетпеуі үшін.
+  late final Stream<Order?> _orderStream = Repo.orderStream(widget.orderId);
+
+  /// Көліктің тірі орны — тек белсенді кезеңде, БІР РЕТ құрылады.
+  Stream<Map<String, dynamic>?>? _locStream;
+
   bool _photosCleaned = false;
   bool _reviewShown = false;
 
@@ -40,12 +51,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _shareTripEnabled = false;
   bool _repeatOrderEnabled = true;
 
-  static const _liveStatuses = ['accepted', 'arrived', 'loading', 'in_transit'];
+  /// Таңдаулы/бұғатталған орындаушылар (0079).
+  ExecutorPrefs _prefs = const ExecutorPrefs();
+
+  /// Іздеу кезінде заказды өңдеу серверде бар ма (0077
+  /// `update_order_details`). Жоқ болса «Заказды өңдеу» көрінбейді.
+  bool _editAvailable = false;
+
+  static const _liveStatuses = {'accepted', 'arrived', 'loading', 'in_transit'};
 
   @override
   void initState() {
     super.initState();
     _loadFeatureFlags();
+    _loadPrefs();
+    Repo.orderExtrasAvailable().then((v) {
+      if (mounted && v != _editAvailable) setState(() => _editAvailable = v);
+    });
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await ExecutorPrefs.load();
+      if (mounted) setState(() => _prefs = p);
+    } catch (_) {
+      // Сервер 0079-сіз не желі қатесі — таңдаулылар жай ғана көрінбейді.
+    }
   }
 
   Future<void> _loadFeatureFlags() async {
@@ -62,7 +93,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _repeatOrderEnabled = repeat is! Map || repeat['enabled'] != false;
       });
     } catch (_) {
-      // Желі қатесінде — екеуі де өшулі қалады, экран сынбайды.
+      // Желі қатесінде — бәрі өшулі қалады, экран сынбайды.
     }
   }
 
@@ -81,20 +112,44 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  /// Заказ аяқталғанда бағалау терезесін бір рет қалқымалы етіп ашамыз.
-  void _maybeShowReview(Order o) {
-    if (!_reviewShown && o.status == 'completed') {
-      _reviewShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          maybeShowReviewDialog(
-            context,
-            orderId: o.id,
-            title: t('Орындаушыны бағалаңыз'),
-          );
-        }
-      });
+  /// Аяқталған заказдың қысқаша «чегі» — бөлісуге (бухгалтерия, есеп).
+  Future<void> _shareReceipt(Order o) async {
+    String executor = '';
+    if (o.executorId != null) {
+      final p = await Repo.profileOf(o.executorId!);
+      executor = p?.fullName ?? '';
     }
+    final lines = [
+      'Tasu · ${t('Заказ')} #${o.id.substring(0, 8).toUpperCase()}',
+      '${t('Күні')}: ${fmtDate(o.completedAt ?? o.createdAt)}',
+      '${t('Қайдан')}: ${o.fromDisplay}',
+      for (var i = 0; i < o.stops.length; i++)
+        '${t('Аялдама')} ${i + 1}: ${o.stops[i].display}',
+      '${t('Қайда')}: ${o.toDisplay}',
+      if (o.distanceKm > 0)
+        '${t('Қашықтық')}: ${Geo.formatDistance(o.distanceKm)}',
+      '${t('Көлік')}: ${o.vehicleType.label}',
+      if (executor.isNotEmpty) '${t('Орындаушы')}: $executor',
+      '${t('Баға')}: ${fmtT(o.displayPrice)}',
+    ];
+    try {
+      await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
+    } catch (_) {}
+  }
+
+  /// Заказ аяқталғанда бағалау терезесін (тегтерімен) бір рет ашамыз.
+  void _maybeShowReview(Order o) {
+    if (_reviewShown || o.status != 'completed') return;
+    _reviewShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      maybeShowReviewDialog(
+        context,
+        orderId: o.id,
+        title: t('Орындаушыны бағалаңыз'),
+        tags: kExecutorReviewTags,
+      );
+    });
   }
 
   /// Заказ аяқталса/бас тартылса — тіркелген фотоларды өшіру (жадты үнемдеу).
@@ -130,6 +185,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  /// Іздеу кезінде заказды өңдеу: жүк, түсініктеме, қосымша талаптар (0077).
+  Future<void> _edit(Order o) async {
+    final res = await showEditOrderSheet(context, o);
+    if (res == null || !mounted) return;
+    final (cargo, comment, extras) = res;
+    final isTaxi = o.vehicleType == VehicleType.taxi;
+    try {
+      await Repo.updateOrderDetails(
+        o.id,
+        cargo: cargo,
+        comment: comment,
+        loaders: isTaxi ? null : extras.loaders,
+        floorFrom: isTaxi ? null : extras.floorFrom,
+        floorTo: isTaxi ? null : extras.floorTo,
+        elevator: isTaxi ? null : extras.elevator,
+      );
+      Repo.orderStream(o.id, fresh: true);
+      if (mounted) showSnack(context, t('Заказ жаңартылды'));
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  /// Орындаушының профилі (пікірлер, тегтер, ❤ таңдаулы / бұғаттау).
+  Future<void> _openExecutor(String executorId) async {
+    final kind = await showExecutorSheet(
+      context,
+      executorId: executorId,
+      prefs: _prefs,
+    );
+    if (kind != null) _loadPrefs();
+  }
+
   static const _clientCancelReasons = [
     'Ойымды өзгерттім',
     'Бағаны қымбат көрдім',
@@ -157,10 +245,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  /// Заказ стримі БІР рет құрылады: экран қайта салынғанда (мыс. баптау
-  /// жүктелгенде) жаңа сұрау тізбегі басталып кетпеуі үшін.
-  late final Stream<Order?> _orderStream = Repo.orderStream(widget.orderId);
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Order?>(
@@ -175,14 +259,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
         _maybeCleanupPhotos(o);
         _maybeShowReview(o);
-        // Іздеу кезінде — толық экранды карта + сүйретілетін панель
-        // (Yandex Go үлгісі). Орындаушы табылған сәтте стрим жаңа статус
-        // әкеледі де, экран өзі төмендегі әдеттегі түрге ауысады.
+        // Іздеу кезінде — толық экранды карта + сүйретілетін панель.
+        // Орындаушы табылған сәтте стрим жаңа статус әкеледі де, экран өзі
+        // төмендегі әдеттегі түрге ауысады.
         if (o.status == 'searching') {
           return _SearchingScreen(
             order: o,
+            prefs: _prefs,
             onCancel: _cancel,
             onShare: _shareTripEnabled ? () => _shareTrip(o) : null,
+            onEdit: _editAvailable ? () => _edit(o) : null,
+            onOpenExecutor: _openExecutor,
           );
         }
         return Scaffold(
@@ -194,35 +281,36 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   /// Іздеуден КЕЙІНГІ барлық статустың (accepted … expired) экраны.
+  /// Белсенді кезеңде көліктің тірі орны бір стримнен оқылады.
   Widget _details(Order o) {
+    if (_liveTrackingEnabled && _liveStatuses.contains(o.status)) {
+      _locStream ??= Repo.orderExecutorLocationStream(o.id);
+      return StreamBuilder<Map<String, dynamic>?>(
+        stream: _locStream,
+        builder: (context, snap) => _detailsBody(o, snap.data),
+      );
+    }
+    return _detailsBody(o, null);
+  }
+
+  Widget _detailsBody(Order o, Map<String, dynamic>? loc) {
     final live = _liveStatuses.contains(o.status);
+    final lat = (loc?['lat'] as num?)?.toDouble();
+    final lng = (loc?['lng'] as num?)?.toDouble();
+    final vehicle = lat == null || lng == null ? null : LatLng(lat, lng);
+    final at = DateTime.tryParse(loc?['updated_at'] as String? ?? '');
+
     final info = <Widget>[
-      if (_liveTrackingEnabled && _liveStatuses.contains(o.status))
-        StreamBuilder<Map<String, dynamic>?>(
-          stream: Repo.orderExecutorLocationStream(o.id),
-          builder: (context, locSnap) {
-            final loc = locSnap.data;
-            final extra = <Marker>[
-              if (loc != null && loc['lat'] != null)
-                executorLiveMarker(
-                  LatLng(
-                    (loc['lat'] as num).toDouble(),
-                    (loc['lng'] as num).toDouble(),
-                  ),
-                ),
-            ];
-            return RouteMap(
-              from: LatLng(o.fromLat, o.fromLng),
-              to: LatLng(o.toLat, o.toLng),
-              stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-              height: 175,
-              extraMarkers: extra,
-              fromLabel: o.fromDisplay,
-              toLabel: o.toDisplay,
-              stopLabels: o.stops.map((s) => s.display).toList(),
-              distanceKm: o.distanceKm,
-            );
-          },
+      // Тірі карта: көлік өз түрінің белгісімен, бағытымен жайлап жылжиды,
+      // камера көлік пен мақсат нүктесін өзі кадрлайды.
+      if (live && _liveTrackingEnabled)
+        LiveTrackMap(
+          order: o,
+          vehicle: vehicle,
+          heading: (loc?['heading'] as num?)?.toDouble(),
+          ageSec: at == null
+              ? null
+              : DateTime.now().difference(at.toLocal()).inSeconds,
         )
       else
         RouteMap(
@@ -258,6 +346,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
             if (o.createdAt != null)
               InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
+            if (o.hasExtras) ...[
+              const SizedBox(height: 6),
+              OrderExtrasChips(order: o),
+            ],
           ],
         ),
       ),
@@ -274,21 +366,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  fmtT(o.displayPrice),
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
+              Expanded(child: Text(fmtT(o.displayPrice), style: Gz.moneyXl)),
               if (_shareTripEnabled &&
                   !['cancelled', 'expired'].contains(o.status))
                 IconButton(
-                  tooltip: t('Бөлісу'),
-                  icon: const Icon(Icons.ios_share),
+                  tooltip: t('Сапарды бөлісу'),
+                  icon: const Icon(Icons.ios_share_rounded),
                   onPressed: () => _shareTrip(o),
                 ),
               StatusChip(o.status, vehicleType: o.vehicleType),
@@ -296,16 +379,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           // Сапар жүріп жатқанда (орындаушы жолда/келді/тиеу/жолда) ЕҢ
-          // маңыздысы — кім келе жатыр, қоңырау, «Тиеу басталды» растауы:
-          // олар картадан ЖОҒАРЫ тұрады (бұрын экранның төменінде қалатын).
+          // маңыздысы — кім келе жатыр, қоңырау/чат, келу уақыты, «Тиеу
+          // басталды» растауы: олар картадан ЖОҒАРЫ тұрады.
           if (live) ...[
-            ..._statusSection(o),
+            ..._statusSection(o, vehicle),
             const SizedBox(height: 14),
             ...info,
           ] else ...[
             ...info,
             const SizedBox(height: 14),
-            ..._statusSection(o),
+            ..._statusSection(o, vehicle),
           ],
           const SizedBox(height: 14),
           // Бас тарту: accepted/arrived — процесте болмаса (іздеу кезінде
@@ -326,7 +409,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  List<Widget> _statusSection(Order o) {
+  /// [vehicle] — көліктің тірі орны (бар болса): «N км қалды» үшін.
+  List<Widget> _statusSection(Order o, LatLng? vehicle) {
     switch (o.status) {
       // Іздеу күйінің өз экраны бар — [_SearchingScreen].
       case 'searching':
@@ -336,62 +420,119 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'loading':
       case 'in_transit':
         return [
-          _ExecutorCard(executorId: o.executorId!),
-          const SizedBox(height: 10),
-          // Орындаушы «Келдім» дегенде — клиент тиеуді растайды (0027).
-          // Расталмайынша орындаушы «Жолға шықтық» дей алмайды.
-          if (o.status == 'arrived') ...[
-            _ConfirmLoadingCard(orderId: o.id, vehicleType: o.vehicleType),
+          _ExecutorCard(
+            order: o,
+            prefs: _prefs,
+            onOpen: () => _openExecutor(o.executorId!),
+          ),
+          // «Орындаушы жолда» кері санағы (уәде еткен минут) + қалған км.
+          if (o.status == 'accepted' && o.arriveBy != null) ...[
             const SizedBox(height: 10),
+            EtaCountdownCard(
+              order: o,
+              kmLeft: vehicle == null
+                  ? null
+                  : Geo.haversineKm(vehicle, LatLng(o.fromLat, o.fromLng)),
+            ),
           ],
+          // Орындаушы «Келдім» дегенде — күту таймері және клиент тиеуді
+          // растайды (0027). Расталмайынша орындаушы «Жолға шықтық» дей
+          // алмайды.
+          if (o.status == 'arrived') ...[
+            const SizedBox(height: 10),
+            WaitingTimerCard(
+              order: o,
+              child: _ConfirmLoadingButton(
+                orderId: o.id,
+                vehicleType: o.vehicleType,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
           _Timeline(status: o.status, vehicleType: o.vehicleType),
+          const SizedBox(height: 10),
+          RecipientSection(order: o),
           const SizedBox(height: 10),
           SupportOrderButton(orderId: o.id),
           const SizedBox(height: 10),
           ReportSuspiciousButton(orderId: o.id),
         ];
       case 'completed':
+        final favorite = _prefs.favorites.contains(o.executorId);
         return [
           // Аяқталған заказда орындаушының телефоны көрсетілмейді
           // (хабарласу батырмасы жоқ) — тарихта байланыс сақталмайды.
-          _ExecutorCard(executorId: o.executorId!, showCall: false),
+          _ExecutorCard(
+            order: o,
+            prefs: _prefs,
+            showCall: false,
+            onOpen: () => _openExecutor(o.executorId!),
+          ),
           const SizedBox(height: 10),
-          ReviewPrompt(orderId: o.id, title: t('Орындаушыны бағалаңыз')),
+          RecipientSection(order: o),
+          ReviewPrompt(
+            orderId: o.id,
+            title: t('Орындаушыны бағалаңыз'),
+            tags: kExecutorReviewTags,
+          ),
+          if (_prefs.available && !favorite) ...[
+            const SizedBox(height: 10),
+            GzNotice(
+              tone: NoticeTone.accent,
+              icon: Icons.favorite_border_rounded,
+              title: t('Орындаушы ұнады ма?'),
+              message: t(
+                'Таңдаулыға қосыңыз — келесі заказыңыз туралы оған '
+                'бірінші болып хабар барады.',
+              ),
+              actionLabel: t('Таңдаулыға қосу'),
+              onAction: () async {
+                try {
+                  await Repo.setExecutorPref(o.executorId!, 'favorite');
+                  await _loadPrefs();
+                  if (mounted) {
+                    showSnack(context, t('Таңдаулыларға қосылды ❤'));
+                  }
+                } catch (e) {
+                  if (mounted) showSnack(context, errText(e), error: true);
+                }
+              },
+            ),
+          ],
           const SizedBox(height: 10),
-          if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
+          Row(
+            children: [
+              if (_repeatOrderEnabled) ...[
+                Expanded(child: _ReorderButton(onPressed: () => _reorder(o))),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _shareReceipt(o),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: Text(t('Чек')),
+                ),
+              ),
+            ],
+          ),
         ];
       case 'cancelled':
         return [
-          SectionCard(
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Gz.red),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    (o.cancelReason?.isNotEmpty ?? false)
-                        ? '${t('Себебі:')} ${o.cancelReason}'
-                        : t('Заказ тоқтатылды'),
-                  ),
-                ),
-              ],
-            ),
+          GzNotice(
+            tone: NoticeTone.danger,
+            message: (o.cancelReason?.isNotEmpty ?? false)
+                ? '${t('Себебі:')} ${o.cancelReason}'
+                : t('Заказ тоқтатылды'),
           ),
           const SizedBox(height: 10),
           if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
         ];
       default:
         return [
-          SectionCard(
-            child: Row(
-              children: [
-                const Icon(Icons.schedule, color: Gz.textSecondary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(t('Заказдың мерзімі өтті — ешкім қабылдамады.')),
-                ),
-              ],
-            ),
+          GzNotice(
+            tone: NoticeTone.neutral,
+            icon: Icons.schedule,
+            message: t('Заказдың мерзімі өтті — ешкім қабылдамады.'),
           ),
           const SizedBox(height: 10),
           if (_repeatOrderEnabled) _ReorderButton(onPressed: () => _reorder(o)),
@@ -425,84 +566,45 @@ class _ReorderButton extends StatelessWidget {
 /// Орындаушы келгенін клиент растайды: «Тиеу басталды» → status=loading.
 /// Осыдан кейін ғана орындаушы «Жолға шықтық» дей алады (0027). Такси
 /// заказында (жолаушы тасымалы) «тиеу» орнына «отыру» сөздігі қолданылады —
-/// жолаушы жүк емес.
-class _ConfirmLoadingCard extends StatelessWidget {
+/// жолаушы жүк емес. Түсіндірмесі мен күту таймері — [WaitingTimerCard].
+class _ConfirmLoadingButton extends StatelessWidget {
   final String orderId;
   final VehicleType vehicleType;
-  const _ConfirmLoadingCard({required this.orderId, required this.vehicleType});
+  const _ConfirmLoadingButton({
+    required this.orderId,
+    required this.vehicleType,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isTaxi = vehicleType == VehicleType.taxi;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Gz.green.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(Gz.radius),
-        border: Border.all(color: Gz.green.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isTaxi ? Icons.person : Icons.local_shipping,
-                color: Gz.green,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  t('Орындаушы жеткен жоқ па?'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isTaxi
-                ? t(
-                    'Орындаушы келіп, сіз отырсаңыз — растаңыз. Растамайынша '
-                    'орындаушы жолға шыға алмайды.',
-                  )
-                : t(
-                    'Орындаушы келіп, тиеу басталса — растаңыз. Растамайынша '
-                    'орындаушы жолға шыға алмайды.',
-                  ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-          ),
-          const SizedBox(height: 12),
-          BusyButton(
-            label: t(isTaxi ? 'Отырғызу басталды' : 'Тиеу басталды'),
-            icon: Icons.check_circle,
-            color: Gz.green,
-            onPressed: () async {
-              try {
-                await Repo.orderAdvance(orderId, 'loading');
-              } catch (e) {
-                if (context.mounted) {
-                  showSnack(context, errText(e), error: true);
-                }
-              }
-            },
-          ),
-        ],
-      ),
+    return BusyButton(
+      label: t(isTaxi ? 'Отырғызу басталды' : 'Тиеу басталды'),
+      icon: Icons.check_circle,
+      color: Gz.green,
+      onPressed: () async {
+        try {
+          await Repo.orderAdvance(orderId, 'loading');
+          Repo.orderStream(orderId, fresh: true);
+        } catch (e) {
+          if (context.mounted) showSnack(context, errText(e), error: true);
+        }
+      },
     );
   }
 }
 
 // ===================== ІЗДЕУ (Tasu стилі) =====================
 
+/// Ұсыныстарды сұрыптау: ұсынылған (таңдаулылар жоғарыда, сосын арзаны),
+/// арзанырақ, тез келеді (орындаушы уәде еткен минут), рейтинг.
+enum _OfferSort { best, cheap, fast, rating }
+
 /// Заказ «Іздеуде» тұрғанда: толық экранды карта (алу нүктесінде Tasu
 /// логотип-пині мен сары толқындар, маршрут жолмен салынған) және
 /// сүйретілетін ақ панель — сары күй карточкасы (өткен уақыт, жол бойымен
-/// жүріп келе жатқан көлік), ұсыныстар, баға карточкасы, маршрут,
-/// «Заказды тоқтату».
+/// жүріп келе жатқан көлік), ұсыныстар, баға карточкасы, маршрут, жүк,
+/// алушы, «Заказды тоқтату».
 ///
 /// Логика: ұсынысты қабылдау/қабылдамау — [_OfferCard], бағаны көтеру —
 /// [_RaisePriceHint] (автоматты кеңес те, баға карточкасындағы батырма да),
@@ -512,14 +614,25 @@ class _ConfirmLoadingCard extends StatelessWidget {
 /// жабылады).
 class _SearchingScreen extends StatefulWidget {
   final Order order;
+  final ExecutorPrefs prefs;
   final VoidCallback onCancel;
 
   /// `null` — «Бөлісу» фичасы өшулі (модератор баптауы).
   final VoidCallback? onShare;
 
+  /// Жүк, түсініктеме, қосымша талаптарды өңдеу. `null` — сервер 0077-сіз
+  /// (өңдеу RPC-і жоқ), батырма көрінбейді.
+  final VoidCallback? onEdit;
+
+  /// Орындаушының профилі терезесі (❤ / бұғаттау).
+  final ValueChanged<String> onOpenExecutor;
+
   const _SearchingScreen({
     required this.order,
+    required this.prefs,
     required this.onCancel,
+    required this.onOpenExecutor,
+    this.onEdit,
     this.onShare,
   });
 
@@ -550,6 +663,12 @@ class _SearchingScreenState extends State<_SearchingScreen> {
   /// Заказдың БАРЛЫҚ ұсынысы (pending + rejected) — бас тарту санын
   /// «бағаны көтеріңіз» кеңесі үшін де білу керек.
   final _allOffers = ValueNotifier<List<Offer>>(const []);
+
+  _OfferSort _sort = _OfferSort.best;
+
+  /// Ұсыныс иелерінің профильдері (рейтинг бойынша сұрыптау үшін).
+  final Map<String, Profile> _profiles = {};
+  final Set<String> _requested = {};
 
   /// Маршруттың нақты жол геометриясы (бос — әзірге доға).
   List<LatLng> _road = const [];
@@ -608,19 +727,25 @@ class _SearchingScreenState extends State<_SearchingScreen> {
     _elapsed.value = sec < 0 ? 0 : sec;
   }
 
-  static List<Offer> _pendingOf(List<Offer> all) =>
-      all.where((of) => of.status == 'pending').toList()
-        ..sort((a, b) => a.price.compareTo(b.price));
+  /// Көрсетілетін ұсыныстар: тек күтудегілер, бұғатталған орындаушының
+  /// ұсынысы жасырылады (ол бұғатқа дейін жіберілген болуы мүмкін).
+  List<Offer> _pendingOf(List<Offer> all) => [
+    for (final of in all)
+      if (of.status == 'pending' &&
+          !widget.prefs.blocks.contains(of.executorId))
+        of,
+  ];
 
   void _onOffers(List<Offer> all) {
     if (!mounted) return;
     final before = _pendingOf(_allOffers.value).length;
     _allOffers.value = all;
-    final now = _pendingOf(all).length;
+    final pending = _pendingOf(all);
+    _ensureProfiles(pending);
     // Алғашқы ұсыныс келгенде панель өзі ашылады — ұсыныс көзден тыс
     // (панельдің төменгі жағында) қалып қоймасын.
     if (before == 0 &&
-        now > 0 &&
+        pending.isNotEmpty &&
         _sheet.isAttached &&
         _sheet.size < _offersSize - 0.02) {
       _sheet.animateTo(
@@ -629,6 +754,48 @@ class _SearchingScreenState extends State<_SearchingScreen> {
         curve: Curves.easeOutCubic,
       );
     }
+  }
+
+  void _ensureProfiles(List<Offer> offers) {
+    final missing = [
+      for (final of in offers)
+        if (!_requested.contains(of.executorId)) of.executorId,
+    ];
+    if (missing.isEmpty) return;
+    _requested.addAll(missing);
+    Repo.profilesByIds(missing).then((m) {
+      if (mounted) setState(() => _profiles.addAll(m));
+    }, onError: (_) {});
+  }
+
+  List<Offer> _sorted(List<Offer> list) {
+    final fav = widget.prefs.favorites;
+    int byPrice(Offer a, Offer b) => a.price.compareTo(b.price);
+    int byEta(Offer a, Offer b) => (a.etaMin ?? 999).compareTo(b.etaMin ?? 999);
+    double rating(Offer o) =>
+        _profiles[o.executorId]?.ratingAs('executor') ?? 0;
+    final out = List.of(list);
+    switch (_sort) {
+      case _OfferSort.best:
+        out.sort((a, b) {
+          final fa = fav.contains(a.executorId) ? 0 : 1;
+          final fb = fav.contains(b.executorId) ? 0 : 1;
+          return fa != fb ? fa.compareTo(fb) : byPrice(a, b);
+        });
+      case _OfferSort.cheap:
+        out.sort(byPrice);
+      case _OfferSort.fast:
+        out.sort((a, b) {
+          final c = byEta(a, b);
+          return c != 0 ? c : byPrice(a, b);
+        });
+      case _OfferSort.rating:
+        out.sort((a, b) {
+          final c = rating(b).compareTo(rating(a));
+          return c != 0 ? c : byPrice(a, b);
+        });
+    }
+    return out;
   }
 
   /// Картаның төменгі шегінісі: панельдің бастапқы биіктігі картаның
@@ -663,25 +830,14 @@ class _SearchingScreenState extends State<_SearchingScreen> {
   }
 
   Future<void> _openRaise(Order o) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Gz.surface,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(ctx).bottom,
-        ),
-        child: SafeArea(
-          top: false,
-          child: _RaisePriceHint(
-            order: o,
-            manual: true,
-            onRaised: () => Navigator.of(ctx).maybePop(),
-          ),
+    await showGzSheet<void>(
+      context,
+      builder: (ctx) => GzSheetBody(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: _RaisePriceHint(
+          order: o,
+          manual: true,
+          onRaised: () => Navigator.of(ctx).maybePop(),
         ),
       ),
     );
@@ -804,8 +960,8 @@ class _SearchingScreenState extends State<_SearchingScreen> {
                           const Spacer(),
                           if (widget.onShare != null)
                             SearchMapButton(
-                              icon: Icons.ios_share,
-                              tooltip: t('Бөлісу'),
+                              icon: Icons.ios_share_rounded,
+                              tooltip: t('Сапарды бөлісу'),
                               onTap: widget.onShare!,
                             ),
                         ],
@@ -890,10 +1046,10 @@ class _SearchingScreenState extends State<_SearchingScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: Gz.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Gz.rXl)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x24101828),
+            color: Gz.shadowWide,
             blurRadius: 24,
             offset: Offset(0, -4),
           ),
@@ -920,7 +1076,7 @@ class _SearchingScreenState extends State<_SearchingScreen> {
   }
 
   Widget _sheetContent(Order o, List<Offer> all, bool scheduled) {
-    final offers = _pendingOf(all);
+    final offers = _sorted(_pendingOf(all));
     final rejectedCount = all.where((of) => of.status == 'rejected').length;
     final ageMin = o.createdAt == null
         ? 0
@@ -928,15 +1084,13 @@ class _SearchingScreenState extends State<_SearchingScreen> {
     // Кеңес: 5+ бас тарту немесе 15+ мин жауапсыз → бағаны көтеру
     final suggestRaise =
         !scheduled && (rejectedCount >= 5 || (offers.isEmpty && ageMin >= 15));
+    // «Тез келеді» — тек орындаушылар келу уақытын көрсеткенде (0075).
+    final hasEta = offers.any((of) => of.etaMin != null);
 
     final meta = [
       if (o.distanceKm > 0) Geo.formatDistance(o.distanceKm),
       o.intercity ? t('Қалааралық') : t('Қала ішінде'),
     ].join(' · ');
-    final details = <Widget>[
-      if (o.cargoDesc.isNotEmpty) InfoRow(t('Жүк'), o.cargoDesc),
-      if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
-    ];
 
     final status = scheduled
         ? SearchStatusCard(
@@ -989,11 +1143,38 @@ class _SearchingScreenState extends State<_SearchingScreen> {
         // күйі басқа карточкаға «ауысып» кетпеуі үшін.
         if (suggestRaise)
           _RaisePriceHint(key: const ValueKey('raise-hint'), order: o),
+        if (offers.length > 1) ...[
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final s in _OfferSort.values)
+                  if (s != _OfferSort.fast || hasEta)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(switch (s) {
+                          _OfferSort.best => t('Ұсынылған'),
+                          _OfferSort.cheap => t('Арзанырақ'),
+                          _OfferSort.fast => t('Тез келеді'),
+                          _OfferSort.rating => t('Рейтинг'),
+                        }),
+                        selected: _sort == s,
+                        onSelected: (_) => setState(() => _sort = s),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         for (final offer in offers) ...[
           _OfferCard(
             key: ValueKey('offer-${offer.id}'),
             offer: offer,
             clientPrice: o.clientPrice,
+            favorite: widget.prefs.favorites.contains(offer.executorId),
+            onOpenExecutor: () => widget.onOpenExecutor(offer.executorId),
           ),
           const SizedBox(height: 8),
         ],
@@ -1014,17 +1195,41 @@ class _SearchingScreenState extends State<_SearchingScreen> {
             stops: o.stops.map((st) => st.display).toList(),
           ),
         ),
-        if (details.isNotEmpty) ...[
+        // Жүк, түсініктеме, қосымша талаптар — іздеу кезінде өңделеді.
+        if (o.cargoDesc.isNotEmpty ||
+            o.comment.isNotEmpty ||
+            o.hasExtras ||
+            widget.onEdit != null) ...[
           const SizedBox(height: 10),
           SectionCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Column(children: details),
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (o.cargoDesc.isNotEmpty) InfoRow(t('Жүк'), o.cargoDesc),
+                if (o.comment.isNotEmpty) InfoRow(t('Түсініктеме'), o.comment),
+                if (o.hasExtras) ...[
+                  const SizedBox(height: 6),
+                  OrderExtrasChips(order: o),
+                  const SizedBox(height: 4),
+                ],
+                if (widget.onEdit != null)
+                  TextButton.icon(
+                    onPressed: widget.onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: Text(t('Заказды өңдеу')),
+                  ),
+              ],
+            ),
           ),
         ],
         if (o.photos.isNotEmpty) ...[
           const SizedBox(height: 12),
           OrderPhotosStrip(paths: o.photos),
         ],
+        const SizedBox(height: 10),
+        // Алушы және жеткізу коды (0076) — сервер дайын болса ғана.
+        RecipientSection(order: o),
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: widget.onCancel,
@@ -1052,12 +1257,12 @@ class _OsmAttribution extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Gz.surface.withValues(alpha: 0.82),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(Gz.rXs),
         ),
         child: const Text(
           '© OpenStreetMap',
           style: TextStyle(
-            fontSize: 9.5,
+            fontSize: 10,
             height: 1.1,
             fontWeight: FontWeight.w700,
             color: Gz.textSecondary,
@@ -1133,6 +1338,7 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
     try {
       await Repo.updateOrderPrice(widget.order.id, cur + add);
       _lastPrice = cur + add;
+      Repo.orderStream(widget.order.id, fresh: true);
       if (mounted) {
         setState(() => _snoozedUntil = DateTime.now().add(_snoozeDuration));
         showSnack(context, '${t('Жаңа баға:')} ${fmtT(cur + add)}');
@@ -1152,145 +1358,97 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
     // пайда болады (бөлек Timer қажет емес).
     if (_snoozed && !widget.manual) return const SizedBox.shrink();
     final custom = int.tryParse(_customCtrl.text.trim()) ?? 0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7E0),
-        borderRadius: BorderRadius.circular(Gz.radius),
-        border: Border.all(color: Gz.yellowDark.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                widget.manual ? Icons.trending_up_rounded : Icons.lightbulb,
-                color: Gz.yellowDark,
-                size: 20,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GzNotice(
+        tone: NoticeTone.warning,
+        icon: widget.manual ? Icons.trending_up_rounded : Icons.lightbulb,
+        title: widget.manual
+            ? t('Бағаны көтеру')
+            : t('Бағаны сәл көтеріп көріңіз'),
+        message: widget.manual
+            ? t('Баға жоғары болса, орындаушылар тезірек жауап береді.')
+            : t(
+                'Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
+                'Бағаны көтерсеңіз, тезірек табыласыз.',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.manual
-                      ? t('Бағаны көтеру')
-                      : t('Бағаны сәл көтеріп көріңіз'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.manual
-                ? t('Баға жоғары болса, орындаушылар тезірек жауап береді.')
-                : t(
-                    'Ұзақ уақыт жауап жоқ немесе орындаушылар келіспей жатыр. '
-                    'Бағаны көтерсеңіз, тезірек табыласыз.',
-                  ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final add in _presets)
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  onPressed: _busy ? null : () => _raise(add),
-                  child: Text('+${fmtT(add)}'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            t('Немесе өзіңіз көтеріңіз'),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 12.5,
-              color: Gz.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              _StepBtn(
-                icon: Icons.remove_rounded,
-                onTap: _busy ? null : () => _stepCustom(-100),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _customCtrl,
-                  enabled: !_busy,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final add in _presets)
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    suffixText: '₸',
+                    onPressed: _busy ? null : () => _raise(add),
+                    child: Text('+${fmtT(add)}'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t('Немесе өзіңіз көтеріңіз'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Gz.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                GzStepButton(
+                  icon: Icons.remove_rounded,
+                  size: 40,
+                  onTap: _busy ? null : () => _stepCustom(-100),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _customCtrl,
+                    enabled: !_busy,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
+                      suffixText: '₸',
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _StepBtn(
-                icon: Icons.add_rounded,
-                onTap: _busy ? null : () => _stepCustom(100),
-              ),
-              const SizedBox(width: 10),
-              FilledButton(
-                onPressed: (_busy || custom < 100)
-                    ? null
-                    : () => _raise(custom),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                const SizedBox(width: 8),
+                GzStepButton(
+                  icon: Icons.add_rounded,
+                  size: 40,
+                  onTap: _busy ? null : () => _stepCustom(100),
                 ),
-                child: Text(t('Қолдану')),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Баптау степперіндегі дөңгелек +/- батырмасы.
-class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  const _StepBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Gz.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Gz.yellowDark.withValues(alpha: 0.4)),
+                const SizedBox(width: 10),
+                FilledButton(
+                  onPressed: (_busy || custom < 100)
+                      ? null
+                      : () => _raise(custom),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: Text(t('Қолдану')),
+                ),
+              ],
+            ),
+          ],
         ),
-        child: Icon(icon, size: 20, color: Gz.yellowDark),
       ),
     );
   }
@@ -1299,25 +1457,45 @@ class _StepBtn extends StatelessWidget {
 class _OfferCard extends StatelessWidget {
   final Offer offer;
   final int? clientPrice;
-  const _OfferCard({super.key, required this.offer, this.clientPrice});
+  final bool favorite;
+  final VoidCallback onOpenExecutor;
+  const _OfferCard({
+    super.key,
+    required this.offer,
+    required this.onOpenExecutor,
+    this.clientPrice,
+    this.favorite = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final samePrice = clientPrice != null && offer.price == clientPrice;
+    final note = offer.note.trim();
     return SectionCard(
       padding: const EdgeInsets.all(12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _ExecutorBrief(executorId: offer.executorId)),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(Gz.rSm),
+                  onTap: onOpenExecutor,
+                  child: _ExecutorBrief(
+                    executorId: offer.executorId,
+                    favorite: favorite,
+                  ),
+                ),
+              ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     fmtT(offer.price),
                     style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: samePrice ? Gz.green : Gz.ink,
                     ),
@@ -1325,7 +1503,7 @@ class _OfferCard extends StatelessWidget {
                   Text(
                     samePrice ? t('Бағаңызға келісті') : t('Қарсы ұсыныс'),
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: samePrice ? Gz.green : Gz.textSecondary,
                     ),
                   ),
@@ -1333,18 +1511,31 @@ class _OfferCard extends StatelessWidget {
               ),
             ],
           ),
-          if (offer.message.isNotEmpty) ...[
+          // Келу уақыты — орындаушының ӨЗІ ұсыныспен бірге таңдаған минуты
+          // (0075), ойдан шығарылған болжам емес.
+          if (offer.etaMin != null || note.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '«${offer.message}»',
-                style: const TextStyle(
-                  color: Gz.textSecondary,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 13,
-                ),
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (offer.etaMin != null)
+                  InfoChip(
+                    icon: Icons.timer_outlined,
+                    color: Gz.blue,
+                    text: '~${offer.etaMin} ${t('мин')}',
+                  ),
+                if (note.isNotEmpty)
+                  Text(
+                    '«$note»',
+                    style: const TextStyle(
+                      color: Gz.textSecondary,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13,
+                    ),
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: 10),
@@ -1363,6 +1554,7 @@ class _OfferCard extends StatelessWidget {
                   onPressed: () async {
                     try {
                       await Repo.rejectOffer(offer.id);
+                      Repo.offersStream(offer.orderId, fresh: true);
                     } catch (e) {
                       if (context.mounted) {
                         showSnack(context, errText(e), error: true);
@@ -1380,6 +1572,7 @@ class _OfferCard extends StatelessWidget {
                   onPressed: () async {
                     try {
                       await Repo.acceptOffer(offer.id);
+                      Repo.orderStream(offer.orderId, fresh: true);
                     } catch (e) {
                       if (context.mounted) {
                         showSnack(context, errText(e), error: true);
@@ -1396,13 +1589,15 @@ class _OfferCard extends StatelessWidget {
   }
 }
 
-/// Орындаушының қысқа профилі (аты, рейтинг, көлігі).
+/// Орындаушының қысқа профилі (аты, рейтинг, көлігі). Басса — толық
+/// профиль терезесі (пікірлер, тегтер, ❤).
 ///
 /// Профиль БІР рет жүктеледі: ұсыныстар/заказ стримі әр 4 секунд сайын
 /// панельді қайта салады — әр жолы желіге қайта сұрау жібермеуі үшін.
 class _ExecutorBrief extends StatefulWidget {
   final String executorId;
-  const _ExecutorBrief({required this.executorId});
+  final bool favorite;
+  const _ExecutorBrief({required this.executorId, this.favorite = false});
 
   @override
   State<_ExecutorBrief> createState() => _ExecutorBriefState();
@@ -1441,14 +1636,34 @@ class _ExecutorBriefState extends State<_ExecutorBrief> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    p?.fullName ?? '…',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.5,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          p?.fullName ?? '…',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      if (widget.favorite) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.favorite_rounded,
+                          size: 15,
+                          color: Gz.red,
+                        ),
+                      ],
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: Gz.textSecondary,
+                      ),
+                    ],
                   ),
                   // Клиент ОРЫНДАУШЫНЫ көреді → орындаушылық рейтинг/рейс
                   // (қос рөл, 0046: адамның клиенттік бағасы бөлек жүреді).
@@ -1462,23 +1677,17 @@ class _ExecutorBriefState extends State<_ExecutorBrief> {
                       if ((p?.tripsAs('executor') ?? 0) > 0)
                         Text(
                           '  · ${p!.tripsAs('executor')} ${t('рейс')}',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            color: Gz.textSecondary,
-                          ),
+                          style: Gz.caption,
                         ),
                     ],
                   ),
-                  // Ұсыныс кезінде газель нөмірі көрсетілмейді (тек маркасы)
+                  // Ұсыныс кезінде көлік нөмірі көрсетілмейді (тек маркасы)
                   if (ep != null)
                     Text(
                       ep.vehicleTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Gz.textSecondary,
-                      ),
+                      style: Gz.caption,
                     ),
                 ],
               ),
@@ -1491,13 +1700,24 @@ class _ExecutorBriefState extends State<_ExecutorBrief> {
 }
 
 // ===================== ОРЫНДАУШЫ КАРТАСЫ =====================
+
+/// Сапар кезіндегі орындаушы: басса — профилі (❤ / бұғаттау), оң жақта
+/// чат (0078) және қоңырау.
 class _ExecutorCard extends StatelessWidget {
-  final String executorId;
+  final Order order;
+  final ExecutorPrefs prefs;
   final bool showCall;
-  const _ExecutorCard({required this.executorId, this.showCall = true});
+  final VoidCallback onOpen;
+  const _ExecutorCard({
+    required this.order,
+    required this.prefs,
+    required this.onOpen,
+    this.showCall = true,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final executorId = order.executorId!;
     return FutureBuilder(
       future: Future.wait([
         Repo.profileOf(executorId),
@@ -1506,71 +1726,93 @@ class _ExecutorCard extends StatelessWidget {
       builder: (context, snap) {
         final p = snap.data?[0] as Profile?;
         final ep = snap.data?[1] as ExecutorProfile?;
+        final favorite = prefs.favorites.contains(executorId);
         return SectionCard(
           padding: const EdgeInsets.all(14),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  InitialsAvatar(
-                    p?.fullName ?? '?',
-                    radius: 24,
-                    imageUrl: p?.avatarUrl,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          p?.fullName ?? t('Орындаушы'),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
-                        // Орындаушының РӨЛДІК рейтингі (қос рөл, 0046).
-                        Row(
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(Gz.rSm),
+                  onTap: onOpen,
+                  child: Row(
+                    children: [
+                      InitialsAvatar(
+                        p?.fullName ?? '?',
+                        radius: 24,
+                        imageUrl: p?.avatarUrl,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            RatingStars(
-                              p?.ratingAs('executor') ?? 0,
-                              count: p?.ratingCountAs('executor') ?? 0,
-                              size: 14,
-                            ),
-                            if ((p?.tripsAs('executor') ?? 0) > 0)
-                              Text(
-                                '  · ${p!.tripsAs('executor')} ${t('рейс')}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Gz.textSecondary,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    p?.fullName ?? t('Орындаушы'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Gz.h3,
+                                  ),
                                 ),
+                                if (favorite) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.favorite_rounded,
+                                    size: 15,
+                                    color: Gz.red,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            // Орындаушының РӨЛДІК рейтингі (қос рөл, 0046).
+                            Row(
+                              children: [
+                                RatingStars(
+                                  p?.ratingAs('executor') ?? 0,
+                                  count: p?.ratingCountAs('executor') ?? 0,
+                                  size: 14,
+                                ),
+                                if ((p?.tripsAs('executor') ?? 0) > 0)
+                                  Text(
+                                    '  · ${p!.tripsAs('executor')} ${t('рейс')}',
+                                    style: Gz.caption,
+                                  ),
+                              ],
+                            ),
+                            if (ep != null)
+                              Text(
+                                '${ep.vehicleTitle} · ${ep.vehiclePlate}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Gz.caption,
                               ),
                           ],
                         ),
-                        if (ep != null)
-                          Text(
-                            '${ep.vehicleTitle} · ${ep.vehiclePlate}',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: Gz.textSecondary,
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  if (showCall && p != null && p.phone.isNotEmpty)
-                    IconButton.filled(
-                      style: IconButton.styleFrom(
-                        backgroundColor: Gz.green,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => launchUrl(
-                        Uri(scheme: 'tel', path: Phone.dial(p.phone)),
-                      ),
-                      icon: const Icon(Icons.call),
-                    ),
-                ],
+                ),
               ),
+              OrderChatButton(
+                order: order,
+                title: p?.fullName ?? t('Орындаушы'),
+                myRole: 'client',
+              ),
+              if (showCall && p != null && p.phone.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                IconButton.filled(
+                  tooltip: t('Қоңырау'),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Gz.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => callPhone(context, p.phone),
+                  icon: const Icon(Icons.call),
+                ),
+              ],
             ],
           ),
         );

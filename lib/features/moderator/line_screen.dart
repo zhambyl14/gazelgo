@@ -247,7 +247,7 @@ class _LineScreenState extends State<LineScreen> {
             '$label · $hint', // label/hint аргументтер шақыру жерінде t() арқылы аударылады
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.5, color: Gz.textSecondary),
+            style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
           ),
         ],
       ),
@@ -262,11 +262,7 @@ class _LineScreenState extends State<LineScreen> {
     ),
     child: Text(
       text,
-      style: TextStyle(
-        fontSize: 10.5,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
     ),
   );
 }

@@ -9,7 +9,6 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
-import '../../shared/drawer_hint.dart';
 import '../../shared/status_check.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart';
@@ -44,19 +43,31 @@ class ExecutorHomeScreen extends ConsumerWidget {
           children: [
             Column(
               children: [
-                // жоғарғы жолақ: лого (sidebar) + уведомление + баланс
+                // жоғарғы жолақ: ☰ мәзір + уведомление + баланс
                 // Үшеуі БІРДЕЙ биіктікте (44): жолақ ықшам әрі тегіс.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                   child: Row(
                     children: [
-                      // Логотип — sidebar ашатын батырма: профиль, баланс,
-                      // табыс, хабарландырулар тақтасы — бәрі сонда (бөлек
-                      // «Профиль» табы жойылды). Бұрышында «мәзір» белгісі
-                      // тұр — түйме екені бірден көрінеді.
+                      // «☰» — бүйір мәзір: профиль, заказдарым, баланс,
+                      // табыс, хабарландырулар тақтасы. Клиенттегідей АЙҚЫН
+                      // батырма (бұрын логотип болатын — түйме деп
+                      // танылмайтын); белсенді заказ саны бұрышында.
                       Builder(
-                        builder: (ctx) => LogoMenuButton(
+                        builder: (ctx) => MapRoundButton(
+                          icon: Icons.menu_rounded,
+                          tooltip: t('Мәзір'),
                           size: _barH,
+                          // Белсенді заказдар + оқылмаған хабарламалар
+                          // (0080) — мәзірде не күтіп тұрғаны бір белгіден.
+                          badge:
+                              (ref
+                                      .watch(myActiveExecutorOrdersProvider)
+                                      .value
+                                      ?.length ??
+                                  0) +
+                              (ref.watch(unreadNotificationsProvider).value ??
+                                  0),
                           onTap: () => Scaffold.of(ctx).openDrawer(),
                         ),
                       ),
@@ -114,9 +125,6 @@ class ExecutorHomeScreen extends ConsumerWidget {
                 const Expanded(child: ExecutorFeedBody()),
               ],
             ),
-            // Sidebar-ды табуға көмектесетін тұтқа мен алғашқы нұсқау (0059).
-            const DrawerEdgeHandle(),
-            const DrawerHintOverlay(top: 68),
           ],
         ),
       ),
@@ -295,15 +303,15 @@ class _LineControlBar extends ConsumerWidget {
     final progress = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
     return Material(
       color: Gz.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(Gz.rMd),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(Gz.rMd),
         onTap: () => _openTariffs(context),
         child: Container(
           height: 46,
           padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(Gz.rMd),
             border: Border.all(color: Gz.border),
           ),
           child: Row(
@@ -324,7 +332,7 @@ class _LineControlBar extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
+                    fontSize: 14,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -336,7 +344,7 @@ class _LineControlBar extends ConsumerWidget {
                 SizedBox(
                   width: 56,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(Gz.rXs),
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
@@ -403,7 +411,7 @@ class _StatusCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Gz.tint(color, 0.09), Gz.surface],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.32)),
         boxShadow: Gz.cardShadow,
       ),
@@ -417,7 +425,7 @@ class _StatusCard extends StatelessWidget {
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   color: Gz.tint(color, 0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Gz.tint(color, 0.22), width: 1.2),
                 ),
                 child: Icon(icon, color: color, size: 21),
@@ -442,7 +450,7 @@ class _StatusCard extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(
                         color: Gz.textSecondary,
-                        fontSize: 12.5,
+                        fontSize: 13,
                         height: 1.5,
                       ),
                     ),
@@ -630,7 +638,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Gz.blue.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -641,10 +649,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
             child: Text(
               '${t('Қазір')} $city ${t('қаласындасыз (тіркелген:')} '
               '${widget.ep.city ?? '—'}). ${t('Ауыстырайық па?')}',
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(width: 6),

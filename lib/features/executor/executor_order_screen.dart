@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
@@ -8,7 +9,7 @@ import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
-import 'feed_screen.dart' show PriceStepperSheet;
+import 'offer_sheet.dart';
 
 /// Ұсыныс жібергеннен кейінгі орындаушы экраны:
 /// клиент жауабын күту → қабылданса белсенді заказға өту.
@@ -441,7 +442,7 @@ class _WaitingHeaderState extends State<_WaitingHeader>
                       t('Ұсынысыңыз жіберілді'),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
+                        fontSize: 18,
                         height: 1.25,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.2,
@@ -527,7 +528,7 @@ class _PriceTile extends StatelessWidget {
         color: accent
             ? Gz.yellow.withValues(alpha: 0.13)
             : Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(Gz.rMd),
         border: Border.all(
           color: accent
               ? Gz.yellow.withValues(alpha: 0.4)
@@ -553,7 +554,7 @@ class _PriceTile extends StatelessWidget {
               maxLines: 1,
               style: TextStyle(
                 color: accent ? Gz.yellow : Colors.white,
-                fontSize: 19,
+                fontSize: 20,
                 height: 1.2,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.3,
@@ -654,7 +655,7 @@ class _StateBanner extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16.5,
+                    fontSize: 16,
                     height: 1.25,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.2,
@@ -664,7 +665,7 @@ class _StateBanner extends StatelessWidget {
                 Text(
                   text,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     height: 1.45,
                     color: Gz.textSecondary,
                   ),
@@ -794,7 +795,7 @@ class _FactTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
       decoration: BoxDecoration(
         color: f.highlight ? Gz.tint(f.color, 0.08) : Gz.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Gz.rMd),
         border: Border.all(
           color: f.highlight ? f.color.withValues(alpha: 0.4) : Gz.border,
         ),
@@ -812,7 +813,7 @@ class _FactTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Gz.textSecondary,
                   ),
@@ -842,7 +843,7 @@ class _FactTile extends StatelessWidget {
 //  ҰСЫНЫС БЕРУ
 // ═══════════════════════════════════════════════════════════════════════
 
-/// «Келісу · баға» / «Өз бағам» — әлі ұсыныс берілмеген заказ үшін.
+/// «Келісу» / «Өз бағам» — әлі ұсыныс берілмеген заказ үшін.
 ///
 /// Ұсыныс беру құқығын (тариф, растау, қала) СЕРВЕР `place_offer` ішінде
 /// тексереді — рұқсат болмаса, қатенің себебі snack арқылы көрсетіледі.
@@ -850,22 +851,30 @@ class _OfferActions extends StatelessWidget {
   final Order order;
   const _OfferActions({required this.order});
 
-  Future<void> _send(BuildContext context, int price) async {
+  /// Баға + келу уақыты + хабар — лентадағыдай бір терезеде
+  /// (offer_sheet.dart: ETA таңдау + дайын фразалар).
+  Future<void> _offer(BuildContext context, {required bool counter}) async {
+    final pos = await Geo.currentPosition();
+    if (!context.mounted) return;
+    final km = pos == null
+        ? null
+        : Geo.haversineKm(
+            LatLng(pos.latitude, pos.longitude),
+            LatLng(order.fromLat, order.fromLng),
+          );
+    final d = await showOfferSheet(
+      context,
+      order: order,
+      counter: counter,
+      kmToPickup: km,
+    );
+    if (d == null || !context.mounted) return;
     try {
-      await Repo.placeOffer(order.id, price, '');
+      await Repo.placeOffer(order.id, d.price, d.message, etaMin: d.etaMin);
+      Repo.offersStream(order.id, fresh: true);
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
-  }
-
-  Future<void> _counter(BuildContext context) async {
-    final price = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => PriceStepperSheet(order: order),
-    );
-    if (price == null || !context.mounted) return;
-    await _send(context, price);
   }
 
   @override
@@ -880,7 +889,7 @@ class _OfferActions extends StatelessWidget {
               // Баға жоғарғы карточкада үлкен жазылған — батырмада
               // қайталанбайды.
               label: t('Келісу'),
-              onPressed: () => _send(context, base),
+              onPressed: () => _offer(context, counter: false),
             ),
           ),
           const SizedBox(width: 8),
@@ -893,7 +902,7 @@ class _OfferActions extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               side: const BorderSide(color: Gz.ink, width: 1.6),
             ),
-            onPressed: () => _counter(context),
+            onPressed: () => _offer(context, counter: true),
             child: BtnLabel(t('Өз бағам')),
           ),
         ),

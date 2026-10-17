@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/phone.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -21,6 +22,7 @@ import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'draft_order.dart';
 import 'order_detail_screen.dart';
+import 'order_extras_editor.dart';
 import 'saved_addresses.dart';
 
 /// Заказ құру: жүк детальдары, көлік түрі, баға.
@@ -117,6 +119,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   /// талап етеді, сол себепті осыдан мәтін құрылады).
   int _passengers = 2;
 
+  /// Қосымша талаптар (0077): тиеушілер, қабат, лифт — міндетті емес.
+  OrderExtras _extras = const OrderExtras();
+
+  /// Жүкті басқа адам қабылдаса (0076) — аты мен телефоны.
+  bool _withRecipient = false;
+  final _recipName = TextEditingController();
+  final _recipPhone = TextEditingController(text: '+7');
+
+  /// Ұқсас заказдардың бағасы (0077) — клиентке «қанша қою керек» бағдары.
+  PriceHint? _hint;
+
+  /// Сервер алушыны қолдай ма (0076) — жоқ болса блок көрінбейді.
+  bool _recipAvailable = false;
+
   /// Маршруттың барлық нүктесі: алу → аялдамалар → жеткізу.
   List<PickedAddress> get _points => [_from, ..._stops, _to];
 
@@ -153,6 +169,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return '${t('Бағаңыз кемінде')} ${fmtT(_minPrice)}';
     }
     if (!_isTaxi && !_legalOk) return t('Заңдылық белгісін қойыңыз');
+    if (_withRecipient && !Phone.isValid(_recipPhone.text)) {
+      return t('Алушының телефонын тексеріңіз');
+    }
     return null;
   }
 
@@ -171,9 +190,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _legalOk = d.legalOk;
       _passengers = d.passengers;
       _photos.addAll(d.photos);
+      _extras = d.extras;
+      if (d.recipientPhone.isNotEmpty) {
+        _withRecipient = true;
+        _recipName.text = d.recipientName;
+        _recipPhone.text = d.recipientPhone;
+      }
     }
     _loadRoute();
     _restoreLegalPreference();
+    Repo.recipientsAvailable().then((v) {
+      if (mounted && v) setState(() => _recipAvailable = true);
+    });
     // Экран ашылған соң «Заказ туралы» өрісіне фокус береміз (маршрут
     // транзициясы бітсін деп сәл кідіреміз). Таксиде ол өріс жоқ.
     if (!_isTaxi) {
@@ -298,7 +326,138 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     _cargoFocus.dispose();
     _scroll.dispose();
     _legalListTap.dispose();
+    _recipName.dispose();
+    _recipPhone.dispose();
     super.dispose();
+  }
+
+  /// Ұқсас заказдардың бағасы — маршрут не көлік түрі өзгерген сайын.
+  Future<void> _loadHint() async {
+    final r = _route;
+    if (r == null || r.distanceKm <= 0) return;
+    final vehicle = _vehicle;
+    final h = await Repo.orderPriceHint(
+      vehicle: vehicle,
+      distanceKm: r.distanceKm,
+      city: _from.city,
+      intercity: _intercity,
+    );
+    if (!mounted || vehicle != _vehicle) return;
+    setState(() => _hint = h);
+  }
+
+  /// «Ұқсас заказдар бағасы» — үш чип: төмен / әдетте / жоғары. Басса —
+  /// баға өрісіне қойылады.
+  Widget _priceHint(PriceHint h) {
+    Widget chip(int v, String label, {bool main = false}) => Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Gz.rSm),
+        onTap: () => setState(() => _price.text = '$v'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: main ? Gz.tint(Gz.yellow, 0.25) : Gz.surface,
+            borderRadius: BorderRadius.circular(Gz.rSm),
+            border: Border.all(
+              color: main ? Gz.yellowDark : Gz.border,
+              width: main ? 1.4 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                fmtT(v),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                ),
+              ),
+              Text(label, style: Gz.caption),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.insights_rounded, size: 16, color: Gz.textSecondary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '${t('Ұқсас заказдар бағасы')} (${h.samples})',
+                style: Gz.caption,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            chip(h.low, t('арзан')),
+            const SizedBox(width: 6),
+            chip(h.typical, t('әдетте'), main: true),
+            const SizedBox(width: 6),
+            chip(h.high, t('тез табылады')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// «Жүкті басқа адам қабылдайды» — аты + телефон (0076). Заказ
+  /// жарияланған соң алушыға WhatsApp арқылы сілтеме мен код жіберіледі.
+  Widget _recipientSection() {
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            value: _withRecipient,
+            onChanged: (v) => setState(() => _withRecipient = v),
+            secondary: const Icon(
+              Icons.person_pin_circle_outlined,
+              color: Gz.violet,
+            ),
+            title: Text(t('Жүкті басқа адам қабылдайды'), style: Gz.h3),
+            subtitle: Text(
+              t('Оған көлік қайда екені көрінетін сілтеме мен 4 таңбалы код '
+                  'барады'),
+              style: Gz.caption,
+            ),
+          ),
+          if (_withRecipient)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _recipName,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      hintText: t('Аты (міндетті емес)'),
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _recipPhone,
+                    keyboardType: TextInputType.phone,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: '+7 7XX XXX XX XX',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadRoute() async {
@@ -309,6 +468,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final r = await Geo.routeVia(points);
     if (!mounted) return;
     setState(() => _route = r);
+    unawaited(_loadHint());
     // Кіргеннен кейінгі автоматты жариялау — маршрут дайын болғанда бір рет.
     if (widget.autoSubmit && !_autoSubmitted) {
       _autoSubmitted = true;
@@ -321,26 +481,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       showSnack(context, t('Ең көбі 5 фото'), error: true);
       return;
     }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: Text(t('Камерамен түсіру')),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: Text(t('Галереядан таңдау')),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await pickImageSource(context);
     if (source == null) return;
     final f = await _picker.pickImage(
       source: source,
@@ -412,7 +553,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 t('Қашан керек?'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
+                  fontSize: 14,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -441,7 +582,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             const SizedBox(height: 6),
             Text(
               t('Заказ дәл сол уақытқа дейін орындаушыларға көрінбейді.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
           ],
         ],
@@ -504,6 +645,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         photos: List.of(_photos),
         legalOk: _legalOk,
         passengers: _passengers,
+        extras: _isTaxi ? const OrderExtras() : _extras,
+        recipientName: _withRecipient ? _recipName.text.trim() : '',
+        recipientPhone: _withRecipient ? _recipPhone.text.trim() : '',
       );
       await Navigator.of(
         context,
@@ -534,6 +678,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       for (var i = 0; i < _photos.length; i++) {
         photoPaths.add(await Repo.uploadOrderPhoto(_photos[i], i));
       }
+      // Қосымша талаптар: сервер 0077-сіз болса — түсініктемеге мәтін болып
+      // қосылады (орындаушы бәрібір оқиды).
+      final extras = _isTaxi ? const OrderExtras() : _extras;
+      final extrasViaRpc =
+          !extras.isEmpty && await Repo.orderExtrasAvailable();
+      var comment = _comment.text.trim();
+      if (!extras.isEmpty && !extrasViaRpc) {
+        comment = [comment, extras.asText()].where((s) => s.isNotEmpty).join('. ');
+      }
       final id = await Repo.createOrder(
         vehicleType: _vehicle,
         fromAddress: _from.address,
@@ -544,7 +697,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         toLng: _to.point.longitude,
         distanceKm: double.parse(finalRoute.distanceKm.toStringAsFixed(2)),
         cargo: cargoText,
-        comment: _comment.text,
+        comment: comment,
         clientPrice: clientPrice,
         photos: photoPaths,
         fromCity: _from.city,
@@ -562,6 +715,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             .toList(),
         scheduledAt: _scheduledAt,
       );
+      // Заказ ЖАРИЯЛАНДЫ — қосымшалардың қатесі оны тоқтатпайды (клиент
+      // заказ бетінде қайта қоса алады).
+      if (extrasViaRpc) {
+        try {
+          await Repo.updateOrderDetails(
+            id,
+            loaders: extras.loaders,
+            floorFrom: extras.floorFrom,
+            floorTo: extras.floorTo,
+            elevator: extras.elevator,
+          );
+        } catch (_) {}
+      }
+      if (_withRecipient && Phone.isValid(_recipPhone.text)) {
+        try {
+          await Repo.setOrderRecipient(
+            id,
+            _recipName.text.trim(),
+            _recipPhone.text.trim(),
+          );
+        } catch (_) {}
+      }
       // Заказ берілген мекенжайларды тарихқа қосамыз («Соңғы» тізімі үшін):
       // маршрут ретімен — соңғысы тізімде бірінші тұрады.
       for (final p in _points) {
@@ -602,7 +777,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           child: Container(
             decoration: const BoxDecoration(
               color: Gz.bg,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
@@ -612,7 +787,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   height: 5,
                   decoration: BoxDecoration(
                     color: Gz.disabledBg,
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 Padding(
@@ -668,7 +843,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 _intercity ? Gz.violet : Gz.green,
                                 0.10,
                               ),
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: Gz.tint(
                                   _intercity ? Gz.violet : Gz.green,
@@ -696,7 +871,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 12.5,
+                                      fontSize: 13,
                                       letterSpacing: -0.1,
                                       color: _intercity ? Gz.violet : Gz.green,
                                     ),
@@ -818,7 +993,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           types: kTaxiVehicleTypes.contains(_vehicle)
                               ? kTaxiVehicleTypes
                               : kCargoVehicleTypes,
-                          onChanged: (v) => setState(() => _vehicle = v),
+                          onChanged: (v) {
+                            setState(() {
+                              _vehicle = v;
+                              _hint = null;
+                            });
+                            _loadHint();
+                          },
                         ),
                         const SizedBox(height: 18),
                         // ================= ТАКСИ ФОРМАСЫ =================
@@ -923,6 +1104,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               prefixIcon: const Icon(Icons.notes),
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          OrderExtrasEditor(
+                            value: _extras,
+                            onChanged: (v) => setState(() => _extras = v),
+                          ),
                           const SizedBox(height: 14),
                           // Жүк фотолары
                           Row(
@@ -996,6 +1182,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               ),
                             ),
                           ),
+                        if (!_isTaxi && _recipAvailable) ...[
+                          const SizedBox(height: 14),
+                          _recipientSection(),
+                        ],
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -1033,10 +1223,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           t('Орындаушылар келіседі не өз бағасын ұсынады'),
                           style: const TextStyle(
                             color: Gz.textSecondary,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                         ),
                         const SizedBox(height: 8),
+                        if (_hint != null) ...[
+                          _priceHint(_hint!),
+                          const SizedBox(height: 10),
+                        ],
                         TextField(
                           controller: _price,
                           keyboardType: TextInputType.number,
@@ -1061,7 +1255,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               color: Gz.textSecondary,
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius: BorderRadius.circular(16),
                               borderSide: const BorderSide(
                                 color: Gz.ink,
                                 width: 1.6,
@@ -1091,7 +1285,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             label: Text.rich(
                               TextSpan(
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   height: 1.4,
                                   color: Gz.textSecondary,
                                 ),
@@ -1217,7 +1411,7 @@ class _EditableAddr extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(

@@ -69,7 +69,7 @@ class _ThreadTile extends StatelessWidget {
             ),
             subtitle: Text(
               '${_roleLabel(p?.role)} · ${fmtDate(thread.lastMsgAt)}',
-              style: const TextStyle(fontSize: 12.5),
+              style: const TextStyle(fontSize: 13),
             ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -83,7 +83,7 @@ class _ThreadTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: (thread.isOpen ? Gz.green : Gz.textSecondary)
                         .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     thread.isOpen ? t('Ашық') : t('Жабық'),
@@ -215,7 +215,7 @@ class _ModeratorUserContext extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Gz.textSecondary,
-                          fontSize: 11.5,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -262,7 +262,7 @@ class _OrderContextBar extends StatelessWidget {
         final o = snap.data;
         if (o == null) return const SizedBox.shrink();
         return Material(
-          color: const Color(0xFFFFF7E0),
+          color: Gz.tint(Gz.yellow, 0.14),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: Column(
@@ -300,7 +300,7 @@ class _OrderContextBar extends StatelessWidget {
                     icon: const Icon(Icons.tune, size: 16),
                     label: Text(
                       t('Заказды басқару (статус, тоқтату…)'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),

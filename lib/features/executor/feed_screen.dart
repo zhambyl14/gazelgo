@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
@@ -17,6 +19,7 @@ import '../auth/executor_apply_screen.dart';
 import 'bonus_widgets.dart';
 import 'dashboard_screen.dart';
 import 'executor_order_screen.dart';
+import 'offer_sheet.dart';
 
 /// Орындаушының заказға ұсыныс беруіне кедергі себебі (feed гейті).
 enum _Gate {
@@ -30,7 +33,7 @@ enum _Gate {
 }
 
 /// Карточкалардың бұрыш радиусы (лента мен парақ ішіндегі блоктар).
-const double _cardRadius = 20;
+const double _cardRadius = Gz.rLg;
 
 /// Заказдың «жаңалығы»: осы уақыттан жас заказ «ЖАҢА» белгісімен
 /// (жыпылықтаған нүктемен) көрсетіледі.
@@ -73,8 +76,12 @@ String _duration(int min) {
   return m == 0 ? '≈ $h ${t('сағ')}' : '≈ $h ${t('сағ')} $m ${t('мин')}';
 }
 
-/// Лента сүзгісі (қойындылар).
+/// Лента сүзгісі (қойындылар) — лентадағы ЖАЛҒЫЗ сүзгі.
 enum _FeedFilter { all, city, intercity }
+
+/// Лентаның реті: ұсынылған (жаңа әрі жақын — қараңыз: `rankOf`), ең
+/// жақын, ең қымбат, ең жаңа. Таңдау есте қалады.
+enum _FeedSort { best, near, price, fresh }
 
 /// Орындаушыдан алу нүктесіне дейінгі тік қашықтық (км). GPS жоқ — null.
 double? _pickupKm(Position? p, Order o) => p == null
@@ -115,6 +122,11 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// Таңдалған қойынды: барлығы / қала ішінде / қалааралық.
   _FeedFilter _filter = _FeedFilter.all;
 
+  /// Сұрыптау (есте қалады), тізім/карта көрінісі, жасырылған заказдар.
+  _FeedSort _sort = _FeedSort.best;
+  bool _mapView = false;
+  Set<String> _hidden = {};
+
   @override
   void initState() {
     super.initState();
@@ -122,6 +134,56 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     Geo.currentPosition().then((p) {
       if (mounted) setState(() => _pos = p);
     });
+    _restoreView();
+  }
+
+  /// Соңғы таңдалған қойынды мен рет (Prefs-тегі «scope» ұяшығы —
+  /// қойындының атауы: all / city / intercity) және жасырылғандар.
+  Future<void> _restoreView() async {
+    final (sort, scope) = await Prefs.feedView();
+    final hidden = await Prefs.hiddenOrders();
+    if (!mounted) return;
+    setState(() {
+      _sort = _FeedSort.values.firstWhere(
+        (v) => v.name == sort,
+        orElse: () => _FeedSort.best,
+      );
+      _filter = _FeedFilter.values.firstWhere(
+        (v) => v.name == scope,
+        orElse: () => _FeedFilter.all,
+      );
+      _hidden = hidden;
+    });
+  }
+
+  void _setView({_FeedSort? sort, _FeedFilter? filter}) {
+    setState(() {
+      _sort = sort ?? _sort;
+      _filter = filter ?? _filter;
+    });
+    Prefs.setFeedView(_sort.name, _filter.name);
+  }
+
+  /// Ұзақ басқанда — «Бұл заказ маған қызық емес» (лентадан жасыру).
+  Future<void> _hide(Order o) async {
+    final ok = await confirmDialog(
+      context,
+      title: t('Заказды жасыру керек пе?'),
+      message: t(
+        'Бұл заказ лентаңызда енді көрінбейді. Барлығын қайта '
+        'көрсету — лента сүзгісінің астында.',
+      ),
+      confirmLabel: t('Жасыру'),
+      icon: Icons.visibility_off_outlined,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _hidden = {..._hidden, o.id});
+    await Prefs.hideOrder(o.id);
+  }
+
+  Future<void> _unhideAll() async {
+    await Prefs.unhideAllOrders();
+    if (mounted) setState(() => _hidden = {});
   }
 
   Future<void> _manualRefresh() async {
@@ -168,8 +230,16 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
         // (1 + 6 = 7) 10 км жердегі жаңа ғана шыққан заказдан (0 + 30)
         // жоғары тұрады, ал жарты сағат бұрынғы заказ — жақын болса да
         // төмен түседі (оны бәрібір біреу алып қойған болуы мүмкін). GPS жоқ
-        // болса — тек жаңалығы бойынша.
-        final all = [...feedAsync.value ?? const <Order>[]];
+        // болса — тек жаңалығы бойынша. Бұл — «Ұсынылған» рет; орындаушы
+        // сұрыптау мәзірінен «Жақын / Қымбат / Жаңа» ретін таңдай алады.
+        final raw = feedAsync.value ?? const <Order>[];
+        // Ұзақ басып жасырылған заказдар («маған қызық емес») — лентада да,
+        // қойынды сандарында да есептелмейді.
+        final all = [
+          for (final o in raw)
+            if (!_hidden.contains(o.id)) o,
+        ];
+        final hiddenCount = raw.length - all.length;
         double rankOf(Order o) {
           final ageMin = o.createdAt == null
               ? 9999.0
@@ -178,7 +248,26 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           return ageMin + (km == null ? 0 : km * 3);
         }
 
-        all.sort((a, b) => rankOf(a).compareTo(rankOf(b)));
+        switch (_sort) {
+          case _FeedSort.best:
+            all.sort((a, b) => rankOf(a).compareTo(rankOf(b)));
+          case _FeedSort.near:
+            all.sort(
+              (a, b) => (_pickupKm(_pos, a) ?? a.distanceKm).compareTo(
+                _pickupKm(_pos, b) ?? b.distanceKm,
+              ),
+            );
+          case _FeedSort.price:
+            all.sort(
+              (a, b) => (b.displayPrice ?? 0).compareTo(a.displayPrice ?? 0),
+            );
+          case _FeedSort.fresh:
+            all.sort(
+              (a, b) => (b.createdAt ?? DateTime(2000)).compareTo(
+                a.createdAt ?? DateTime(2000),
+              ),
+            );
+        }
         final cityCount = all.where((o) => !o.intercity).length;
         final interCount = all.length - cityCount;
         final eligible = switch (_filter) {
@@ -192,15 +281,24 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
         final fresh = firstLoad ? ids : ids.difference(_known!);
         _known = ids;
 
-        final tabs = _FeedTabs(
-          value: _filter,
+        // Лентаның үстіңгі жолағы: қойындылар (сандарымен) + Тізім/Карта +
+        // сұрыптау, астында — «жасырылғандарды қайта көрсету».
+        final tabs = _FeedToolbar(
+          filter: _filter,
           all: all.length,
           city: cityCount,
           intercity: interCount,
-          onChanged: (f) => setState(() => _filter = f),
+          onFilter: (f) => _setView(filter: f),
+          sort: _sort,
+          hasGps: _pos != null,
+          onSort: (s) => _setView(sort: s),
+          mapView: _mapView,
+          onMapView: (v) => setState(() => _mapView = v),
+          hiddenCount: hiddenCount,
+          onUnhide: _unhideAll,
         );
 
-        if (all.isEmpty) {
+        if (raw.isEmpty) {
           return _refreshable([
             const Padding(
               padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -240,6 +338,22 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           );
         }
 
+        // КАРТА көрінісі — «қай жақта заказ көп» бір қарағанда.
+        if (_mapView) {
+          return Column(
+            children: [
+              tabs,
+              Expanded(
+                child: _FeedMap(
+                  orders: eligible,
+                  myPos: _pos,
+                  onTap: _openOrder,
+                ),
+              ),
+            ],
+          );
+        }
+
         final list = RefreshIndicator(
           color: Gz.ink,
           onRefresh: _manualRefresh,
@@ -265,6 +379,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                   order: o,
                   myPos: _pos,
                   onTap: () => _openOrder(o),
+                  onLongPress: () => _hide(o),
                 ),
               );
             },
@@ -309,22 +424,16 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       _showGate(gate);
       return;
     }
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      clipBehavior: Clip.antiAlias,
+    showGzSheet(
+      context,
       builder: (_) => _OrderSheet(
         order: o,
         myPos: _pos,
         // Клиент бағасы жоқ заказда «Келісу» мүмкін емес — тек өз баға.
         onAgree: o.clientPrice == null
             ? null
-            : () => _offer(o, o.clientPrice!, ''),
-        onCounter: () => _counterOffer(o),
+            : () => _makeOffer(o, counter: false),
+        onCounter: () => _makeOffer(o, counter: true),
       ),
     );
   }
@@ -457,34 +566,29 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: Icon(icon, color: color, size: 34),
-        title: Text(title, textAlign: TextAlign.center),
-        content: Text(text, textAlign: TextAlign.center),
-        actions: [
-          if (actionLabel != null && onAction != null)
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                onAction();
-              },
-              child: Text(actionLabel),
-            )
-          else
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(t('Түсінікті')),
-            ),
-        ],
-      ),
+    gzInfoDialog(
+      context,
+      icon: icon,
+      color: color,
+      title: title,
+      message: text,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
-  Future<void> _offer(Order o, int price, String message) async {
+  /// Ұсыныс: баға (келісу не өз бағам) + келу уақыты + қысқа хабар —
+  /// бір терезеде ([showOfferSheet]).
+  Future<void> _makeOffer(Order o, {required bool counter}) async {
+    final d = await showOfferSheet(
+      context,
+      order: o,
+      counter: counter,
+      kmToPickup: _pickupKm(_pos, o),
+    );
+    if (d == null || !mounted) return;
     try {
-      await Repo.placeOffer(o.id, price, message);
+      await Repo.placeOffer(o.id, d.price, d.message, etaMin: d.etaMin);
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => ExecutorOrderScreen(orderId: o.id)),
@@ -494,47 +598,60 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       if (mounted) showSnack(context, errText(e), error: true);
     }
   }
-
-  Future<void> _counterOffer(Order o) async {
-    final result = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => PriceStepperSheet(order: o),
-    );
-    if (result == null || !mounted) return;
-    await _offer(o, result, '');
-  }
 }
 
-/// Карточканың лентаға «қалқып кіруі» (fade + сәл жоғары жылжу).
-///
-/// Әр заказ үшін БІР-АҚ рет ойналады ([played] жиыны): тізімді айналдырып
-/// қайта оралғанда немесе стрим жаңарғанда карточкалар қайта секірмейді.
-/// Алғашқы жүктелуде алғашқы бірнеше карточка сатылап (stagger) кіреді.
-/// Лента қойындылары: «Барлығы / Қала / Қалааралық» — әрқайсысында
-/// заказ саны. Тізімнің ҮСТІНДЕ бекітулі тұрады (айналдырғанда кетпейді).
-class _FeedTabs extends StatelessWidget {
-  final _FeedFilter value;
+/// Лентаның үстіңгі жолағы — лентадағы ЖАЛҒЫЗ сүзгі: «Барлығы / Қала /
+/// Қалааралық» қойындылары (әрқайсысында заказ саны), оның қасында
+/// Тізім/Карта ауыстырғышы мен сұрыптау мәзірі. Тізімнің ҮСТІНДЕ бекітулі
+/// тұрады (айналдырғанда кетпейді). Жасырылған заказ болса — астында
+/// «қайта көрсету» сілтемесі.
+class _FeedToolbar extends StatelessWidget {
+  final _FeedFilter filter;
   final int all;
   final int city;
   final int intercity;
-  final ValueChanged<_FeedFilter> onChanged;
-  const _FeedTabs({
-    required this.value,
+  final ValueChanged<_FeedFilter> onFilter;
+  final _FeedSort sort;
+  final bool hasGps;
+  final ValueChanged<_FeedSort> onSort;
+  final bool mapView;
+  final ValueChanged<bool> onMapView;
+  final int hiddenCount;
+  final VoidCallback onUnhide;
+
+  const _FeedToolbar({
+    required this.filter,
     required this.all,
     required this.city,
     required this.intercity,
-    required this.onChanged,
+    required this.onFilter,
+    required this.sort,
+    required this.hasGps,
+    required this.onSort,
+    required this.mapView,
+    required this.onMapView,
+    required this.hiddenCount,
+    required this.onUnhide,
   });
+
+  /// Жолақ элементтерінің ортақ биіктігі (қойынды 38 + ішкі шегініс 2×4).
+  static const double _h = 46;
+
+  static String _sortLabel(_FeedSort s) => switch (s) {
+    _FeedSort.best => t('Ұсынылған'),
+    _FeedSort.near => t('Жақын'),
+    _FeedSort.price => t('Қымбат'),
+    _FeedSort.fresh => t('Жаңа'),
+  };
 
   @override
   Widget build(BuildContext context) {
     Widget tab(_FeedFilter f, String label, int n) {
-      final on = value == f;
+      final on = filter == f;
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => onChanged(f),
+          onTap: () => onFilter(f),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
@@ -542,7 +659,7 @@ class _FeedTabs extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: on ? Gz.ink : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Gz.rSm),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -564,12 +681,12 @@ class _FeedTabs extends StatelessWidget {
       );
     }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+    final tabs = Container(
+      height: _h,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Gz.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Gz.rMd),
         border: Border.all(color: Gz.border),
       ),
       child: Row(
@@ -580,6 +697,127 @@ class _FeedTabs extends StatelessWidget {
         ],
       ),
     );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: tabs),
+              const SizedBox(width: 6),
+              // Тізім ⇄ Карта. Иконка — АУЫСАТЫН көрініс; карта ашық
+              // кезде батырма қараяды (қай режимде тұрғаны көрінеді).
+              _ToolButton(
+                icon: mapView ? Icons.view_agenda_outlined : Icons.map_outlined,
+                tooltip: mapView ? t('Тізім') : t('Карта'),
+                active: mapView,
+                size: _h,
+                onTap: () => onMapView(!mapView),
+              ),
+              const SizedBox(width: 6),
+              // Сұрыптау: әдепкі «Ұсынылған» емес рет таңдалса — батырма
+              // қараяды (лента басқа ретпен тұрғаны бірден көрінеді).
+              PopupMenuButton<_FeedSort>(
+                tooltip: '${t('Сұрыптау')}: ${_sortLabel(sort)}',
+                initialValue: sort,
+                onSelected: onSort,
+                position: PopupMenuPosition.under,
+                itemBuilder: (_) => [
+                  for (final s in _FeedSort.values)
+                    if (s != _FeedSort.near || hasGps)
+                      PopupMenuItem(
+                        value: s,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              child: s == sort
+                                  ? const Icon(
+                                      Icons.check_rounded,
+                                      size: 18,
+                                      color: Gz.green,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(_sortLabel(s)),
+                          ],
+                        ),
+                      ),
+                ],
+                child: _ToolButton(
+                  icon: Icons.swap_vert_rounded,
+                  active: sort != _FeedSort.best,
+                  size: _h,
+                ),
+              ),
+            ],
+          ),
+          if (hiddenCount > 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: Gz.textSecondary,
+                ),
+                onPressed: onUnhide,
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: Text(
+                  '${t('Жасырылған заказдар')}: $hiddenCount · '
+                  '${t('көрсету')}',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Жолақтағы шаршы батырма (қойындылармен бірдей биіктікте).
+/// [onTap] null болса — тек көрініс (мыс. [PopupMenuButton]-ның ішінде,
+/// басуды мәзір өзі ұстайды).
+class _ToolButton extends StatelessWidget {
+  final IconData icon;
+  final String? tooltip;
+  final bool active;
+  final double size;
+  final VoidCallback? onTap;
+  const _ToolButton({
+    required this.icon,
+    required this.size,
+    this.tooltip,
+    this.active = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(Gz.rMd);
+    Widget box = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active ? Gz.ink : Gz.surface,
+        borderRadius: radius,
+        border: Border.all(color: active ? Gz.ink : Gz.border),
+      ),
+      child: Icon(icon, size: 20, color: active ? Gz.yellow : Gz.ink),
+    );
+    final tap = onTap;
+    if (tap != null) {
+      box = Material(
+        type: MaterialType.transparency,
+        child: InkWell(borderRadius: radius, onTap: tap, child: box),
+      );
+    }
+    final tip = tooltip;
+    return tip == null ? box : Tooltip(message: tip, child: box);
   }
 }
 
@@ -622,7 +860,7 @@ class _FeedEmpty extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: FontWeight.w900,
               color: Gz.ink,
             ),
@@ -632,7 +870,7 @@ class _FeedEmpty extends StatelessWidget {
             subtitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: 14,
               height: 1.4,
               color: Gz.textSecondary,
             ),
@@ -652,6 +890,11 @@ class _FeedEmpty extends StatelessWidget {
   }
 }
 
+/// Карточканың лентаға «қалқып кіруі» (fade + сәл жоғары жылжу).
+///
+/// Әр заказ үшін БІР-АҚ рет ойналады ([played] жиыны): тізімді айналдырып
+/// қайта оралғанда немесе стрим жаңарғанда карточкалар қайта секірмейді.
+/// Алғашқы жүктелуде алғашқы бірнеше карточка сатылап (stagger) кіреді.
 class _Entrance extends StatefulWidget {
   final String id;
   final int index;
@@ -730,7 +973,15 @@ class _FeedCard extends StatelessWidget {
   /// сұраққа жауап беру үшін. GPS рұқсаты жоқ болса null (тег көрінбейді).
   final Position? myPos;
 
-  const _FeedCard({required this.order, required this.onTap, this.myPos});
+  /// Ұзақ басу — заказды лентадан жасыру («маған қызық емес»).
+  final VoidCallback? onLongPress;
+
+  const _FeedCard({
+    required this.order,
+    required this.onTap,
+    this.myPos,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -767,6 +1018,20 @@ class _FeedCard extends StatelessWidget {
           text: _when(o.scheduledAt!),
           color: Gz.blue,
         ),
+      // Қосымша талаптар (0077): тиеуші, қабат, лифт.
+      if (o.loaders > 0)
+        _Pill(
+          icon: Icons.groups_rounded,
+          text: '${o.loaders} ${t('тиеуші')}',
+          color: Gz.violet,
+        ),
+      if (o.floorFrom != null || o.floorTo != null)
+        _Pill(
+          icon: Icons.stairs_rounded,
+          text:
+              '${o.floorFrom ?? '—'} → ${o.floorTo ?? '—'} ${t('қабат')}'
+              '${o.hasElevator == true ? ' · ${t('лифт')}' : ''}',
+        ),
       if (o.photos.isNotEmpty)
         _Pill(icon: Icons.photo_camera_outlined, text: '${o.photos.length}'),
     ];
@@ -785,6 +1050,7 @@ class _FeedCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(_cardRadius),
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Column(
@@ -828,7 +1094,7 @@ class _FeedCard extends StatelessWidget {
                           BtnLabel(
                             fmtT(o.displayPrice),
                             style: const TextStyle(
-                              fontSize: 23,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                               height: 1.1,
                               letterSpacing: -0.8,
@@ -985,7 +1251,7 @@ class _Pill extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
         color: c == null ? Gz.surfaceAlt : Gz.tint(c, 0.10),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(Gz.rXs),
         border: Border.all(color: c == null ? Gz.border : Gz.tint(c, 0.24)),
       ),
       child: Row(
@@ -1122,7 +1388,7 @@ class _FreshnessState extends State<_Freshness>
             Text(
               t('ЖАҢА'),
               style: const TextStyle(
-                fontSize: 10.5,
+                fontSize: 11,
                 height: 1.2,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.6,
@@ -1247,7 +1513,7 @@ class _CompactRoute extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: Gz.tint(Gz.violet, 0.10),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(Gz.rXs),
                   ),
                   child: Text(
                     '+$stops ${t('аялдама')}',
@@ -1281,7 +1547,7 @@ class _CompactRoute extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 14.5,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
             height: 1.3,
             letterSpacing: -0.15,
@@ -1315,7 +1581,7 @@ class _RouteDot extends StatelessWidget {
           height: 12,
           decoration: BoxDecoration(
             color: Gz.ink,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
           ),
         );
 }
@@ -1368,7 +1634,7 @@ class _FeedSkeletonState extends State<_FeedSkeleton>
 
   @override
   Widget build(BuildContext context) {
-    Widget bar(double w, double h, {double r = 7}) => Container(
+    Widget bar(double w, double h, {double r = 8}) => Container(
       width: w,
       height: h,
       decoration: BoxDecoration(
@@ -1411,11 +1677,11 @@ class _FeedSkeletonState extends State<_FeedSkeleton>
           const SizedBox(height: 14),
           Row(
             children: [
-              bar(64, 22, r: 10),
+              bar(64, 22, r: 8),
               const SizedBox(width: 6),
-              bar(56, 22, r: 10),
+              bar(56, 22, r: 8),
               const SizedBox(width: 6),
-              bar(72, 22, r: 10),
+              bar(72, 22, r: 8),
             ],
           ),
         ],
@@ -1468,109 +1734,113 @@ class _OrderSheet extends StatelessWidget {
       initialChildSize: 0.86,
       minChildSize: 0.5,
       maxChildSize: 0.95,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Gz.disabledBg,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // ---- 1) БАҒЫТ: «қайдан → қайда» БІР ҚАРАҒАНДА ----
-                _DirectionStrip(order: o),
-                const SizedBox(height: 10),
-                // ---- 2) КАРТА: түртсе толық экранда ашылады ----
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: RouteMap(
-                    from: LatLng(o.fromLat, o.fromLng),
-                    to: LatLng(o.toLat, o.toLng),
-                    stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                    height: 190,
-                    fromLabel: o.fromDisplay,
-                    toLabel: o.toDisplay,
-                    stopLabels: o.stops.map((s) => s.display).toList(),
-                    distanceKm: o.distanceKm > 0 ? o.distanceKm : null,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // ---- 3) МАРШРУТ ҚАДАМДАРЫ (толық мекенжайлар) ----
-                _SheetSection(
-                  icon: Icons.route_rounded,
-                  title: t('Маршрут'),
-                  child: RouteLine(
-                    from: o.fromDisplay,
-                    to: o.toDisplay,
-                    stops: o.stops.map((s) => s.display).toList(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // ---- 4) НЕГІЗГІ ДЕРЕКТЕР ТОРЫ ----
-                _FactsGrid(order: o, myPos: myPos),
-                // ---- 5) ЖҮК + ФОТО ----
-                if (o.cargoDesc.isNotEmpty || o.photos.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  _SheetSection(
-                    icon: isTaxi
-                        ? Icons.person_outline_rounded
-                        : Icons.inventory_2_outlined,
-                    title: isTaxi ? t('Жолаушылар') : t('Жүк'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (o.cargoDesc.isNotEmpty)
-                          Text(
-                            o.cargoDesc,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              height: 1.45,
-                              fontWeight: FontWeight.w600,
-                              color: Gz.ink,
-                            ),
-                          ),
-                        if (o.cargoDesc.isNotEmpty && o.photos.isNotEmpty)
-                          const SizedBox(height: 12),
-                        if (o.photos.isNotEmpty)
-                          OrderPhotosStrip(paths: o.photos),
-                      ],
-                    ),
-                  ),
-                ],
-                // ---- 6) ТҮСІНІКТЕМЕ ----
-                if (o.comment.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  _SheetSection(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    title: t('Түсініктеме'),
-                    child: Text(
-                      o.comment,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.45,
-                        color: Gz.ink,
+      // Парақтың фоны — сұр (Gz.bg): ақ блоктар одан бөлек оқылады.
+      builder: (context, scroll) => ColoredBox(
+        color: Gz.bg,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                controller: scroll,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Gz.disabledBg,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  // ---- 1) БАҒЫТ: «қайдан → қайда» БІР ҚАРАҒАНДА ----
+                  _DirectionStrip(order: o),
+                  const SizedBox(height: 10),
+                  // ---- 2) КАРТА: түртсе толық экранда ашылады ----
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(Gz.rLg),
+                    child: RouteMap(
+                      from: LatLng(o.fromLat, o.fromLng),
+                      to: LatLng(o.toLat, o.toLng),
+                      stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                      height: 190,
+                      fromLabel: o.fromDisplay,
+                      toLabel: o.toDisplay,
+                      stopLabels: o.stops.map((s) => s.display).toList(),
+                      distanceKm: o.distanceKm > 0 ? o.distanceKm : null,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // ---- 3) МАРШРУТ ҚАДАМДАРЫ (толық мекенжайлар) ----
+                  _SheetSection(
+                    icon: Icons.route_rounded,
+                    title: t('Маршрут'),
+                    child: RouteLine(
+                      from: o.fromDisplay,
+                      to: o.toDisplay,
+                      stops: o.stops.map((s) => s.display).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // ---- 4) НЕГІЗГІ ДЕРЕКТЕР ТОРЫ ----
+                  _FactsGrid(order: o, myPos: myPos),
+                  // ---- 5) ЖҮК + ФОТО ----
+                  if (o.cargoDesc.isNotEmpty || o.photos.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _SheetSection(
+                      icon: isTaxi
+                          ? Icons.person_outline_rounded
+                          : Icons.inventory_2_outlined,
+                      title: isTaxi ? t('Жолаушылар') : t('Жүк'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (o.cargoDesc.isNotEmpty)
+                            Text(
+                              o.cargoDesc,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                height: 1.45,
+                                fontWeight: FontWeight.w600,
+                                color: Gz.ink,
+                              ),
+                            ),
+                          if (o.cargoDesc.isNotEmpty && o.photos.isNotEmpty)
+                            const SizedBox(height: 12),
+                          if (o.photos.isNotEmpty)
+                            OrderPhotosStrip(paths: o.photos),
+                        ],
+                      ),
+                    ),
+                  ],
+                  // ---- 6) ТҮСІНІКТЕМЕ ----
+                  if (o.comment.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _SheetSection(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      title: t('Түсініктеме'),
+                      child: Text(
+                        o.comment,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.45,
+                          color: Gz.ink,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  // ---- 7) КЛИЕНТ ----
+                  _SheetClient(clientId: o.clientId),
                 ],
-                const SizedBox(height: 10),
-                // ---- 7) КЛИЕНТ ----
-                _SheetClient(clientId: o.clientId),
-              ],
+              ),
             ),
-          ),
-          // ---- 8) БАҒА + ӘРЕКЕТ (бекітілген) ----
-          _SheetActions(order: o, onAgree: onAgree, onCounter: onCounter),
-        ],
+            // ---- 8) БАҒА + ӘРЕКЕТ (бекітілген) ----
+            _SheetActions(order: o, onAgree: onAgree, onCounter: onCounter),
+          ],
+        ),
       ),
     );
   }
@@ -1593,7 +1863,7 @@ class _SheetSection extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
     decoration: BoxDecoration(
       color: Gz.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(Gz.rLg),
       border: Border.all(color: Gz.border),
     ),
     child: Column(
@@ -1750,7 +2020,7 @@ class _FactTile extends StatelessWidget {
                 label.toUpperCase(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Gz.label.copyWith(fontSize: 9.5, letterSpacing: 0.5),
+                style: Gz.label.copyWith(fontSize: 10, letterSpacing: 0.5),
               ),
               const SizedBox(height: 3),
               BtnLabel(
@@ -1813,7 +2083,7 @@ class _SheetActions extends StatelessWidget {
         border: Border(top: BorderSide(color: Gz.border)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x12101828),
+            color: Gz.shadowSoft,
             blurRadius: 18,
             offset: Offset(0, -6),
           ),
@@ -1896,7 +2166,7 @@ class _DirectionStrip extends StatelessWidget {
     final from = _place(o.fromCity, o.fromDisplay);
     final to = _place(o.toCity, o.toDisplay);
     const cityStyle = TextStyle(
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: FontWeight.w900,
       height: 1.15,
       letterSpacing: -0.4,
@@ -1911,7 +2181,7 @@ class _DirectionStrip extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Gz.tint(accent, 0.12), Gz.surface],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(Gz.rLg),
         border: Border.all(color: Gz.tint(accent, 0.24)),
       ),
       // Қала атаулары ұзын болуы мүмкін («Петропавл» / «Усть-Каменогорск»)
@@ -1962,7 +2232,7 @@ class _SheetClientState extends State<_SheetClient> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Gz.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(Gz.rLg),
           border: Border.all(color: Gz.border),
         ),
         child: ProfileBrief(
@@ -1975,120 +2245,117 @@ class _SheetClientState extends State<_SheetClient> {
   }
 }
 
-/// −/+ батырмаларымен баға ұсыну терезесі (100 ₸ қадаммен).
-///
-/// Лентадан да, хабарландыруды басып ашылған заказ бетінен де
-/// ([ExecutorOrderScreen]) қолданылады — сол себепті ашық (public).
-class PriceStepperSheet extends StatefulWidget {
-  final Order order;
-  const PriceStepperSheet({super.key, required this.order});
+/// Лентаның КАРТА көрінісі: әр заказ алу нүктесінде бағасымен; басса —
+/// заказ терезесі. Орындаушы «қай жақта заказ көп» дегенді бір қарағанда
+/// көреді.
+class _FeedMap extends StatelessWidget {
+  final List<Order> orders;
+  final Position? myPos;
+  final ValueChanged<Order> onTap;
 
-  @override
-  State<PriceStepperSheet> createState() => _PriceStepperSheetState();
-}
-
-class _PriceStepperSheetState extends State<PriceStepperSheet> {
-  late int _price = widget.order.clientPrice ?? 1000;
-  static const _step = 100;
-
-  void _bump(int delta) {
-    setState(() => _price = (_price + delta).clamp(100, 100000000));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final base = widget.order.clientPrice;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            t('Өз бағаңызды ұсыныңыз'),
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-          if (base != null)
-            Text(
-              '${t('Клиенттің бағасы:')} ${fmtT(base)}',
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
-            ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _StepBtn(
-                icon: Icons.remove,
-                onTap: () => _bump(-_step),
-                onLong: () => _bump(-1000),
-              ),
-              Column(
-                children: [
-                  Text(
-                    fmtT(_price),
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    t('±100 ₸ қадам'),
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: Gz.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              _StepBtn(
-                icon: Icons.add,
-                onTap: () => _bump(_step),
-                onLong: () => _bump(1000),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, _price),
-            child: Text('${t('Ұсыну')} · ${fmtT(_price)}'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final VoidCallback onLong;
-  const _StepBtn({
-    required this.icon,
+  const _FeedMap({
+    required this.orders,
+    required this.myPos,
     required this.onTap,
-    required this.onLong,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLong,
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          color: Gz.bg,
-          shape: BoxShape.circle,
-          border: Border.all(color: Gz.border, width: 1.4),
-        ),
-        child: Icon(icon, size: 28, color: Gz.ink),
+    final p = myPos;
+    final me = p == null ? null : LatLng(p.latitude, p.longitude);
+    final points = [for (final o in orders) LatLng(o.fromLat, o.fromLng), ?me];
+    final single = points.length < 2;
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: points.isEmpty ? Geo.almaty : points.first,
+        initialZoom: 13,
+        backgroundColor: Gz.bg,
+        initialCameraFit: single
+            ? null
+            : CameraFit.bounds(
+                bounds: LatLngBounds.fromPoints(points),
+                padding: const EdgeInsets.all(56),
+                maxZoom: 15,
+              ),
       ),
+      children: [
+        osmTileLayer(),
+        MarkerLayer(
+          markers: [
+            // «Мен осындамын» — қосымшадағы барлық карталардағыдай нүкте.
+            if (me != null) myLocationMarker(me),
+            for (final o in orders)
+              Marker(
+                point: LatLng(o.fromLat, o.fromLng),
+                width: 96,
+                height: 40,
+                alignment: Alignment.topCenter,
+                child: GestureDetector(
+                  onTap: () => onTap(o),
+                  child: _PricePin(order: o),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
+}
+
+/// Картадағы заказ белгісі: баға жазылған «тамшы».
+class _PricePin extends StatelessWidget {
+  final Order order;
+  const _PricePin({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
+          decoration: BoxDecoration(
+            color: Gz.ink,
+            borderRadius: BorderRadius.circular(Gz.rSm),
+            boxShadow: Gz.cardShadow,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              vehicleIcon(order.vehicleType, size: 16),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  fmtT(order.displayPrice),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Gz.yellow,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        CustomPaint(size: const Size(10, 6), painter: _PinTailPainter()),
+      ],
+    );
+  }
+}
+
+class _PinTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = Gz.ink);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

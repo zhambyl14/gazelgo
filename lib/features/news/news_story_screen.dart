@@ -28,14 +28,7 @@ import '../../core/theme.dart';
 /// Қайсысы қолданылатынын МОДЕРАТОР таңдайды (`NewsStory.bgIndex`) — сол
 /// себепті құрастырғыштағы алдын ала көрініс қолданушы көретін экранмен
 /// ДӘЛ КЕЛЕДІ. Барлығында ақ жазу анық оқылады.
-const newsStoryGradients = <List<Color>>[
-  [Color(0xFF243449), Color(0xFF101828)], // қара-көк (бренд)
-  [Color(0xFF4F46E5), Color(0xFF1E1B4B)], // күлгін
-  [Color(0xFF12A150), Color(0xFF064E28)], // жасыл
-  [Color(0xFFE8A800), Color(0xFF8A6400)], // сары (бренд)
-  [Color(0xFFDC2F3F), Color(0xFF6B1010)], // қызыл
-  [Color(0xFF0E8FA8), Color(0xFF083344)], // көгілдір
-];
+const newsStoryGradients = Gz.storyGradients;
 
 /// [NewsStory.bgIndex] тізімнен шығып кетпеуін қамтамасыз етеді (сервер де
 /// қысады, бірақ ескі жазба/бұзылған дерек келсе қосымша құламауы керек).
@@ -327,7 +320,7 @@ class _NewsStoryScreenState extends ConsumerState<NewsStoryScreen>
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -557,7 +550,7 @@ class NewsStoryCanvas extends StatelessWidget {
     final titleStyle = TextStyle(
       color: color,
       fontWeight: FontWeight.w900,
-      fontSize: 26,
+      fontSize: 24,
       height: 1.2,
       shadows: shadows,
     );
@@ -573,7 +566,7 @@ class NewsStoryCanvas extends StatelessWidget {
       decoration: showTextFrame
           ? BoxDecoration(
               border: Border.all(color: Colors.white38),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             )
           : null,
       child: Column(
@@ -681,7 +674,7 @@ class NewsStoryCaption extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Color(0xCC000000)],
+          colors: [Colors.transparent, Gz.scrim],
         ),
       ),
       child: SafeArea(
@@ -718,7 +711,7 @@ class NewsStoryCaption extends StatelessWidget {
                     foregroundColor: Gz.ink,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   onPressed: onLink,

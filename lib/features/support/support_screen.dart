@@ -94,7 +94,7 @@ class _SupportScreenState extends State<SupportScreen> {
               'Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
               'модераторға жазыңыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
           for (final (q, a) in _faq) _FaqItem(question: t(q), answer: t(a)),
@@ -121,7 +121,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   t('Модератор жеке жауап береді.'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -303,7 +303,7 @@ class _FaqItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Gz.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Gz.border),
       ),
       child: Theme(
@@ -325,7 +325,7 @@ class _FaqItem extends StatelessWidget {
                 answer,
                 style: const TextStyle(
                   color: Gz.textSecondary,
-                  fontSize: 13.5,
+                  fontSize: 14,
                   height: 1.45,
                 ),
               ),

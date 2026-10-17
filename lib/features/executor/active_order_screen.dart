@@ -1,28 +1,37 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
-import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
+import '../../shared/nav_apps.dart';
+import '../../shared/order_live.dart';
 import '../../shared/widgets.dart';
+import '../chat/order_chat_screen.dart';
 import '../support/support_screen.dart';
+import 'delivery_code_sheet.dart';
 
 /// Орындаушының белсенді заказ экраны: клиент, маршрут, статус ауыстыру.
 ///
 /// Экран құрылымы (жоғарыдан төмен) — орындаушы «қазір не істеу керек?»
 /// дегенге бір қарағанда жауап алуы үшін:
-///   1. Баға + сапар кезеңдерінің ПРОГРЕСІ (қай қадамда тұрмын).
-///   2. «Келесі әрекет» карточкасы — бір сөйлеммен нұсқау + негізгі батырма.
-///   3. Клиент (қоңырау), карта, навигациясы бар маршрут, жүк/түсініктеме.
+///   1. Көлік түрі, қашықтық + сапар кезеңдерінің ПРОГРЕСІ (жалғыз
+///      кезең көрсеткіші — қай қадамда тұрмын).
+///   2. «Қазір не істеу керек» карточкасы — бір сөйлеммен нұсқау (келгеннен
+///      бергі күту таймері де осында); клиентке жету уақытының кері санағы.
+///   3. Клиент (чат + қоңырау), алушы, карта, навигациясы бар маршрут,
+///      заказ құны, жүк/түсініктеме.
+///
+/// Негізгі әрекет батырмасы ТӨМЕНДЕ БЕКІТІЛГЕН — жүргізуші бетті айналдырып
+/// іздемейді. Орынды серверге жіберу бұл экранда ЕМЕС, орындаушы қабығында
+/// (лентада не басқа бетте тұрса да клиенттің картасы тірі қалады).
 class ActiveOrderScreen extends StatefulWidget {
   final String orderId;
   const ActiveOrderScreen({super.key, required this.orderId});
@@ -34,57 +43,36 @@ class ActiveOrderScreen extends StatefulWidget {
 class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   bool _reviewShown = false;
 
+  /// Заказ чаты (0078) қолжетімді ме — «кешігемін» батырмасы үшін.
+  bool _chatAvailable = false;
+
   /// Заказ ағыны БІР РЕТ құрылады: build ішінде құрылса, әр қайта салуда
   /// жаңа polling басталып, StreamBuilder қайта жазылып отыратын.
   late final Stream<Order?> _orderStream = Repo.orderStream(widget.orderId);
 
+  /// Алушы (0076) — статус ауысқан сайын қайта сұралады (клиент алушыны
+  /// жолда қосуы не кодты өзі растауы мүмкін).
+  OrderRecipient? _recipient;
+  String? _recipientFor;
+
   /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
   static const _proximityKm = 1.5;
-
-  /// Орындаушыны картада тірі көрсету (0060) — модератор баптауы қосулы
-  /// болса, ағымдағы GPS нүктесі 20с сайын серверге жіберіледі. Соңғы
-  /// белгілі статус осында сақталады (build ішінде жаңарады) — таймер
-  /// оны шақырғанда белсенді статус па деп тексереді.
-  Timer? _locTimer;
-  String? _lastStatus;
-
-  static const _trackableStatuses = {
-    'accepted',
-    'arrived',
-    'loading',
-    'in_transit',
-  };
 
   @override
   void initState() {
     super.initState();
-    _initLiveTracking();
+    Repo.orderChatAvailable().then((v) {
+      if (mounted) setState(() => _chatAvailable = v);
+    });
   }
 
-  Future<void> _initLiveTracking() async {
-    try {
-      final s = await Repo.settings();
-      final live = s['live_tracking'];
-      if (live is Map && live['enabled'] == true) {
-        _locTimer = Timer.periodic(
-          const Duration(seconds: 20),
-          (_) => _pushLocationIfActive(),
-        );
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _pushLocationIfActive() async {
-    if (!_trackableStatuses.contains(_lastStatus)) return;
-    final pos = await Geo.currentPosition();
-    if (pos == null) return;
-    await Repo.updateExecutorLocation(pos.latitude, pos.longitude);
-  }
-
-  @override
-  void dispose() {
-    _locTimer?.cancel();
-    super.dispose();
+  void _syncRecipient(Order o) {
+    if (_recipientFor == o.status) return;
+    _recipientFor = o.status;
+    if (!o.isActive && o.status != 'completed') return;
+    Repo.orderRecipient(o.id).then((r) {
+      if (mounted) setState(() => _recipient = r);
+    }, onError: (_) {});
   }
 
   // «arrived → loading» әдейі ЖОҚ: тиеуді енді КЛИЕНТ растайды (0027).
@@ -100,29 +88,24 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 
   /// Заказ аяқталғанда клиентті бағалау терезесін бір рет қалқымалы ашамыз.
   void _maybeShowReview(Order o) {
-    if (!_reviewShown && o.status == 'completed') {
-      _reviewShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          maybeShowReviewDialog(
-            context,
-            orderId: o.id,
-            title: 'Клиентті бағалаңыз',
-          ); // t() ReviewPrompt ішінде
-        }
-      });
-    }
+    if (_reviewShown || o.status != 'completed') return;
+    _reviewShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      maybeShowReviewDialog(
+        context,
+        orderId: o.id,
+        title: 'Клиентті бағалаңыз', // t() ReviewPrompt ішінде
+        tags: kClientReviewTags,
+      );
+    });
   }
 
   /// Геолокация + жақындықты тексереді. Қажет болмаса — true.
-  Future<bool> _checkProximity(
-    BuildContext context,
-    String nextStatus,
-    Order o,
-  ) async {
+  Future<bool> _checkProximity(String nextStatus, Order o) async {
     // «Келдім» → A нүктесіне жақын; «Аяқтау» → B нүктесіне жақын
     LatLng? target;
-    String farErr = '';
+    var farErr = '';
     if (nextStatus == 'arrived') {
       target = LatLng(o.fromLat, o.fromLng);
       farErr = 'TOO_FAR_FROM_A';
@@ -134,12 +117,12 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
 
     final pos = await Geo.currentPosition();
     if (pos == null) {
-      if (context.mounted) await _showLocationNeeded(context);
+      if (mounted) await _showLocationNeeded();
       return false;
     }
     final dist = Geo.haversineKm(LatLng(pos.latitude, pos.longitude), target);
     if (dist > _proximityKm) {
-      if (context.mounted) {
+      if (mounted) {
         showSnack(
           context,
           '${errText(farErr)} (${dist.toStringAsFixed(1)} ${t('км қашықтық')})',
@@ -155,117 +138,254 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   /// Тек орындаушы «Келдім/Аяқтау» түймесін өзі басқанда шығады (локацияға
   /// тәуелді нақты әрекет), сол себепті параметрлерге өту өз еркімен — мұны
   /// App Store ережесі (5.1.1) осындай жағдайда рұқсат етеді.
-  Future<void> _showLocationNeeded(BuildContext context) async {
+  Future<void> _showLocationNeeded() async {
     final serviceOn = await Geolocator.isLocationServiceEnabled();
-    if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Геолокация керек')),
-        content: Text(
-          t(
-            '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
-            '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
-            'қосыңыз.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(t('Жабу')),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (serviceOn) {
-                Geolocator.openAppSettings();
-              } else {
-                Geolocator.openLocationSettings();
-              }
-            },
-            child: Text(t('Параметрлерді ашу')),
-          ),
-        ],
+    if (!mounted) return;
+    await gzInfoDialog(
+      context,
+      icon: Icons.location_off_outlined,
+      color: Gz.warning,
+      title: t('Геолокация керек'),
+      message: t(
+        '«Келдім» және «Аяқтау» түймелері үшін орналасуыңызды растау қажет '
+        '— жүйе нүктеге жеткеніңізді тексереді. Параметрлерден геолокацияны '
+        'қосыңыз.',
       ),
+      actionLabel: t('Параметрлерді ашу'),
+      onAction: () {
+        if (serviceOn) {
+          Geolocator.openAppSettings();
+        } else {
+          Geolocator.openLocationSettings();
+        }
+      },
     );
   }
 
-  /// Келесі статусқа өту: A/B нүктесіне жақындықты тексеріп, серверге
-  /// жібереді. Аяқталса — фотолар тазаланып, табыс туралы хабар шығады.
-  Future<void> _advance(
-    BuildContext context,
-    Order o,
-    String nextStatus,
-  ) async {
-    // A/B нүктесіне жақындықты тексеру
-    final ok = await _checkProximity(context, nextStatus, o);
-    if (!ok) return;
+  /// Алушы қосылған заказда жеткізу кодын сұрайды. Код керек емес болса
+  /// не дұрыс енгізілсе — true.
+  Future<bool> _ensureCode(Order o, {bool refresh = false}) async {
+    var r = _recipient;
+    if (r == null || refresh) {
+      try {
+        r = await Repo.orderRecipient(o.id);
+      } catch (_) {}
+    }
+    if (r == null || !r.hasCode || r.verified) return true;
+    if (!mounted) return false;
+    final ok = await showDeliveryCodeSheet(
+      context,
+      orderId: o.id,
+      recipientName: r.name,
+      recipientPhone: r.phone,
+    );
+    if (ok) _recipientFor = null; // «код расталды» күйін қайта сұрау
+    return ok;
+  }
+
+  /// Келесі статусқа өту: A/B нүктесіне жақындықты (аяқтауда — жеткізу
+  /// кодын да) тексеріп, серверге жібереді. Аяқталса — фотолар тазаланып,
+  /// табыс туралы хабар шығады.
+  Future<void> _advance(Order o, String next) async {
+    if (!await _checkProximity(next, o)) return;
+    if (next == 'completed' && !await _ensureCode(o)) return;
     try {
-      await Repo.orderAdvance(o.id, nextStatus);
-      if (nextStatus == 'completed') {
-        if (o.photos.isNotEmpty) {
-          Repo.deleteOrderPhotos(o.photos);
-        }
-        if (context.mounted) {
-          showSnack(
-            context,
-            '${t('Заказ аяқталды! Табысыңызға')} ${fmtT(o.finalPrice)} ${t('қосылды')} 🎉',
-          );
-        }
-      }
+      await Repo.orderAdvance(o.id, next);
     } catch (e) {
-      if (context.mounted) {
-        showSnack(context, errText(e), error: true);
+      // Клиент алушыны дәл қазір қосқан болса — кодты сұрап, қайталаймыз.
+      if (!e.toString().contains('CODE_REQUIRED')) {
+        if (mounted) showSnack(context, errText(e), error: true);
+        return;
+      }
+      if (!await _ensureCode(o, refresh: true)) return;
+      try {
+        await Repo.orderAdvance(o.id, next);
+      } catch (e2) {
+        if (mounted) showSnack(context, errText(e2), error: true);
+        return;
+      }
+    }
+    // Жаңа статус бірден көрінсін (polling-тің келесі айналымын күтпей).
+    Repo.orderStream(o.id, fresh: true);
+    if (next == 'completed') {
+      if (o.photos.isNotEmpty) Repo.deleteOrderPhotos(o.photos);
+      if (mounted) {
+        showSnack(
+          context,
+          '${t('Заказ аяқталды! Табысыңызға')} ${fmtT(o.finalPrice)} ${t('қосылды')} 🎉',
+        );
       }
     }
   }
 
+  /// Кешігіп жатса — клиентке чатқа бір басумен «кешігемін».
+  Future<void> _sendLate(Order o) async {
+    try {
+      await Repo.orderChatSend(o.id, t('Кептеліс, сәл кешігемін'));
+      Repo.orderMessagesStream(o.id, fresh: true);
+      if (mounted) showSnack(context, t('Клиентке хабар жіберілді'));
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  /// Нүктеге жол салу: сақталған навигатормен; бірінші рет басқанда
+  /// навигатор (2GIS / Яндекс / Google) сұралады да, таңдау есте қалады —
+  /// кейін «⋯ Навигация» мәзірінен ауыстыруға болады (nav_apps.dart).
+  Future<void> _navigate(double lat, double lng) =>
+      NavApps.open(context, lat, lng);
+
+  /// «⋯ Навигация» — навигаторды ауыстыру, мекенжайды көшіру.
+  void _navMenu(Order o) {
+    showGzSheet<void>(
+      context,
+      builder: (ctx) => GzSheetBody(
+        title: t('Навигация'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GzListRow(
+              icon: Icons.swap_horiz_rounded,
+              color: Gz.info,
+              title: t('Навигаторды ауыстыру'),
+              onTap: () {
+                Navigator.pop(ctx);
+                NavApps.pick(context);
+              },
+            ),
+            GzListRow(
+              icon: Icons.copy_rounded,
+              color: Gz.green,
+              title: t('A мекенжайын көшіру'),
+              subtitle: o.fromDisplay,
+              onTap: () {
+                Navigator.pop(ctx);
+                copyAddress(context, o.fromAddress);
+              },
+            ),
+            for (var i = 0; i < o.stops.length; i++)
+              GzListRow(
+                icon: Icons.copy_rounded,
+                color: Gz.violet,
+                title: '${t('Аялдама')} ${i + 1}',
+                subtitle: o.stops[i].display,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  copyAddress(context, o.stops[i].address);
+                },
+              ),
+            GzListRow(
+              icon: Icons.copy_rounded,
+              color: Gz.red,
+              title: t('B мекенжайын көшіру'),
+              subtitle: o.toDisplay,
+              onTap: () {
+                Navigator.pop(ctx);
+                copyAddress(context, o.toAddress);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(t('Белсенді заказ'))),
-      body: StreamBuilder<Order?>(
-        stream: _orderStream,
-        builder: (context, snap) {
-          final o = snap.data;
-          if (o == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          _maybeShowReview(o);
-          _lastStatus = o.status;
-          final next = _nextFor(o.status);
-          return SingleChildScrollView(
+    return StreamBuilder<Order?>(
+      stream: _orderStream,
+      builder: (context, snap) {
+        final o = snap.data;
+        if (o == null) {
+          return Scaffold(
+            appBar: AppBar(title: Text(t('Белсенді заказ'))),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        _maybeShowReview(o);
+        _syncRecipient(o);
+        final next = _nextFor(o.status);
+        final r = _recipient;
+        final needsCode =
+            o.status == 'in_transit' && r != null && r.hasCode && !r.verified;
+        return Scaffold(
+          appBar: AppBar(title: Text(t('Белсенді заказ'))),
+          // Негізгі әрекет — төменде бекітілген (жалғыз батырма; «Қазір не
+          // істеу керек» карточкасы тек нұсқау береді).
+          bottomNavigationBar: next == null
+              ? null
+              : SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    decoration: const BoxDecoration(
+                      color: Gz.surface,
+                      boxShadow: Gz.cardShadow,
+                    ),
+                    child: BusyButton(
+                      label: needsCode ? t('Кодты енгізіп аяқтау') : next.$2,
+                      icon: needsCode ? Icons.pin_rounded : next.$3,
+                      color: o.status == 'in_transit' ? Gz.green : null,
+                      onPressed: () => _advance(o, next.$1),
+                    ),
+                  ),
+                ),
+          body: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _TripHero(order: o),
                 const SizedBox(height: 12),
-                _NextStepCard(
-                  order: o,
-                  action: next == null
-                      ? null
-                      : BusyButton(
-                          label: next.$2,
-                          icon: next.$3,
-                          color: o.status == 'in_transit' ? Gz.green : null,
-                          onPressed: () => _advance(context, o, next.$1),
-                        ),
-                ),
+                _NextStepCard(order: o, needsCode: needsCode),
+                // Клиентке жету уақытының кері санағы (0075; уәде еткен ETA
+                // жоқ болса — көрінбейді). Кешіксе — сары/қызыл және чатқа
+                // «кешігемін» деп бір басумен жазу.
+                if (o.status == 'accepted' && o.arriveBy != null) ...[
+                  const SizedBox(height: 10),
+                  // «Кешігемін» жарлығы чат батырмасымен БІР шартпен көрінеді
+                  // (модератор чатты өшірсе — екеуі де жоқ).
+                  Consumer(
+                    builder: (context, ref, _) => EtaCountdownCard(
+                      order: o,
+                      forExecutor: true,
+                      lateAction:
+                          _chatAvailable &&
+                              o.chatOpen &&
+                              orderChatEnabled(
+                                ref.watch(appSettingsProvider).value,
+                              )
+                          ? OutlinedButton.icon(
+                              onPressed: () => _sendLate(o),
+                              icon: const Icon(Icons.chat_outlined, size: 18),
+                              label: Text(t('Клиентке «кешігемін» деп жазу')),
+                            )
+                          : null,
+                    ),
+                  ),
+                ],
                 if (o.status == 'completed') ...[
                   const SizedBox(height: 10),
                   ReviewPrompt(
                     orderId: o.id,
-                    title: 'Клиентті бағалаңыз',
-                  ), // t() ReviewPrompt ішінде
+                    title: 'Клиентті бағалаңыз', // t() ReviewPrompt ішінде
+                    tags: kClientReviewTags,
+                  ),
                 ],
                 const SizedBox(height: 12),
-                // Заказ тоқтатылса — клиенттің нөмірі/хабарласу батырмасы
+                // Заказ тоқтатылса — клиенттің нөмірі/хабарласу батырмалары
                 // көрсетілмейді (байланыс тоқтатылған заказда сақталмайды).
-                _ClientCard(
-                  clientId: o.clientId,
-                  showCall: o.status != 'cancelled',
-                ),
+                _ClientCard(order: o, showContacts: o.status != 'cancelled'),
+                if (r != null && o.status != 'cancelled') ...[
+                  const SizedBox(height: 10),
+                  _RecipientCard(
+                    recipient: r,
+                    showContacts: o.isActive,
+                    // Жолда кезінде кодты сұрау «Қазір не істеу керек»
+                    // карточкасында айтылады — мұнда қайталанбайды.
+                    showCodeHint: !needsCode,
+                  ),
+                ],
                 const SizedBox(height: 12),
                 RouteMap(
                   from: LatLng(o.fromLat, o.fromLng),
@@ -278,14 +398,31 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   distanceKm: o.distanceKm,
                 ),
                 const SizedBox(height: 10),
-                // Маршрут тізімі: әр нүктенің жанында 2GIS навигация
-                // батырмасы (бұрынғы A / 1 / B қосқышының орнында) — қай
-                // мекенжайға жол салатыны енді шатаспайды.
+                // Маршрут тізімі: әр нүктенің жанында «Жол салу» батырмасы —
+                // қай мекенжайға жол салатыны шатаспайды. Төменде «⋯
+                // Навигация»: навигаторды ауыстыру, мекенжайды көшіру.
                 SectionCard(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-                  child: ExecRouteTimeline(
-                    order: o,
-                    onNavigate: o.isActive ? _navigate : null,
+                  padding: EdgeInsets.fromLTRB(14, 14, 12, o.isActive ? 4 : 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ExecRouteTimeline(
+                        order: o,
+                        onNavigate: o.isActive ? _navigate : null,
+                      ),
+                      if (o.isActive)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _navMenu(o),
+                            icon: const Icon(
+                              Icons.more_horiz_rounded,
+                              size: 18,
+                            ),
+                            label: Text(t('Навигация')),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 // Заказ құны — маршрут пен навигация батырмаларынан КЕЙІН:
@@ -311,40 +448,16 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                       foregroundColor: Gz.red,
                       side: const BorderSide(color: Gz.red),
                     ),
-                    onPressed: () => _cancel(context, o.id),
+                    onPressed: () => _cancel(o.id),
                     icon: const Icon(Icons.close),
                     label: Text(t('Бас тарту')),
                   ),
                 ],
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  /// 2GIS қосымшасын тікелей турлы-баурай («routeSearch») режимінде ашуға
-  /// тырысады (ҚР/ТМД-да ең көп қолданылатын навигация — сол себепті Google
-  /// Maps орнына нақ осы таңдалды); орнатылмаса не платформа қолдамаса —
-  /// 2GIS веб-бағыттар бетіне (кез келген құрылғыда жұмыс істейді) қайтады.
-  Future<void> _navigate(double lat, double lng) async {
-    if (!kIsWeb) {
-      try {
-        final dgis = Uri.parse(
-          'dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat',
+          ),
         );
-        if (await canLaunchUrl(dgis)) {
-          await launchUrl(dgis);
-          return;
-        }
-      } catch (_) {
-        // белгісіз платформа/рұқсат қатесі — веб-нұсқаға түсеміз
-      }
-    }
-    launchUrl(
-      Uri.parse('https://2gis.kz/routeSearch/rsType/car/to/$lng,$lat'),
-      mode: LaunchMode.externalApplication,
+      },
     );
   }
 
@@ -356,24 +469,24 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
     'Жүк сипаттамаға сай емес',
   ];
 
-  Future<void> _cancel(BuildContext context, String orderId) async {
+  Future<void> _cancel(String orderId) async {
     final reason = await pickCancelReason(
       context,
       title: t('Заказдан бас тарту'),
       presets: [for (final r in _execCancelReasons) t(r)],
     );
-    if (reason == null || !context.mounted) return;
+    if (reason == null || !mounted) return;
     try {
       await Repo.cancelOrder(orderId, reason);
-      if (context.mounted) Navigator.of(context).maybePop();
+      if (mounted) Navigator.of(context).maybePop();
     } catch (e) {
-      if (context.mounted) showSnack(context, errText(e), error: true);
+      if (mounted) showSnack(context, errText(e), error: true);
     }
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-//  BAҒА + САПАР ПРОГРЕСІ
+//  САПАР ПРОГРЕСІ + ЗАКАЗ ҚҰНЫ
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Экранның басындағы қою «hero» карточка: көлік түрі, қашықтық және
@@ -513,7 +626,7 @@ class _HeroChip extends StatelessWidget {
         color: strong
             ? Gz.yellow.withValues(alpha: 0.16)
             : Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(Gz.rLg),
         border: Border.all(
           color: strong
               ? Gz.yellow.withValues(alpha: 0.35)
@@ -655,7 +768,7 @@ class _TripStepperState extends State<_TripStepper>
                   child: BtnLabel(
                     steps[i].$1,
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 11,
                       height: 1.1,
                       fontWeight: i == cur ? FontWeight.w800 : FontWeight.w600,
                       color: i == cur
@@ -730,11 +843,14 @@ class _TripStepperState extends State<_TripStepper>
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Ағымдағы кезеңге сай ЖАЛҒЫЗ нұсқау: түсті белгі, тақырып, бір сөйлем
-/// түсініктеме және (болса) негізгі әрекет батырмасы.
+/// түсініктеме; «Келдім»-нен кейін — оң жақта күту таймері. Негізгі әрекет
+/// батырмасы мұнда ЕМЕС — экранның төменінде бекітілген.
 class _NextStepCard extends StatelessWidget {
   final Order order;
-  final Widget? action;
-  const _NextStepCard({required this.order, this.action});
+
+  /// Аяқтау алдында алушының жеткізу коды керек (0076).
+  final bool needsCode;
+  const _NextStepCard({required this.order, this.needsCode = false});
 
   @override
   Widget build(BuildContext context) {
@@ -780,10 +896,15 @@ class _NextStepCard extends StatelessWidget {
         Gz.green,
         taxi ? Icons.local_taxi_rounded : Icons.local_shipping_rounded,
         t('Межелі нүктеге барыңыз'),
-        t(
-          'Жеткен соң «Заказды аяқтау» батырмасын басыңыз — жүйе нүктеге '
-          'жеткеніңізді тексереді.',
-        ),
+        needsCode
+            ? t(
+                'Жеткен соң алушыдан 4 таңбалы кодты сұрап, «Кодты енгізіп '
+                'аяқтау» батырмасын басыңыз.',
+              )
+            : t(
+                'Жеткен соң «Заказды аяқтау» батырмасын басыңыз — жүйе нүктеге '
+                'жеткеніңізді тексереді.',
+              ),
       ),
       'completed' => (
         Gz.green,
@@ -805,6 +926,7 @@ class _NextStepCard extends StatelessWidget {
     };
     if (spec == null) return const SizedBox.shrink();
     final (color, icon, title, body) = spec;
+    final waitSince = o.status == 'arrived' ? o.arrivedAt : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -844,7 +966,7 @@ class _NextStepCard extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 17,
+                        fontSize: 18,
                         height: 1.25,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.2,
@@ -854,7 +976,7 @@ class _NextStepCard extends StatelessWidget {
                     Text(
                       body,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         height: 1.45,
                         color: Gz.textSecondary,
                       ),
@@ -862,9 +984,12 @@ class _NextStepCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (waitSince != null) ...[
+                const SizedBox(width: 8),
+                WaitClock(since: waitSince),
+              ],
             ],
           ),
-          if (action != null) ...[const SizedBox(height: 14), action!],
         ],
       ),
     );
@@ -881,7 +1006,7 @@ class _NextStepCard extends StatelessWidget {
 /// сызық жалғайды. Мекенжай 2 жолға дейін толық көрінеді.
 ///
 /// [onNavigate] берілсе — әр нүктенің жанында «Жол салу» батырмасы
-/// шығады (белсенді заказда 2GIS навигация).
+/// шығады (белсенді заказда таңдалған навигатор, әдепкісі 2GIS).
 class ExecRouteTimeline extends StatelessWidget {
   final Order order;
   final void Function(double lat, double lng)? onNavigate;
@@ -973,7 +1098,7 @@ class ExecRouteTimeline extends StatelessWidget {
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 15,
                             height: 1.3,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.1,
@@ -1025,7 +1150,7 @@ class _RouteMark extends StatelessWidget {
           height: 5,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(1.5),
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
       );
@@ -1130,8 +1255,9 @@ class _NavPill extends StatelessWidget {
   }
 }
 
-/// Жүк (таксиде — жолаушылар), түсініктеме және фотолар — тақырыбы мен
-/// белгісі бар бөлімдер, бір карточкада.
+/// Жүк (таксиде — жолаушылар), қосымша талаптар (тиеуші/қабат/лифт, 0077),
+/// түсініктеме және фотолар — тақырыбы мен белгісі бар бөлімдер, бір
+/// карточкада.
 class ExecOrderNotes extends StatelessWidget {
   final Order order;
   const ExecOrderNotes({super.key, required this.order});
@@ -1139,6 +1265,7 @@ class ExecOrderNotes extends StatelessWidget {
   /// Көрсететін ештеңе болмаса — карточка мүлдем салынбайды.
   static bool hasContent(Order o) =>
       o.cargoDesc.trim().isNotEmpty ||
+      o.hasExtras ||
       o.comment.trim().isNotEmpty ||
       o.photos.isNotEmpty;
 
@@ -1154,6 +1281,7 @@ class ExecOrderNotes extends StatelessWidget {
           title: taxi ? t('Жолаушылар') : t('Жүк'),
           text: o.cargoDesc.trim(),
         ),
+      if (o.hasExtras) OrderExtrasChips(order: o),
       if (o.comment.trim().isNotEmpty)
         _NoteBlock(
           icon: Icons.chat_bubble_outline_rounded,
@@ -1203,7 +1331,7 @@ class _NoteBlock extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: Gz.tint(color, 0.13),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(Gz.rXs),
               ),
               child: Icon(icon, size: 16, color: color),
             ),
@@ -1215,7 +1343,7 @@ class _NoteBlock extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -1224,7 +1352,7 @@ class _NoteBlock extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           text,
-          style: const TextStyle(fontSize: 14.5, height: 1.45, color: Gz.ink),
+          style: const TextStyle(fontSize: 15, height: 1.45, color: Gz.ink),
         ),
       ],
     );
@@ -1235,10 +1363,11 @@ class _NoteBlock extends StatelessWidget {
 //  КЛИЕНТ КАРТОЧКАСЫ
 // ═══════════════════════════════════════════════════════════════════════
 
+/// Клиент: аты, клиенттік рейтингі, чат (0078) + қоңырау.
 class _ClientCard extends StatefulWidget {
-  final String clientId;
-  final bool showCall;
-  const _ClientCard({required this.clientId, this.showCall = true});
+  final Order order;
+  final bool showContacts;
+  const _ClientCard({required this.order, this.showContacts = true});
 
   @override
   State<_ClientCard> createState() => _ClientCardState();
@@ -1247,13 +1376,13 @@ class _ClientCard extends StatefulWidget {
 class _ClientCardState extends State<_ClientCard> {
   /// Профиль БІР РЕТ сұралады — бұрын заказ ағыны жаңарған сайын (3с)
   /// қайта сұралып, карточка «жыпылықтайтын».
-  late Future<Profile?> _profile = Repo.profileOf(widget.clientId);
+  late Future<Profile?> _profile = Repo.profileOf(widget.order.clientId);
 
   @override
   void didUpdateWidget(covariant _ClientCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.clientId != widget.clientId) {
-      _profile = Repo.profileOf(widget.clientId);
+    if (oldWidget.order.clientId != widget.order.clientId) {
+      _profile = Repo.profileOf(widget.order.clientId);
     }
   }
 
@@ -1263,7 +1392,7 @@ class _ClientCardState extends State<_ClientCard> {
       future: _profile,
       builder: (context, snap) {
         final p = snap.data;
-        final canCall = widget.showCall && p != null && p.phone.isNotEmpty;
+        final canCall = widget.showContacts && p != null && p.phone.isNotEmpty;
         return SectionCard(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -1307,7 +1436,7 @@ class _ClientCardState extends State<_ClientCard> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   color: Gz.textSecondary,
                                 ),
                               ),
@@ -1318,19 +1447,28 @@ class _ClientCardState extends State<_ClientCard> {
                   ],
                 ),
               ),
-              if (canCall) ...[
+              // Чат батырмасы өзі жасырынады (сервер 0078-сыз, чат
+              // өшірулі не заказ жабық болса).
+              if (widget.showContacts) ...[
                 const SizedBox(width: 8),
+                OrderChatButton(
+                  order: widget.order,
+                  title: p?.fullName ?? t('Клиент'),
+                  myRole: 'executor',
+                ),
+              ],
+              if (canCall) ...[
+                const SizedBox(width: 6),
                 PressScale(
                   child: IconButton.filled(
+                    tooltip: t('Қоңырау'),
                     iconSize: 22,
                     style: IconButton.styleFrom(
                       backgroundColor: Gz.green,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(48, 48),
                     ),
-                    onPressed: () => launchUrl(
-                      Uri(scheme: 'tel', path: Phone.dial(p.phone)),
-                    ),
+                    onPressed: () => callPhone(context, p.phone),
                     icon: const Icon(Icons.call_rounded),
                   ),
                 ),
@@ -1339,6 +1477,98 @@ class _ClientCardState extends State<_ClientCard> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Жүкті қабылдайтын адам (0076): аты, телефоны, код керек пе.
+class _RecipientCard extends StatelessWidget {
+  final OrderRecipient recipient;
+  final bool showContacts;
+
+  /// «Кодты сұраңыз» ескертуі (жолда кезінде ол «Қазір не істеу керек»
+  /// карточкасында тұрады).
+  final bool showCodeHint;
+  const _RecipientCard({
+    required this.recipient,
+    this.showContacts = true,
+    this.showCodeHint = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final r = recipient;
+    return SectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Gz.tint(Gz.violet, 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_pin_circle_rounded,
+                  color: Gz.violet,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t('Жүкті қабылдайтын адам'), style: Gz.caption),
+                    Text(
+                      r.name.isEmpty ? t('Алушы') : r.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Gz.h3,
+                    ),
+                  ],
+                ),
+              ),
+              if (r.verified)
+                InfoChip(
+                  icon: Icons.verified_rounded,
+                  color: Gz.success,
+                  text: t('Код расталды'),
+                )
+              else if (r.hasCode)
+                InfoChip(
+                  icon: Icons.pin_rounded,
+                  color: Gz.warning,
+                  text: t('Код керек'),
+                ),
+            ],
+          ),
+          if (showCodeHint && !r.verified && r.hasCode) ...[
+            const SizedBox(height: 10),
+            GzNotice(
+              tone: NoticeTone.warning,
+              dense: true,
+              message: t(
+                'Жүкті тапсырғанда алушыдан 4 таңбалы кодты '
+                'сұраңыз — кодсыз заказ аяқталмайды.',
+              ),
+            ),
+          ],
+          if (showContacts && r.phone.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ContactButtons(
+              phone: r.phone,
+              whatsappText: t(
+                'Сәлеметсіз бе! Мен Tasu жүргізушісімін, '
+                'сізге жүк әкеле жатырмын.',
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -36,13 +36,8 @@ class StopsSheet extends StatefulWidget {
     required List<PickedAddress> destinations,
     LatLng? origin,
   }) {
-    return showModalBottomSheet<List<PickedAddress>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+    return showGzSheet<List<PickedAddress>>(
+      context,
       builder: (_) => StopsSheet(destinations: destinations, origin: origin),
     );
   }

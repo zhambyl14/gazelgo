@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -203,6 +204,7 @@ class Repo {
     int delta,
     String reason,
   ) async {
+    forgetProfile(userId);
     final res = await c.rpc(
       'mod_adjust_trust_score',
       params: {'p_user': userId, 'p_delta': delta, 'p_reason': reason},
@@ -216,10 +218,13 @@ class Repo {
     String userId,
     bool blocked,
     String reason,
-  ) => c.rpc(
-    'mod_set_account_blocked',
-    params: {'p_user': userId, 'p_blocked': blocked, 'p_reason': reason},
-  );
+  ) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_set_account_blocked',
+      params: {'p_user': userId, 'p_blocked': blocked, 'p_reason': reason},
+    );
+  }
 
   /// Аккаунтты біржола өшіру (App Store/Play талабы + 94-V «өшіру құқығы»).
   /// Сервер белсенді заказ болса HAS_ACTIVE_ORDERS қайтарады.
@@ -251,6 +256,10 @@ class Repo {
 
   /// Құрылғыда сақталған соңғы профиль (суық іске қосуда бірден көрсету
   /// үшін). Жоқ не бүлінген болса — `null`.
+  ///
+  /// Бұл — ӨЗ профилімнің ҚҰРЫЛҒЫДАҒЫ кэші (қосымша қайта ашылғанда да
+  /// сақталады). Басқа адамдардың профилі — төмендегі [profileOf]-тың
+  /// ЖАДТАҒЫ қысқа кэші; екеуі бір-бірін алмастырмайды.
   static Future<Profile?> cachedProfile(String id) async {
     final m = await Prefs.cachedProfile(id);
     if (m == null) return null;
@@ -271,10 +280,61 @@ class Repo {
     }
   }
 
-  static Future<Profile?> profileOf(String id) async {
-    final m = await c.from('profiles').select().eq('id', id).maybeSingle();
-    return m == null ? null : Profile.fromMap(m);
+  /// Басқа адамның профилі — 60 секундтық ЖАДТАҒЫ КЭШПЕН.
+  ///
+  /// Бұрын лентадағы, ұсыныстардағы, модератор тізімдеріндегі әр карточка
+  /// `FutureBuilder(future: Repo.profileOf(id))` арқылы профильді build
+  /// сайын ҚАЙТА сұрайтын — лента әр 4 секунд жаңарғанда әр карточка
+  /// желіге қайта шығып, трафик пен батареяны жейтін. Енді бір id-ге бір
+  /// Future қайтарылады (FutureBuilder оны «сол Future» деп таниды да,
+  /// жыпылықтамайды), ал 60 секундтан кейін ғана жаңартылады.
+  static Future<Profile?> profileOf(String id, {bool fresh = false}) {
+    final hit = _profileCache[id];
+    if (!fresh &&
+        hit != null &&
+        DateTime.now().difference(hit.$1) < _profileTtl) {
+      return hit.$2;
+    }
+    final f = c
+        .from('profiles')
+        .select()
+        .eq('id', id)
+        .maybeSingle()
+        .then((m) => m == null ? null : Profile.fromMap(m));
+    _profileCache[id] = (DateTime.now(), f);
+    // Қате болса кэште қалдырмаймыз — келесі сұрау қайта байқап көреді.
+    f.catchError((Object _) {
+      _profileCache.remove(id);
+      return null;
+    });
+    return f;
   }
+
+  /// Бірнеше профильді БІР сұраумен алу (модератор тізімдері) — кэшті де
+  /// толтырады, сол себепті кейінгі `profileOf` желіге шықпайды.
+  static Future<Map<String, Profile>> profilesByIds(List<String> ids) async {
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return const {};
+    final rows = await c.from('profiles').select().inFilter('id', unique);
+    final out = <String, Profile>{};
+    final now = DateTime.now();
+    for (final m in rows as List) {
+      final p = Profile.fromMap(Map<String, dynamic>.from(m));
+      out[p.id] = p;
+      _profileCache[p.id] = (now, Future.value(p));
+    }
+    return out;
+  }
+
+  /// Модератор әрекетінен (бұғаттау, сенім, баланс) кейін — сол адамның
+  /// кэштегі профилін тастаймыз, келесі көрсетілімде жаңасы келеді.
+  static void forgetProfile(String id) {
+    _profileCache.remove(id);
+    _execProfileCache.remove(id);
+  }
+
+  static const _profileTtl = Duration(seconds: 60);
+  static final Map<String, (DateTime, Future<Profile?>)> _profileCache = {};
 
   // ================= MODERATOR WORKSPACE =================
   /// Барлық клиенттер. Moderator RLS policy барлық profile өрістерін оқуға
@@ -293,12 +353,14 @@ class Repo {
   }
 
   /// Платформадағы барлық заказдар — архивті қоса.
-  static Future<List<Order>> modAllOrders() async {
-    final rows = await c
-        .from('orders')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(500);
+  /// [since] берілсе — тек сол уақыттан бергі заказдар (модератордың
+  /// «Бүгін / 7 күн / 30 күн» сүзгісі серверде қолданылады).
+  static Future<List<Order>> modAllOrders({DateTime? since}) async {
+    var q = c.from('orders').select();
+    if (since != null) {
+      q = q.gte('created_at', since.toUtc().toIso8601String());
+    }
+    final rows = await q.order('created_at', ascending: false).limit(1000);
     return (rows as List)
         .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
         .toList();
@@ -436,14 +498,34 @@ class Repo {
     return m == null ? null : ExecutorProfile.fromMap(m);
   }
 
-  static Future<ExecutorProfile?> executorProfileOf(String id) async {
-    final m = await c
+  /// Басқа орындаушының профилі (көлігі, нөмірі) — [profileOf] сияқты
+  /// 60 секундтық кэшпен.
+  static Future<ExecutorProfile?> executorProfileOf(
+    String id, {
+    bool fresh = false,
+  }) {
+    final hit = _execProfileCache[id];
+    if (!fresh &&
+        hit != null &&
+        DateTime.now().difference(hit.$1) < _profileTtl) {
+      return hit.$2;
+    }
+    final f = c
         .from('executor_profiles')
         .select()
         .eq('user_id', id)
-        .maybeSingle();
-    return m == null ? null : ExecutorProfile.fromMap(m);
+        .maybeSingle()
+        .then((m) => m == null ? null : ExecutorProfile.fromMap(m));
+    _execProfileCache[id] = (DateTime.now(), f);
+    f.catchError((Object _) {
+      _execProfileCache.remove(id);
+      return null;
+    });
+    return f;
   }
+
+  static final Map<String, (DateTime, Future<ExecutorProfile?>)>
+  _execProfileCache = {};
 
   /// Орындаушы өтінімі (жаңа немесе қайта жіберу). Көлік ТҮРІ таңдалады.
   static Future<void> submitExecutorApplication({
@@ -699,13 +781,15 @@ class Repo {
   );
 
   /// Орындаушы статистикасы — тікелей байланыс (polling, ~4с).
-  static Stream<ExecutorStats> executorStatsStream() => _poll(
-    'stats:$uid',
-    () async => ExecutorStats.fromMap(
-      Map<String, dynamic>.from(await c.rpc('executor_stats') as Map),
-    ),
-    every: const Duration(seconds: 4),
-  );
+  static Stream<ExecutorStats> executorStatsStream({bool fresh = false}) =>
+      _poll(
+        'stats:$uid',
+        () async => ExecutorStats.fromMap(
+          Map<String, dynamic>.from(await c.rpc('executor_stats') as Map),
+        ),
+        every: const Duration(seconds: 4),
+        fresh: fresh,
+      );
 
   /// Орындаушы линияға кіру/шығуы (жаңа заказ хабарламалары үшін).
   static Future<void> setOnLine(bool value) =>
@@ -829,11 +913,28 @@ class Repo {
     params: {'p_order': orderId, 'p_price': price},
   );
 
-  static Future<void> placeOffer(String orderId, int price, String message) =>
-      c.rpc(
-        'place_offer',
-        params: {'p_order': orderId, 'p_price': price, 'p_message': message},
-      );
+  /// Ұсыныс беру. [etaMin] — «неше минутта жетемін» (0075). Сервер 0075-сіз
+  /// болса — ETA хабарламаның басына «~7 мин» болып жазылады (клиент оны
+  /// бәрібір көреді, [Offer.etaMin] оқиды).
+  static Future<void> placeOffer(
+    String orderId,
+    int price,
+    String message, {
+    int? etaMin,
+  }) async {
+    final base = {'p_order': orderId, 'p_price': price, 'p_message': message};
+    if (etaMin == null) {
+      await c.rpc('place_offer', params: base);
+      return;
+    }
+    try {
+      await c.rpc('place_offer', params: {...base, 'p_eta_min': etaMin});
+    } catch (e) {
+      if (!isMissingFunction(e)) rethrow;
+      final msg = '~$etaMin мин${message.isEmpty ? '' : ' · $message'}';
+      await c.rpc('place_offer', params: {...base, 'p_message': msg});
+    }
+  }
 
   static Future<void> withdrawOffer(String offerId) =>
       c.rpc('withdraw_offer', params: {'p_offer': offerId});
@@ -847,14 +948,26 @@ class Repo {
   static Future<void> cancelOrder(String orderId, String reason) =>
       c.rpc('cancel_order', params: {'p_order': orderId, 'p_reason': reason});
 
+  /// Пікір қалдыру. [tags] — бағалау тегтері (0081); сервер 0081-сыз болса
+  /// тегсіз жіберіледі (пікір бәрібір сақталады).
   static Future<void> submitReview(
     String orderId,
     int rating,
-    String comment,
-  ) => c.rpc(
-    'submit_review',
-    params: {'p_order': orderId, 'p_rating': rating, 'p_comment': comment},
-  );
+    String comment, {
+    List<String> tags = const [],
+  }) async {
+    final base = {'p_order': orderId, 'p_rating': rating, 'p_comment': comment};
+    if (tags.isEmpty) {
+      await c.rpc('submit_review', params: base);
+      return;
+    }
+    try {
+      await c.rpc('submit_review', params: {...base, 'p_tags': tags});
+    } catch (e) {
+      if (!isMissingFunction(e)) rethrow;
+      await c.rpc('submit_review', params: base);
+    }
+  }
 
   static Future<void> requestTopup(int amount, String? receiptPath) => c.rpc(
     'request_topup',
@@ -880,14 +993,32 @@ class Repo {
   /// Орындаушы ағымдағы GPS нүктесін жібереді (белсенді заказы болса
   /// серверде сол заказға байланады). Тыныш сәтсіздікке шыдайды — GPS
   /// уақытша жоқ болса белсенді заказ экраны сынбауы керек.
-  static Future<void> updateExecutorLocation(double lat, double lng) async {
+  static Future<void> updateExecutorLocation(
+    double lat,
+    double lng, {
+    double? heading,
+    double? speed,
+  }) async {
     try {
       await c.rpc(
         'update_executor_location',
-        params: {'p_lat': lat, 'p_lng': lng},
+        params: {
+          'p_lat': lat,
+          'p_lng': lng,
+          if (heading != null && _locationV2) 'p_heading': heading,
+          if (speed != null && _locationV2) 'p_speed': speed,
+        },
       );
-    } catch (_) {}
+    } catch (e) {
+      // 0075 қолданылмаған — бағытсыз нұсқаға біржола ауысамыз.
+      if (_locationV2 && isMissingFunction(e)) {
+        _locationV2 = false;
+        await updateExecutorLocation(lat, lng);
+      }
+    }
   }
+
+  static bool _locationV2 = true;
 
   /// Клиент өз заказының орындаушысының орнын polling арқылы қадағалайды.
   static Stream<Map<String, dynamic>?> orderExecutorLocationStream(
@@ -900,14 +1031,14 @@ class Repo {
     return res == null ? null : Map<String, dynamic>.from(res as Map);
   }, every: const Duration(seconds: 12));
 
-  /// Жаттыққа шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
+  /// Дос шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
   /// қорғаныс). Сыйақы (орындаушыға баланс/клиентке санақ) шақырылған
   /// адам ӨЗІНІҢ БІРІНШІ заказын аяқтағанда ғана беріледі. Тіркелген
   /// соң (не тіркелу экранында) БІР РЕТ шақырылады.
   static Future<void> redeemReferralCode(String code) =>
       c.rpc('redeem_referral_code', params: {'p_code': code});
 
-  /// Жаттыққа шақыру фичасы қосулы ма (0061) — АВТОРИЗАЦИЯСЫЗ да
+  /// Дос шақыру фичасы қосулы ма (0061) — АВТОРИЗАЦИЯСЫЗ да
   /// шақырылады (тіркелу экраны әлі кірмеген қолданушыда). Желі қатесінде
   /// `false` — өріс жай ғана жасырылады.
   static Future<bool> referralEnabled() async {
@@ -919,14 +1050,26 @@ class Repo {
   }
 
   // ---- moderator ----
+  /// Орындаушының балансын қолмен түзету (теріс сома — шегеру).
+  static Future<void> modAdjustBalance(String userId, int amount, String note) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_adjust_balance',
+      params: {'p_user': userId, 'p_amount': amount, 'p_note': note},
+    );
+  }
+
   static Future<void> modSetExecutorStatus(
     String userId,
     String status,
     String comment,
-  ) => c.rpc(
-    'mod_set_executor_status',
-    params: {'p_user': userId, 'p_status': status, 'p_comment': comment},
-  );
+  ) {
+    forgetProfile(userId);
+    return c.rpc(
+      'mod_set_executor_status',
+      params: {'p_user': userId, 'p_status': status, 'p_comment': comment},
+    );
+  }
 
   static Future<void> modReviewTopup(
     String id,
@@ -1044,6 +1187,18 @@ class Repo {
   static Future<Map<String, dynamic>> modLineStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_line_stats') as Map);
 
+  /// Модератордың тірі картасы (0083): {executors: [...], orders: [...]}.
+  /// Миграция жоқ болса — null (экран тек заказдарды көрсетеді).
+  static Future<Map<String, dynamic>?> modLiveMap() async {
+    try {
+      final res = await c.rpc('mod_live_map');
+      return res == null ? null : Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      if (isMissingFunction(e)) return null;
+      rethrow;
+    }
+  }
+
   /// Модератор: барлық іздеудегі заказдар (линия көрінісі үшін).
   static Future<List<Order>> searchingOrders() async {
     final rows = await c
@@ -1124,21 +1279,28 @@ class Repo {
     return SupportThread.fromMap(Map<String, dynamic>.from(rows.first));
   }
 
-  static Stream<List<SupportMessage>> supportMessagesStream(String threadId) =>
-      _poll('msgs:$threadId', () async {
-        final rows = await c
-            .from('support_messages')
-            .select()
-            .eq('thread_id', threadId)
-            // МАҢЫЗДЫ: postgrest-те `order()`-дің әдепкісі `ascending: false`
-            // (кемімелі). Оны жазбай қалдырсақ, чат ЖАҢАДАН ЕСКІГЕ келіп,
-            // соңғы хабарлама тізімнің ЕҢ ҮСТІНДЕ тұратын. Чат әрқашан
-            // ЕСКІДЕН ЖАҢАҒА болуы керек — жаңасы ең астында (WhatsApp сияқты).
-            .order('created_at', ascending: true);
-        return (rows as List)
-            .map((m) => SupportMessage.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 3));
+  static Stream<List<SupportMessage>> supportMessagesStream(
+    String threadId, {
+    bool fresh = false,
+  }) => _poll(
+    'msgs:$threadId',
+    () async {
+      final rows = await c
+          .from('support_messages')
+          .select()
+          .eq('thread_id', threadId)
+          // МАҢЫЗДЫ: postgrest-те `order()`-дің әдепкісі `ascending: false`
+          // (кемімелі). Оны жазбай қалдырсақ, чат ЖАҢАДАН ЕСКІГЕ келіп,
+          // соңғы хабарлама тізімнің ЕҢ ҮСТІНДЕ тұратын. Чат әрқашан
+          // ЕСКІДЕН ЖАҢАҒА болуы керек — жаңасы ең астында (WhatsApp сияқты).
+          .order('created_at', ascending: true);
+      return (rows as List)
+          .map((m) => SupportMessage.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    },
+    every: const Duration(seconds: 3),
+    fresh: fresh,
+  );
 
   static Stream<List<SupportThread>> myThreadsStream() {
     final id = uid;
@@ -1178,52 +1340,89 @@ class Repo {
   /// экран `stream: Repo.xxxStream()`-ды build ішінде шақыратын — әр қайта
   /// салуда (мыс. басты бетте картаны жылжытқанда) жаңа стрим құрылып,
   /// сұрау қайта жіберілетін. Тыңдаушы қалмаса, цикл 3 секундтан кейін
-  /// тоқтайды; қосымша фонда тұрғанда сұраулар ТОҚТАП тұрады.
+  /// тоқтайды; қосымша фонда тұрғанда (телефон құлыпта, веб-қойынды
+  /// жасырын) сұраулар ТОҚТАП тұрады — қараңыз: [_AppVisibility].
+  ///
+  /// [fresh] — цикл бұрыннан жүріп тұрса, келесі тікті КҮТПЕЙ бірден қайта
+  /// сұрау. Стрим ортақ болғандықтан, `ref.invalidate(провайдер)` жаңа стрим
+  /// құрғанда да тек СОҢҒЫ (ескі) мән қайталанатын — «тартып жаңарту»,
+  /// тариф сатып алу, «бәрі оқылды» сияқты әрекеттерден кейін жаңа дерек
+  /// келесі тікке дейін (30 с-қа дейін) көрінбейтін. Провайдерлер сол
+  /// себепті `fresh: true`-мен құрылады.
   static Stream<T> _poll<T>(
     String key,
     Future<T> Function() fetch, {
     Duration every = const Duration(seconds: 4),
+    bool fresh = false,
   }) {
-    final poll = _polls.putIfAbsent(
-      key,
-      () => _SharedPoll(
-        fetch,
-        every,
-        onIdle: (sp) {
-          if (identical(_polls[key], sp)) _polls.remove(key);
-        },
-      ),
+    final existing = _polls[key];
+    if (existing != null) {
+      if (fresh) existing.refresh();
+      return existing.stream.cast<T>();
+    }
+    final poll = _SharedPoll(
+      fetch,
+      every,
+      onIdle: (sp) {
+        if (identical(_polls[key], sp)) _polls.remove(key);
+      },
     );
+    _polls[key] = poll;
     return poll.stream.cast<T>();
   }
 
   static final Map<String, _SharedPoll> _polls = {};
 
-  static Stream<List<Order>> myOrdersStream() {
+  /// Клиенттің соңғы 60 заказы (ескіден жаңаға қарай реттелген — бұрынғы
+  /// шақырушылар `.reversed` арқылы жаңасын алдына шығарады). Қосымшада
+  /// бұл деректі [myOrdersStreamProvider] арқылы тыңдаңыз (бір цикл).
+  static Stream<List<Order>> myOrdersStream({bool fresh = false}) {
     final id = uid;
     if (id == null) return const Stream.empty();
-    return _poll('myOrders:$id', () async {
-      // Тек СОҢҒЫ 60 заказ: бұрын клиенттің бүкіл тарихы әр 4 секунд сайын
-      // жүктелетін (заказы көп адамда трафик пен жүктеме өсе беретін).
-      final rows = await c
-          .from('orders')
-          .select()
-          .eq('client_id', id)
-          .order('created_at', ascending: false)
-          .limit(60);
-      return (rows as List)
-          .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
-          .toList()
-          .reversed
-          .toList();
-    });
+    return _poll(
+      'myOrders:$id',
+      () async {
+        // Тек СОҢҒЫ 60 заказ: бұрын клиенттің бүкіл тарихы әр 4 секунд
+        // сайын жүктелетін (заказы көп адамда трафик пен жүктеме өсе беретін).
+        final rows = await c
+            .from('orders')
+            .select()
+            .eq('client_id', id)
+            .order('created_at', ascending: false)
+            .limit(60);
+        return (rows as List)
+            .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+            .toList()
+            .reversed
+            .toList();
+      },
+      every: const Duration(seconds: 6),
+      fresh: fresh,
+    );
+  }
+
+  /// Орындаушының өзі алған заказдары (белсенді + тарих), жаңасы алдында.
+  static Future<List<Order>> myExecutorOrders() async {
+    final id = uid;
+    if (id == null) return const [];
+    final rows = await c
+        .from('orders')
+        .select()
+        .eq('executor_id', id)
+        .order('created_at', ascending: false)
+        .limit(150);
+    return (rows as List)
+        .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+        .toList();
   }
 
   /// Орындаушының белсенді заказдары (accepted/arrived/loading/in_transit).
   /// §5 межгород маршрут-стектеу арқылы бір мезгілде 2 заказ болуы мүмкін —
   /// сол себепті `executor_profiles.busy_order_id` (жалғыз өріс) емес,
   /// тікелей `orders` кестесінен тізім ретінде аламыз.
-  static Stream<List<Order>> myActiveExecutorOrdersStream() {
+  static Stream<List<Order>> myActiveExecutorOrdersStream({
+    bool fresh = false,
+  }) {
     final id = uid;
     if (id == null) return const Stream.empty();
     return _poll('activeExec:$id', () async {
@@ -1241,28 +1440,40 @@ class Repo {
       return (rows as List)
           .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
           .toList();
-    });
+    }, fresh: fresh);
   }
 
-  static Stream<Order?> orderStream(String orderId) => _poll(
-    'order:$orderId',
-    () async {
-      final m = await c.from('orders').select().eq('id', orderId).maybeSingle();
-      return m == null ? null : Order.fromMap(m);
-    },
-    every: const Duration(seconds: 3),
-  );
+  /// Бір заказдың тірі күйі (3 с). [fresh] — әрекеттен кейін (статус,
+  /// баға, өңдеу) шақырсаңыз, ашық экран келесі тікті күтпей жаңарады.
+  static Stream<Order?> orderStream(String orderId, {bool fresh = false}) =>
+      _poll(
+        'order:$orderId',
+        () async {
+          final m = await c
+              .from('orders')
+              .select()
+              .eq('id', orderId)
+              .maybeSingle();
+          return m == null ? null : Order.fromMap(m);
+        },
+        every: const Duration(seconds: 3),
+        fresh: fresh,
+      );
 
   /// §6/§5 Лента: орындаушының қаласы мен маршрутына сай заказдар (RPC).
   /// Қала фильтрі, өлшем сәйкестігі, межгород маршруты — бәрі серверде
   /// `executor_feed` ішінде (бір ғана логика көзі).
-  static Stream<List<Order>> executorFeedStream() =>
-      _poll('feed:$uid', () async {
-        final rows = await c.rpc('executor_feed');
-        return (rows as List)
-            .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 4));
+  static Stream<List<Order>> executorFeedStream({bool fresh = false}) => _poll(
+    'feed:$uid',
+    () async {
+      final rows = await c.rpc('executor_feed');
+      return (rows as List)
+          .map((m) => Order.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    },
+    every: const Duration(seconds: 4),
+    fresh: fresh,
+  );
 
   /// §6 Орындаушының тіркелген қаласын орнату/жаңарту.
   static Future<void> setExecutorCity(String city) =>
@@ -1273,17 +1484,24 @@ class Repo {
   static Future<void> setOrderPushEnabled(bool enabled) =>
       c.rpc('set_order_push_enabled', params: {'p_enabled': enabled});
 
-  static Stream<List<Offer>> offersStream(String orderId) =>
-      _poll('offers:$orderId', () async {
-        final rows = await c
-            .from('offers')
-            .select()
-            .eq('order_id', orderId)
-            .order('created_at');
-        return (rows as List)
-            .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
-            .toList();
-      }, every: const Duration(seconds: 3));
+  static Stream<List<Offer>> offersStream(
+    String orderId, {
+    bool fresh = false,
+  }) => _poll(
+    'offers:$orderId',
+    () async {
+      final rows = await c
+          .from('offers')
+          .select()
+          .eq('order_id', orderId)
+          .order('created_at');
+      return (rows as List)
+          .map((m) => Offer.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    },
+    every: const Duration(seconds: 3),
+    fresh: fresh,
+  );
 
   static Stream<ExecutorProfile?> myExecutorProfileStream() {
     final id = uid;
@@ -1327,6 +1545,40 @@ class Repo {
         .toList();
   }
 
+  /// Кезеңдегі табыс жазбалары (график үшін) — [myEarnings]-тен үлкен шек.
+  static Future<List<Map<String, dynamic>>> myEarningsSince(
+    DateTime since,
+  ) async {
+    final id = uid;
+    if (id == null) return [];
+    final rows = await c
+        .from('earnings')
+        .select('amount, created_at')
+        .eq('executor_id', id)
+        .gte('created_at', since.toUtc().toIso8601String())
+        .order('created_at', ascending: false)
+        .limit(1000);
+    return (rows as List).map((m) => Map<String, dynamic>.from(m)).toList();
+  }
+
+  /// Кезеңде тарифке жұмсалған сома (оң сан) — «таза табыс» үшін.
+  static Future<int> myTariffSpendSince(DateTime since) async {
+    final id = uid;
+    if (id == null) return 0;
+    final rows = await c
+        .from('balance_txns')
+        .select('amount')
+        .eq('executor_id', id)
+        .eq('type', 'tariff_fee')
+        .gte('created_at', since.toUtc().toIso8601String())
+        .limit(1000);
+    var sum = 0;
+    for (final m in rows as List) {
+      sum += ((m['amount'] as num?) ?? 0).toInt().abs();
+    }
+    return sum;
+  }
+
   static Future<List<Map<String, dynamic>>> myEarnings() async {
     final id = uid;
     if (id == null) return [];
@@ -1350,6 +1602,37 @@ class Repo {
     return (rows as List)
         .map((m) => Review.fromMap(Map<String, dynamic>.from(m)))
         .toList();
+  }
+
+  /// Көлік нөмірін салыстыруға келтіру: бос орын/сызықша алынып, бас
+  /// әріпке, кириллицадағы «ұқсас» әріптер латыншаға айналады (А→A, В→B…)
+  /// — «123 АВС 02» мен «123ABC02» бір нөмір болып саналады.
+  static String normPlate(String raw) {
+    const map = {
+      'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', //
+      'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'У': 'Y', //
+    };
+    final up = raw.toUpperCase().replaceAll(RegExp(r'[\s\-_.]'), '');
+    return up.split('').map((ch) => map[ch] ?? ch).join();
+  }
+
+  /// Модератор: осы көлік нөмірімен ТАҒЫ қай орындаушылар тіркелген
+  /// (өзінен басқа). Бос тізім — қайталану жоқ.
+  static Future<List<String>> modPlateDuplicates(
+    String userId,
+    String plate,
+  ) async {
+    final target = normPlate(plate);
+    if (target.length < 4) return const [];
+    final rows = await c
+        .from('executor_profiles')
+        .select('user_id, vehicle_plate')
+        .neq('user_id', userId);
+    return [
+      for (final m in rows as List)
+        if (normPlate('${m['vehicle_plate'] ?? ''}') == target)
+          m['user_id'] as String,
+    ];
   }
 
   // ---- moderator queries ----
@@ -1495,6 +1778,28 @@ class Repo {
   /// хабарландырулар — бір сұраныста).
   static Future<Map<String, dynamic>> modOverviewStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_overview_stats') as Map);
+
+  /// Модератор Шолуының графиктері (0082): соңғы [days] күннің күндік
+  /// көрсеткіштері (ескіден жаңаға қарай).
+  static Future<List<Map<String, dynamic>>> modDashboardSeries(int days) async {
+    final res = await c.rpc('mod_dashboard_series', params: {'p_days': days});
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  /// Сервердегі функция ӘЛІ ҚОЛДАНЫЛМАҒАН ба (миграция жоқ) — жаңа
+  /// мүмкіндіктер мұндай қатеде экранды сындырмай, жай ғана жасырылады.
+  static bool isMissingFunction(Object e) {
+    final s = e.toString();
+    return s.contains('PGRST202') ||
+        s.contains('Could not find the function') ||
+        s.contains('does not exist') ||
+        s.contains('PGRST205') ||
+        s.contains('42P01') ||
+        s.contains('42883');
+  }
 
   /// Модераторға хабарландырулар тізімі. [status]: active | expired | null.
   static Future<List<Listing>> modListings(String? status) async {
@@ -1728,8 +2033,25 @@ class Repo {
     return 'image/jpeg';
   }
 
-  static Future<String> signedDocUrl(String path) =>
-      c.storage.from('docs').createSignedUrl(path, 3600);
+  /// Жабық құжаттың уақытша сілтемесі (1 сағат). 50 минут бойы КЭШТЕ
+  /// сақталады: құжат суреті build сайын жаңа сілтеме сұрамайды (әрі жаңа
+  /// сілтеме = кэштелмеген жаңа сурет → жыпылықтау).
+  static Future<String> signedDocUrl(String path) {
+    final hit = _signedCache[path];
+    if (hit != null &&
+        DateTime.now().difference(hit.$1) < const Duration(minutes: 50)) {
+      return hit.$2;
+    }
+    final f = c.storage.from('docs').createSignedUrl(path, 3600);
+    _signedCache[path] = (DateTime.now(), f);
+    f.catchError((Object _) {
+      _signedCache.remove(path);
+      return '';
+    });
+    return f;
+  }
+
+  static final Map<String, (DateTime, Future<String>)> _signedCache = {};
 
   // ============ ТОЛТЫРУ ЧЕГІН ТЕКСЕРЕТІН БОТ (0051) ============
   /// Kaspi Pay выпискасын `docs` бакетіне жүктейді. Бөлек bucket құрылмайды:
@@ -1792,8 +2114,12 @@ class Repo {
   /// Бонус прогресі — тікелей жаңарып отыратын стрим (лентадағы жолақ
   /// заказ аяқталған сайын өзі жаңарады). Статистикадан сирегірек —
   /// бонус әр 15 секундта тексерілсе де жеткілікті.
-  static Stream<BonusInfo> executorBonusStream() =>
-      _poll('bonus:$uid', executorBonus, every: const Duration(seconds: 15));
+  static Stream<BonusInfo> executorBonusStream({bool fresh = false}) => _poll(
+    'bonus:$uid',
+    executorBonus,
+    every: const Duration(seconds: 15),
+    fresh: fresh,
+  );
 
   /// Орындаушының бонус тарихы (соңғы 100 жазба).
   static Future<List<BonusAward>> myBonusAwards() async {
@@ -1807,6 +2133,409 @@ class Repo {
   /// Модератордың бонус есебі: барлығы / осы айда берілген + топ-5.
   static Future<Map<String, dynamic>> modBonusStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_bonus_stats') as Map);
+
+  // ================= ЖАҢА МҮМКІНДІКТЕР (0075–0082) =================
+  // Барлығы «миграция әлі қолданылмаған» жағдайға шыдайды: оқитын
+  // функциялар бос мән қайтарады, жазатындары қатені жоғары береді
+  // (экран оны түсінікті мәтінмен көрсетеді).
+
+  /// Клиенттің картасындағы жақын маңдағы бос орындаушылар (0075).
+  static Future<List<NearbyExecutor>> nearbyExecutors(
+    double lat,
+    double lng, {
+    VehicleType? vehicle,
+  }) async {
+    try {
+      final res = await c.rpc(
+        'nearby_executors',
+        params: {'p_lat': lat, 'p_lng': lng, 'p_vehicle': vehicle?.db},
+      );
+      return [
+        for (final m in (res as List? ?? const []))
+          NearbyExecutor.fromMap(Map<String, dynamic>.from(m as Map)),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Жақын маңдағы бос көліктер — ортақ циклмен ([_poll], 30 с; фонда
+  /// тоқтайды). Кілт ~100 м-ге дөңгелектенген нүкте + көлік түрі: картаны
+  /// сәл жылжытқанда жаңа цикл ашылмайды.
+  static Stream<List<NearbyExecutor>> nearbyExecutorsStream(
+    double lat,
+    double lng, {
+    VehicleType? vehicle,
+  }) => _poll(
+    'nearby:${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}:'
+    '${vehicle?.db}',
+    () => nearbyExecutors(lat, lng, vehicle: vehicle),
+    every: const Duration(seconds: 30),
+  );
+
+  /// Алушыны қосу/өзгерту (бос телефон — алып тастау) (0076).
+  static Future<OrderRecipient?> setOrderRecipient(
+    String orderId,
+    String name,
+    String phone,
+  ) async {
+    final res = await c.rpc(
+      'set_order_recipient',
+      params: {'p_order': orderId, 'p_name': name, 'p_phone': phone},
+    );
+    return res == null
+        ? null
+        : OrderRecipient.fromMap(Map<String, dynamic>.from(res as Map));
+  }
+
+  /// Серверде алушы/жеткізу коды бар ма (0076) — сессияда бір рет.
+  /// Жоқ заказға сұрау жібереміз: NOT_FOUND келсе — функция бар.
+  static Future<bool> recipientsAvailable() => _recipAvailable ??= () async {
+    try {
+      await c.rpc(
+        'get_order_recipient',
+        params: {'p_order': '00000000-0000-0000-0000-000000000000'},
+      );
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _recipAvailable;
+
+  /// Заказдың қосымша талаптары бар ма (0077) — сессияда бір рет. Жоқ
+  /// болса, жаңа заказдың талаптары түсініктемеге мәтін болып қосылады.
+  static Future<bool> orderExtrasAvailable() => _extrasAvailable ??= () async {
+    try {
+      await c.rpc(
+        'update_order_details',
+        params: {'p_order': '00000000-0000-0000-0000-000000000000'},
+      );
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _extrasAvailable;
+
+  /// Таңдаулы/бұғат тізімдері бар ма (0079) — сессияда бір рет.
+  static Future<bool> executorPrefsAvailable() => _prefsAvailable ??= () async {
+    try {
+      await c.from('client_favorites').select('executor_id').limit(1);
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _prefsAvailable;
+
+  /// Заказдың алушысы (клиентке — кодымен, орындаушыға — кодсыз).
+  /// Алушы жоқ не 0076 қолданылмаған — `null`.
+  static Future<OrderRecipient?> orderRecipient(String orderId) async {
+    try {
+      final res = await c.rpc(
+        'get_order_recipient',
+        params: {'p_order': orderId},
+      );
+      return res == null
+          ? null
+          : OrderRecipient.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (e) {
+      if (isMissingFunction(e)) return null;
+      rethrow;
+    }
+  }
+
+  /// Орындаушы алушыдан алған кодты тексертеді. (дұрыс па, қалған әрекет).
+  static Future<(bool, int?)> verifyDeliveryCode(
+    String orderId,
+    String code,
+  ) async {
+    final res = Map<String, dynamic>.from(
+      await c.rpc(
+            'verify_delivery_code',
+            params: {'p_order': orderId, 'p_code': code},
+          )
+          as Map,
+    );
+    final left = res['left'];
+    return (res['ok'] == true, left is num ? left.toInt() : null);
+  }
+
+  /// Клиент «жүк жетті» деп өзі растайды (алушы кодты жоғалтса).
+  static Future<void> clientConfirmDelivery(String orderId) =>
+      c.rpc('client_confirm_delivery', params: {'p_order': orderId});
+
+  /// Заказды іздеу кезінде өңдеу (0077). null — өзгертпе. [loaders]
+  /// берілсе, қабат пен лифт те сол мәнге ауысады (null — тазалау).
+  static Future<void> updateOrderDetails(
+    String orderId, {
+    String? cargo,
+    String? comment,
+    int? loaders,
+    int? floorFrom,
+    int? floorTo,
+    bool? elevator,
+  }) => c.rpc(
+    'update_order_details',
+    params: {
+      'p_order': orderId,
+      'p_cargo': cargo,
+      'p_comment': comment,
+      'p_loaders': loaders,
+      'p_floor_from': floorFrom,
+      'p_floor_to': floorTo,
+      'p_elevator': elevator,
+    },
+  );
+
+  /// Ұсынылатын баға (0077). Дерек аз не функция жоқ — `null`.
+  static Future<PriceHint?> orderPriceHint({
+    required VehicleType vehicle,
+    required double distanceKm,
+    String? city,
+    bool intercity = false,
+  }) async {
+    try {
+      final res = await c.rpc(
+        'order_price_hint',
+        params: {
+          'p_vehicle': vehicle.db,
+          'p_distance_km': double.parse(distanceKm.toStringAsFixed(2)),
+          'p_city': city,
+          'p_intercity': intercity,
+        },
+      );
+      return res == null
+          ? null
+          : PriceHint.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ---- Заказ чаты (0078) ----
+
+  /// Серверде заказ чаты бар ма (0078 қолданылған ба) — сессияда бір рет
+  /// тексеріледі. Жоқ болса чат батырмалары мүлдем көрінбейді (басқанда
+  /// түсініксіз қате шықпауы үшін).
+  static Future<bool> orderChatAvailable() => _chatAvailable ??= () async {
+    try {
+      await c.from('order_messages').select('id').limit(1);
+      return true;
+    } catch (e) {
+      return !isMissingFunction(e);
+    }
+  }();
+
+  static Future<bool>? _chatAvailable;
+
+  /// Заказ чатының хабарлары (ескіден жаңаға). [fresh] — хабар жіберген соң
+  /// шақырсаңыз, ашық чат келесі тікті күтпей бірден жаңарады.
+  static Stream<List<OrderMessage>> orderMessagesStream(
+    String orderId, {
+    bool fresh = false,
+  }) => _poll(
+    'orderChat:$orderId',
+    () async {
+      final rows = await c
+          .from('order_messages')
+          .select()
+          .eq('order_id', orderId)
+          .order('created_at')
+          .limit(300);
+      return (rows as List)
+          .map((m) => OrderMessage.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    },
+    every: const Duration(seconds: 4),
+    fresh: fresh,
+  );
+
+  static Future<void> orderChatSend(String orderId, String body) =>
+      c.rpc('order_chat_send', params: {'p_order': orderId, 'p_body': body});
+
+  static Future<void> orderChatMarkRead(String orderId) async {
+    try {
+      await c.rpc('order_chat_mark_read', params: {'p_order': orderId});
+    } catch (_) {}
+  }
+
+  /// Заказдағы оқылмаған хабар саны (маған келгендер).
+  static Future<int> orderChatUnread(String orderId) async {
+    final me = uid;
+    if (me == null) return 0;
+    try {
+      final rows = await c
+          .from('order_messages')
+          .select('id')
+          .eq('order_id', orderId)
+          .neq('sender_id', me)
+          .isFilter('read_at', null);
+      return (rows as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Оқылмаған хабар саны — ортақ циклмен ([_poll], 15 с): бір заказдың
+  /// бірнеше батырмасы бір сұрауды бөліседі, фонда тоқтайды. [fresh] —
+  /// чаттан қайтқанда келесі тікті күтпей бірден жаңарту.
+  static Stream<int> orderChatUnreadStream(
+    String orderId, {
+    bool fresh = false,
+  }) => _poll(
+    'chatUnread:$orderId',
+    () => orderChatUnread(orderId),
+    every: const Duration(seconds: 15),
+    fresh: fresh,
+  );
+
+  /// Модератор: соңғы заказ чаттары.
+  static Future<List<Map<String, dynamic>>> modOrderChats({
+    bool flaggedOnly = false,
+  }) async {
+    final res = await c.rpc(
+      'mod_order_chats',
+      params: {'p_limit': 80, 'p_flagged_only': flaggedOnly},
+    );
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  // ---- Таңдаулы / бұғатталған орындаушылар (0079) ----
+
+  /// (таңдаулылар, бұғатталғандар) — клиенттің өз тізімдері.
+  static Future<(Set<String>, Set<String>)> myExecutorPrefs() async {
+    final me = uid;
+    if (me == null) return (<String>{}, <String>{});
+    try {
+      final fav = await c.from('client_favorites').select('executor_id');
+      final blk = await c.from('client_blocks').select('executor_id');
+      return (
+        {for (final m in fav as List) m['executor_id'] as String},
+        {for (final m in blk as List) m['executor_id'] as String},
+      );
+    } catch (_) {
+      return (<String>{}, <String>{});
+    }
+  }
+
+  /// [kind]: 'favorite' | 'block' | 'none'.
+  static Future<void> setExecutorPref(String executorId, String kind) => c.rpc(
+    'set_executor_pref',
+    params: {'p_executor': executorId, 'p_kind': kind},
+  );
+
+  // ---- Хабарламалар орталығы (0080) ----
+
+  static Future<List<AppNotification>> myNotifications() async {
+    final me = uid;
+    if (me == null) return const [];
+    try {
+      final rows = await c
+          .from('notifications')
+          .select()
+          .eq('user_id', me)
+          .order('created_at', ascending: false)
+          .limit(60);
+      return (rows as List)
+          .map((m) => AppNotification.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Оқылмаған хабарламалар саны — [unreadNotificationsProvider] арқылы
+  /// тыңдаңыз (мәзірдегі 🔔 белгісі).
+  static Stream<int> unreadNotificationsStream({bool fresh = false}) {
+    final me = uid;
+    if (me == null) return const Stream.empty();
+    return _poll(
+      'unreadNotifications:$me',
+      () async {
+        try {
+          final rows = await c
+              .from('notifications')
+              .select('id')
+              .eq('user_id', me)
+              .isFilter('read_at', null)
+              .limit(100);
+          return (rows as List).length;
+        } catch (_) {
+          return 0;
+        }
+      },
+      every: const Duration(seconds: 30),
+      fresh: fresh,
+    );
+  }
+
+  static Future<void> markAllNotificationsRead() async {
+    try {
+      await c.rpc('notifications_mark_all_read');
+    } catch (_) {}
+  }
+
+  // ---- Бағалау тегтері (0081) ----
+
+  /// Адамның [role] рөліндегі алған тегтері: код → саны.
+  static Future<Map<String, int>> userReviewTags(
+    String userId, {
+    String role = 'executor',
+  }) async {
+    try {
+      final res = await c.rpc(
+        'user_review_tags',
+        params: {'p_user': userId, 'p_role': role},
+      );
+      final m = Map<String, dynamic>.from(res as Map? ?? const {});
+      return {for (final e in m.entries) e.key: (e.value as num).toInt()};
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  // ---- Модератор құралдары (0082) ----
+
+  /// Жаппай хабарлама. Қайтарады: алушылар саны.
+  static Future<int> modBroadcast({
+    required String audience,
+    required String title,
+    required String body,
+    String? city,
+    VehicleType? vehicle,
+  }) async {
+    final res = await c.rpc(
+      'mod_broadcast',
+      params: {
+        'p_audience': audience,
+        'p_title': title,
+        'p_body': body,
+        'p_city': city,
+        'p_vehicle': vehicle?.db,
+      },
+    );
+    return (res as num?)?.toInt() ?? 0;
+  }
+
+  /// Модератор әрекеттерінің журналы (жаңасы алдында).
+  static Future<List<Map<String, dynamic>>> modAuditLog({
+    int limit = 150,
+  }) async {
+    final rows = await c
+        .from('mod_audit_log')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return [for (final m in rows as List) Map<String, dynamic>.from(m)];
+  }
 }
 
 // ================= RIVERPOD PROVIDERS =================
@@ -1934,17 +2663,55 @@ final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
   (ref) => Repo.settings(),
 );
 
+// ---- Polling провайдерлері ----
+// Бәрі [Repo._poll]-дың ортақ циклінің үстінде. `fresh: true` — провайдер
+// ҚАЙТА құрылғанда (`ref.invalidate` — «тартып жаңарту», тариф сатып алу,
+// «бәрі оқылды») цикл келесі тікті күтпей бірден жаңа дерек сұрайды; әйтпесе
+// ортақ цикл жаңа тыңдаушыға тек соңғы (ескі) мәнді қайталайтын.
+// Пайдаланушыға тәуелділері [authUidProvider]-ді тыңдайды: токен жаңарғанда
+// (id сол күйі) цикл қайта басталмайды, аккаунт ауысса — жаңа кілтпен басталады.
+
+/// Клиенттің заказдары — қосымшадағы ЖАЛҒЫЗ polling-циклі.
+///
+/// Бұрын ClientShell, басты беттің баннері және «Тапсырыстарым» әрқайсысы
+/// `Repo.myOrdersStream()`-ті ӨЗІНШЕ ашатын: бір дерек үшін қатар 2–3
+/// цикл әр 4 секунд сайын желіге шығатын. Енді бәрі осы провайдерді
+/// тыңдайды; ешкім тыңдамаса (`autoDispose`) цикл тоқтайды.
+final myOrdersStreamProvider = StreamProvider.autoDispose<List<Order>>((ref) {
+  ref.watch(authUidProvider);
+  return Repo.myOrdersStream(fresh: true);
+});
+
+/// Таңдаулы/бұғат тізімдері серверде бар ма (0079) — мәзір тармағы үшін.
+final executorPrefsAvailableProvider = FutureProvider<bool>(
+  (ref) => Repo.executorPrefsAvailable(),
+);
+
+/// Оқылмаған хабарламалар саны (0080) — мәзірдегі 🔔 белгісі үшін.
+final unreadNotificationsProvider = StreamProvider.autoDispose<int>((ref) {
+  ref.watch(authUidProvider);
+  return Repo.unreadNotificationsStream(fresh: true);
+});
+
+/// Орындаушының белсенді заказдары (баннер, мәзір белгісі) — бір цикл.
+final myActiveExecutorOrdersProvider = StreamProvider.autoDispose<List<Order>>((
+  ref,
+) {
+  ref.watch(authUidProvider);
+  return Repo.myActiveExecutorOrdersStream(fresh: true);
+});
+
 /// Тікелей жаңарып отыратын статистика стримі. `autoDispose` — ешкім
 /// тыңдамай қалса (мыс. логаут/рөл ауысу) polling тоқтап, жады босайды.
 final executorStatsStreamProvider = StreamProvider.autoDispose<ExecutorStats>(
-  (ref) => Repo.executorStatsStream(),
+  (ref) => Repo.executorStatsStream(fresh: true),
 );
 
 /// Бонус прогресі (0059). `autoDispose` — тыңдаушы қалмаса polling тоқтайды.
 /// Бағдарлама өшірулі болса стрим «off» күйін қайтарады да, ешбір экран
 /// қосымша сұраныс жасамайды.
 final executorBonusStreamProvider = StreamProvider.autoDispose<BonusInfo>(
-  (ref) => Repo.executorBonusStream(),
+  (ref) => Repo.executorBonusStream(fresh: true),
 );
 
 /// Орындаушы лентасы (§5/§6). Riverpod стримді КЭШТЕЙДІ — сондықтан статистика
@@ -1952,11 +2719,16 @@ final executorBonusStreamProvider = StreamProvider.autoDispose<BonusInfo>(
 /// (әйтпесе әр рефреште ресетке түсіп, автообновление «жоғалатын»).
 /// `autoDispose` — ешкім тыңдамай қалса polling тоқтайды.
 final executorFeedStreamProvider = StreamProvider.autoDispose<List<Order>>(
-  (ref) => Repo.executorFeedStream(),
+  (ref) => Repo.executorFeedStream(fresh: true),
 );
 
 /// Қосымша ЭКРАНДА ма (фонда емес). Фонда polling тоқтап тұрады —
 /// батарея мен трафик бекер жұмсалмайды; қайта ашылғанда бірден жаңарады.
+///
+/// «Фонда» = `hidden` / `paused` / `detached`: телефон құлыпталған не басқа
+/// қосымшаға ауысқан, ВЕБТЕ — браузер қойындысы жасырын (Flutter web оны
+/// `hidden` деп береді). `inactive` (мыс. вебте терезе фокусын жоғалтты,
+/// бірақ көрініп тұр) — белсенді болып саналады: экрандағы дерек жаңара береді.
 class _AppVisibility with WidgetsBindingObserver {
   _AppVisibility._() {
     WidgetsBinding.instance.addObserver(this);
@@ -2003,6 +2775,14 @@ class _SharedPoll {
   int _gen = 0;
   Timer? _stopTimer;
 
+  /// Тіктер арасындағы күту — [refresh] оны мерзімінен бұрын оятады.
+  Completer<void>? _wake;
+
+  /// Сұрау жүріп жатқанда [refresh] келді ме — келсе, жауап келген соң
+  /// күтпей тағы бір рет сұраймыз (әрекетке дейін басталған ескі жауап
+  /// жаңа күйдің орнына қалып қоймауы үшін).
+  bool _again = false;
+
   Stream<Object?> get stream => Stream<Object?>.multi((c) {
     _stopTimer?.cancel();
     _stopTimer = null;
@@ -2028,13 +2808,27 @@ class _SharedPoll {
     if (_listeners.isNotEmpty) return;
     _running = false;
     _gen++;
+    _wakeUp();
     onIdle(this);
+  }
+
+  /// Келесі тікті күтпей БІРДЕН қайта сұрау (қараңыз: `Repo._poll(fresh:)`).
+  void refresh() {
+    if (!_running) return;
+    _again = true;
+    _wakeUp();
+  }
+
+  void _wakeUp() {
+    final w = _wake;
+    if (w != null && !w.isCompleted) w.complete();
   }
 
   Future<void> _loop(int gen) async {
     while (_running && gen == _gen) {
       await _AppVisibility.waitActive();
       if (!_running || gen != _gen) return;
+      _again = false;
       try {
         final v = await _fetch();
         if (gen != _gen) return;
@@ -2046,7 +2840,12 @@ class _SharedPoll {
       } catch (_) {
         // соңғы мәнде қалады, экранда loader көрсетілмейді
       }
-      await Future.delayed(_every);
+      if (_again) continue;
+      final wake = _wake = Completer<void>();
+      final timer = Timer(_every, _wakeUp);
+      await wake.future;
+      timer.cancel();
+      if (identical(_wake, wake)) _wake = null;
     }
   }
 }

@@ -5,6 +5,10 @@
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
 			<string>tg</string>
+			<string>dgis</string>
+			<string>yandexnavi</string>
+			<string>yandexmaps</string>
+			<string>comgooglemaps</string>
 		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>

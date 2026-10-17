@@ -6,8 +6,8 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
-import '../auth/executor_apply_screen.dart';
 import 'balance_screen.dart';
+import 'docs_banner.dart';
 
 /// Орындаушының тариф пен баланс экраны (басты беттен ашылады).
 class ExecutorDashboardScreen extends ConsumerWidget {
@@ -39,90 +39,16 @@ class ExecutorDashboardScreen extends ConsumerWidget {
           data: (s) => ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (ep != null && ep.docsReviewPending)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF3FF),
-                      borderRadius: BorderRadius.circular(Gz.radius),
-                      border: Border.all(color: Gz.blue.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.hourglass_top, color: Gz.blue),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            t('Жаңартылған құжаттар модератор тексеруінде…'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (ep != null && ep.docsUpdateRequested)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(Gz.radius),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ExecutorApplyScreen(existing: ep),
-                      ),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0F0),
-                        borderRadius: BorderRadius.circular(Gz.radius),
-                        border: Border.all(
-                          color: Gz.red.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.assignment_late, color: Gz.red),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  t('Құжаттарды жаңарту қажет'),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14.5,
-                                  ),
-                                ),
-                                Text(
-                                  ep.docsUpdateComment?.isNotEmpty == true
-                                      ? ep.docsUpdateComment!
-                                      : t(
-                                          'Модератор құжаттарыңызды жаңартуды сұрады.',
-                                        ),
-                                  style: const TextStyle(
-                                    color: Gz.textSecondary,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right, color: Gz.red),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              ExecutorDocsBanner(
+                ep: ep,
+                padding: const EdgeInsets.only(bottom: 12),
+              ),
               // Баланс hero-картасы
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: Gz.heroGradient,
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: Gz.cardShadow,
                 ),
                 child: Column(
@@ -156,7 +82,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                                     : Icons.remove_circle_outline,
                                 size: 13,
                                 color: s.hasTariff
-                                    ? const Color(0xFF4ADE80)
+                                    ? Gz.greenOnDark
                                     : Colors.white38,
                               ),
                               const SizedBox(width: 5),
@@ -165,10 +91,10 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                                     ? t('Тариф белсенді')
                                     : t('Тариф жоқ'),
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: s.hasTariff
-                                      ? const Color(0xFF4ADE80)
+                                      ? Gz.greenOnDark
                                       : Colors.white38,
                                 ),
                               ),
@@ -182,7 +108,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                       fmtT(s.balance),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
                       ),
@@ -203,18 +129,19 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              ..._notices(context, s),
               const SizedBox(height: 20),
               Text(
                 t('Тариф'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 17,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 tariffDefinitionText(cfg),
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 12),
               _TariffCard(
@@ -244,6 +171,48 @@ class ExecutorDashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Алдын ала ескертулер: баланс тарифке жетпейді, ауысым жақында бітеді,
+  /// заказ лимиті таусылуға жақын — орындаушы кенеттен «заказ ала алмай»
+  /// қалмауы үшін.
+  List<Widget> _notices(BuildContext context, ExecutorStats s) {
+    final out = <Widget>[];
+    void add(Widget w) => out.addAll([const SizedBox(height: 12), w]);
+    if (!s.hasTariff && s.price > 0 && s.balance < s.price) {
+      add(
+        GzNotice(
+          tone: NoticeTone.warning,
+          icon: Icons.account_balance_wallet_outlined,
+          title: t('Баланс тарифке жетпейді'),
+          message:
+              '${t('Тариф бағасы')} ${fmtT(s.price)}, '
+              '${t('балансыңызда')} ${fmtT(s.balance)}. '
+              '${t('Заказ алу үшін балансты толтырыңыз.')}',
+          // «Баланс толтыру» батырмасы жоғарыдағы баланс картасында бар —
+          // бір бетте екі бірдей батырма болмасын.
+        ),
+      );
+    }
+    final until = s.until;
+    if (s.hasTariff && until != null) {
+      final left = until.difference(DateTime.now());
+      if (left.inMinutes > 0 && left.inMinutes <= 30) {
+        add(
+          GzNotice(
+            tone: NoticeTone.info,
+            icon: Icons.timer_outlined,
+            message:
+                '${t('Ауысымның аяқталуына:')} '
+                // Аяқталу сағаты тариф картасында тұр — мұнда тек қалған минут.
+                '${left.inMinutes} ${t('мин')}',
+          ),
+        );
+      }
+    }
+    // «Тек 1 заказ қалды» бөлек ескерту емес — тариф картасындағы «Қалған
+    // заказ» санағышы сары болып ерекшеленеді (бір ақпарат екі рет емес).
+    return out;
   }
 
   Future<void> _buy(
@@ -319,7 +288,7 @@ class _TariffCard extends StatelessWidget {
               )
             : null,
         color: active ? null : Gz.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: active ? color : Gz.border,
           width: active ? 1.8 : 1.2,
@@ -405,8 +374,8 @@ class _TariffCard extends StatelessWidget {
                           '${t('Қалған заказ:')} $ordersLeft / $perShift',
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
-                            fontSize: 13.5,
-                            color: color,
+                            fontSize: 14,
+                            color: ordersLeft == 1 ? Gz.warning : color,
                           ),
                         ),
                         if (until != null)

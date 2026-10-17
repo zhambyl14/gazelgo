@@ -42,7 +42,7 @@ class ReviewsScreen extends StatelessWidget {
                     Text(
                       rating <= 0 ? '—' : rating.toStringAsFixed(1),
                       style: const TextStyle(
-                        fontSize: 40,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -84,7 +84,7 @@ class ReviewsScreen extends StatelessWidget {
                                           ? t('Орындаушыдан')
                                           : t('Клиенттен'),
                                       style: const TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 12,
                                         color: Gz.textSecondary,
                                       ),
                                     ),
@@ -101,7 +101,7 @@ class ReviewsScreen extends StatelessWidget {
                                 Text(
                                   fmtDate(r.createdAt),
                                   style: const TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 12,
                                     color: Gz.textSecondary,
                                   ),
                                 ),

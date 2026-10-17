@@ -19,23 +19,19 @@ import 'features/auth/blocked_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/pending_screen.dart';
 import 'features/client/client_shell.dart';
-import 'features/client/order_detail_screen.dart';
 import 'features/client/track_screen.dart';
-import 'features/executor/balance_screen.dart';
-import 'features/executor/executor_order_screen.dart';
 import 'features/executor/executor_shell.dart';
 // Модератор панелі (~10 мың жол + `image` пакеті) — КЕЙІНГЕ ҚАЛДЫРЫЛЫП
 // жүктеледі: вебте клиент/орындаушы оны мүлдем жүктемейді (main.dart.js
 // кішірейеді → ашылу жылдамырақ). Мобильде loadLibrary() бірден аяқталады.
+// Push-тан модератор қойындысын ашу да кейінге қалдырылған импортпен
+// (`shared/push_router.dart`).
 import 'features/moderator/moderator_shell.dart' deferred as moderator;
-import 'features/support/support_screen.dart';
 import 'shared/portrait_frame.dart';
+import 'shared/push_router.dart';
 import 'shared/update_gate.dart';
 import 'shared/web_push_banner.dart';
 import 'shared/widgets.dart';
-
-/// Push/локал уведомлениелерден навигация үшін — түбір Navigator кілті.
-final navigatorKey = GlobalKey<NavigatorState>();
 
 /// «Сапарды бөлісу» (0060) — тек ВЕБТЕ: URL `/track/<token>` болса, токенді
 /// қайтарады. Мобиль қосымшада `Uri.base` мағынасыз (файл жолы), сол
@@ -61,89 +57,9 @@ Widget _appHome() {
   return const UpdateGate(child: AuthGate());
 }
 
-/// Хабарламаны басқанда тиісті бетке өту. FCM (onMessageOpenedApp,
-/// getInitialMessage) және Android foreground локал уведомлениесі де осында
-/// келеді. Хабардың `type`-ы аудиторияны білдіреді (сервер тек тиісті
-/// пайдаланушыға жібереді), сол себепті рөлді бөлек сұрамай, тип бойынша
-/// тиісті экранды ашамыз:
-///   new_order        → орындаушы: заказды қарап, ұсыныс беру экраны
-///   offer_accepted   → орындаушы: ұсынысы қабылданды (белсенді заказға өтеді)
-///   offer_rejected   → орындаушы: ұсынысының нәтижесі
-///   order_expired    → клиент: өз заказының беті
-///   order_reminder   → клиент: өз заказының беті
-///   new_offer        → клиент: ұсыныстар тізімі (заказ беті)
-///   order_status     → клиент: заказ барысы (заказ беті)
-///   support_reply    → клиент/орындаушы: қолдау қызметі
-///   support_message  → модератор: қолдау чаттары (қойынды)
-///   new_application  → модератор: жаңа өтінімдер (қойынды)
-///   new_topup        → модератор: баланс толтыру өтінімдері (қойынды, 0049)
-///   topup_approved   → орындаушы: балансы толды (0051)
-///   topup_rejected   → орындаушы: толтыруы қабылданбады (0051)
-///
-/// Модератордың үш беті — панельдің ІШІНДЕГІ қойындылар, өз Scaffold-ы жоқ.
-/// Оларды бөлек бет ретінде `push` жасасақ, фоны ҚАРА болып ашылатын; сол
-/// себепті олар үшін жаңа бет ашпай, бар панельдің қойындысын ауыстырамыз
-/// ([ModeratorShell.openTab]). Қалғандарының өз Scaffold-ы бар — әдеттегідей
-/// push жасалады.
-void _navigateFromData(Map<String, dynamic> data) {
-  final type = data['type'] as String?;
-  final orderId = data['order_id'] as String?;
-  final hasOrder = orderId != null && orderId.isNotEmpty;
-
-  Widget? screen;
-  if (hasOrder &&
-      (type == 'new_order' ||
-          type == 'offer_accepted' ||
-          type == 'offer_rejected')) {
-    screen = ExecutorOrderScreen(orderId: orderId);
-  } else if (hasOrder && type == 'order_status') {
-    // Статус өзгерісі екі жаққа да келуі мүмкін (мыс. «тиеу расталды» —
-    // орындаушыға), сол себепті сервер `audience` жібереді.
-    screen = data['audience'] == 'executor'
-        ? ExecutorOrderScreen(orderId: orderId)
-        : OrderDetailScreen(orderId: orderId);
-  } else if (hasOrder &&
-      (type == 'order_expired' ||
-          type == 'order_reminder' ||
-          type == 'new_offer')) {
-    screen = OrderDetailScreen(orderId: orderId);
-  } else if (type == 'support_reply') {
-    screen = const SupportScreen();
-  } else if (type == 'support_message') {
-    _openModeratorTab(() => moderator.ModeratorShell.tabSupport);
-    return;
-  } else if (type == 'new_application') {
-    _openModeratorTab(() => moderator.ModeratorShell.tabApplications);
-    return;
-  } else if (type == 'new_topup') {
-    _openModeratorTab(() => moderator.ModeratorShell.tabTopups);
-    return;
-  } else if (type == 'topup_approved' || type == 'topup_rejected') {
-    // Орындаушыға: балансы толды не өтінімі қабылданбады (0051). Бұған дейін
-    // орындаушыға МҮЛДЕ хабар келмейтін — қосымшаны қолмен ашып қарауы керек
-    // болатын.
-    screen = const BalanceScreen();
-  } else if (hasOrder) {
-    // Тип белгісіз, бірақ заказ id-і бар — қауіпсіз әдепкі: заказ беті.
-    screen = OrderDetailScreen(orderId: orderId);
-  }
-  if (screen == null) return;
-
-  final target = screen;
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => target));
-  });
-}
-
 /// Модератор кітапханасын бір рет жүктеу (кейінге қалдырылған импорт).
+/// Top-level `final` жалқау — тек модератор кіргенде ғана басталады.
 final Future<void> _moderatorLib = moderator.loadLibrary();
-
-/// Модератор панелінің қойындысын ашу — кітапхана жүктелгеннен КЕЙІН
-/// (кейінге қалдырылған кітапхананың мүшесіне ерте қатынау қате береді,
-/// сол себепті индекс closure арқылы кейін оқылады).
-void _openModeratorTab(int Function() tab) {
-  _moderatorLib.then((_) => moderator.ModeratorShell.openTab(tab()));
-}
 
 /// Модератор панелі — кітапхана жүктелгенше splash.
 class _ModeratorLoader extends StatelessWidget {
@@ -198,11 +114,11 @@ Future<void> main() async {
   // Хабарламаны басқанда навигация: FCM тап (Push.onOpen) және Android
   // foreground локал уведомлениесінің тап-payload-ы (Notify.onSelect) —
   // екеуі де бір навигация логикасына бағытталады.
-  Push.onOpen = _navigateFromData;
+  Push.onOpen = openPushTarget;
   Notify.onSelect = (payload) {
     if (payload == null || payload.isEmpty) return;
     try {
-      _navigateFromData(jsonDecode(payload) as Map<String, dynamic>);
+      openPushTarget(jsonDecode(payload) as Map<String, dynamic>);
     } catch (_) {}
   };
   runApp(const ProviderScope(child: GazelGoApp()));
@@ -553,7 +469,7 @@ class _SplashState extends State<_Splash> with TickerProviderStateMixin {
                         const Text(
                           'Tasu',
                           style: TextStyle(
-                            fontSize: 30,
+                            fontSize: 28,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
                             color: Gz.ink,
@@ -650,7 +566,7 @@ class _RetryScreen extends StatelessWidget {
               Text(
                 t('Жүктеу мүмкін болмады'),
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
               ),

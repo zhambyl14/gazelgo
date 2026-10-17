@@ -223,7 +223,7 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         b.text,
-        style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
+        style: const TextStyle(fontSize: 13, color: Gz.textSecondary),
       ),
     ),
     _BlockKind.section => _sectionHeader(b),
@@ -291,7 +291,7 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       decoration: BoxDecoration(
         color: on ? Gz.yellow.withValues(alpha: 0.28) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border(bottom: BorderSide(color: Gz.yellow, width: 2.5)),
       ),
       child: Row(
@@ -321,7 +321,7 @@ class _LegalDocState extends State<_LegalDoc> {
               child: Text(
                 b.text,
                 style: const TextStyle(
-                  fontSize: 15.5,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   height: 1.25,
                   letterSpacing: -0.2,

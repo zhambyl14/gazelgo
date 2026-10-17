@@ -12,16 +12,18 @@ import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/app_drawer.dart';
-import '../../shared/drawer_hint.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/transitions.dart';
 import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
+import '../auth/login_screen.dart';
+import '../profile/profile_screen.dart';
 import 'address_picker.dart';
 import 'city_street_sheet.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'order_detail_screen.dart';
+import 'saved_addresses.dart';
 import 'stops_sheet.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
@@ -44,8 +46,8 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   final _blockKey = GlobalKey();
   double _bottomInset = 140;
 
-  /// Логотип батырмасы sidebar-ды осы кілт арқылы ашады (Scaffold.of()
-  /// бұл жерде жарамайды — логотип Scaffold-тың ӨЗ build-інде тұр).
+  /// «☰» батырмасы sidebar-ды осы кілт арқылы ашады (Scaffold.of()
+  /// бұл жерде жарамайды — батырма Scaffold-тың ӨЗ build-інде тұр).
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// Негізгі панель бүктелген бе (қолмен төмен тартып жасырылған).
@@ -85,6 +87,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   VehicleType get _vehicle =>
       _category == VehicleCategory.taxi ? _taxiVehicle : _cargoVehicle;
 
+  /// Жақын маңдағы БОС көліктер (0075) — таңдалған көлік түрі бойынша.
+  /// Клиент «қазір маңайда көлік бар ма» дегенді заказ бермей-ақ көреді.
+  List<NearbyExecutor> _nearby = const [];
+
+  /// [Repo.nearbyExecutorsStream] ортақ циклі (30 с, фонда тоқтайды).
+  StreamSubscription<List<NearbyExecutor>>? _nearbySub;
+
   @override
   void initState() {
     super.initState();
@@ -96,7 +105,41 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   void dispose() {
     _moveDebounce?.cancel();
     _dropTimer?.cancel();
+    _nearbySub?.cancel();
     super.dispose();
+  }
+
+  bool get _nearbyEnabled {
+    final v = ref.read(appSettingsProvider).value?['nearby_map'];
+    return v is! Map || v['enabled'] != false;
+  }
+
+  /// Нүкте не көлік түрі өзгерсе — сол кілттің ортақ цикліне қайта
+  /// жазыламыз (ескі жазылым жабылады, кеш келген ескі жауап түспейді).
+  void _loadNearby() {
+    final c = _from?.point;
+    if (c == null || !mounted || !_nearbyEnabled) return;
+    _nearbySub?.cancel();
+    _nearbySub =
+        Repo.nearbyExecutorsStream(
+          c.latitude,
+          c.longitude,
+          vehicle: _vehicle,
+        ).listen((list) {
+          if (!mounted) return;
+          // Модератор фичаны кейін өшірсе — цикл тоқтайды, көліктер жасырылады.
+          if (!_nearbyEnabled) {
+            _nearbySub?.cancel();
+            _nearbySub = null;
+            list = const [];
+          }
+          setState(() => _nearby = list);
+        });
+  }
+
+  void _setVehicle(VoidCallback change) {
+    setState(change);
+    _loadNearby();
   }
 
   Future<void> _initStart() async {
@@ -169,6 +212,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       _from = PickedAddress(label, center, anchor);
       _resolvingFrom = false;
     });
+    _loadNearby();
     // Клиент өзі белгілеген орынды есте сақтаймыз (келесі ашылудың әдепкісі).
     if (persist) {
       unawaited(Prefs.setLastLocation(center.latitude, center.longitude));
@@ -337,7 +381,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       drawer: AppDrawer(isGuest: widget.isGuest),
       // Шеттен саусақпен тарту ӨШІРУЛІ: бүкіл экранды карта алып тұр, әйтпесе
       // картаны солға жылжытқан сайын sidebar ашылып кетер еді. Sidebar тек
-      // логотип батырмасымен ашылады.
+      // «☰» батырмасымен ашылады.
       drawerEnableOpenDragGesture: false,
       // `Scaffold` `body`-ге БОС (loose) биіктік шектеуін береді, ал `Stack`
       // мұндайда позицияланбаған балаларының өлшеміне жиырылады. Мұнда оны
@@ -366,6 +410,25 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               ),
               children: [
                 osmTileLayer(),
+                // Жақын маңдағы БОС көліктер (0075) — өз түрінің белгісімен
+                // және бағытымен.
+                if (_nearby.isNotEmpty)
+                  MarkerLayer(
+                    markers: [
+                      for (final e in _nearby)
+                        Marker(
+                          point: LatLng(e.lat, e.lng),
+                          width: 34,
+                          height: 34,
+                          child: VehicleMarker(
+                            type: e.vehicleType,
+                            size: 34,
+                            heading: e.heading,
+                          ),
+                        ),
+                    ],
+                  ),
+                // «Мен осындамын» — нақты GPS орны (көліктердің үстінде).
                 if (_myPos != null)
                   MarkerLayer(markers: [myLocationMarker(_myPos!)]),
               ],
@@ -387,14 +450,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  // Логотип — ЕНДІ БАТЫРМА: sol жақтан sidebar ашады
-                  // (профиль, тапсырыстар, хабарландырулар тақтасы — бәрі
-                  // сонда). Оң жақтағы бөлек профиль батырмасы жойылды.
-                  // Бұрышында «мәзір» белгісі бар және өлшемі ұлғайтылған —
-                  // адамдар оны түйме екенін байқамай қалатын.
+                  // Сол жақта — АЙҚЫН «☰» мәзір батырмасы (Yandex Go тілі),
+                  // оң жақта — профиль. Бұрын мәзір логотипті басқанда
+                  // ашылатын: адамдар оны түйме деп танымағаны соншалық,
+                  // бүйір тұтқа мен қалқыма нұсқау қосуға тура келген.
                   child: Row(
                     children: [
-                      LogoMenuButton(
+                      _MenuButton(
+                        isGuest: widget.isGuest,
                         onTap: () {
                           // Модератор «Такси»/«Хабарландырулар» бөлімін
                           // жаңа ғана қосқан/өшірген болуы мүмкін — қосымшаны
@@ -403,45 +466,30 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                           _scaffoldKey.currentState?.openDrawer();
                         },
                       ),
-                      const Spacer(),
+                      Expanded(
+                        child: Center(
+                          child: _NearbyPill(
+                            count: _nearby.length,
+                            vehicle: _vehicle,
+                          ),
+                        ),
+                      ),
+                      _ProfileButton(isGuest: widget.isGuest),
                     ],
                   ),
                 ),
                 const Spacer(),
-                // менің локациям батырмасы — картаның үстінде қалқып тұрады,
-                // карта inset-іне кірмейді (жай ғана карта аймағында жүзеді)
+                // «Менің орным» — картаның үстінде қалқып тұрады, карта
+                // inset-іне кірмейді (жай ғана карта аймағында жүзеді).
                 Padding(
                   padding: const EdgeInsets.only(right: 12, bottom: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // «Менің орным» — картаның үстінде тұрған жалғыз
-                      // дөңгелек батырма: көлеңкесі күштірек болмаса,
-                      // карта суретіне сіңіп кетеді.
-                      Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: Gz.cardShadow,
-                        ),
-                        child: Material(
-                          elevation: 0,
-                          shape: const CircleBorder(),
-                          color: Gz.surface,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: _goToMyLocation,
-                            child: const Padding(
-                              padding: EdgeInsets.all(13),
-                              child: Icon(
-                                Icons.my_location_rounded,
-                                color: Gz.ink,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: MapRoundButton(
+                      icon: Icons.my_location_rounded,
+                      tooltip: t('Менің орным'),
+                      onTap: _goToMyLocation,
+                    ),
                   ),
                 ),
                 // белсенді («Іздеуде») заказ баннері — локация батырмасының астында
@@ -490,7 +538,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
                                     color: Gz.disabledBg,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
                                 Row(
@@ -502,7 +550,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         gradient: Gz.brandGradient,
-                                        borderRadius: BorderRadius.circular(13),
+                                        borderRadius: BorderRadius.circular(12),
                                         boxShadow: Gz.glow(
                                           Gz.yellow,
                                           alpha: 0.4,
@@ -528,7 +576,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 16.5,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.w900,
                                               height: 1.2,
                                               letterSpacing: -0.35,
@@ -597,7 +645,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         VehicleCategoryTabs(
                                           selected: _category,
                                           onChanged: (c) =>
-                                              setState(() => _category = c),
+                                              _setVehicle(() => _category = c),
                                           // «ЖАҢА» белгісін модератор алып
                                           // тастай алады (0058).
                                           showNewBadge:
@@ -619,14 +667,16 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                         VehicleTypeCarousel(
                                           selected: _taxiVehicle,
                                           types: kTaxiVehicleTypes,
-                                          onChanged: (v) =>
-                                              setState(() => _taxiVehicle = v),
+                                          onChanged: (v) => _setVehicle(
+                                            () => _taxiVehicle = v,
+                                          ),
                                         )
                                       else
                                         VehicleTypeCarousel(
                                           selected: _cargoVehicle,
-                                          onChanged: (v) =>
-                                              setState(() => _cargoVehicle = v),
+                                          onChanged: (v) => _setVehicle(
+                                            () => _cargoVehicle = v,
+                                          ),
                                         ),
                                       const SizedBox(height: 10),
                                       // ---- МАРШРУТ ----
@@ -713,6 +763,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                           onPressed: _addDestination,
                                         ),
                                       ],
+                                      // «Қайда» әлі таңдалмаған — жиі
+                                      // баратын жерлер бір басумен.
+                                      if (_to == null)
+                                        _QuickDestinations(
+                                          from: _from,
+                                          onPick: (p) =>
+                                              setState(() => _to = p),
+                                        ),
                                       const SizedBox(height: 14),
                                       // Экранның ЖАЛҒЫЗ шешуші әрекеті —
                                       // сол себепті градиентті әрі өз
@@ -744,118 +802,256 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               ],
             ),
           ),
-          // Sidebar-ды ТАБУҒА көмектесетін екі элемент (0059): сол шеттегі
-          // тұрақты тұтқа (түртсе де, оңға тартса да ашылады) және алғашқы
-          // ашылуларда шығатын қысқа нұсқау. Екеуі де картаның үстінде,
-          // панельдің сыртында тұр — мазмұнды жаппайды.
-          const SafeArea(child: DrawerEdgeHandle()),
-          const SafeArea(child: DrawerHintOverlay(top: 78)),
         ],
       ),
     );
   }
 }
 
-class _ActiveOrdersBanner extends StatelessWidget {
+/// Белсенді заказ баннері — ортақ [ActiveOrderBanner] үлгісі. Дерек
+/// [myOrdersStreamProvider]-дан (бұрын бұл баннер өз polling-ін ашатын).
+class _ActiveOrdersBanner extends ConsumerWidget {
   const _ActiveOrdersBanner();
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = (ref.watch(myOrdersStreamProvider).value ?? const <Order>[])
+        .where((o) => o.isActive)
+        .toList()
+        .reversed
+        .toList();
+    if (active.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: ActiveOrderBanner(
+        orders: active,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => active.length > 1
+                ? const MyOrdersScreen()
+                : OrderDetailScreen(orderId: active.first.id),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// «Жақын маңда N бос көлік» — картаның үстіндегі шағын белгі. Көлік жоқ
+/// болса мүлдем көрінбейді (клиентті «ешкім жоқ» деп үркітпеу үшін).
+class _NearbyPill extends StatelessWidget {
+  final int count;
+  final VehicleType vehicle;
+  const _NearbyPill({required this.count, required this.vehicle});
+
+  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Order>>(
-      stream: Repo.myOrdersStream(),
-      builder: (context, snap) {
-        final active = (snap.data ?? [])
-            .where((o) => o.isActive)
-            .toList()
-            .reversed
-            .toList();
-        if (active.isEmpty) return const SizedBox.shrink();
-        final o = active.first;
-        return GestureDetector(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => active.length > 1
-                  ? const MyOrdersScreen()
-                  : OrderDetailScreen(orderId: o.id),
-            ),
-          ),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              // Жалаң қара тіктөртбұрыштың орнына градиент + тереңдік:
-              // банер картаның үстінде «қалқып» тұрғандай көрінеді.
-              gradient: Gz.heroGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: Gz.liftShadow,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: Gz.brandGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
-                  ),
-                  child: const Icon(
-                    Icons.local_shipping_rounded,
-                    size: 18,
-                    color: Gz.ink,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        statusLabel(o.status, vehicleType: o.vehicleType),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          height: 1.25,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        '${o.fromDisplay} → ${o.toDisplay}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (active.length > 1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: count == 0
+          ? const SizedBox.shrink()
+          : Container(
+              key: ValueKey(count),
+              padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+              decoration: BoxDecoration(
+                color: Gz.surface,
+                borderRadius: BorderRadius.circular(Gz.rLg),
+                boxShadow: Gz.cardShadow,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  vehicleIcon(vehicle, size: 18),
+                  const SizedBox(width: 6),
+                  Flexible(
                     child: Text(
-                      '+${active.length - 1}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      '${t('Жақын маңда')} $count ${t('бос көлік')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Gz.ink,
+                      ),
                     ),
                   ),
-                const Icon(Icons.chevron_right, color: Colors.white70),
-              ],
+                ],
+              ),
             ),
+    );
+  }
+}
+
+/// «☰» мәзір батырмасы. Белсенді заказ болса бұрышында сол саны тұрады —
+/// «мәзірде менің заказым бар» дегенді бірден көрсетеді.
+class _MenuButton extends ConsumerWidget {
+  final bool isGuest;
+  final VoidCallback onTap;
+  const _MenuButton({required this.isGuest, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = isGuest
+        ? 0
+        : (ref.watch(myOrdersStreamProvider).value ?? const <Order>[])
+              .where((o) => o.isActive)
+              .length;
+    // Белсенді заказдар + оқылмаған хабарламалар (0080) — мәзірде не күтіп
+    // тұрғаны бір белгіден көрінеді.
+    final unread = isGuest
+        ? 0
+        : (ref.watch(unreadNotificationsProvider).value ?? 0);
+    return MapRoundButton(
+      icon: Icons.menu_rounded,
+      tooltip: t('Мәзір'),
+      badge: active + unread,
+      onTap: onTap,
+    );
+  }
+}
+
+/// Профиль батырмасы (оң жақ жоғарғы бұрыш). Кірмеген қолданушыға —
+/// «Кіру» белгісі.
+class _ProfileButton extends ConsumerWidget {
+  final bool isGuest;
+  const _ProfileButton({required this.isGuest});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (isGuest) {
+      return MapRoundButton(
+        icon: Icons.person_outline_rounded,
+        tooltip: t('Кіру / Тіркелу'),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
+      );
+    }
+    final p = ref.watch(myProfileProvider).value;
+    return PressScale(
+      child: GestureDetector(
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(
+            color: Gz.surface,
+            shape: BoxShape.circle,
+            boxShadow: Gz.cardShadow,
           ),
-        );
-      },
+          child: InitialsAvatar(
+            p?.fullName ?? '?',
+            radius: 21,
+            imageUrl: p?.avatarUrl,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Жиі баратын жерлер — «Қайда» таңдалмай тұрғанда панельде көрінетін
+/// чиптер: сақталған «Үй», «Жұмыс» және соңғы мекенжайлар. Бір басумен
+/// «Қайда» толады (Yandex Go-дағы «Домой / На работу»). Бұрын олар тек
+/// мекенжай іздеу парағының ішінде болатын — бір қадам артық.
+class _QuickDestinations extends StatefulWidget {
+  final PickedAddress? from;
+  final ValueChanged<PickedAddress> onPick;
+  const _QuickDestinations({required this.from, required this.onPick});
+
+  @override
+  State<_QuickDestinations> createState() => _QuickDestinationsState();
+}
+
+class _QuickDestinationsState extends State<_QuickDestinations> {
+  List<SavedAddress> _saved = const [];
+  List<PickedAddress> _recent = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final s = await AddressBook.saved();
+    final r = await AddressBook.recent();
+    if (mounted) {
+      setState(() {
+        _saved = s;
+        _recent = r;
+      });
+    }
+  }
+
+  bool _sameAsFrom(PickedAddress p) {
+    final f = widget.from;
+    if (f == null) return false;
+    return Geo.haversineKm(f.point, p.point) < 0.15;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final savedKeys = {for (final s in _saved) s.address.toLowerCase()};
+    final recent = _recent
+        .where((r) => !savedKeys.contains(r.address.toLowerCase()))
+        .where((r) => !_sameAsFrom(r))
+        .take(3)
+        .toList();
+    final saved = _saved.where((s) => !_sameAsFrom(s.toPicked())).toList();
+    if (saved.isEmpty && recent.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SizedBox(
+        height: 36,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            for (final s in saved)
+              _chip(
+                savedAddressIcon(s.kind),
+                savedAddressTitle(s),
+                () => widget.onPick(s.toPicked()),
+                accent: true,
+              ),
+            for (final r in recent)
+              _chip(
+                Icons.history_rounded,
+                r.address.split(',').first,
+                () => widget.onPick(r),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool accent = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ActionChip(
+        avatar: Icon(
+          icon,
+          size: 16,
+          color: accent ? Gz.yellowDeep : Gz.textSecondary,
+        ),
+        label: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 150),
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        visualDensity: VisualDensity.compact,
+        side: BorderSide(
+          color: accent ? Gz.tint(Gz.yellowDark, 0.5) : Gz.border,
+        ),
+        backgroundColor: accent ? Gz.tint(Gz.yellow, 0.12) : Gz.surfaceAlt,
+        onPressed: onTap,
+      ),
     );
   }
 }

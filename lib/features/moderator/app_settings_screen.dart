@@ -96,6 +96,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _schedMaxDays = TextEditingController();
   bool _liveTrackingEnabled = false;
   bool _liveTrackingSaving = false;
+
+  /// Заказ чаты (0078) мен картадағы бос көліктер (0075) — әдепкі қосулы.
+  bool _orderChatEnabled = true;
+  bool _orderChatSaving = false;
+  bool _nearbyMapEnabled = true;
+  bool _nearbyMapSaving = false;
   bool _shareTripEnabled = false;
   bool _shareTripSaving = false;
   bool _referralEnabled = false;
@@ -228,6 +234,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _schedMaxDays.text = '${sched['max_days_ahead'] ?? 14}';
       final live = (s['live_tracking'] as Map?) ?? {};
       _liveTrackingEnabled = live['enabled'] == true;
+      final chat = (s['order_chat'] as Map?) ?? {};
+      _orderChatEnabled = chat['enabled'] != false;
+      final nearby = (s['nearby_map'] as Map?) ?? {};
+      _nearbyMapEnabled = nearby['enabled'] != false;
       final share = (s['share_trip'] as Map?) ?? {};
       _shareTripEnabled = share['enabled'] == true;
       final referral = (s['referral'] as Map?) ?? {};
@@ -727,6 +737,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     setSaving: (v) => _liveTrackingSaving = v,
   );
 
+  Future<void> _toggleOrderChat(bool v) => _toggleSimple(
+    'order_chat',
+    v,
+    apply: (v) => _orderChatEnabled = v,
+    setSaving: (v) => _orderChatSaving = v,
+  );
+
+  Future<void> _toggleNearbyMap(bool v) => _toggleSimple(
+    'nearby_map',
+    v,
+    apply: (v) => _nearbyMapEnabled = v,
+    setSaving: (v) => _nearbyMapSaving = v,
+  );
+
   Future<void> _toggleShareTrip(bool v) => _toggleSimple(
     'share_trip',
     v,
@@ -841,14 +865,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Жаңалықтар (сторис)')),
           Text(
             t(
-              'Логотип батырмасындағы мәзірде, «Хабарландырулардың» ҮСТІНДЕ '
+              '☰ мәзірінде, «Хабарландырулардың» ҮСТІНДЕ '
               'тұратын бөлім: Instagram сторисі секілді сурет, қысқа видео, '
               'мәтін және әуен. Стористің ӨЗІН жоғарыдағы «Жаңалықтар» '
               'табынан қосасыз — әрқайсысына мерзім мен аудитория (клиент · '
               'орындаушы · гест) бөлек қойылады. Осы қосқыш өшулі болса — '
               'карта ешкімге көрінбейді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -885,7 +909,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Астыңғы қосқыш — тек сары «ЖАҢА» жапсырмасы: бөлім '
               'ескіргенде оны бөлімнің өзін өшірмей-ақ алып тастайсыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -911,11 +935,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Хабарландырулар тақтасы')),
           Text(
             t(
-              'Логотип батырмасындағы «Хабарландырулар» бөлімі: орындаушылар '
+              '☰ мәзіріндегі «Хабарландырулар» бөлімі: орындаушылар '
               'қызметін, клиенттер жұмысын жариялайды. Әр хабарландыру '
               '7 күн тұрады, сосын автоматты өшеді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -943,7 +967,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'уақытқа созылатыны және сол ауысымда қанша заказ алуға '
               'болатыны.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -978,7 +1002,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         dense: true,
                         title: Text(
                           t('Белгілі уақыт аралығында'),
-                          style: const TextStyle(fontSize: 13.5),
+                          style: const TextStyle(fontSize: 14),
                         ),
                         subtitle: Text(
                           t(
@@ -986,7 +1010,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                             '(мыс. 12 сағат болса — 08:00–20:00 және '
                             '20:00–08:00).',
                           ),
-                          style: const TextStyle(fontSize: 11.5),
+                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
                       RadioListTile<String>(
@@ -995,14 +1019,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         dense: true,
                         title: Text(
                           t('Қосқан сәттен бастап'),
-                          style: const TextStyle(fontSize: 13.5),
+                          style: const TextStyle(fontSize: 14),
                         ),
                         subtitle: Text(
                           t(
                             'Орындаушы тарифті қосқан уақыттан бастап '
                             'есептеледі (сағатқа қарамайды).',
                           ),
-                          style: const TextStyle(fontSize: 11.5),
+                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
                     ],
@@ -1058,7 +1082,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'түседі — қолма-қол шешіп алынбайды, тариф сатып алуға '
               'жұмсалады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1138,7 +1162,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   title: Text(
                     t('Кезең ішінде қайталансын'),
                     style: const TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1149,7 +1173,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                             '60 заказ).',
                           )
                         : t('Бір кезеңде бір-ақ рет беріледі.'),
-                    style: const TextStyle(fontSize: 11.5),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1171,7 +1195,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Kaspi деректері')),
           Text(
             t('Орындаушылар балансты осыған аударады.'),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1236,7 +1260,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'автоматты толтырады. Күдікті болса — тиіспейді, Telegram-ға '
               'себебін жазады, шешімді сіз қабылдайсыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1312,10 +1336,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     'Чек скриншоттан кейін қайтарылып алынса — тек осылай '
                     'білуге болады.',
                   ),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 12.5,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 BusyButton(
@@ -1338,7 +1359,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               '«оператор» деген сұраныс келсе — бот тиіспейді, Telegram-ге '
               'ескерту барады, модератор өзі жалғастырады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1360,7 +1381,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'WhatsApp-ына апарады. Кірген пайдаланушылар қолдау чатын '
               'қолданады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1389,7 +1410,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент аяқталған/тоқтатылған заказды бір батырмамен қайта '
               'ашады (маршрут пен көлік түрі дайын тұрады).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1408,7 +1429,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
               'сол уақыт келгенше орындаушыларға көрінбейді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1457,9 +1478,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           Text(
             t(
               'Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
-              'көреді (орындаушы GPS-і 20 секунд сайын жіберіледі).',
+              'көреді (орындаушы GPS-і 15 секунд сайын жіберіледі).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1472,13 +1493,51 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           ),
           const SizedBox(height: 24),
 
+          _sectionTitle(t('Картадағы бос көліктер')),
+          Text(
+            t(
+              'Клиенттің басты картасында жақын маңдағы бос орындаушылардың '
+              'көліктері көрінеді (нақты орны емес, ~100 м дәлдікпен).',
+            ),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _nearbyMapEnabled,
+            saving: _nearbyMapSaving,
+            icon: Icons.local_taxi_outlined,
+            onLabel: t('Бос көліктер картада көрінеді'),
+            offLabel: t('Картада көліктер жоқ'),
+            onChanged: _toggleNearbyMap,
+          ),
+          const SizedBox(height: 24),
+
+          _sectionTitle(t('Заказ чаты')),
+          Text(
+            t(
+              'Клиент пен орындаушы заказ ішінде жазыса алады. Барлық чатты '
+              'модератор «Заказ чаттары» бөлімінде көреді.',
+            ),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _orderChatEnabled,
+            saving: _orderChatSaving,
+            icon: Icons.forum_outlined,
+            onLabel: t('Чат батырмасы көрінеді'),
+            offLabel: t('Тек қоңырау арқылы'),
+            onChanged: _toggleOrderChat,
+          ),
+          const SizedBox(height: 24),
+
           _sectionTitle(t('Сапарды бөлісу')),
           Text(
             t(
               'Клиент заказдың сілтемесін жақынына жібере алады — олар '
               'қосымшасыз, кірместен барысты қарайды.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1491,7 +1550,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          _sectionTitle(t('Жаттыққа шақыру бонусы')),
+          _sectionTitle(t('Дос шақыру бонусы')),
           Text(
             t(
               'Пайдаланушылар бір-бірін өз кодымен шақырады (тіркелу '
@@ -1501,7 +1560,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'ОРЫНДАУШЫ шақырса — балансына сома, КЛИЕНТ шақырса — тек '
               'санағы өседі.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1563,7 +1622,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
               'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1703,7 +1762,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
     decoration: BoxDecoration(
       color: Gz.bg,
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: Gz.border),
     ),
     child: Column(
@@ -1716,7 +1775,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Gz.textSecondary,
               ),
@@ -1770,8 +1829,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         contentPadding: EdgeInsets.zero,
         value: value,
         dense: true,
-        title: Text(title, style: const TextStyle(fontSize: 13.5)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11.5)),
+        title: Text(title, style: const TextStyle(fontSize: 14)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       );
 
   /// Бонусқа қанша ақша кеткенінің қысқаша есебі + топ-5 орындаушы.
@@ -1794,7 +1853,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 t('Бонус есебі'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
+                  fontSize: 15,
                 ),
               ),
             ],
@@ -1848,7 +1907,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     Text(
                       '${r['awards'] ?? 0}× · ${fmtT(r['total'] as num?)}',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1873,7 +1932,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 3),
             FittedBox(
@@ -1882,7 +1941,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               child: Text(
                 value,
                 style: TextStyle(
-                  fontSize: 15.5,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: color,
                 ),

@@ -141,7 +141,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: Gz.heroGradient,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: Gz.cardShadow,
             ),
             child: Column(
@@ -156,7 +156,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                   fmtT(statsAsync.value?.balance),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 30,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
                   ),
@@ -294,7 +294,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                     ),
                     style: const TextStyle(
                       color: Gz.textSecondary,
-                      fontSize: 11.5,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -334,7 +334,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                         ),
                         subtitle: Text(
                           fmtDate(t.createdAt),
-                          style: const TextStyle(fontSize: 12.5),
+                          style: const TextStyle(fontSize: 13),
                         ),
                         trailing: _topupChip(t.status),
                       ),
@@ -391,7 +391,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                         ),
                         subtitle: Text(
                           '${t.note.isEmpty ? t.type : t.note} · ${fmtDate(t.createdAt)}',
-                          style: const TextStyle(fontSize: 12.5),
+                          style: const TextStyle(fontSize: 13),
                         ),
                       ),
                   ],

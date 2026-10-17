@@ -45,7 +45,7 @@ class _TopupsScreenState extends State<TopupsScreen> {
                   selectedColor: Gz.yellow,
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: _status == s ? Gz.ink : Gz.textSecondary,
                   ),
                   onSelected: (v) {
@@ -126,7 +126,7 @@ class _TopupCard extends StatelessWidget {
                         '${snap.data?.phone ?? ''} · ${fmtDate(req.createdAt)}',
                         style: const TextStyle(
                           color: Gz.textSecondary,
-                          fontSize: 12.5,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -183,7 +183,7 @@ class _TopupCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               '${t('Ескерту:')} ${req.note}',
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           ],
         ],
@@ -194,30 +194,18 @@ class _TopupCard extends StatelessWidget {
   Future<void> _review(BuildContext context, bool approve) async {
     String note = '';
     if (!approve) {
-      final c = TextEditingController();
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t('Қабылдамау себебі')),
-          content: TextField(
-            controller: c,
-            autofocus: true,
-            decoration: InputDecoration(hintText: t('Мыс: чек табылмады')),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('Болдырмау')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('Жіберу')),
-            ),
-          ],
-        ),
+      final r = await gzInputDialog(
+        context,
+        icon: Icons.receipt_long_outlined,
+        confirmColor: Gz.red,
+        title: t('Қабылдамау себебі'),
+        message: t('Себебі орындаушыға хабарланады.'),
+        hint: t('Мыс: чек табылмады'),
+        presets: [for (final p in kTopupRejectPresets) t(p)],
+        confirmLabel: t('Жіберу'),
       );
-      if (ok != true) return;
-      note = c.text;
+      if (r == null) return;
+      note = r;
     }
     if (!context.mounted) return;
     try {
@@ -266,7 +254,7 @@ class _BotVerdict extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(
@@ -281,7 +269,7 @@ class _BotVerdict extends StatelessWidget {
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w800,
-                  fontSize: 12.5,
+                  fontSize: 13,
                 ),
               ),
             ],
@@ -302,3 +290,12 @@ class _BotVerdict extends StatelessWidget {
     );
   }
 }
+
+/// Толтыруды қабылдамау себептерінің дайын тізімі.
+const kTopupRejectPresets = [
+  'Чек табылмады',
+  'Сома сәйкес емес',
+  'Чек бұрын қолданылған',
+  'Чек анық емес',
+  'Басқа алушыға аударылған',
+];

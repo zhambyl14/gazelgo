@@ -7,7 +7,22 @@ import '../core/push.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
 import 'map_widgets.dart';
+import 'ui/dialogs.dart';
+import 'ui/sheet.dart';
+import 'ui/bits.dart';
+import 'ui/review_tags.dart';
 import 'vehicle_picker.dart';
+
+// Бірыңғай дизайн-жүйенің компоненттері (баннер, терезе, диалог, тег,
+// көрсеткіш…). Экрандар тек `widgets.dart`-ты импорттайды — бәрі осы жерден
+// қолжетімді болады.
+export 'ui/bar_chart.dart';
+export 'ui/bits.dart';
+export 'ui/contact.dart';
+export 'ui/dialogs.dart';
+export 'ui/notice.dart';
+export 'ui/review_tags.dart';
+export 'ui/sheet.dart';
 
 /// Батырма мәтіні: ені жетпесе — ЕКІНШІ ЖОЛҒА ТҮСПЕЙДІ, кішірейіп сыяды.
 ///
@@ -530,7 +545,7 @@ class RouteFieldsCard extends StatelessWidget {
                   Text(
                     f.label,
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       height: 1.2,
                       color: Gz.textSecondary,
                       fontWeight: FontWeight.w500,
@@ -633,11 +648,7 @@ class RatingStars extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.star_rounded,
-          color: const Color(0xFFF59E0B),
-          size: size + 2,
-        ),
+        Icon(Icons.star_rounded, color: Gz.star, size: size + 2),
         const SizedBox(width: 3),
         Text(
           rating <= 0 ? t('жаңа') : rating.toStringAsFixed(1),
@@ -754,7 +765,7 @@ class ProfileBrief extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
+                  fontSize: 15,
                 ),
               ),
               Row(
@@ -779,7 +790,7 @@ class ProfileBrief extends StatelessWidget {
                     Text(
                       '${p!.trips}',
                       style: const TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: Gz.textSecondary,
                       ),
                     ),
@@ -849,7 +860,7 @@ class EmptyState extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 17.5,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
                 height: 1.3,
                 letterSpacing: -0.3,
@@ -866,7 +877,7 @@ class EmptyState extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 13.5,
+                    fontSize: 14,
                     height: 1.5,
                   ),
                 ),
@@ -884,14 +895,14 @@ class EmptyState extends StatelessWidget {
 /// көрсетпейді: техникалық мәлімет қолданушыға пайдасыз, ал әрекет түсінікті.
 class LoadErrorState extends StatelessWidget {
   final VoidCallback onRetry;
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
 
   const LoadErrorState({
     super.key,
     required this.onRetry,
-    this.title = 'Деректерді жүктеу мүмкін болмады',
-    this.subtitle = 'Интернетті тексеріп, қайта көріңіз.',
+    this.title,
+    this.subtitle,
   });
 
   @override
@@ -902,24 +913,48 @@ class LoadErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 44, color: Gz.red),
-            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Gz.tint(Gz.red, 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_off_outlined,
+                size: 36,
+                color: Gz.red,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              title,
+              title ?? t('Деректерді жүктеу мүмкін болмады'),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                height: 1.3,
+                letterSpacing: -0.3,
+              ),
             ),
             const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: Text(
+                subtitle ?? t('Интернетті тексеріп, қайта көріңіз.'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Gz.textSecondary,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Қайталау'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(180, 48)),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(t('Қайталау')),
             ),
           ],
         ),
@@ -985,7 +1020,7 @@ class RouteLine extends StatelessWidget {
         width: 2,
         height: 16,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(1),
+          borderRadius: BorderRadius.circular(2),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -1023,6 +1058,10 @@ class OrderCard extends StatelessWidget {
   final Widget? footer;
   final bool showMap;
 
+  /// Тарих тізімдерінде — уақыттың орнына толық КҮНІ (бүгінгі заказда
+  /// сағат жеткілікті, ал тарихта «қай күні?» деген сұрақ маңызды).
+  final bool showDate;
+
   const OrderCard({
     super.key,
     required this.order,
@@ -1030,6 +1069,7 @@ class OrderCard extends StatelessWidget {
     this.trailing,
     this.footer,
     this.showMap = false,
+    this.showDate = false,
   });
 
   @override
@@ -1079,9 +1119,8 @@ class OrderCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _tag(
-                    Icons.local_shipping,
-                    order.vehicleType.label,
+                  InfoChip(
+                    text: order.vehicleType.label,
                     leading: vehicleIcon(
                       order.vehicleType,
                       size: 14,
@@ -1091,25 +1130,48 @@ class OrderCard extends StatelessWidget {
                   // Аралық аялдама бар заказ (0047) — орындаушы оны БІРДЕН
                   // көруі керек: маршрут ұзағырақ, жұмыс та көбірек.
                   if (order.hasStops)
-                    _tag(
-                      Icons.adjust,
-                      '+${order.stops.length} ${t('аялдама')}',
-                      color: Gz.violet,
+                    InfoChip(
+                      icon: Icons.adjust,
+                      text: '+${order.stops.length} ${t('аялдама')}',
+                      color: Gz.accent,
                     ),
                   if (order.fromCity != null && order.toCity != null)
-                    _tag(
-                      order.intercity
+                    InfoChip(
+                      icon: order.intercity
                           ? Icons.alt_route
                           : Icons.location_city_outlined,
-                      order.intercity ? t('Межгород') : t('Қала ішінде'),
+                      text: order.intercity ? t('Межгород') : t('Қала ішінде'),
+                      color: order.intercity ? Gz.accent : null,
                     ),
                   if (order.distanceKm > 0)
-                    _tag(
-                      Icons.route,
-                      '${order.distanceKm.toStringAsFixed(1)} км',
+                    InfoChip(
+                      icon: Icons.route,
+                      text: '${order.distanceKm.toStringAsFixed(1)} км',
+                    ),
+                  // Қосымша талаптар (0077) — орындаушы лентада бірден
+                  // көреді: тиеуші керек пе, қай қабат, лифт бар ма.
+                  if (order.loaders > 0)
+                    InfoChip(
+                      icon: Icons.groups_rounded,
+                      text: '${order.loaders} ${t('тиеуші')}',
+                      color: Gz.violet,
+                    ),
+                  if (order.floorFrom != null || order.floorTo != null)
+                    InfoChip(
+                      icon: Icons.stairs_rounded,
+                      text:
+                          '${order.floorFrom ?? '—'} → '
+                          '${order.floorTo ?? '—'} ${t('қабат')}'
+                          '${order.hasElevator == true ? ' · ${t('лифт')}' : ''}',
+                      color: Gz.blue,
                     ),
                   if (order.createdAt != null && trailing == null)
-                    _tag(Icons.schedule, fmtTime(order.createdAt)),
+                    InfoChip(
+                      icon: showDate ? Icons.event_outlined : Icons.schedule,
+                      text: showDate
+                          ? fmtDate(order.createdAt)
+                          : fmtTime(order.createdAt),
+                    ),
                 ],
               ),
               if (order.cargoDesc.isNotEmpty) ...[
@@ -1132,34 +1194,135 @@ class OrderCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _tag(IconData icon, String text, {Color? color, Widget? leading}) =>
-      Container(
-        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
-        decoration: BoxDecoration(
-          color: color == null ? Gz.surfaceAlt : Gz.tint(color, 0.11),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(
-            color: color == null ? Gz.border : Gz.tint(color, 0.25),
+/// Белсенді заказ(дар) баннері — клиентте де, орындаушыда да БІР үлгі.
+///
+/// Бұрын клиентте қара-көк «қалқыма», орындаушыда экранның түбіндегі жасыл
+/// жолақ болатын — бір мағынадағы элемент екі түрлі көрінетін. Енді екеуі
+/// де: қою hero-градиент, сары иконка-шайба, күйі + маршруты, бірнеше
+/// заказ болса «+N» белгісі.
+class ActiveOrderBanner extends StatelessWidget {
+  final List<Order> orders;
+  final VoidCallback onTap;
+
+  /// Күйдің орнына көрсетілетін тақырып (null — заказдың ағымдағы күйі).
+  final String? title;
+
+  /// Тақырыптың астындағы қосымша жол (null — «қайдан → қайда»).
+  final String? subtitle;
+
+  const ActiveOrderBanner({
+    super.key,
+    required this.orders,
+    required this.onTap,
+    this.title,
+    this.subtitle,
+  });
+
+  /// Қабылданған заказда — уәде еткен келу уақытына дейін қанша минут
+  /// қалды (0075): «Орындаушы жолда · ~6 мин». Кешіксе — тек күйі.
+  static String? _etaTitle(Order o) {
+    final by = o.arriveBy;
+    if (o.status != 'accepted' || by == null) return null;
+    final min = by.difference(DateTime.now()).inSeconds / 60;
+    if (min <= 0) return null;
+    return '${statusLabel(o.status, vehicleType: o.vehicleType)} · '
+        '~${min.ceil()} ${t('мин')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (orders.isEmpty) return const SizedBox.shrink();
+    final o = orders.first;
+    final etaTitle = orders.length == 1 ? _etaTitle(o) : null;
+    return PressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Gz.rLg),
+          onTap: onTap,
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: Gz.heroGradient,
+              borderRadius: BorderRadius.circular(Gz.rLg),
+              boxShadow: Gz.liftShadow,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: Gz.brandGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: Gz.glow(Gz.yellow, alpha: 0.35, blur: 12),
+                  ),
+                  child: vehicleIcon(o.vehicleType, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title ??
+                            etaTitle ??
+                            statusLabel(o.status, vehicleType: o.vehicleType),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          height: 1.25,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        subtitle ?? '${o.fromDisplay} → ${o.toDisplay}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (orders.length > 1)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(Gz.rSm),
+                    ),
+                    child: Text(
+                      '+${orders.length - 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+              ],
+            ),
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            leading ?? Icon(icon, size: 14, color: color ?? Gz.textSecondary),
-            const SizedBox(width: 5),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                color: color ?? Gz.ink,
-                letterSpacing: -0.05,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
+      ),
+    );
+  }
 }
 
 class InfoRow extends StatelessWidget {
@@ -1184,7 +1347,7 @@ class InfoRow extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: BtnLabel(
                 label,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 14),
               ),
             ),
           ),
@@ -1196,7 +1359,7 @@ class InfoRow extends StatelessWidget {
               value,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 13.5,
+                fontSize: 14,
                 height: 1.4,
                 color: Gz.ink,
               ),
@@ -1221,7 +1384,7 @@ class OrderPhotosStrip extends StatelessWidget {
       children: [
         Text(
           t('Жүк фотолары'),
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
         ),
         const SizedBox(height: 6),
         SizedBox(
@@ -1278,6 +1441,7 @@ Future<void> maybeShowReviewDialog(
   BuildContext context, {
   required String orderId,
   required String title,
+  List<ReviewTag> tags = const [],
 }) async {
   try {
     final rows = await Repo.c
@@ -1299,6 +1463,7 @@ Future<void> maybeShowReviewDialog(
       child: ReviewPrompt(
         orderId: orderId,
         title: title,
+        tags: tags,
         onDone: () => Navigator.of(ctx).maybePop(),
       ),
     ),
@@ -1310,10 +1475,16 @@ class ReviewPrompt extends StatefulWidget {
   final String orderId;
   final String title;
   final VoidCallback? onDone;
+
+  /// Бір басумен белгіленетін тегтер (0081): 4–5 жұлдызда — «не ұнады»,
+  /// 1–2-де — «не ұнамады», 3-те — екеуі де.
+  final List<ReviewTag> tags;
+
   const ReviewPrompt({
     super.key,
     required this.orderId,
     this.title = 'Бағалаңыз',
+    this.tags = const [],
     this.onDone,
   });
 
@@ -1326,6 +1497,12 @@ class _ReviewPromptState extends State<ReviewPrompt> {
   final _comment = TextEditingController();
   bool _done = false;
   bool _checked = false;
+  final Set<String> _tags = {};
+
+  List<ReviewTag> get _visibleTags => [
+    for (final tg in widget.tags)
+      if (_rating == 3 || (_rating >= 4) == tg.positive) tg,
+  ];
 
   @override
   void initState() {
@@ -1391,11 +1568,41 @@ class _ReviewPromptState extends State<ReviewPrompt> {
                         ? Icons.star_rounded
                         : Icons.star_border_rounded,
                     size: 34,
-                    color: const Color(0xFFF59E0B),
+                    color: Gz.star,
                   ),
                 ),
             ],
           ),
+          if (_visibleTags.isNotEmpty) ...[
+            Text(
+              _rating >= 4
+                  ? t('Не ұнады?')
+                  : (_rating <= 2 ? t('Не ұнамады?') : t('Қысқаша айтыңыз')),
+              style: Gz.caption,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final tg in _visibleTags)
+                  FilterChip(
+                    avatar: Icon(
+                      tg.icon,
+                      size: 16,
+                      color: tg.positive ? Gz.success : Gz.danger,
+                    ),
+                    label: Text(t(tg.label)),
+                    selected: _tags.contains(tg.code),
+                    showCheckmark: false,
+                    onSelected: (v) => setState(
+                      () => v ? _tags.add(tg.code) : _tags.remove(tg.code),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           TextField(
             controller: _comment,
             maxLines: 2,
@@ -1408,7 +1615,17 @@ class _ReviewPromptState extends State<ReviewPrompt> {
             label: t('Жіберу'),
             onPressed: () async {
               try {
-                await Repo.submitReview(widget.orderId, _rating, _comment.text);
+                // Жұлдыз ауысқанда жасырылып қалған тегтер жіберілмейді.
+                final visible = {for (final tg in _visibleTags) tg.code};
+                await Repo.submitReview(
+                  widget.orderId,
+                  _rating,
+                  _comment.text,
+                  tags: [
+                    for (final c in _tags)
+                      if (visible.contains(c)) c,
+                  ].take(6).toList(),
+                );
                 if (mounted) setState(() => _done = true);
                 if (context.mounted) {
                   showSnack(context, t('Пікіріңіз үшін рахмет!'));
@@ -1450,7 +1667,7 @@ class GazelGoHero extends StatelessWidget {
         const Text(
           'Tasu',
           style: TextStyle(
-            fontSize: 34,
+            fontSize: 28,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.6,
             color: Gz.ink,
@@ -1476,164 +1693,6 @@ class GazelGoHero extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Екі батырмалы стильделген растау диалогы (AlertDialog-тың орнына).
-///
-/// AlertDialog-тың дефолт `actions` жолағы (OverflowBar) біздің 54px-тік
-/// FilledButton-мен тар экранда сыймай, батырмаларды бір-бірінің астына
-/// созылып кетуге мәжбүрлейтін — сол себепті батырмаларды өзіміз [Row] +
-/// [Expanded] арқылы, әрдайым бір қатарда, тегіс етіп саламыз.
-///
-/// [emphasizeCancel] — қайтарылмайтын әрекеттің СОҢҒЫ растауында қауіпті
-/// түймені басым (қызыл, толтырылған) емес, қайта «бас тарту» түймесін басым
-/// қылу үшін (мыс. аккаунтты өшірудің 2-қадамы).
-/// Диалогтағы екі батырмаға ортақ стиль: көлденең padding КІШІ (мәтінге
-/// орын қалуы үшін) әрі шрифт 15 — сонда орысша жазулар да толық өлшемінде
-/// бір жолда сыяды (FittedBox қосылмайды → екеуінің шрифті бірдей).
-final ButtonStyle _dialogBtnStyle = ButtonStyle(
-  padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 6)),
-  textStyle: const WidgetStatePropertyAll(
-    TextStyle(
-      fontSize: 15,
-      fontWeight: FontWeight.w700,
-      fontFamily: Gz.fontFamily,
-    ),
-  ),
-);
-
-Future<bool> confirmDialog(
-  BuildContext context, {
-  required String title,
-  required String message,
-  String? cancelLabel,
-  required String confirmLabel,
-  Color confirmColor = Gz.ink,
-  IconData? icon,
-  bool emphasizeCancel = false,
-}) async {
-  final cancelText = cancelLabel ?? t('Жоқ');
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 26, 22, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (icon != null) ...[
-              // «Featured icon»: сол жақта, дөңгелектелген шаршыда, айналасы
-              // екі қабат реңкпен қоршалған. Диалогтың бүкіл мазмұны СОЛ
-              // ЖАҚҚА тураланған — иконка да, тақырып та, мәтін де бір
-              // сызықтан басталады, көз оларды бір бағанда оқиды.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Gz.tint(confirmColor, 0.12),
-                    borderRadius: BorderRadius.circular(17),
-                    border: Border.all(
-                      color: Gz.tint(confirmColor, 0.22),
-                      width: 1.4,
-                    ),
-                  ),
-                  child: Icon(icon, color: confirmColor, size: 27),
-                ),
-              ),
-              const SizedBox(height: 18),
-            ],
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18.5,
-                fontWeight: FontWeight.w900,
-                height: 1.25,
-                letterSpacing: -0.35,
-              ),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              message,
-              style: const TextStyle(
-                color: Gz.textSecondary,
-                fontSize: 13.5,
-                height: 1.55,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Екі батырма қатарда — әрқайсысына диалог енінің ЖАРТЫСЫ ғана
-            // тиеді (тар телефонда ≈125px). Material-дың әдепкі көлденең
-            // padding-і (24+24) сол еннен 48px «жеп», мәтінге ~77px қана
-            // қалдыратын: «Да, покупаю» / «Стать клиентом» сыймай ЕКІНШІ
-            // ЖОЛҒА түсетін. Енді:
-            //   • padding 6-ға дейін кішірейді → мәтінге ~113px;
-            //   • шрифт 15 (16 емес) — бәрі толық өлшемінде сыяды;
-            //   • [BtnLabel] қорғаныш ретінде қалады.
-            // МАҢЫЗДЫ: жазулар сыйып тұрғанда FittedBox МҮЛДЕМ қосылмайды,
-            // сол себепті екі батырманың ШРИФТІ БІРДЕЙ болады (біреуі
-            // кішірейіп, екіншісі үлкен болып тұрмайды).
-            Row(
-              children: [
-                Expanded(
-                  child: emphasizeCancel
-                      ? FilledButton(
-                          style: _dialogBtnStyle,
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: BtnLabel(cancelText),
-                        )
-                      : OutlinedButton(
-                          style: _dialogBtnStyle,
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: BtnLabel(cancelText),
-                        ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: emphasizeCancel
-                      ? OutlinedButton(
-                          style: _dialogBtnStyle.copyWith(
-                            foregroundColor: WidgetStatePropertyAll(
-                              confirmColor,
-                            ),
-                            side: WidgetStatePropertyAll(
-                              BorderSide(
-                                color: confirmColor.withValues(alpha: 0.4),
-                                width: 1.4,
-                              ),
-                            ),
-                          ),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: BtnLabel(confirmLabel),
-                        )
-                      : FilledButton(
-                          style: _dialogBtnStyle.copyWith(
-                            backgroundColor: WidgetStatePropertyAll(
-                              confirmColor,
-                            ),
-                            foregroundColor: const WidgetStatePropertyAll(
-                              Colors.white,
-                            ),
-                            shadowColor: WidgetStatePropertyAll(
-                              confirmColor.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: BtnLabel(confirmLabel),
-                        ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  return ok == true;
 }
 
 /// Растаумен шығу: диалог көрсетеді, келіссе — экран стегін түбірге дейін
@@ -1668,52 +1727,21 @@ class ReportSuspiciousButton extends StatelessWidget {
   const ReportSuspiciousButton({super.key, required this.orderId});
 
   Future<void> _report(BuildContext context) async {
-    final reasonCtrl = TextEditingController();
-    final send = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Күдікті жағдай туралы хабарлау')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t(
-                'Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
-                'тартумен шатастырмаңыз — заказдың күйі өзгермейді.',
-              ),
-              style: const TextStyle(fontSize: 12.5, color: Gz.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonCtrl,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: t('Не күдікті көрдіңіз? (міндетті емес)'),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('Болдырмау')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Gz.red,
-              foregroundColor: Colors.white,
-              shadowColor: const Color(0x59DC2626),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t('Хабарлау')),
-          ),
-        ],
+    final reason = await gzInputDialog(
+      context,
+      icon: Icons.report_outlined,
+      confirmColor: Gz.red,
+      title: t('Күдікті жағдай туралы хабарлау'),
+      message: t(
+        'Хабарлама дереу модераторға жіберіледі. Бұл заказды бас '
+        'тартумен шатастырмаңыз — заказдың күйі өзгермейді.',
       ),
+      hint: t('Не күдікті көрдіңіз? (міндетті емес)'),
+      confirmLabel: t('Хабарлау'),
     );
-    if (send != true || !context.mounted) return;
+    if (reason == null || !context.mounted) return;
     try {
-      await Repo.reportOrder(orderId, reasonCtrl.text);
+      await Repo.reportOrder(orderId, reason);
       if (context.mounted) {
         showSnack(context, t('Хабарлама модераторға жіберілді'));
       }
@@ -1803,13 +1831,8 @@ Future<String?> pickCancelReason(
   required String title,
   required List<String> presets,
 }) {
-  return showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+  return showGzSheet<String>(
+    context,
     builder: (_) => _CancelReasonSheet(title: title, presets: presets),
   );
 }
@@ -1847,92 +1870,66 @@ class _CancelReasonSheetState extends State<_CancelReasonSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: Gz.border,
-                    borderRadius: BorderRadius.circular(2),
+    return GzSheetBody(
+      title: widget.title,
+      subtitle: t('Себебін таңдаңыз'),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final p in [...widget.presets, _other])
+              InkWell(
+                borderRadius: BorderRadius.circular(Gz.rSm),
+                onTap: () => setState(() => _selected = p),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 9,
+                    horizontal: 2,
                   ),
-                ),
-              ),
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                t('Себебін таңдаңыз'),
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-              ),
-              const SizedBox(height: 10),
-              for (final p in [...widget.presets, _other])
-                InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => setState(() => _selected = p),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _selected == p
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_off,
-                          size: 20,
-                          color: _selected == p ? Gz.ink : Gz.textSecondary,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            t(p),
-                            style: const TextStyle(fontSize: 14),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _selected == p
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        size: 21,
+                        color: _selected == p ? Gz.red : Gz.textSecondary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          t(p),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: _selected == p
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              if (_selected == _other) ...[
-                const SizedBox(height: 4),
-                TextField(
-                  controller: _customCtrl,
-                  autofocus: true,
-                  maxLines: 2,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: t('Себебіңізді жазыңыз'),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Gz.red,
-                  foregroundColor: Colors.white,
-                  shadowColor: const Color(0x59DC2626),
-                ),
-                onPressed: _canConfirm ? _confirm : null,
-                child: Text(t('Растау')),
+              ),
+            if (_selected == _other) ...[
+              const SizedBox(height: 4),
+              TextField(
+                controller: _customCtrl,
+                autofocus: true,
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(hintText: t('Себебіңізді жазыңыз')),
               ),
             ],
-          ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: Gz.dangerFilled(),
+              onPressed: _canConfirm ? _confirm : null,
+              child: Text(t('Растау')),
+            ),
+          ],
         ),
       ),
     );

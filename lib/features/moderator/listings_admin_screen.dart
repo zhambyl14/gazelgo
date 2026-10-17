@@ -165,7 +165,7 @@ class _ListingsListState extends State<_ListingsList> {
                             t('Өшіру'),
                             style: const TextStyle(
                               color: Gz.red,
-                              fontSize: 12.5,
+                              fontSize: 13,
                             ),
                           ),
                         ),

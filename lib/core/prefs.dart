@@ -108,32 +108,6 @@ class Prefs {
     await p.setInt(_kLegalConfirms, n + 1);
   }
 
-  static const _kDrawerHint = 'drawer_hint_seen';
-
-  /// Бүйір панель (sidebar) туралы НҰСҚАУ қанша рет көрсетілді.
-  /// Адамдар сол жақ шеттен тартып панель ашуға болатынын білмей
-  /// қалатын — сол себепті алғашқы [kDrawerHintTimes] ашылуда қысқа
-  /// қалқыма нұсқау шығады, сосын мәңгіге тоқтайды.
-  static const kDrawerHintTimes = 4;
-
-  static Future<int> drawerHintSeen() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getInt(_kDrawerHint) ?? 0;
-  }
-
-  static Future<void> bumpDrawerHint() async {
-    final p = await SharedPreferences.getInstance();
-    final n = p.getInt(_kDrawerHint) ?? 0;
-    if (n >= kDrawerHintTimes) return;
-    await p.setInt(_kDrawerHint, n + 1);
-  }
-
-  /// «Түсіндім» деп өзі жапса — енді мүлдем көрсетпейміз.
-  static Future<void> dismissDrawerHint() async {
-    final p = await SharedPreferences.getInstance();
-    await p.setInt(_kDrawerHint, kDrawerHintTimes);
-  }
-
   static const _kLastLat = 'client_last_lat';
   static const _kLastLng = 'client_last_lng';
 
@@ -152,6 +126,56 @@ class Prefs {
     final p = await SharedPreferences.getInstance();
     await p.setDouble(_kLastLat, lat);
     await p.setDouble(_kLastLng, lng);
+  }
+
+  static const _kNavApp = 'executor_nav_app';
+
+  /// Орындаушы таңдаған навигатор ('dgis' | 'yandex' | 'google'); null —
+  /// әлі таңдалмаған (бірінші рет басқанда сұралады).
+  static Future<String?> navApp() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kNavApp);
+  }
+
+  static Future<void> setNavApp(String v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kNavApp, v);
+  }
+
+  static const _kFeedSort = 'executor_feed_sort';
+  static const _kFeedScope = 'executor_feed_scope';
+  static const _kHiddenOrders = 'executor_hidden_orders';
+
+  /// Орындаушы лентасының сұрыптауы мен сүзгісі (соңғы таңдау есте қалады).
+  static Future<(String?, String?)> feedView() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getString(_kFeedSort), p.getString(_kFeedScope));
+  }
+
+  static Future<void> setFeedView(String sort, String scope) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kFeedSort, sort);
+    await p.setString(_kFeedScope, scope);
+  }
+
+  /// Орындаушы лентадан ЖАСЫРҒАН заказдар (қызық емес) — ең көбі 200.
+  static Future<Set<String>> hiddenOrders() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList(_kHiddenOrders) ?? const <String>[]).toSet();
+  }
+
+  static Future<void> hideOrder(String id) async {
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_kHiddenOrders) ?? <String>[];
+    if (list.contains(id)) return;
+    list.add(id);
+    if (list.length > 200) list.removeRange(0, list.length - 200);
+    await p.setStringList(_kHiddenOrders, list);
+  }
+
+  static Future<void> unhideAllOrders() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_kHiddenOrders);
   }
 
   static const _kSeenNews = 'seen_news_ids';

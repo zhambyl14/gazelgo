@@ -52,13 +52,8 @@ class CityStreetSheet extends StatefulWidget {
     PickedAddress? initial,
     LatLng? origin,
   }) {
-    return showModalBottomSheet<PickedAddress>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
+    return showGzSheet<PickedAddress>(
+      context,
       builder: (_) =>
           CityStreetSheet(title: title, initial: initial, origin: origin),
     );
@@ -404,31 +399,29 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
         : suggested;
     return showDialog<_AreaAnswer>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ru ? 'Другой регион' : 'Басқа аймақ'),
-        content: Text(
-          ru
-              ? 'Отмеченная точка находится в: $where, '
-                    'а выбранный город — $label.\n\n'
-                    'К какому городу отнести заказ? '
-                    'Точка на карте сохранится в любом случае.'
-              : 'Белгіленген нүкте — $where, ал таңдалған қала — '
-                    '$label.\n\n'
-                    'Тапсырыс қай қалаға тіркелсін? '
-                    'Картадағы нүкте екі жағдайда да сақталады.',
-        ),
+      builder: (ctx) => GzDialogFrame(
+        icon: Icons.map_outlined,
+        color: Gz.info,
+        title: ru ? 'Другой регион' : 'Басқа аймақ',
+        message: ru
+            ? 'Отмеченная точка находится в: $where, '
+                  'а выбранный город — $label.\n\n'
+                  'К какому городу отнести заказ? '
+                  'Точка на карте сохранится в любом случае.'
+            : 'Белгіленген нүкте — $where, ал таңдалған қала — '
+                  '$label.\n\n'
+                  'Тапсырыс қай қалаға тіркелсін? '
+                  'Картадағы нүкте екі жағдайда да сақталады.',
+        verticalActions: true,
         actions: [
+          gzDialogPrimary(
+            suggested,
+            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.switchCity),
+          ),
+          gzDialogCancel(ctx, label, result: _AreaAnswer.keepCity),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.remark),
             child: Text(ru ? 'Отметить заново' : 'Қайта белгілеу'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.keepCity),
-            child: Text(label),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(_AreaAnswer.switchCity),
-            child: Text(suggested),
           ),
         ],
       ),
@@ -451,13 +444,8 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
 
   Future<void> _pickCity() async {
     FocusScope.of(context).unfocus();
-    final picked = await showModalBottomSheet<CityChoice>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
+    final picked = await showGzSheet<CityChoice>(
+      context,
       builder: (_) => const _CityPickerSheet(),
     );
     if (picked == null || !mounted) return;
@@ -558,7 +546,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                 height: 5,
                 decoration: BoxDecoration(
                   color: Gz.disabledBg,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               // ---- тақырып + қала чипі ----
@@ -728,7 +716,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                     child: Text(
                       _city!,
                       style: const TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11,
                         height: 1.2,
                         fontWeight: FontWeight.w800,
                         color: Gz.blue,
@@ -1015,9 +1003,9 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       child: Material(
         color: strong ? Gz.tint(Gz.green, 0.08) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
             padding: EdgeInsets.fromLTRB(10, 10, trailing == null ? 12 : 4, 10),
@@ -1043,7 +1031,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 14.5,
+                          fontSize: 15,
                           height: 1.25,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.15,
@@ -1168,7 +1156,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
             height: 5,
             decoration: BoxDecoration(
               color: Gz.disabledBg,
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           Padding(

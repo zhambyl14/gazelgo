@@ -7,13 +7,16 @@ import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import 'dashboard_charts.dart';
 import 'listings_admin_screen.dart';
 import 'moderator_shell.dart';
 
-/// Модератордың «Шолу» табы: бүкіл платформаның бір беттегі суреті —
-/// қанша клиент/орындаушы бар, қазір қанша заказ онлайн, оның нешеуін
-/// орындаушылар орындап жатыр, нешеуі әлі орындаушы күтіп тұр, қанша
-/// хабарландыру бар. Әр бөліктің «толығырақ» жалғасы бар.
+/// Модератордың «Шолу» беті: бүкіл платформаның бір беттегі суреті.
+///
+/// РЕТІ: ең жоғарыда — «Бүгін не істеу керек» (модератордың ісі күтіп
+/// тұрған бөлімдер; әр жолды басса сол бөлім ашылады). Бұрын бұл тізім
+/// беттің ЕҢ АСТЫНДА тұратын әрі басылмайтын. Одан кейін — заказдар,
+/// графиктер, пайдаланушылар, хабарландырулар көрсеткіштері.
 class ModeratorOverviewScreen extends StatefulWidget {
   const ModeratorOverviewScreen({super.key});
 
@@ -31,7 +34,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _load());
   }
 
   @override
@@ -68,7 +71,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
       return ListView(
         children: [
           const SizedBox(height: 120),
-          EmptyState(icon: Icons.wifi_off, title: _error!),
+          LoadErrorState(onRetry: _load, subtitle: _error),
         ],
       );
     }
@@ -82,46 +85,134 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
+    final todos = <(String, int, IconData, Color, int)>[
+      (
+        t('Жаңа өтінімдер'),
+        _n('applications_pending'),
+        Icons.assignment_ind_outlined,
+        Gz.blue,
+        ModeratorShell.tabApplications,
+      ),
+      (
+        t('Құжат жаңартулары'),
+        _n('docs_review_pending'),
+        Icons.description_outlined,
+        Gz.violet,
+        ModeratorShell.tabApplications,
+      ),
+      (
+        t('Баланс толтырулары'),
+        _n('topups_pending'),
+        Icons.account_balance_wallet_outlined,
+        Gz.yellowDeep,
+        ModeratorShell.tabTopups,
+      ),
+      (
+        t('Ашық қолдау чаттары'),
+        _n('support_open'),
+        Icons.support_agent_rounded,
+        Gz.green,
+        ModeratorShell.tabSupport,
+      ),
+      (
+        t('Ашық шағымдар'),
+        _n('reports_open'),
+        Icons.flag_outlined,
+        Gz.red,
+        ModeratorShell.tabReports,
+      ),
+      (
+        t('Хабарландыруға шағымдар'),
+        _n('listing_reports_open'),
+        Icons.report_gmailerrorred_outlined,
+        Gz.red,
+        ModeratorShell.tabReports,
+      ),
+    ];
+    final pending = todos.where((e) => e.$2 > 0).toList();
+
     return RefreshIndicator(
       color: Gz.ink,
       onRefresh: _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
-          _quickAccess(),
-          const SizedBox(height: 12),
+          // ================= БҮГІН НЕ ІСТЕУ КЕРЕК =================
+          SectionTitle(
+            t('Бүгін не істеу керек'),
+            subtitle: t('Модератордың назарын күтіп тұрған істер'),
+          ),
+          if (pending.isEmpty)
+            GzNotice(
+              tone: NoticeTone.success,
+              title: t('Барлық жұмыс орындалды'),
+              message: t('Жаңа өтінім, толтыру, чат не шағым жоқ.'),
+            )
+          else
+            SectionCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var i = 0; i < pending.length; i++) ...[
+                    if (i > 0) const Divider(height: 1, indent: 60),
+                    GzListRow(
+                      icon: pending[i].$3,
+                      color: pending[i].$4,
+                      title: pending[i].$1,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CountBadge(pending[i].$2, urgent: true),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Gz.textTertiary,
+                          ),
+                        ],
+                      ),
+                      onTap: () => ModeratorShell.openTab(pending[i].$5),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
           // ================= ЗАКАЗДАР =================
-          _section(t('Заказдар'), t('Дәл қазіргі жағдай')),
+          const SizedBox(height: 20),
+          SectionTitle(t('Заказдар'), subtitle: t('Дәл қазіргі жағдай')),
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Онлайн'),
-                  _n('orders_online'),
-                  t('тірі заказ'),
-                  Gz.ink,
-                  Icons.bolt,
+                child: StatTile(
+                  label: t('Онлайн'),
+                  value: '${_n('orders_online')}',
+                  hint: t('тірі заказ'),
+                  icon: Icons.bolt_rounded,
+                  onTap: () => ModeratorShell.openTab(ModeratorShell.tabLine),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Күтуде'),
-                  _n('orders_waiting'),
-                  t('орындаушы іздеп жатыр'),
-                  Gz.blue,
-                  Icons.hourglass_empty,
+                child: StatTile(
+                  label: t('Күтуде'),
+                  value: '${_n('orders_waiting')}',
+                  hint: t('орындаушы іздеп жатыр'),
+                  icon: Icons.hourglass_empty_rounded,
+                  color: Gz.blue,
+                  onTap: () => ModeratorShell.openTab(ModeratorShell.tabLine),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Орындалуда'),
-                  _n('orders_in_progress'),
-                  t('орындаушыда'),
-                  Gz.green,
-                  Icons.local_shipping,
+                child: StatTile(
+                  label: t('Орындалуда'),
+                  value: '${_n('orders_in_progress')}',
+                  hint: t('орындаушыда'),
+                  icon: Icons.local_shipping_outlined,
+                  color: Gz.green,
+                  onTap: () =>
+                      ModeratorShell.openTab(ModeratorShell.tabOrders),
                 ),
               ),
             ],
@@ -130,38 +221,42 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Бүгін берілді'),
-                  _n('orders_today'),
-                  t('заказ'),
-                  Gz.violet,
-                  Icons.today,
+                child: StatTile(
+                  label: t('Бүгін берілді'),
+                  value: '${_n('orders_today')}',
+                  hint: t('заказ'),
+                  icon: Icons.today_outlined,
+                  color: Gz.violet,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Бүгін аяқталды'),
-                  _n('orders_completed_today'),
-                  t('заказ'),
-                  Gz.green,
-                  Icons.check_circle_outline,
+                child: StatTile(
+                  label: t('Бүгін аяқталды'),
+                  value: '${_n('orders_completed_today')}',
+                  hint: t('заказ'),
+                  icon: Icons.check_circle_outline_rounded,
+                  color: Gz.green,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Бүгін тоқтады'),
-                  _n('orders_cancelled_today'),
-                  t('бас тартылды'),
-                  Gz.red,
-                  Icons.cancel_outlined,
+                child: StatTile(
+                  label: t('Бүгін тоқтады'),
+                  value: '${_n('orders_cancelled_today')}',
+                  hint: t('бас тартылды'),
+                  icon: Icons.cancel_outlined,
+                  color: Gz.red,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          if (waitingByVehicle.isNotEmpty)
+          // 7/30 күндік графиктер мен түсім (сервердегі функция әлі
+          // қолданылмаса — көрінбейді, бет сынбайды).
+          const DashboardCharts(),
+          if (waitingByVehicle.isNotEmpty) ...[
+            const SizedBox(height: 8),
             _breakdown(t('Күтіп тұрғандар — көлік түрі бойынша'), [
               for (final e in waitingByVehicle)
                 (
@@ -169,6 +264,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                   (e['count'] as num).toInt(),
                 ),
             ]),
+          ],
           if (waitingByCity.isNotEmpty) ...[
             const SizedBox(height: 8),
             _breakdown(t('Күтіп тұрғандар — қала бойынша'), [
@@ -179,26 +275,32 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
 
           // ================= ПАЙДАЛАНУШЫЛАР =================
           const SizedBox(height: 20),
-          _section(t('Пайдаланушылар'), t('Тіркелгендер мен жұмысқа дайындар')),
+          SectionTitle(
+            t('Пайдаланушылар'),
+            subtitle: t('Тіркелгендер мен жұмысқа дайындар'),
+          ),
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Клиенттер'),
-                  _n('clients_total'),
-                  '+${_n('clients_new_7d')} ${t('осы аптада')}',
-                  Gz.blue,
-                  Icons.people_outline,
+                child: StatTile(
+                  label: t('Клиенттер'),
+                  value: '${_n('clients_total')}',
+                  hint: '+${_n('clients_new_7d')} ${t('осы аптада')}',
+                  icon: Icons.people_outline_rounded,
+                  color: Gz.blue,
+                  onTap: () =>
+                      ModeratorShell.openTab(ModeratorShell.tabClients),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Орындаушылар'),
-                  _n('executors_total'),
-                  '${_n('executors_approved')} ${t('расталған')}',
-                  Gz.ink,
-                  Icons.local_shipping_outlined,
+                child: StatTile(
+                  label: t('Орындаушылар'),
+                  value: '${_n('executors_total')}',
+                  hint: '${_n('executors_approved')} ${t('расталған')}',
+                  icon: Icons.local_shipping_outlined,
+                  onTap: () =>
+                      ModeratorShell.openTab(ModeratorShell.tabExecutors),
                 ),
               ),
             ],
@@ -207,32 +309,32 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Линияда'),
-                  _n('executors_on_line'),
-                  t('жұмысқа дайын'),
-                  Gz.green,
-                  Icons.wifi,
+                child: StatTile(
+                  label: t('Линияда'),
+                  value: '${_n('executors_on_line')}',
+                  hint: t('жұмысқа дайын'),
+                  icon: Icons.wifi_rounded,
+                  color: Gz.green,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Бос емес'),
-                  _n('executors_busy'),
-                  t('заказда'),
-                  Gz.red,
-                  Icons.hourglass_bottom,
+                child: StatTile(
+                  label: t('Бос емес'),
+                  value: '${_n('executors_busy')}',
+                  hint: t('заказда'),
+                  icon: Icons.hourglass_bottom_rounded,
+                  color: Gz.red,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Тарифте'),
-                  _n('executors_on_tariff'),
-                  t('белсенді тариф'),
-                  Gz.yellowDark,
-                  Icons.bolt,
+                child: StatTile(
+                  label: t('Тарифте'),
+                  value: '${_n('executors_on_tariff')}',
+                  hint: t('белсенді тариф'),
+                  icon: Icons.bolt_rounded,
+                  color: Gz.yellowDeep,
                 ),
               ),
             ],
@@ -247,82 +349,40 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
 
           // ================= ХАБАРЛАНДЫРУЛАР =================
           const SizedBox(height: 20),
-          _section(
+          SectionTitle(
             t('Хабарландырулар'),
-            boardOn
+            subtitle: boardOn
                 ? t('Тақта ҚОСУЛЫ — клиент те, орындаушы да қолдана алады')
-                : t('Тақта ӨШУЛІ — қолданушыларға «әлі қосылмады» деп шығады'),
-          ),
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: (boardOn ? Gz.green : Gz.textSecondary).withValues(
-                alpha: 0.1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: (boardOn ? Gz.green : Gz.textSecondary).withValues(
-                  alpha: 0.35,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  boardOn ? Icons.toggle_on : Icons.toggle_off,
-                  color: boardOn ? Gz.green : Gz.textSecondary,
-                  size: 24,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    boardOn
-                        ? t('Хабарландырулар тақтасы қосулы')
-                        : t('Хабарландырулар тақтасы өшулі'),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      color: boardOn ? Gz.green : Gz.textSecondary,
-                    ),
-                  ),
-                ),
-                Text(
-                  t('Баптаулар табынан'),
-                  style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
-                ),
-              ],
-            ),
+                : t('Тақта ӨШУЛІ — мәзірде көрінбейді'),
           ),
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Лентада'),
-                  _n('listings_active'),
-                  t('белсенді'),
-                  Gz.ink,
-                  Icons.storefront,
+                child: StatTile(
+                  label: t('Лентада'),
+                  value: '${_n('listings_active')}',
+                  hint: t('белсенді'),
+                  icon: Icons.storefront_outlined,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Жұмыстар'),
-                  _n('listings_jobs'),
-                  t('клиенттерден'),
-                  Gz.blue,
-                  Icons.campaign_outlined,
+                child: StatTile(
+                  label: t('Жұмыстар'),
+                  value: '${_n('listings_jobs')}',
+                  hint: t('клиенттерден'),
+                  icon: Icons.campaign_outlined,
+                  color: Gz.blue,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Қызметтер'),
-                  _n('listings_services'),
-                  t('орындаушылардан'),
-                  Gz.green,
-                  Icons.handyman_outlined,
+                child: StatTile(
+                  label: t('Қызметтер'),
+                  value: '${_n('listings_services')}',
+                  hint: t('орындаушылардан'),
+                  icon: Icons.handyman_outlined,
+                  color: Gz.green,
                 ),
               ),
             ],
@@ -331,32 +391,32 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           Row(
             children: [
               Expanded(
-                child: _tile(
-                  t('Бүгін берілді'),
-                  _n('listings_today'),
-                  t('хабарландыру'),
-                  Gz.violet,
-                  Icons.today,
+                child: StatTile(
+                  label: t('Бүгін берілді'),
+                  value: '${_n('listings_today')}',
+                  hint: t('хабарландыру'),
+                  icon: Icons.today_outlined,
+                  color: Gz.violet,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Архивте'),
-                  _n('listings_expired'),
-                  t('мерзімі бітті'),
-                  Gz.textSecondary,
-                  Icons.history,
+                child: StatTile(
+                  label: t('Архивте'),
+                  value: '${_n('listings_expired')}',
+                  hint: t('мерзімі бітті'),
+                  icon: Icons.history_rounded,
+                  color: Gz.textSecondary,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _tile(
-                  t('Көрулер'),
-                  _n('listings_views'),
-                  t('барлығы'),
-                  Gz.yellowDark,
-                  Icons.visibility_outlined,
+                child: StatTile(
+                  label: t('Көрулер'),
+                  value: '${_n('listings_views')}',
+                  hint: t('барлығы'),
+                  icon: Icons.visibility_outlined,
+                  color: Gz.yellowDeep,
                 ),
               ),
             ],
@@ -364,169 +424,19 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
           const SizedBox(height: 8),
           SectionCard(
             padding: EdgeInsets.zero,
-            child: ListTile(
-              leading: const Icon(Icons.list_alt, color: Gz.ink),
-              title: Text(
-                t('Хабарландырулар тізімі'),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(t('Толығырақ көру · күдіктісін өшіру')),
-              trailing: const Icon(Icons.chevron_right),
+            child: GzListRow(
+              icon: Icons.list_alt_rounded,
+              title: t('Хабарландырулар тізімі'),
+              subtitle: t('Толығырақ көру · күдіктісін өшіру'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ListingsAdminScreen()),
               ),
             ),
           ),
-
-          // ================= ЖАСАЛАТЫН ЖҰМЫС =================
-          const SizedBox(height: 20),
-          _section(
-            t('Күтіп тұрған жұмыс'),
-            t('Модератордың назарын қажет ететіндер'),
-          ),
-          _todo(
-            t('Жаңа өтінімдер'),
-            _n('applications_pending'),
-            Icons.assignment_outlined,
-            Gz.blue,
-          ),
-          _todo(
-            t('Құжат жаңартулары'),
-            _n('docs_review_pending'),
-            Icons.description_outlined,
-            Gz.violet,
-          ),
-          _todo(
-            t('Баланс толтырулары'),
-            _n('topups_pending'),
-            Icons.account_balance_wallet_outlined,
-            Gz.yellowDark,
-          ),
-          _todo(
-            t('Ашық шағымдар'),
-            _n('reports_open'),
-            Icons.flag_outlined,
-            Gz.red,
-          ),
-          _todo(
-            t('Хабарландыруға шағымдар'),
-            _n('listing_reports_open'),
-            Icons.report_gmailerrorred_outlined,
-            Gz.red,
-          ),
-          _todo(
-            t('Ашық қолдау чаттары'),
-            _n('support_open'),
-            Icons.support_agent,
-            Gz.green,
-          ),
-          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-  Widget _section(String title, String subtitle) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-        ),
-        Text(
-          subtitle,
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
-        ),
-      ],
-    ),
-  );
-
-  Widget _tile(
-    String label,
-    int value,
-    String hint,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Gz.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Gz.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 6),
-          Text(
-            '$value',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            hint,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.5, color: Gz.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _quickAccess() => SectionCard(
-    padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _quickButton(
-          'Клиенттер',
-          Icons.people_outline,
-          Gz.blue,
-          ModeratorShell.tabClients,
-        ),
-        _quickButton(
-          'Орындаушылар',
-          Icons.local_shipping_outlined,
-          Gz.ink,
-          ModeratorShell.tabExecutors,
-        ),
-        _quickButton(
-          'Барлық заказ',
-          Icons.receipt_long_outlined,
-          Gz.violet,
-          ModeratorShell.tabOrders,
-        ),
-        _quickButton(
-          'Қолдау чаты',
-          Icons.support_agent,
-          Gz.green,
-          ModeratorShell.tabSupport,
-        ),
-      ],
-    ),
-  );
-
-  Widget _quickButton(String label, IconData icon, Color color, int tab) =>
-      OutlinedButton.icon(
-        onPressed: () => ModeratorShell.openTab(tab),
-        icon: Icon(icon, size: 17, color: color),
-        label: Text(label, style: TextStyle(color: color, fontSize: 12)),
-      );
 
   /// Атау → сан жолдарының шағын тізімі (бөліністер үшін).
   Widget _breakdown(String title, List<(String, int)> rows) {
@@ -538,14 +448,11 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
           ),
           const SizedBox(height: 8),
           if (rows.isEmpty || total == 0)
-            Text(
-              t('Дерек жоқ'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12.5),
-            )
+            Text(t('Дерек жоқ'), style: Gz.caption)
           else
             for (final r in rows)
               Padding(
@@ -592,38 +499,4 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
       ),
     );
   }
-
-  Widget _todo(String label, int count, IconData icon, Color color) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: SectionCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: count > 0 ? color.withValues(alpha: 0.14) : Gz.bg,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                color: count > 0 ? color : Gz.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

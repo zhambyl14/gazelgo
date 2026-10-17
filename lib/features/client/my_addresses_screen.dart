@@ -16,14 +16,9 @@ Future<bool> showSaveAddressSheet(
   required PickedAddress place,
   SavedAddress? existing,
 }) async {
-  final ok = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (_) => _SaveAddressSheet(place: place, existing: existing),
+  final ok = await showGzSheet<bool>(
+      context,
+      builder: (_) => _SaveAddressSheet(place: place, existing: existing),
   );
   return ok ?? false;
 }
@@ -134,7 +129,7 @@ class _SaveAddressSheetState extends State<_SaveAddressSheet> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -178,7 +173,7 @@ class _SaveAddressSheetState extends State<_SaveAddressSheet> {
                   t('Негізгі мекенжай'),
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
+                    fontSize: 15,
                   ),
                 ),
                 subtitle: Text(
@@ -226,7 +221,7 @@ class _SaveAddressSheetState extends State<_SaveAddressSheet> {
             Text(
               savedAddressKindLabel(k),
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: sel ? Colors.white : Gz.ink,
               ),
@@ -288,25 +283,15 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
   }
 
   Future<void> _delete(SavedAddress a) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Өшіру керек пе?')),
-        content: Text('«${savedAddressTitle(a)}» — ${a.address}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('Жоқ')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Gz.red),
-            child: Text(t('Өшіру')),
-          ),
-        ],
-      ),
+    final yes = await confirmDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Gz.red,
+      title: t('Өшіру керек пе?'),
+      message: '«${savedAddressTitle(a)}» — ${a.address}',
+      confirmLabel: t('Өшіру'),
     );
-    if (yes == true) {
+    if (yes) {
       await AddressBook.remove(a.id);
       await _load();
     }
@@ -392,7 +377,7 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: Gz.textSecondary,
                   ),
                 ),

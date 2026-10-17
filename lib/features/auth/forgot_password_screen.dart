@@ -94,7 +94,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     Text(
                       t('Құпиясөзді ұмыттыңыз ба?'),
                       style: const TextStyle(
-                        fontSize: 23,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -106,7 +106,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       style: const TextStyle(
                         color: Gz.textSecondary,
-                        fontSize: 14.5,
+                        fontSize: 15,
                         height: 1.5,
                       ),
                     ),

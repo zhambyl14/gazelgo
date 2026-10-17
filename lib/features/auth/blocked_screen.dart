@@ -63,7 +63,7 @@ class BlockedScreen extends ConsumerWidget {
                         'қойылды.',
                       ),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14.5),
+                style: const TextStyle(color: Gz.textSecondary, fontSize: 15),
               ),
               const SizedBox(height: 8),
               Text(

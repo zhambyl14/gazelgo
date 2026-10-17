@@ -165,7 +165,7 @@ class _IconCropScreenState extends State<IconCropScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -337,8 +337,8 @@ class _CheckerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const cell = 12.0;
-    final a = Paint()..color = const Color(0xFF2B3440);
-    final b = Paint()..color = const Color(0xFF232B35);
+    final a = Paint()..color = Gz.checkerA;
+    final b = Paint()..color = Gz.checkerB;
     canvas.drawRect(Offset.zero & size, b);
     for (var y = 0; y < size.height / cell; y++) {
       for (var x = 0; x < size.width / cell; x++) {

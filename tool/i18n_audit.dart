@@ -1,12 +1,21 @@
 // Аударма аудиті: lib ішіндегі барлық t('...') кілттерін жинап,
 // ru_*.dart сөздіктерімен салыстырады. Жетіспейтін аудармаларды шығарады.
 // Іске қосу: dart run tool/i18n_audit.dart
+//
+// Сөздіктер тізімі lib/core/lang.dart ішіндегі _kkToRu-мен БІРДЕЙ болуы
+// керек (әйтпесе аудармасы бар мәтін «жетіспейді» болып көрінеді).
 import 'dart:io';
 
 import 'package:tasu/core/i18n/ru_auth.dart';
+import 'package:tasu/core/i18n/ru_board.dart';
+import 'package:tasu/core/i18n/ru_bonus.dart';
 import 'package:tasu/core/i18n/ru_client.dart';
+import 'package:tasu/core/i18n/ru_dual_role.dart';
 import 'package:tasu/core/i18n/ru_executor.dart';
+import 'package:tasu/core/i18n/ru_merge.dart';
 import 'package:tasu/core/i18n/ru_moderator.dart';
+import 'package:tasu/core/i18n/ru_news.dart';
+import 'package:tasu/core/i18n/ru_redesign.dart';
 import 'package:tasu/core/i18n/ru_shared.dart';
 
 void main() {
@@ -16,11 +25,20 @@ void main() {
     ...ruClient,
     ...ruExecutor,
     ...ruModerator,
+    ...ruBoard,
+    ...ruDualRole,
+    ...ruBonus,
+    ...ruNews,
+    ...ruRedesign,
+    ...ruMerge,
   };
 
   // t('...') — жанасқан литералдар да қосылады: t('a' 'b')
   final call = RegExp(
-      r"""\bt\(\s*((?:'(?:[^'\\]|\\.)*'\s*)+)\)""", multiLine: true);
+    // `dart format` ұзын мәтіннен кейін үтір қояды: t('…',) — ол да кіреді.
+    r"""\bt\(\s*((?:'(?:[^'\\]|\\.)*'\s*)+),?\s*\)""",
+    multiLine: true,
+  );
   final lit = RegExp(r"""'((?:[^'\\]|\\.)*)'""");
 
   final keys = <String, String>{}; // key -> қай файлда кездескені

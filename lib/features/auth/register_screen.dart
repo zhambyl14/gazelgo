@@ -34,7 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _agree = false;
   String _draftKey = '';
 
-  /// Жаттыққа шақыру коды (0061) — міндетті емес, тіркелгеннен КЕЙІН
+  /// Дос шақыру коды (0061) — міндетті емес, тіркелгеннен КЕЙІН
   /// авторизацияланған сессиямен `redeemReferralCode` шақырылады
   /// (signup edge function-ды қиындатпау үшін бөлек қадам).
   final _referralCode = TextEditingController();
@@ -184,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: _role,
         tgToken: _tgToken!,
       );
-      // Жаттыққа шақыру коды (0061) — аккаунт енді авторизацияланған,
+      // Дос шақыру коды (0061) — аккаунт енді авторизацияланған,
       // сол сессиямен шақырамыз. Best-effort: код қате/бос болса тіркелу
       // өзі СӘТТІ болып қала береді, тек шақыру есептелмейді.
       final code = _referralCode.text.trim();
@@ -235,14 +235,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 t(title),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
+                  fontSize: 15,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
                 t(subtitle),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
+                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -278,7 +278,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Gz.textSecondary,
-            fontSize: 12.5,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -395,7 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           label: Text.rich(
             TextSpan(
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 height: 1.45,
                 color: Gz.textSecondary,
               ),
@@ -485,36 +485,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         if (_role == 'executor') ...[
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8DE),
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: const Color(0xFFF2DE8A)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: 17,
-                  color: Color(0xFFB58900),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    t(
-                      'Тіркелген соң көлік деректері мен құжаттарды '
-                      'толтырасыз — модератор тексереді.',
-                    ),
-                    style: const TextStyle(
-                      color: Color(0xFF8A6D00),
-                      fontSize: 12,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ],
+          GzNotice(
+            tone: NoticeTone.warning,
+            icon: Icons.info_outline_rounded,
+            dense: true,
+            message: t(
+              'Тіркелген соң көлік деректері мен құжаттарды '
+              'толтырасыз — модератор тексереді.',
             ),
           ),
         ],

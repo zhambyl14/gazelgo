@@ -6,8 +6,10 @@ import 'i18n/ru_bonus.dart';
 import 'i18n/ru_client.dart';
 import 'i18n/ru_dual_role.dart';
 import 'i18n/ru_executor.dart';
+import 'i18n/ru_merge.dart';
 import 'i18n/ru_moderator.dart';
 import 'i18n/ru_news.dart';
+import 'i18n/ru_redesign.dart';
 import 'i18n/ru_shared.dart';
 import 'prefs.dart';
 import 'repo.dart';
@@ -59,8 +61,12 @@ final Map<String, String> _kkToRu = {
   ...ruDualRole,
   // Бонус бағдарламасы, sidebar нұсқауы, жаңа профиль (0059).
   ...ruBonus,
-  // Жаңалықтар (сторис) бөлімі (0066) — ЕҢ СОҢҒЫ қосылған модуль.
+  // Жаңалықтар (сторис) бөлімі (0066).
   ...ruNews,
+  // Бірыңғай дизайн және жаңа мүмкіндіктер (2026-10).
+  ...ruRedesign,
+  // Екі тармақты біріктіру кезінде қосылған мәтіндер — ЕҢ СОҢҒЫ.
+  ...ruMerge,
 };
 
 /// Қазақша мәтінді ағымдағы тілге аудару. Тек RU тілінде сөздіктен

@@ -4,7 +4,9 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/order_live.dart';
 import '../../shared/widgets.dart';
+import '../chat/order_chat_screen.dart';
 import 'trust_actions.dart';
 
 /// Модератордың заказ басқару терезесі: детальдар + статусты өзгерту /
@@ -14,13 +16,8 @@ Future<void> showOrderAdminSheet(
   String orderId, {
   VoidCallback? onChanged,
 }) async {
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Gz.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+  await showGzSheet(
+    context,
     builder: (_) => _OrderAdminSheet(orderId: orderId, onChanged: onChanged),
   );
 }
@@ -102,26 +99,15 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
 
   Future<void> _setStatus(String status) async {
     final label = t(_statuses.firstWhere((s) => s.$1 == status).$2);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('Статусты өзгерту')),
-        content: Text(
-          '${t('Заказ статусы')} «$label» ${t('болады. Растайсыз ба?')}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('Жоқ')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t('Иә, өзгерту')),
-          ),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      icon: Icons.swap_horiz_rounded,
+      confirmColor: status == 'cancelled' ? Gz.red : Gz.ink,
+      title: t('Статусты өзгерту'),
+      message: '${t('Заказ статусы')} «$label» ${t('болады. Растайсыз ба?')}',
+      confirmLabel: t('Иә, өзгерту'),
     );
-    if (ok != true) return;
+    if (!ok) return;
     try {
       await Repo.modSetOrderStatus(widget.orderId, status);
       if ((status == 'completed' || status == 'cancelled') &&
@@ -147,67 +133,25 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               controller: scroll,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Gz.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
+                const GzHandle(),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        fmtT(o.displayPrice),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                      child: Text(fmtT(o.displayPrice), style: Gz.moneyLg),
                     ),
                     StatusChip(o.status, vehicleType: o.vehicleType),
                   ],
                 ),
                 if (_fraudWarning != null) ...[
                   const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFFB74D)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Color(0xFFB86E00),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _fraudWarning!,
-                            style: const TextStyle(
-                              color: Color(0xFF8A5300),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  GzNotice(
+                    tone: NoticeTone.warning,
+                    icon: Icons.warning_amber_rounded,
+                    message: _fraudWarning!,
+                    dense: true,
                   ),
                 ],
                 const SizedBox(height: 10),
@@ -229,9 +173,30 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                         o.intercity ? t('Қалааралық') : t('Қала ішінде'),
                       ),
                       InfoRow(t('Құрылды'), fmtDate(o.createdAt)),
+                      if (o.hasExtras) ...[
+                        const SizedBox(height: 6),
+                        OrderExtrasChips(order: o),
+                      ],
                     ],
                   ),
                 ),
+                if (o.executorId != null) ...[
+                  const SizedBox(height: 10),
+                  // Заказ чаты (0078): модератор оқиды, қажет болса жазады.
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OrderChatScreen(
+                          orderId: o.id,
+                          title: '#${o.id.substring(0, 8)}',
+                          myRole: 'moderator',
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.forum_outlined),
+                    label: Text(t('Заказ чатын ашу')),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 // Тараптар (басу арқылы сенім деңгейі/блок әрекеттері ашылады)
                 FutureBuilder<Profile?>(
@@ -256,21 +221,13 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                Text(
+                SectionTitle(
                   t('Статусты өзгерту'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  t(
+                  subtitle: t(
                     'Тек оқыс оқиғада қолданыңыз (мыс: орындаушы аяқтай алмай тұр).',
                   ),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+                  padding: const EdgeInsets.only(bottom: 10),
                 ),
-                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -281,7 +238,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                           label: Text(
                             t(label),
                             style: const TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                             ),
                           ),

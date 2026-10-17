@@ -210,7 +210,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                 // көрінеді (бұрын жалаң қара шаршы еді).
                 gradient: sel ? Gz.heroGradient : null,
                 color: sel ? null : Gz.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
@@ -241,7 +241,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                         // 13px-тік қорапқа сыймай, FittedBox жазуды
                         // кішірейтіп жіберер еді.
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           height: 1.1,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.1,
@@ -338,7 +338,7 @@ class VehicleCategoryTabs extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: active ? Gz.heroGradient : null,
           color: active ? null : Gz.surfaceAlt,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: active ? Gz.yellow : Gz.border,
             width: active ? 2 : 1.2,
@@ -354,7 +354,7 @@ class VehicleCategoryTabs extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(emoji, style: const TextStyle(fontSize: 19, height: 1)),
+                  Text(emoji, style: const TextStyle(fontSize: 20, height: 1)),
                   const SizedBox(width: 7),
                   // Тұрақты биіктікті box + FittedBox: жүйе шрифті
                   // үлкейтілсе де жазу рамкадан аспайды, қиылмайды.
@@ -371,7 +371,7 @@ class VehicleCategoryTabs extends StatelessWidget {
                           // Тіркелген 16px қорап — жол биіктігі айқын
                           // берілмесе, FittedBox жазуды кішірейтеді.
                           style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             height: 1.1,
                             fontWeight: FontWeight.w800,
                             color: active ? Colors.white : Gz.ink,
@@ -401,7 +401,7 @@ class VehicleCategoryTabs extends StatelessWidget {
                   child: Text(
                     badge,
                     style: const TextStyle(
-                      fontSize: 8.5,
+                      fontSize: 10,
                       height: 1.2,
                       fontWeight: FontWeight.w900,
                       color: Gz.ink,

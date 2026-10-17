@@ -198,7 +198,7 @@ class _ReportCardState extends State<_ReportCard> {
               ),
               Text(
                 fmtDate(r.createdAt),
-                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
+                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -207,7 +207,7 @@ class _ReportCardState extends State<_ReportCard> {
             Text(
               '«${r.reason}»',
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 color: Gz.textSecondary,
                 fontStyle: FontStyle.italic,
               ),
@@ -234,12 +234,12 @@ class _ReportCardState extends State<_ReportCard> {
                       ),
                       decoration: BoxDecoration(
                         color: listingKindColor(r.kind),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         listingKindLabel(r.kind),
                         style: const TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
@@ -252,7 +252,7 @@ class _ReportCardState extends State<_ReportCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Gz.textSecondary,
                         ),
@@ -315,7 +315,7 @@ class _ReportCardState extends State<_ReportCard> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 12.5,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -332,7 +332,7 @@ class _ReportCardState extends State<_ReportCard> {
                       child: Text(
                         t('Бұғатталған'),
                         style: const TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Gz.red,
                         ),
@@ -377,7 +377,7 @@ class _ReportCardState extends State<_ReportCard> {
                     onPressed: _busy ? null : () => _resolve('keep'),
                     child: BtnLabel(
                       t('Негізсіз'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),
@@ -392,7 +392,7 @@ class _ReportCardState extends State<_ReportCard> {
                     // Бұрын «…» болып ҚИЫЛАТЫН — енді сыймаса кішірейеді.
                     child: BtnLabel(
                       t('Хабарландыруды өшіру'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),
@@ -425,7 +425,7 @@ class _ReportCardState extends State<_ReportCard> {
                   Text(
                     fmtDate(r.resolvedAt),
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: Gz.textSecondary,
                     ),
                   ),
@@ -455,7 +455,7 @@ class _Photo extends StatelessWidget {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Image.network(
           url,
           width: size,

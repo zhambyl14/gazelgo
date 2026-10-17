@@ -73,9 +73,39 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _picker = ImagePicker();
   Timer? _draftTimer;
 
+  /// Өтінімнің қадамдары — жоғарыдағы жолақта «4/7 · Келесі: …» болып
+  /// көрінеді. Ұзын форманың қай жерінде тұрғаны мен не қалғаны бірден
+  /// түсінікті болады (бұрын қате тек «Жіберу» басылғанда шығатын).
+  List<(String, bool)> get _checklist => [
+    (t('Селфи'), _selfie.isSet),
+    (t('Қала'), _city?.trim().isNotEmpty ?? false),
+    (
+      t('Көлік деректері'),
+      _brand.text.trim().isNotEmpty &&
+          _model.text.trim().isNotEmpty &&
+          _plate.text.trim().isNotEmpty,
+    ),
+    (t('Жүргізуші куәлігі'), _license.isSet && _licenseSelfie.isSet),
+    _isForeign
+        ? (t('Шетел паспорты'), _passport.isSet && _passportSelfie.isSet)
+        : (t('Жеке куәлік'), _idDoc.isSet && _idSelfie.isSet),
+    (t('Техпаспорт'), _techPassport.isSet && _techPassportSelfie.isSet),
+    (
+      t('Көлік фотолары'),
+      _vehFront.isSet && _vehBack.isSet && _vehRight.isSet && _vehLeft.isSet,
+    ),
+  ];
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    for (final c in [_brand, _model, _year, _plate]) {
+      c.addListener(_onFieldChanged);
+    }
     final avatarUrl = ref.read(myProfileProvider).value?.avatarUrl;
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
       _selfie.existingPath = avatarUrl;
@@ -146,13 +176,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   }
 
   Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    final picked = await showGzSheet<String>(
+      context,
       builder: (_) => const CityPickerSheet(),
     );
     if (picked != null && mounted) {
@@ -451,7 +476,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: selected ? Gz.yellow : Gz.bg,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? Gz.yellowDark : Gz.border,
             width: 1.4,
@@ -516,7 +541,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Text(
                     t(hint),
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       color: Gz.textSecondary,
                     ),
                   ),
@@ -569,6 +594,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         title: Text(
           resubmit ? t('Өтінімді қайта жіберу') : t('Орындаушы өтінімі'),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(40),
+          child: _ApplyProgress(items: _checklist),
+        ),
         // Тек ИКОНКА түсініксіз болатын: клиент рөлінен келген адам
         // «шыққым келсе қайсысын басам?» деп тұрып қалатын. Енді АЙҚЫН
         // ЖАЗУЫ бар түйме — не болатыны бірден оқылады.
@@ -588,7 +617,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 label: BtnLabel(
                   t('Клиентке'),
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -642,7 +671,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                                   'жоғалмайды.',
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   height: 1.4,
                                 ),
                               ),
@@ -667,7 +696,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F0),
+                      color: Gz.tint(Gz.red, 0.06),
                       borderRadius: BorderRadius.circular(Gz.radius),
                       border: Border.all(color: Gz.red.withValues(alpha: 0.35)),
                     ),
@@ -736,13 +765,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
                   onTap: _pickCity,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -751,7 +780,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: _city == null ? Gz.border : Gz.green,
                         width: _city == null ? 1.2 : 1.6,
@@ -798,7 +827,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -820,7 +849,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   t('Тек осы түрдегі заказдарды көресіз'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1001,7 +1030,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
                   style: const TextStyle(
                     color: Gz.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1052,7 +1081,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     fontWeight: _missing == null
                         ? FontWeight.w400
                         : FontWeight.w700,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -1066,6 +1095,70 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
 
 /// Қала таңдау парағы (Қазақстан қалалары тізімінен, іздеумен).
 /// Өтінім бергенде де, орындаушы кейін қаласын ауыстырғанда да қолданылады.
+/// Өтінімнің толу жолағы: «Толтырылды 4/7 · Келесі: Техпаспорт».
+class _ApplyProgress extends StatelessWidget {
+  final List<(String, bool)> items;
+  const _ApplyProgress({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final done = items.where((i) => i.$2).length;
+    String? next;
+    for (final i in items) {
+      if (!i.$2) {
+        next = i.$1;
+        break;
+      }
+    }
+    final ready = next == null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                '${t('Толтырылды')} $done/${items.length}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  ready
+                      ? t('Барлығы дайын — жіберуге болады')
+                      : '${t('Келесі:')} $next',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: ready ? Gz.success : Gz.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Gz.rXs),
+            child: LinearProgressIndicator(
+              value: items.isEmpty ? 0 : done / items.length,
+              minHeight: 6,
+              color: ready ? Gz.success : Gz.yellowDeep,
+              backgroundColor: Gz.disabledBg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class CityPickerSheet extends StatefulWidget {
   const CityPickerSheet({super.key});
 

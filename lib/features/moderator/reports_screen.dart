@@ -205,7 +205,7 @@ class _ReportTileState extends State<_ReportTile> {
               ),
               Text(
                 fmtDate(r.createdAt),
-                style: const TextStyle(fontSize: 11.5, color: Gz.textSecondary),
+                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -214,7 +214,7 @@ class _ReportTileState extends State<_ReportTile> {
             Text(
               '«${r.reason}»',
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 color: Gz.textSecondary,
                 fontStyle: FontStyle.italic,
               ),
@@ -222,7 +222,7 @@ class _ReportTileState extends State<_ReportTile> {
           ],
           if (o != null) ...[
             const SizedBox(height: 10),
-            Text(o.cargoDesc, style: const TextStyle(fontSize: 12.5)),
+            Text(o.cargoDesc, style: const TextStyle(fontSize: 13)),
             const SizedBox(height: 4),
             Text(
               '${o.fromDisplay} → ${o.toDisplay}',
@@ -256,7 +256,7 @@ class _ReportTileState extends State<_ReportTile> {
                         '${t('Хабарланған:')} ${_reported!.fullName}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -284,7 +284,7 @@ class _ReportTileState extends State<_ReportTile> {
                     onPressed: () => showOrderAdminSheet(context, o.id),
                     child: BtnLabel(
                       t('Заказды ашу'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),
@@ -295,7 +295,7 @@ class _ReportTileState extends State<_ReportTile> {
                     onPressed: () => _setStatus('dismissed'),
                     child: BtnLabel(
                       t('Елеусіз қалдыру'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),
@@ -306,7 +306,7 @@ class _ReportTileState extends State<_ReportTile> {
                     onPressed: () => _setStatus('reviewed'),
                     child: BtnLabel(
                       t('Қаралды'),
-                      style: const TextStyle(fontSize: 12.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),

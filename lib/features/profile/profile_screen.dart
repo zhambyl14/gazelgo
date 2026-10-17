@@ -3,6 +3,7 @@ import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, TextInputFormatter, TextEditingValue;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/lang.dart';
@@ -105,13 +106,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   /// Орындаушының жұмыс қаласын қолмен ауыстыру (мыс. басқа қалаға көшсе).
   Future<void> _changeCity(BuildContext context) async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    final picked = await showGzSheet<String>(
+      context,
       builder: (_) => const CityPickerSheet(),
     );
     if (picked == null || !context.mounted) return;
@@ -134,7 +130,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   List<Widget> _menuRows(Profile p, bool isExec) {
     final reviews = _NavRow(
       icon: Icons.star_rounded,
-      color: const Color(0xFFF59E0B),
+      color: Gz.star,
       title: t('Пікірлер'),
       onTap: () => _open(
         ReviewsScreen(
@@ -170,7 +166,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ];
   }
 
-  /// Жаттыққа шақыру бонусы (0060) модератор баптауында қосулы ма.
+  /// Дос шақыру бонусы (0060) модератор баптауында қосулы ма.
   bool _referralEnabled(WidgetRef ref) {
     final s = ref.watch(appSettingsProvider).value;
     final cfg = s?['referral'];
@@ -252,7 +248,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _GroupCard(children: _menuRows(p, isExec)),
                 const SizedBox(height: 14),
 
-                // ---------- Жаттыққа шақыру бонусы (0060) ----------
+                // ---------- Дос шақыру бонусы (0060) ----------
                 // Тек ұпай/санақ — балансқа/ақшаға ешбір әсері жоқ.
                 if (_referralEnabled(ref)) ...[
                   _ReferralCard(profile: p),
@@ -300,15 +296,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 18),
-                Center(
-                  child: Text(
-                    'Tasu v1.0',
-                    style: TextStyle(
-                      color: Gz.textSecondary.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
+                const Center(child: _VersionLabel()),
               ],
             ),
           );
@@ -415,7 +403,7 @@ class _ProfileHero extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 21,
+            fontSize: 20,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.4,
             color: Gz.ink,
@@ -425,7 +413,7 @@ class _ProfileHero extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           p.phone,
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 13.5),
+          style: const TextStyle(color: Gz.textSecondary, fontSize: 14),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -454,7 +442,7 @@ class _ProfileHero extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: Gz.surface,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(Gz.rLg),
             border: Border.all(color: Gz.border),
           ),
           child: Row(
@@ -464,7 +452,7 @@ class _ProfileHero extends StatelessWidget {
                   value: p.ratingCount == 0 ? '—' : p.rating.toStringAsFixed(1),
                   label: '${p.ratingCount} ${t('пікір')}',
                   icon: Icons.star_rounded,
-                  color: const Color(0xFFF59E0B),
+                  color: Gz.star,
                   onTap: onReviewsTap,
                 ),
               ),
@@ -537,7 +525,7 @@ class _Chip extends StatelessWidget {
           Text(
             text,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: fg,
             ),
@@ -577,7 +565,7 @@ class _HeroStat extends StatelessWidget {
               style: const TextStyle(
                 color: Gz.ink,
                 fontWeight: FontWeight.w900,
-                fontSize: 17,
+                fontSize: 18,
                 height: 1.15,
                 letterSpacing: -0.5,
               ),
@@ -595,7 +583,7 @@ class _HeroStat extends StatelessWidget {
             maxLines: 1,
             style: const TextStyle(
               color: Gz.textSecondary,
-              fontSize: 9.5,
+              fontSize: 10,
               height: 1.2,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
@@ -635,7 +623,7 @@ class _GroupCard extends StatelessWidget {
               title!,
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
-                fontSize: 12.5,
+                fontSize: 13,
                 color: Gz.textSecondary,
                 letterSpacing: 0.3,
               ),
@@ -684,7 +672,7 @@ class _NavRow extends StatelessWidget {
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(Gz.rSm),
         ),
         child: Icon(icon, size: 18, color: color),
       ),
@@ -692,7 +680,7 @@ class _NavRow extends StatelessWidget {
         title,
         style: TextStyle(
           fontWeight: FontWeight.w700,
-          fontSize: 14.5,
+          fontSize: 15,
           color: danger ? Gz.red : Gz.ink,
         ),
       ),
@@ -759,7 +747,7 @@ class _VehicleCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Gz.textSecondary,
-                      fontSize: 12.5,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -777,7 +765,7 @@ class _VehicleCard extends StatelessWidget {
               // «Ауыстыру» → орысша «Заменить» ұзынырақ — BtnLabel сыйғызады.
               child: BtnLabel(
                 t('Қаланы ауыстыру'),
-                style: const TextStyle(fontSize: 12.5),
+                style: const TextStyle(fontSize: 13),
               ),
             ),
         ],
@@ -849,7 +837,7 @@ class _ExecEarningsCard extends ConsumerWidget {
             t('Бүгінгі табыс'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.65),
-              fontSize: 12.5,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -862,7 +850,7 @@ class _ExecEarningsCard extends ConsumerWidget {
               maxLines: 1,
               style: const TextStyle(
                 color: Gz.yellow,
-                fontSize: 32,
+                fontSize: 28,
                 height: 1.15,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.8,
@@ -903,7 +891,7 @@ class _ExecEarningsCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(Gz.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,7 +905,7 @@ class _ExecEarningsCard extends ConsumerWidget {
               softWrap: false,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 11.5,
+                fontSize: 12,
               ),
             ),
           ),
@@ -974,7 +962,7 @@ class _ExecEarningsCard extends ConsumerWidget {
 }
 
 // ============================================================
-// ЖАТТЫҚҚА ШАҚЫРУ БОНУСЫ (0060)
+// ДОС ШАҚЫРУ БОНУСЫ (0060)
 // ============================================================
 /// Тек ұпай/санақ — балансқа/ақшаға ЕШБІР әсері жоқ (пайдаланушы
 /// 2026-08-07 осылай таңдады, клиентте wallet жоқ). Екі жағдай:
@@ -1060,7 +1048,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                 t('Досыңды шақыр'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
+                  fontSize: 15,
                 ),
               ),
             ],
@@ -1076,7 +1064,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                     'Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
                     'шақыру санағыңыз өседі',
                   ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 6),
           if (p.referralCode != null) ...[
@@ -1088,7 +1076,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                     '${t('адам шақырдыңыз')}',
                     style: const TextStyle(
                       color: Gz.textSecondary,
-                      fontSize: 12.5,
+                      fontSize: 13,
                     ),
                   ),
                 ),
@@ -1153,7 +1141,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
               t('Досыңыздың кодын енгізіңіз'),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 13.5,
+                fontSize: 14,
               ),
             ),
             const SizedBox(height: 2),
@@ -1162,7 +1150,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                 'Тіркелу кезінде енгізуді ұмытсаңыз — осы жерден енгізіңіз. '
                 'Бірінші заказыңызды аяқтағанға ДЕЙІН үлгеру керек.',
               ),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11.5),
+              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 8),
             // Өріс пен батырма БІР ҚАТАРДА тұрған: тар экранда өріс
@@ -1196,6 +1184,31 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Қосымшаның НАҚТЫ нұсқасы (бұрын «Tasu v1.0» деп қатып тұратын —
+/// қолдау қызметіне қай нұсқада отырғанын айта алмайтын).
+class _VersionLabel extends StatelessWidget {
+  const _VersionLabel();
+
+  static final Future<PackageInfo> _info = PackageInfo.fromPlatform();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: _info,
+      builder: (context, snap) {
+        final i = snap.data;
+        return Text(
+          i == null ? 'Tasu' : 'Tasu ${i.version} (${i.buildNumber})',
+          style: TextStyle(
+            color: Gz.textSecondary.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
+        );
+      },
     );
   }
 }

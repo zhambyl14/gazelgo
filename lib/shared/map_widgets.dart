@@ -6,40 +6,25 @@ import 'package:latlong2/latlong.dart';
 
 import '../core/geo.dart';
 import '../core/lang.dart';
+import '../core/models.dart';
 import '../core/theme.dart';
+import 'vehicle_picker.dart';
 
-/// OSM тайл қабаты — Tasu реңкімен.
+/// OSM тайл қабаты — Tasu реңкімен ([Gz.mapFilter]: OSM-нің өз түстері
+/// сақталып, тек сәл жұмсартылады). Тайлдар баяғыдай ТЕГІН OSM серверінен
+/// келеді — тек түсі өзгереді. Барлық карта (басты бет, адрес таңдау,
+/// лента, заказ, тірі карта, модератор) осы бір қабатты қолданады.
 ///
 /// Сүзгі ӘР тайлға бөлек емес (бұрын `tileBuilder` арқылы ~20–30 тайлдың
 /// әрқайсысына жеке saveLayer жасалатын), бүкіл қабатқа БІР рет
 /// қолданылады — карта жылжығанда кадр арзанырақ салынады.
 Widget osmTileLayer() => ColorFiltered(
-  colorFilter: _tasuTileFilter,
+  colorFilter: Gz.mapFilter,
   child: TileLayer(
     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     userAgentPackageName: 'kz.gazelgo.app',
   ),
 );
-
-/// Tasu карта реңкі — ЖЕҢІЛ түзету. OSM-нің өз түстері (жасыл саябақ,
-/// көгілдір су, ақшыл үйлер) САҚТАЛАДЫ: бұрынғы қатаң сүзгі (қанықтық
-/// 40%, салқын-сұр ағарту) картаны сұрғылт, «өлі» етіп жіберген еді —
-/// қосымшаның ашық сары-ақ стиліне келмейтін. Енді тек ала-құлалығы сәл
-/// басылады (қанықтық 85%, контраст 97%) және фон аздап жылы ағарады —
-/// біздің сары/қара белгілер мен маршрут сызығы анық оқылады.
-const _tasuTileFilter = ColorFilter.matrix(<double>[
-  // R
-  0.97 * (0.2126 * 0.15 + 0.85), 0.97 * (0.7152 * 0.15), 0.97 * (0.0722 * 0.15),
-  0, 8,
-  // G
-  0.97 * (0.2126 * 0.15), 0.97 * (0.7152 * 0.15 + 0.85), 0.97 * (0.0722 * 0.15),
-  0, 7,
-  // B
-  0.97 * (0.2126 * 0.15), 0.97 * (0.7152 * 0.15), 0.97 * (0.0722 * 0.15 + 0.85),
-  0, 5,
-  // A
-  0, 0, 0, 1, 0,
-]);
 
 /// Түстің ЖАРЫҚ сыңары — градиенттің үстіңгі шеті («жарық жақ»).
 Color _lighten(Color c, double a) => Color.lerp(c, Colors.white, a)!;
@@ -262,13 +247,13 @@ class MapPin extends StatelessWidget {
                 boxShadow: [
                   // Тығыз көлеңке — жиекті айқындайды.
                   BoxShadow(
-                    color: const Color(0x38101828),
+                    color: Gz.shadowTight,
                     blurRadius: 4,
                     offset: _down(1.5),
                   ),
                   // Жайылған көлеңке — пинді картаға «қондырады».
                   BoxShadow(
-                    color: const Color(0x24101828),
+                    color: Gz.shadowWide,
                     blurRadius: 12,
                     offset: _down(5),
                   ),
@@ -319,7 +304,7 @@ class MapPin extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: ring),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x33101828),
+                    color: Gz.shadowTight,
                     blurRadius: 5,
                     offset: Offset(0, 2),
                   ),
@@ -375,12 +360,12 @@ class MapPin extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: ring),
                 boxShadow: [
                   const BoxShadow(
-                    color: Color(0x38101828),
+                    color: Gz.shadowTight,
                     blurRadius: 4,
                     offset: Offset(0, 1.5),
                   ),
                   const BoxShadow(
-                    color: Color(0x24101828),
+                    color: Gz.shadowWide,
                     blurRadius: 12,
                     offset: Offset(0, 5),
                   ),
@@ -448,20 +433,141 @@ Marker originMarker(LatLng p, {Color color = Gz.green, double size = 28}) =>
       child: MapPin.origin(size: size, color: color),
     );
 
-/// Орындаушының тірі орнына арналған маркер (көлік «шайбасы»).
-/// [icon] арқылы такси/жүк көлігін ажыратуға болады.
+/// Орындаушының тірі орнына арналған маркер.
+///
+/// [vehicleType] берілсе — белгінің ішінде ОРЫНДАУШЫНЫҢ ӨЗ КӨЛІГІНІҢ
+/// суреті тұрады (газель, такси, фура…), [heading] берілсе — қозғалыс
+/// бағытын көрсететін нұсқар ([VehicleMarker]). Берілмесе — ескі «шайба»
+/// иконкасы ([MapPin.vehicle]); [icon] арқылы такси/жүк көлігін ажыратуға
+/// болады.
 Marker executorLiveMarker(
   LatLng p, {
+  VehicleType? vehicleType,
+  double? heading,
   Color color = Gz.blue,
   IconData icon = Icons.local_shipping_rounded,
   double size = 38,
-}) => Marker(
-  point: p,
-  width: size,
-  height: size,
-  alignment: Alignment.center,
-  child: MapPin.vehicle(size: size, color: color, icon: icon),
-);
+}) {
+  if (vehicleType != null) {
+    final s = size < 44 ? 46.0 : size;
+    return Marker(
+      point: p,
+      width: s,
+      height: s,
+      alignment: Alignment.center,
+      child: VehicleMarker(type: vehicleType, size: s, heading: heading),
+    );
+  }
+  return Marker(
+    point: p,
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    child: MapPin.vehicle(size: size, color: color, icon: icon),
+  );
+}
+
+/// Картадағы көліктің белгісі — ӨЗ ТҮРІНІҢ суретімен.
+///
+/// Ақ дөңгелек «шайба» + брендтік сары сақина, ішінде көлік түрінің түрлі-
+/// түсті суреті ([vehicleIcon] — модератор жүктеген иконка, кірістірілген
+/// PNG не эмодзи). Клиент картада «маған газель келе жатыр» дегенді бір
+/// қарағанда көреді. [heading] (градус, 0 = солтүстік) берілсе — сақинаның
+/// сыртында қозғалыс бағытын көрсететін үшбұрыш нұсқар тұрады.
+///
+/// Бір белгі бүкіл қосымшада: клиенттің тірі картасы ([LiveTrackMap]),
+/// басты беттегі жақын маңдағы бос көліктер, модератордың тірі картасы.
+class VehicleMarker extends StatelessWidget {
+  final VehicleType type;
+  final double size;
+  final double? heading;
+
+  const VehicleMarker({
+    super.key,
+    required this.type,
+    this.size = 46,
+    this.heading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final d = size;
+    final puck = d * 0.78;
+    return SizedBox(
+      width: d,
+      height: d,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Солғын ореол — белгі «тірі» екенін білдіреді.
+          Container(
+            width: d,
+            height: d,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Gz.yellow.withValues(alpha: 0.18),
+            ),
+          ),
+          if (heading != null)
+            Transform.rotate(
+              angle: heading! * math.pi / 180,
+              child: SizedBox(
+                width: d,
+                height: d,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Icon(
+                    Icons.navigation_rounded,
+                    size: d * 0.3,
+                    color: Gz.ink,
+                  ),
+                ),
+              ),
+            ),
+          Container(
+            width: puck,
+            height: puck,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(
+                color: Gz.yellow,
+                width: _clampD(d * 0.06, 2, 3.2),
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Gz.shadowTight,
+                  blurRadius: 4,
+                  offset: Offset(0, 1.5),
+                ),
+                BoxShadow(
+                  color: Gz.shadowWide,
+                  blurRadius: 12,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: vehicleIcon(type, size: puck * 0.62),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Екі нүкте арасындағы бағыт (градус, 0 = солтүстік, сағат тілімен) —
+/// орындаушының соңғы екі орнынан қозғалыс бағытын есептеу үшін.
+double bearingDeg(LatLng a, LatLng b) {
+  final lat1 = a.latitude * math.pi / 180;
+  final lat2 = b.latitude * math.pi / 180;
+  final dLng = (b.longitude - a.longitude) * math.pi / 180;
+  final y = math.sin(dLng) * math.cos(lat2);
+  final x =
+      math.cos(lat1) * math.sin(lat2) -
+      math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
+  return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+}
 
 /// Экранның дәл ортасында тұратын пин — Tasu ЛОГОТИП-ПИНІ (сары тамшы,
 /// ішінде «T»). Мекенжай таңдау экрандарында «осы жер» белгісі.
@@ -739,6 +845,30 @@ bool _degenerate(List<LatLng> pts) {
   return (b.north - b.south).abs() < 1e-6 && (b.east - b.west).abs() < 1e-6;
 }
 
+/// Екі нүкте тізімі бірдей ме (виджет қайта құрылғанда маршрут шынымен
+/// өзгерді ме — жоқ па).
+bool _samePoints(List<LatLng> a, List<LatLng> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Нақты ЖОЛ геометриясын сұрайды. [Geo.routeVia] кэштейді — лента, заказ
+/// беті, тірі карта, толық экран бір маршрутты бір-ақ рет сұрайды. Жол
+/// табылса ғана [onRoad] шақырылады; табылмаса (желі/OSRM) — доға қалады.
+void _requestRoad(
+  List<LatLng> waypoints,
+  void Function(List<LatLng> road) onRoad,
+) {
+  if (_degenerate(waypoints)) return;
+  Geo.routeVia(waypoints).then((r) {
+    if (r.onRoad && r.points.length >= 2) onRoad(r.points);
+  });
+}
+
 /// Маршрутты көрсететін шағын карта (A → B + сызық).
 ///
 /// ЖАҢА (0068): карта — ЕНДІ ТҮЙМЕ. Түртсе, толық экранды интерактивті
@@ -834,8 +964,8 @@ class _RouteMapState extends State<RouteMap> {
     final moved =
         old.from != widget.from ||
         old.to != widget.to ||
-        !_sameList(old.stops, widget.stops) ||
-        !_sameList(old.routePoints, widget.routePoints);
+        !_samePoints(old.stops, widget.stops) ||
+        !_samePoints(old.routePoints, widget.routePoints);
     if (moved) {
       _road = widget.routePoints;
       _loadRoad();
@@ -843,22 +973,13 @@ class _RouteMapState extends State<RouteMap> {
     }
   }
 
-  static bool _sameList(List<LatLng> a, List<LatLng> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
   void _loadRoad() {
-    if (_road.isNotEmpty || _degenerate(_waypoints)) return;
+    if (_road.isNotEmpty) return;
     final asked = _waypoints;
-    Geo.routeVia(asked).then((r) {
+    _requestRoad(asked, (road) {
       // Сұрау жүріп жатқанда мекенжай ауысқан болса — ескі жауап керек емес.
-      if (!mounted || !r.onRoad || !_sameList(asked, _waypoints)) return;
-      setState(() => _road = r.points);
+      if (!mounted || !_samePoints(asked, _waypoints)) return;
+      setState(() => _road = road);
       _fit();
     });
   }
@@ -998,7 +1119,7 @@ class _RouteMapState extends State<RouteMap> {
                         Text(
                           t('Картаны ашу'),
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             height: 1.1,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.1,
@@ -1297,7 +1418,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                           t('Маршрут'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 13.5,
+                            fontSize: 14,
                             height: 1.1,
                             letterSpacing: -0.2,
                           ),
@@ -1327,7 +1448,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   Container(
                     decoration: BoxDecoration(
                       color: Gz.surface,
-                      borderRadius: BorderRadius.circular(21),
+                      borderRadius: BorderRadius.circular(Gz.rLg),
                       boxShadow: Gz.cardShadow,
                     ),
                     clipBehavior: Clip.antiAlias,
@@ -1366,12 +1487,12 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: Gz.surface.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(Gz.rXs),
                   ),
                   child: const Text(
                     '© OpenStreetMap',
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 10,
                       height: 1.1,
                       fontWeight: FontWeight.w700,
                       color: Gz.textSecondary,
@@ -1420,7 +1541,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                   height: 5,
                                   decoration: BoxDecoration(
                                     color: Gz.disabledBg,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -1454,7 +1575,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w800,
-                                          fontSize: 13.5,
+                                          fontSize: 14,
                                           height: 1.2,
                                           letterSpacing: -0.2,
                                         ),
@@ -1572,7 +1693,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   height: 1.3,
                   letterSpacing: -0.1,
@@ -1591,7 +1712,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       width: 2,
       height: 12,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(1),
+        borderRadius: BorderRadius.circular(2),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -1636,4 +1757,423 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       ),
     ),
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  «КӨЛІК ҚАЙДА КЕЛЕ ЖАТЫР» — ТІРІ КАРТА (0075)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Тірі картаға керек маршрут деректері (заказ моделінен не алушының
+/// веб-бетіндегі JSON-нан).
+class TrackRoute {
+  final LatLng from;
+  final LatLng to;
+  final List<LatLng> stops;
+  final String status;
+  final VehicleType vehicleType;
+  final String? fromLabel;
+  final String? toLabel;
+  final List<String> stopLabels;
+  final double? distanceKm;
+
+  const TrackRoute({
+    required this.from,
+    required this.to,
+    this.stops = const [],
+    required this.status,
+    required this.vehicleType,
+    this.fromLabel,
+    this.toLabel,
+    this.stopLabels = const [],
+    this.distanceKm,
+  });
+
+  factory TrackRoute.of(Order o) => TrackRoute(
+    from: LatLng(o.fromLat, o.fromLng),
+    to: LatLng(o.toLat, o.toLng),
+    stops: [for (final s in o.stops) LatLng(s.lat, s.lng)],
+    status: o.status,
+    vehicleType: o.vehicleType,
+    fromLabel: o.fromDisplay,
+    toLabel: o.toDisplay,
+    stopLabels: [for (final s in o.stops) s.display],
+    distanceKm: o.distanceKm,
+  );
+
+  /// Маршрут нүктелері ретімен: A → аялдамалар → B.
+  List<LatLng> get waypoints => [from, ...stops, to];
+}
+
+/// Клиенттің (және алушының) тірі картасы: орындаушының көлігі ӨЗ ТҮРІНІҢ
+/// белгісімен ([VehicleMarker]), бағыт нұсқарымен, ҮЗІЛІССІЗ жылжиды.
+///
+/// Жаңа нүкте әдетте 12–15 с сайын келеді (орындаушы 15 с сайын жібереді,
+/// клиент 12 с сайын сұрайды). Бұрын көлік 1,4 с ішінде жаңа нүктеге
+/// «жүгіріп» барып, қалған 10+ секунд орнында тұратын — секіріп-тоқтап
+/// жүргендей. Енді жылжу келесі жаңартуға дейінгі уақытқа созылады
+/// (тұрақты жылдамдықпен) — Yandex Go-дағыдай шынайы қозғалыс.
+///
+/// Заказдың өз маршруты (A → аялдамалар → B) [RouteMap]-дегідей нақты ЖОЛ
+/// бойымен, Tasu стилінде салынады (жол табылмаса — үзік доға). Көлікке
+/// дейін жол сызылмайды — мақсат: клиент жүргізушінің ҚАЙДА екенін көрсін.
+///
+/// Камера өзі теңшеледі: заказ қабылданғанда — көлік пен A нүктесі
+/// (жүргізуші сізге келе жатыр), жолға шыққан соң — көлік пен B нүктесі.
+/// Ішкі карта интерактивті ЕМЕС ([RouteMap]-дегі себеппен — бет
+/// айналмай қалады); түртсе — толық экран.
+class LiveTrackMap extends StatefulWidget {
+  final TrackRoute route;
+
+  /// Көліктің соңғы белгілі нүктесі (null — әлі белгісіз).
+  final LatLng? vehicle;
+
+  /// GPS бағыты (градус). null болса — қозғалыстан өзі есептеледі.
+  final double? heading;
+
+  /// Нүкте қаншалықты ескі (сек) — 3 минуттан асса «сигнал әлсіз».
+  final int? ageSec;
+
+  final double height;
+
+  LiveTrackMap({
+    super.key,
+    required Order order,
+    this.vehicle,
+    this.heading,
+    this.ageSec,
+    this.height = 230,
+  }) : route = TrackRoute.of(order);
+
+  /// Заказ моделі жоқ жерде (алушының веб-беті) — жеке мәндермен.
+  const LiveTrackMap.route({
+    super.key,
+    required this.route,
+    this.vehicle,
+    this.heading,
+    this.ageSec,
+    this.height = 230,
+  });
+
+  @override
+  State<LiveTrackMap> createState() => _LiveTrackMapState();
+}
+
+class _LiveTrackMapState extends State<LiveTrackMap>
+    with SingleTickerProviderStateMixin {
+  /// Қысқа жылжу: алғашқы нүкте, жиі жаңарту не ұзақ үзілістен кейін.
+  static const _glideShort = Duration(milliseconds: 1400);
+
+  /// Ең ұзақ жылжу — клиенттің сұрау аралығы (12 с).
+  static const _glideMax = Duration(seconds: 12);
+
+  /// Осыдан ұзақ үзіліс (көлік тұрып қалған / сигнал жоғалған) болса —
+  /// көлік «баяу жүзбейді», жаңа орнына қысқа жылжумен барады.
+  static const _gapReset = Duration(seconds: 30);
+
+  final _map = MapController();
+  bool _ready = false;
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: _glideShort,
+  );
+
+  /// Ұзақ жылжу — тұрақты жылдамдық (linear); қысқасы — жайлап басталып,
+  /// жайлап тоқтайды.
+  Curve _curve = Curves.easeInOut;
+  LatLng? _animFrom;
+  LatLng? _animTo;
+  double? _bearing;
+
+  /// Соңғы ЖАҢА нүкте келген сәт — келесі жылжудың ұзақтығы осыдан.
+  DateTime? _lastFixAt;
+
+  /// Заказ маршрутының нақты жол нүктелері (бос — әзірге жоқ, доға).
+  List<LatLng> _road = const [];
+
+  TrackRoute get _o => widget.route;
+  LatLng get _a => _o.from;
+  LatLng get _b => _o.to;
+  bool get _toPickup => _o.status == 'accepted' || _o.status == 'arrived';
+  LatLng get _target => _toPickup ? _a : _b;
+
+  /// Көліктің ҚАЗІР көрініп тұрған орны (жылжу ортасында — аралық нүкте).
+  LatLng? get _current {
+    final to = _animTo;
+    final from = _animFrom;
+    if (to == null) return null;
+    if (from == null) return to;
+    final k = _curve.transform(_anim.value);
+    return LatLng(
+      from.latitude + (to.latitude - from.latitude) * k,
+      from.longitude + (to.longitude - from.longitude) * k,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _animTo = widget.vehicle;
+    _bearing = widget.heading;
+    if (widget.vehicle != null) _lastFixAt = DateTime.now();
+    _loadRoad();
+  }
+
+  void _loadRoad() {
+    final asked = _o.waypoints;
+    _requestRoad(asked, (road) {
+      // Сұрау жүріп жатқанда маршрут ауысқан болса — ескі жауап керек емес.
+      if (!mounted || !_samePoints(asked, _o.waypoints)) return;
+      setState(() => _road = road);
+    });
+  }
+
+  /// Келесі жылжудың ұзақтығы — алдыңғы жаңа нүктеден бері өткен уақыт:
+  /// көлік келесі жаңарту келгенше жүріп тұрады.
+  Duration _glideFor(DateTime now) {
+    final last = _lastFixAt;
+    if (last == null) return _glideShort;
+    final gap = now.difference(last);
+    if (gap <= _glideShort || gap > _gapReset) return _glideShort;
+    return gap > _glideMax ? _glideMax : gap;
+  }
+
+  @override
+  void didUpdateWidget(LiveTrackMap old) {
+    super.didUpdateWidget(old);
+    if (!_samePoints(old.route.waypoints, _o.waypoints)) {
+      _road = const [];
+      _loadRoad();
+    }
+    final v = widget.vehicle;
+    var refit = widget.route.status != old.route.status;
+    final last = _animTo;
+    if (v != null && (last == null || Geo.haversineKm(last, v) > 0.003)) {
+      final prev = _current ?? v;
+      final now = DateTime.now();
+      // Сервер бағыт бермесе (ескі қосымша, GPS бағыты жоқ) — соңғы
+      // жылжудан есептейміз; орнында тұрса бұрынғы бағыт сақталады.
+      _bearing =
+          widget.heading ??
+          (Geo.haversineKm(prev, v) > 0.015 ? bearingDeg(prev, v) : _bearing);
+      final glide = _glideFor(now);
+      _lastFixAt = now;
+      _curve = glide > _glideShort ? Curves.linear : Curves.easeInOut;
+      _animFrom = prev;
+      _animTo = v;
+      _anim.duration = glide;
+      _anim.forward(from: 0);
+      refit = true;
+    } else if (widget.heading != null) {
+      _bearing = widget.heading;
+    }
+    // Камераны build аяқталған соң ғана жылжытамыз (didUpdateWidget build
+    // ішінде шақырылады — MapController-ді сол сәтте қозғау қауіпті).
+    if (refit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fit();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  void _fit() {
+    if (!_ready) return;
+    // Көліктің ҚАЗІР көрініп тұрған орны да кадрда болуы керек: ол жаңа
+    // нүктеге қарай бірнеше секунд жылжиды — әйтпесе кадрдың сыртынан
+    // «кіріп» келер еді.
+    final pts = [?_current, ?_animTo, _target];
+    try {
+      if (pts.length < 2 ||
+          _degenerate(pts) ||
+          pts.every((p) => Geo.haversineKm(p, _target) < 0.08)) {
+        _map.move(_animTo ?? _target, 16);
+      } else {
+        _map.fitCamera(
+          CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints(pts),
+            padding: const EdgeInsets.fromLTRB(56, 72, 56, 48),
+          ),
+        );
+      }
+    } catch (_) {
+      // карта әлі өлшенбеген — келесі жаңартуда теңшеледі
+    }
+  }
+
+  void _openFull(BuildContext context) {
+    final v = _animTo;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RouteMapScreen(
+          from: _a,
+          to: _b,
+          stops: _o.stops,
+          routePoints: _road,
+          extraMarkers: [
+            if (v != null)
+              executorLiveMarker(
+                v,
+                vehicleType: _o.vehicleType,
+                heading: _bearing,
+              ),
+          ],
+          fromLabel: _o.fromLabel,
+          toLabel: _o.toLabel,
+          stopLabels: _o.stopLabels,
+          distanceKm: _o.distanceKm,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stops = _o.stops;
+    final stale = (widget.ageSec ?? 0) > 180;
+    final onRoad = _road.isNotEmpty;
+    return Container(
+      height: widget.height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Gz.radius),
+        border: Border.all(color: Gz.border),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: FlutterMap(
+                mapController: _map,
+                options: MapOptions(
+                  initialCenter: widget.vehicle ?? _target,
+                  initialZoom: 14,
+                  backgroundColor: Gz.bg,
+                  onMapReady: () {
+                    _ready = true;
+                    _fit();
+                  },
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  osmTileLayer(),
+                  // Тек заказдың өз маршруты. Көлікке дейін жол САЛЫНБАЙДЫ
+                  // (пайдаланушы шешімі): клиентке көліктің ҚАЙДА екені мен
+                  // қалай жылжып келе жатқаны көрінсе жеткілікті.
+                  PolylineLayer(
+                    polylines: _routeLines(
+                      onRoad ? _road : _o.waypoints,
+                      onRoad: onRoad,
+                    ),
+                  ),
+                  MarkerLayer(
+                    markers: _routeMarkers(
+                      from: _a,
+                      to: _b,
+                      stops: stops,
+                      extra: const [],
+                    ),
+                  ),
+                  // Жылжып жүрген көлік — ӨЗ RepaintBoundary-сінде: FlutterMap
+                  // бүкіл картаны бір шекарада салады, онсыз ұзақ жылжу кезінде
+                  // әр кадрда сүзгіленген тайл қабаты да қайта салынар еді.
+                  RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: _anim,
+                      builder: (_, _) {
+                        final c = _current;
+                        return MarkerLayer(
+                          markers: [
+                            if (c != null)
+                              executorLiveMarker(
+                                c,
+                                vehicleType: _o.vehicleType,
+                                heading: _bearing,
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(onTap: () => _openFull(context)),
+            ),
+          ),
+          if (widget.vehicle == null || stale)
+            Positioned(
+              left: 10,
+              top: 10,
+              right: 10,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+                    decoration: BoxDecoration(
+                      color: Gz.surface,
+                      borderRadius: BorderRadius.circular(Gz.rLg),
+                      boxShadow: Gz.cardShadow,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.gps_not_fixed_rounded,
+                          size: 15,
+                          color: Gz.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.vehicle == null
+                                ? t('Көліктің орны әзірге белгісіз')
+                                : t('Сигнал әлсіз — соңғы белгілі орны'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Gz.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: const BoxDecoration(
+                  color: Gz.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: Gz.cardShadow,
+                ),
+                child: const Icon(
+                  Icons.open_in_full_rounded,
+                  size: 15,
+                  color: Gz.ink,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

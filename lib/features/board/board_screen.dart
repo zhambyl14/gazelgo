@@ -11,7 +11,7 @@ import 'create_listing_screen.dart';
 import 'listing_card.dart';
 import 'listing_detail.dart';
 
-/// Хабарландырулар тақтасы — логотип батырмасындағы sidebar-дан ашылады.
+/// Хабарландырулар тақтасы — ☰ мәзірінен (sidebar) ашылады.
 ///
 /// Екі таб бар, екеуі де рөлге БЕЙІМДЕЛГЕН (сол себепті ешкім «қай бөлім
 /// маған арналған?» деп ойланбайды):
@@ -220,13 +220,8 @@ class _FeedTab extends StatelessWidget {
   int get _activeCount => (city == null ? 0 : 1) + (vehicle == null ? 0 : 1);
 
   Future<void> _openFilter(BuildContext context) async {
-    final res = await showModalBottomSheet<_BoardFilter>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+    final res = await showGzSheet<_BoardFilter>(
+      context,
       builder: (_) =>
           _FilterSheet(city: city, vehicle: vehicle, taxiOn: taxiOn),
     );
@@ -254,7 +249,7 @@ class _FeedTab extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           color: Gz.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
@@ -489,13 +484,8 @@ class _FilterSheetState extends State<_FilterSheet> {
   late VehicleType? _vehicle = widget.vehicle;
 
   Future<void> _pickCity() async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Gz.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    final picked = await showGzSheet<String>(
+      context,
       builder: (_) => const CityPickerSheet(),
     );
     if (picked == null || !mounted) return;
@@ -530,7 +520,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   child: Text(
                     t('Сүзгі'),
                     style: const TextStyle(
-                      fontSize: 17,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -550,7 +540,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 6),
             InkWell(
               onTap: _pickCity,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -558,7 +548,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
                 decoration: BoxDecoration(
                   color: Gz.bg,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _city == null ? Gz.border : Gz.ink,
                     width: 1.3,
@@ -579,7 +569,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -651,7 +641,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   Widget _label(String text) => Text(
     text,
     style: const TextStyle(
-      fontSize: 12.5,
+      fontSize: 13,
       fontWeight: FontWeight.w800,
       color: Gz.textSecondary,
     ),
@@ -673,7 +663,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12.5,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
           color: active ? Colors.white : Gz.ink,
         ),

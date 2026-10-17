@@ -26,6 +26,25 @@ class Geo {
       p.longitude >= 46 &&
       p.longitude <= 88;
 
+  /// Рұқсат СҰРАМАЙТЫН нұсқа — фондағы мерзімді жұмыс үшін (орындаушының
+  /// орнын картаға жіберу). Рұқсат жоқ болса — үнсіз `null`.
+  static Future<Position?> quietPosition() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return null;
+      }
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 8));
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<Position?> currentPosition() async {
     try {
       var perm = await Geolocator.checkPermission();

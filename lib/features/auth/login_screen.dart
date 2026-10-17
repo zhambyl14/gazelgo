@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             t('Аккаунт жоқ па?'),
                             style: const TextStyle(
                               color: Gz.textSecondary,
-                              fontSize: 12.5,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
