@@ -908,10 +908,16 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       if (district != null && !Geo.sameCity(district, place)) district,
       ?place,
     ].join(', ');
-    // Көше табылды, бірақ үй картада жоқ — үйді картадан көрсетеді.
-    final sub = h.needsPin
-        ? t('Көше табылды — үйді картадан көрсетесіз')
-        : where;
+    // Көше не шағын аудан табылды, бірақ үй картада жоқ — үйді картадан
+    // көрсетеді. Аудан белгілі болса, қай аудандағы көше екені де жазылады.
+    final isArea = h.needsPin && r.road == null;
+    final sub = !h.needsPin
+        ? where
+        : isArea
+        ? t('Шағын аудан табылды — үйді картадан көрсетесіз')
+        : (district != null
+              ? '$district · ${t('үйді картадан көрсетесіз')}'
+              : t('Көше табылды — үйді картадан көрсетесіз'));
     return _placeRow(
       icon: h.needsPin
           ? Icons.edit_location_alt_rounded

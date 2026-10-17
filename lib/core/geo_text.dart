@@ -374,12 +374,77 @@ class GeoText {
   /// ЕКІ түрде салыстырылады — қос әріп қысқартылған және қысқартылмаған:
   /// «Сейфулина» ~ «Сейфуллин» біріншісінде, ал «Раат» ~ «Рахат» (қысқарса
   /// «рат» болып кетеді) екіншісінде табылады.
-  static double similarityKey(NameKey q, NameKey n) {
-    final a = _tokensScore(q.core, n.tokens);
+  ///
+  /// [words] — сұраныстың БІР БӨЛІГІ бойынша да салыстыру («абай туран» →
+  /// «Тұран көшесі»). Әдепкі өшірулі: тек толық сұраныс ештеңеге ұқсамаса
+  /// қосылады (әйтпесе «Кабанбай батыр» деген қате сұраныста жай
+  /// «Кабанбай» көшесі дұрыс нәтижені ығыстырып жібереді).
+  static double similarityKey(NameKey q, NameKey n, {bool words = false}) {
+    var best = _bothForms(q.core, q.coreRaw, n);
+    if (!words || best >= 0.8) return best;
+    // Сұраныста БІРНЕШЕ атау болуы мүмкін: «абай туран» — аудан мен көше
+    // бір жолда. Сөздердің бір бөлігі бойынша да салыстырамыз (әр алынған
+    // сөзге айыппұл; басындағы сөз әдетте аудан — сәл көбірек айыппұл).
+    final qt = q.tokens, qr = q.tokensRaw;
+    if (qt.length < 2 || qt.length != qr.length) return best;
+    for (var len = qt.length - 1; len >= 1; len--) {
+      for (var st = 0; st + len <= qt.length; st++) {
+        final w = qt.sublist(st, st + len).join();
+        if (w.length < 4 || RegExp(r'^\d+$').hasMatch(w)) continue;
+        final pen = 0.08 * (qt.length - len) + (st == 0 ? 0.01 : 0);
+        final v = _bothForms(w, qr.sublist(st, st + len).join(), n) - pen;
+        if (v > best) best = v;
+      }
+    }
+    return best;
+  }
+
+  static double _bothForms(String c, String cr, NameKey n) {
+    final a = _tokensScore(c, n.tokens);
     if (a >= 1) return a;
-    final b = _tokensScore(q.coreRaw, n.tokensRaw);
+    final b = _tokensScore(cr, n.tokensRaw);
     return a > b ? a : b;
   }
+
+  /// Шағын аудан белгісі ме — қазақша түрі («шағын ауданы»: атауы АЛДЫНДА)
+  /// не орысша («мкр», «микрорайон»: атауы КЕЙІН). Белгі емес — null.
+  static bool? microMarkerIsKazakh(String foldedWord) {
+    final w = foldedWord;
+    if (w.isEmpty) return null;
+    for (final k in _microKz) {
+      if (w == k || (w.length >= 5 && distance(w, k, max: 1) <= 1)) {
+        return true;
+      }
+    }
+    if (_microRu.contains(w) ||
+        (w.length >= 8 && distance(w, 'микрораион', max: 2) <= 2)) {
+      return false;
+    }
+    return null;
+  }
+
+  static const _microKz = {
+    'шагин',
+    'шагинаудан',
+    'шагинаудани',
+    'икшам',
+    'икшамаудан',
+    'икшамаудани',
+    'молтек',
+    'молтекаудан',
+    'молтекаудани',
+  };
+  static const _microRu = {'мкр', 'мкрн', 'микр', 'микрораион', 'мкр-н'};
+
+  /// «ауданы», «аудан», «ш», «а» — шағын аудан белгісінің жалғасы.
+  static bool isMicroTail(String foldedWord) => _microWeak.contains(foldedWord);
+
+  /// Көше типі сөзі ме (қате жазылса да).
+  static bool isTypeWord(String foldedWord) => _isTypeWord(foldedWord);
+
+  /// Реттік жалғау («6-й» → «й»).
+  static bool isOrdinalSuffix(String foldedWord) =>
+      _ordinalSuffix.contains(foldedWord);
 
   static double _tokensScore(String q, List<String> tokens) {
     if (q.isEmpty || tokens.isEmpty) return 0;
@@ -455,12 +520,17 @@ class NameKey {
       core = '',
       coreRaw = '';
 
-  /// Сұраныс кілті: тек біріктірілген өзек керек.
+  /// Сұраныс кілті: біріктірілген өзек + сөздері (бір бөлігі бойынша
+  /// салыстыру үшін).
   NameKey.query(String text)
-    : tokens = const [],
-      tokensRaw = const [],
-      core = GeoText.streetTokens(text).join(),
-      coreRaw = GeoText.streetTokens(text, collapse: false).join();
+    : this._q(
+        GeoText.streetTokens(text),
+        GeoText.streetTokens(text, collapse: false),
+      );
+
+  NameKey._q(this.tokens, this.tokensRaw)
+    : core = tokens.join(),
+      coreRaw = tokensRaw.join();
 }
 
 /// Клиент жазған мекенжай сұранысының бөлшектері.
@@ -480,13 +550,28 @@ class AddressQuery {
   /// Үй нөмірі: «15», «15а», «15/2» (болса).
   final String? house;
 
-  const AddressQuery({
+  /// Шағын аудан (клиент жазса): «Абай», «Самал 2», «6». Көше одан бөлек
+  /// ізделеді, ал аудан бір атаулы көшелердің ішінен дұрысын таңдауға
+  /// көмектеседі.
+  final String? district;
+
+  /// [district]-тің салыстыру өзегі («абаи», «самал2», «мкр6»).
+  final String? districtCore;
+
+  AddressQuery({
     required this.raw,
     required this.text,
     required this.street,
     required this.core,
     required this.house,
+    this.district,
+    this.districtCore,
   });
+
+  /// Басқаша бөлу нұсқалары: «мкр ұлы дала 5» — аудан «ұлы», көше «дала»
+  /// ма, әлде аудан «ұлы дала» ма? Көше тізімі ([StreetIndex]) шешеді.
+  List<AddressQuery> get alternatives => _alternatives;
+  final List<AddressQuery> _alternatives = [];
 
   static final _houseRe = RegExp(
     r'^\d{1,4}[а-яәғқңөұүһіa-z]?(/\d{1,4}[а-яa-z]?)?$',
@@ -556,12 +641,231 @@ class AddressQuery {
         house: null,
       );
     }
+    final splits = _splitDistrict(text, streetWords);
+    if (splits == null) {
+      return AddressQuery(
+        raw: raw,
+        text: text,
+        street: street,
+        core: GeoText.streetCore(street),
+        house: house,
+      );
+    }
+    final variants = [
+      for (final sp in splits) _withDistrict(raw, text, house, sp),
+    ];
+    return variants.first.._alternatives.addAll(variants.skip(1));
+  }
+
+  static AddressQuery _withDistrict(
+    String raw,
+    String text,
+    String? house,
+    (List<String>, List<String>) split,
+  ) {
+    final (dWords, sWords) = split;
+    final dText = dWords.join(' ');
+    final dCore = RegExp(r'^\d+$').hasMatch(dText)
+        ? 'мкр$dText'
+        : GeoText.streetCore(dText);
+    // Көше жазылмаса — ізделетін нысан аудан ӨЗІ («мкр Самал 2, 15»).
+    final sText = sWords.join(' ').trim();
+    final streetText = GeoText.streetCore(sText).isEmpty
+        ? (RegExp(r'^\d+$').hasMatch(dText) ? '$dText мкр' : dText)
+        : sText;
     return AddressQuery(
       raw: raw,
       text: text,
-      street: street,
-      core: GeoText.streetCore(street),
+      street: streetText,
+      core: GeoText.streetCore(sText).isEmpty
+          ? dCore
+          : GeoText.streetCore(sText),
       house: house,
+      district: dText,
+      districtCore: dCore,
     );
+  }
+
+  /// Сұраныстағы ШАҒЫН АУДАНДЫ көшеден бөледі. Аудан белгісі жоқ болса —
+  /// null (бүкіл сұраныс көше саналады).
+  ///
+  /// Қазақтар мекенжайды әртүрлі жазады:
+  ///   «Абай шағын ауданы, Тұран көшесі, 15» — үтірмен бөліктер;
+  ///   «микрорайон абай тұран 15», «мкр абай туран 15» — орысша белгі,
+  ///     аудан аты белгіден КЕЙІН;
+  ///   «абай мкр туран 15», «Самал-2 шағын ауданы» — аты белгіден БҰРЫН;
+  ///   «6 мкр 12» — нөмірлі шағын аудан.
+  static List<(List<String>, List<String>)>? _splitDistrict(
+    String text,
+    List<String> streetWords,
+  ) {
+    // Үтірмен бөлінген болса — бөлік бойынша: белгісі бар бөлік — аудан.
+    final segments = text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final words = <String>[
+      for (final w in streetWords) ...w.split(RegExp(r'[\s\-–—]+')),
+    ].where((w) => w.isNotEmpty).toList();
+    final folded = [for (final w in words) GeoText.fold(w)];
+    final marker = <int, bool>{}; // индекс → қазақша белгі ме
+    for (var i = 0; i < folded.length; i++) {
+      final f = folded[i];
+      final kz = GeoText.microMarkerIsKazakh(f);
+      if (kz != null) {
+        marker[i] = kz;
+      } else if (f.startsWith('мкр') && f.length > 3) {
+        // «мкр6», «мкрсамал» — бірге жазылған
+        words[i] = words[i].substring(3);
+        folded[i] = f.substring(3);
+        words.insert(i, 'мкр');
+        folded.insert(i, 'мкр');
+        marker[i] = false;
+        i++;
+      }
+    }
+    if (marker.isEmpty) return null;
+
+    bool isNumAt(int i) =>
+        i >= 0 && i < folded.length && RegExp(r'^\d+$').hasMatch(folded[i]);
+    // «12-ші», «6-й» — нөмірден кейінгі реттік жалғау: жеке сөз емес.
+    bool isSuffix(int i) =>
+        isNumAt(i - 1) && GeoText.isOrdinalSuffix(folded[i]);
+    bool isName(int i) =>
+        i >= 0 &&
+        i < folded.length &&
+        folded[i].isNotEmpty &&
+        !marker.containsKey(i) &&
+        !isSuffix(i) &&
+        !GeoText.isMicroTail(folded[i]) &&
+        !GeoText.isTypeWord(folded[i]);
+    bool isNum(int i) => isName(i) && isNumAt(i);
+
+    final taken = <int>{...marker.keys};
+    for (var i = 0; i < folded.length; i++) {
+      if (isSuffix(i)) taken.add(i);
+    }
+    // Белгінің жалғасы («шағын ауданы», «ш. а.»).
+    for (final m in marker.keys) {
+      var j = m + 1;
+      while (j < folded.length && GeoText.isMicroTail(folded[j])) {
+        taken.add(j);
+        j++;
+      }
+    }
+
+    // Үтір бөліктері: аудан белгісі тұрған бөліктің аттары — аудан.
+    if (segments.length > 1) {
+      final dist = <int>[];
+      var pos = 0;
+      for (final seg in segments) {
+        final n = seg
+            .split(RegExp(r'[\s\-–—]+'))
+            .where((w) => w.isNotEmpty)
+            .length;
+        final idx = [for (var k = pos; k < pos + n && k < words.length; k++) k];
+        if (idx.any(marker.containsKey)) {
+          dist.addAll(idx.where((k) => !taken.contains(k) && isName(k)));
+        }
+        pos += n;
+      }
+      if (dist.isNotEmpty) return [_build(words, dist, taken)];
+    }
+
+    // Белгі бойынша: орысша — аты кейін, қазақша — аты бұрын.
+    final m = marker.keys.reduce((a, b) => a < b ? a : b);
+    var end = m;
+    while (taken.contains(end + 1)) {
+      end++;
+    }
+    // [greedy] — көп сөзді атау («Ұлы Дала», «Алтын Орда»): белгінің
+    // жанындағы БАРЛЫҚ атауларды алады. Әйтпесе — бір сөз (+ нөмірі):
+    // «мкр абай туран» → аудан «абай», көше «туран». Қайсысы дұрыс екенін
+    // көше тізімі шешеді (сондай шағын аудан бар ма) — екеуі де қайтады.
+    List<int> after({bool greedy = false}) {
+      final out = <int>[];
+      var k = end + 1;
+      if (!isName(k)) return out;
+      out.add(k);
+      if (greedy) {
+        k++;
+        while (isName(k)) {
+          out.add(k);
+          k++;
+        }
+        return out;
+      }
+      // «Самал 2» — аттан кейінгі нөмір де аудан атына кіреді, бірақ
+      // нөмір ғана болса («мкр 6»), келесі сөз — көше.
+      if (!isNum(k)) {
+        k++;
+        while (isNum(k)) {
+          out.add(k);
+          k++;
+        }
+      }
+      return out;
+    }
+
+    List<int> before({bool greedy = false}) {
+      final out = <int>[];
+      var k = m - 1;
+      while (taken.contains(k) && !marker.containsKey(k)) {
+        k--; // реттік жалғау («12-ші шағын ауданы»)
+      }
+      while (isNum(k)) {
+        out.insert(0, k);
+        k--;
+      }
+      if (isName(k) && !isNum(k)) {
+        out.insert(0, k);
+        k--;
+        while (greedy && isName(k)) {
+          out.insert(0, k);
+          k--;
+        }
+      }
+      // «Тұран көшесі мкр Абай»: белгінің алдындағы сөз — КӨШЕ (оның
+      // алдында/артында көше типі тұр), аудан емес.
+      if (out.isNotEmpty &&
+          ((k >= 0 && GeoText.isTypeWord(folded[k])) ||
+              (out.last + 1 < m && GeoText.isTypeWord(folded[out.last + 1])))) {
+        return const [];
+      }
+      return out;
+    }
+
+    // Қазақша белгі — аты алдында; орысша — алдында сөз болса соны
+    // («абай мкр», «Самал-2 мкр»), белгі басында тұрса — кейінгісін
+    // («мкр абай»).
+    final kz = marker[m]!;
+    List<int> pick({required bool greedy}) {
+      var d = before(greedy: greedy);
+      if (d.isEmpty) d = after(greedy: greedy);
+      if (!kz && m == 0) d = after(greedy: greedy);
+      return d;
+    }
+
+    final dist = pick(greedy: false);
+    if (dist.isEmpty) return null;
+    final wide = pick(greedy: true);
+    return [
+      _build(words, dist, taken),
+      if (wide.length > dist.length) _build(words, wide, taken),
+    ];
+  }
+
+  static (List<String>, List<String>) _build(
+    List<String> words,
+    List<int> dist,
+    Set<int> taken,
+  ) {
+    final d = [for (final k in dist) words[k]];
+    final rest = [
+      for (var k = 0; k < words.length; k++)
+        if (!taken.contains(k) && !dist.contains(k)) words[k],
+    ];
+    return (d, rest);
   }
 }

@@ -1070,16 +1070,52 @@ class Geo {
     LatLng? near,
     StreetIndex? index,
   }) async {
-    final aq = AddressQuery.parse(query, city: city);
-    final qk = NameKey.query(aq.street);
-    if (qk.core.length < 2) return const [];
+    var aq = AddressQuery.parse(query, city: city);
     final bias = near ?? _cityCenter(city);
 
+    // 0) Шағын аудан жазылса («мкр Абай») — оны тізімнен тауып, ортасын
+    //    аламыз: бір атаулы көше бірнеше ауданда болса, клиенттікі — сол
+    //    аудандағысы. Сұраныс бірнеше түрлі бөлінсе («мкр ұлы дала 5» —
+    //    аудан «ұлы» ме, «ұлы дала» ма), тізімде БАР ауданға сайы алынады.
+    StreetMatch? area;
+    if (index != null && aq.district != null) {
+      StreetMatch? areaFor(AddressQuery q) {
+        final d = q.district!;
+        final found = index.match(
+          NameKey.query(RegExp(r'^\d+$').hasMatch(d) ? '$d мкр' : d),
+          limit: 1,
+          areas: true,
+        );
+        return found.isEmpty ? null : found.first;
+      }
+
+      var best = areaFor(aq);
+      for (final alt in aq.alternatives) {
+        final m = areaFor(alt);
+        if (m != null && (best == null || m.score > best.score + 0.05)) {
+          best = m;
+          aq = alt;
+        }
+      }
+      if (best != null && best.score >= 0.75) area = best;
+    }
+    final district = aq.district;
+    final qk = NameKey.query(aq.street);
+    if (qk.core.length < 2) return const [];
+    final areaCenter = area?.entry.points.first;
+    final onlyDistrict = district != null && aq.core == aq.districtCore;
+
     // 1) Құрылғыдағы көше тізімі бойынша түзету — желісіз, бірден.
-    final local = index?.match(qk, limit: 4) ?? const <StreetMatch>[];
+    final local = onlyDistrict
+        ? const <StreetMatch>[]
+        : (index?.match(qk, limit: 4) ?? const <StreetMatch>[]);
     final best = local.isEmpty ? null : local.first;
+    // Картадағы ДҰРЫС атау клиент жазғаннан өзгеше болса (қате әріп, бос
+    // орынсыз «таукехана») — геокодерге сол атаумен де сұраймыз.
     final corrected =
-        (best != null && best.score >= 0.7 && best.entry.core != qk.core)
+        (best != null &&
+            best.score >= 0.7 &&
+            GeoText.fold(best.entry.name) != GeoText.fold(aq.street))
         ? best.entry.name
         : null;
     String withHouse(String street) =>
@@ -1093,12 +1129,22 @@ class Geo {
       }
     }
 
+    final where = areaCenter ?? bias;
     final jobs = <Future<List<GeoPlace>?>>[
       safe(_searchStructured(city: city, street: withHouse(aq.street))),
-      safe(_searchFree('${aq.text}, $city', near: bias)),
-      if (bias != null) safe(_searchPhoton(aq.text, near: bias)),
+      safe(_searchFree('${aq.text}, $city', near: where)),
+      if (where != null) safe(_searchPhoton(aq.text, near: where)),
       if (corrected != null)
         safe(_searchStructured(city: city, street: withHouse(corrected))),
+      // Аудан + көше бөлек жазылғанда — геокодерге ретімен береміз.
+      if (district != null && !onlyDistrict)
+        safe(
+          _searchFree(
+            '${withHouse(corrected ?? aq.street)}, '
+            '${area?.entry.name ?? district}, $city',
+            near: where,
+          ),
+        ),
     ];
     final res = await Future.wait(jobs);
     if (res.every((r) => r == null) && local.isEmpty) {
@@ -1107,7 +1153,7 @@ class Geo {
 
     final hits = <AddressHit>[];
     for (final p in dedupePlaces([for (final r in res) ...?r])) {
-      final h = _scoreHit(p, aq, qk, city);
+      final h = _scoreHit(p, aq, qk, city, areaCenter: areaCenter);
       if (h != null) hits.add(h);
     }
 
@@ -1126,12 +1172,41 @@ class Geo {
         AddressHit(
           place: GeoPlace(
             name: m.entry.name,
-            point: m.entry.nearestTo(bias),
+            // Аудан белгілі болса — көшенің сол аудандағы бөлігі.
+            point: m.entry.nearestTo(areaCenter ?? bias),
             city: city,
             road: m.entry.name,
+            district: area?.entry.name,
             kind: kStreetIndex,
           ),
           score: m.score - 0.04,
+          exactHouse: false,
+          needsPin: true,
+        ),
+      );
+    }
+
+    // 3) Тек шағын аудан жазылса («мкр Самал 2, 15») не көшесі картада
+    //    жоқ болса — ауданның өзі: карта сол ауданда ашылып, клиент үйді
+    //    көрсетеді.
+    final a = area;
+    if (a != null &&
+        // Атауы да, үйі де дәл табылса (≥ 1.2) — аудан пині керек емес.
+        !hits.any((h) => h.exactHouse && h.score >= 1.2) &&
+        !hits.any(
+          (h) => haversineKm(h.place.point, a.entry.points.first) < 0.05,
+        )) {
+      hits.add(
+        AddressHit(
+          place: GeoPlace(
+            name: aq.house == null
+                ? a.entry.name
+                : '${a.entry.name}, ${aq.house}',
+            point: a.entry.points.first,
+            city: city,
+            kind: kStreetIndex,
+          ),
+          score: (onlyDistrict ? a.score : a.score - 0.15),
           exactHouse: false,
           needsPin: true,
         ),
@@ -1158,14 +1233,21 @@ class Geo {
     GeoPlace p,
     AddressQuery aq,
     NameKey qk,
-    String city,
-  ) {
-    var text = 0.0;
-    for (final s in [p.road, p.poi, p.name]) {
-      if (s == null || s.isEmpty) continue;
-      final v = GeoText.similarityKey(qk, NameKey(s));
-      if (v > text) text = v;
+    String city, {
+    LatLng? areaCenter,
+  }) {
+    double textScore({required bool words}) {
+      var best = 0.0;
+      for (final s in [p.road, p.poi, p.name]) {
+        if (s == null || s.isEmpty) continue;
+        final v = GeoText.similarityKey(qk, NameKey(s), words: words);
+        if (v > best) best = v;
+      }
+      return best;
     }
+
+    var text = textScore(words: false);
+    if (text < 0.6) text = textScore(words: true);
     if (text < 0.6) return null;
     final street = p.house == null && _streetKinds.contains(p.kind);
     var score = text;
@@ -1173,7 +1255,10 @@ class Geo {
     if (aq.house != null) {
       if (p.house != null) {
         if (_sameHouse(p.house!, aq.house!)) {
-          score += 0.3;
+          // Атау сенімді сәйкес болса ғана толық бонус: әйтпесе «мкр нурсат
+          // 5» сұранысына «Нурсая көшесі, 5» (бір әріп айырмашылық, бірақ
+          // үй нөмірі сәйкес) «Нұрсат» шағын ауданынан жоғары шығатын.
+          score += text >= 0.9 ? 0.3 : 0.1;
           exact = true;
         } else {
           score -= 0.25;
@@ -1181,6 +1266,16 @@ class Geo {
       }
     }
     if (p.city == null || sameCity(p.city, city)) score += 0.05;
+    // Клиент жазған шағын ауданның ішінде — жоғары.
+    if (areaCenter != null && haversineKm(p.point, areaCenter) < 1.5) {
+      score += 0.12;
+    } else if (aq.districtCore != null && p.district != null) {
+      final d = GeoText.similarityKey(
+        NameKey.query(aq.district!),
+        NameKey(p.district!),
+      );
+      if (d >= 0.75) score += 0.1;
+    }
     return AddressHit(
       place: p,
       score: score,

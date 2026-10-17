@@ -80,6 +80,69 @@ void main() {
     });
   });
 
+  group('шағын аудан + көше бір жолда (клиенттер әртүрлі жазады)', () {
+    // Нақты мекенжай: «Абай шағын ауданы, Тұран көшесі, 15».
+    for (final q in [
+      'Абай шағын ауданы, Тұран көшесі, 15',
+      'микрорайон абай тұран 15',
+      'мкр абай туран 15',
+      'мкр. Абай, ул. Туран 15',
+      'абай мкр туран 15',
+      'абай шагын ауданы туран 15',
+      'mkr abai turan 15',
+      'мкрАбай туран 15',
+    ]) {
+      test('«$q» → аудан Абай, көше Тұран, үй 15', () {
+        final a = AddressQuery.parse(q, city: 'Шымкент');
+        expect(a.districtCore, 'абаи', reason: 'district=${a.district}');
+        expect(a.core, 'туран', reason: 'street=${a.street}');
+        expect(a.house, '15');
+      });
+    }
+
+    test('көше жазылмаса — ізделетін нысан ауданның өзі', () {
+      final a = AddressQuery.parse('мкр Самал 2, 15');
+      expect(a.districtCore, 'самал2');
+      expect(a.core, 'самал2');
+      expect(a.house, '15');
+    });
+
+    test('нөмірлі шағын аудан', () {
+      final a = AddressQuery.parse('6 мкр 12');
+      expect(a.core, 'мкр6');
+      expect(a.house, '12');
+      final b = AddressQuery.parse('12-ші шағын аудан, 7');
+      expect(b.districtCore, 'мкр12');
+      expect(b.house, '7');
+    });
+
+    test('аудан белгісіз жазылса да көше табылады («абай туран 15»)', () {
+      final names = ['Тұран көшесі', 'Түркістан көшесі', 'Абай даңғылы'];
+      final q = AddressQuery.parse('абай туран 15');
+      final qk = NameKey.query(q.street);
+      final s = {
+        for (final n in names)
+          n: GeoText.similarityKey(qk, NameKey(n), words: true),
+      };
+      expect(s['Тұран көшесі']!, greaterThan(0.85));
+      expect(s['Тұран көшесі']!, greaterThan(s['Абай даңғылы']!));
+      expect(s['Түркістан көшесі']!, lessThan(0.6));
+    });
+
+    test('шағын аудан атауы да қатемен табылады', () {
+      final q = NameKey.query(AddressQuery.parse('мкр нурсат 5').districtCore!);
+      expect(
+        GeoText.similarityKey(q, NameKey('Нұрсат шағын ауданы')),
+        greaterThan(0.9),
+      );
+      final q2 = NameKey.query(AddressQuery.parse('12 мкр').core);
+      expect(
+        GeoText.similarityKey(q2, NameKey('12-ші шағын ауданы')),
+        greaterThan(0.9),
+      );
+    });
+  });
+
   group('қате жазылған көшені табу (нақты атаулар, әр облыс)', () {
     final cases = <(String, List<String>, String)>[
       // (сұраныс, қаладағы атаулар, күтілетін атау)

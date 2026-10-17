@@ -30,8 +30,10 @@ class StreetIndex {
   static final _loading = <String, Future<StreetIndex?>>{};
 
   static const _ttl = Duration(days: 30);
-  static const _prefsPrefix = 'street_idx_v1:';
-  static const _prefsKeys = 'street_idx_v1_keys';
+  // v2: шағын аудандар/тұрғын массивтер де сақталады (v1 кэші елеусіз
+  // қалады да, бір рет қайта жүктеледі).
+  static const _prefsPrefix = 'street_idx_v2:';
+  static const _prefsKeys = 'street_idx_v2_keys';
 
   /// Құрылғыда ең көбі неше қаланың тізімі сақталады (ескісі өшеді).
   static const _maxCities = 4;
@@ -79,12 +81,11 @@ class StreetIndex {
     if (ready != null) return Future.value(ready);
     final pending = _loading[key];
     if (pending != null) return pending;
-    final f = _load(
-      key,
-      city,
-      center,
-      settlement,
-    ).whenComplete(() => _loading.remove(key));
+    final f = _load(key, city, center, settlement).whenComplete(() {
+      // Блок түрінде — `=> _loading.remove(key)` өшірілген Future-дың ӨЗІН
+      // қайтарар еді, ал whenComplete оны күтіп, мәңгі тұрып қалатын.
+      _loading.remove(key);
+    });
     _loading[key] = f;
     return f;
   }
@@ -126,12 +127,18 @@ class StreetIndex {
     final radius = settlement
         ? 4500.0
         : (_bigRadius[GeoText.streetCore(city)] ?? 7000.0);
+    final r = radius.round();
+    final at = '${center.latitude},${center.longitude}';
     final body = await _overpassCsv(
-      '[out:csv(name,::lat,::lon;false;"|")][timeout:90];'
-      'way(around:${radius.round()},${center.latitude},${center.longitude})'
+      '[out:csv(name,place,landuse,::lat,::lon;false;"|")][timeout:90];'
+      '(way(around:$r,$at)'
       '[highway~"^(motorway|trunk|primary|secondary|tertiary|residential|'
       'unclassified|living_street|pedestrian|service|road)\$"][name];'
-      'out center;',
+      // Шағын аудандар мен тұрғын массивтер («Абай шағын ауданы»,
+      // «12-ші шағын ауданы», «ЖК …») — клиент мекенжайды солармен жазады.
+      'nwr(around:$r,$at)[place~"^(suburb|neighbourhood|quarter)\$"][name];'
+      'nwr(around:$r,$at)[landuse=residential][name];'
+      ');out center;',
     );
     if (body == null) return null;
     final idx = _parseCsv(key, body, center);
@@ -181,21 +188,24 @@ class StreetIndex {
     return null;
   }
 
-  /// «атау|lat|lon» жолдарынан индекс құрайды: бір атаудың бірнеше нүктесі
-  /// (әртүрлі ауданда бірдей көше) 1,5 км-ден алыс болса — бөлек сақталады.
+  /// «атау|place|landuse|lat|lon» жолдарынан индекс құрайды: бір атаудың
+  /// бірнеше нүктесі (әртүрлі ауданда бірдей көше) 1,5 км-ден алыс болса —
+  /// бөлек сақталады. place/landuse толы болса — бұл шағын аудан.
   static StreetIndex _parseCsv(String key, String body, LatLng center) {
-    final byName = <String, List<LatLng>>{};
+    final byName = <(String, bool), List<LatLng>>{};
     for (final line in const LineSplitter().convert(body)) {
       final parts = line.split('|');
-      if (parts.length < 3) continue;
+      if (parts.length < 5) continue;
       final name = parts[0].trim();
-      final lat = double.tryParse(parts[1]);
-      final lon = double.tryParse(parts[2]);
+      final area = parts[1].trim().isNotEmpty || parts[2].trim().isNotEmpty;
+      final lat = double.tryParse(parts[3]);
+      final lon = double.tryParse(parts[4]);
       if (name.isEmpty || lat == null || lon == null) continue;
-      (byName[name] ??= []).add(LatLng(lat, lon));
+      (byName[(name, area)] ??= []).add(LatLng(lat, lon));
     }
     final entries = <StreetEntry>[];
-    byName.forEach((name, pts) {
+    byName.forEach((k, pts) {
+      final (name, area) = k;
       pts.sort(
         (a, b) =>
             Geo.haversineKm(center, a).compareTo(Geo.haversineKm(center, b)),
@@ -205,7 +215,7 @@ class StreetIndex {
         if (kept.length >= 4) break;
         if (kept.every((k) => Geo.haversineKm(k, p) >= 1.5)) kept.add(p);
       }
-      entries.add(StreetEntry(name, kept));
+      entries.add(StreetEntry(name, kept, area: area));
     });
     return StreetIndex._(key, entries);
   }
@@ -225,6 +235,7 @@ class StreetIndex {
               )
               .join(';'),
         )
+        ..write(e.area ? '\ta' : '')
         ..write('\n');
     }
     return b.toString();
@@ -237,17 +248,20 @@ class StreetIndex {
     if (ms == null) return null;
     final entries = <StreetEntry>[];
     for (final line in lines.skip(1)) {
-      final tab = line.indexOf('\t');
-      if (tab <= 0) continue;
+      final cols = line.split('\t');
+      if (cols.length < 2 || cols[0].isEmpty) continue;
       final pts = <LatLng>[];
-      for (final s in line.substring(tab + 1).split(';')) {
+      for (final s in cols[1].split(';')) {
         final c = s.split(',');
         if (c.length != 2) continue;
         final lat = double.tryParse(c[0]);
         final lon = double.tryParse(c[1]);
         if (lat != null && lon != null) pts.add(LatLng(lat, lon));
       }
-      if (pts.isNotEmpty) entries.add(StreetEntry(line.substring(0, tab), pts));
+      if (pts.isNotEmpty) {
+        final area = cols.length > 2 && cols[2] == 'a';
+        entries.add(StreetEntry(cols[0], pts, area: area));
+      }
     }
     if (entries.isEmpty) return null;
     return (
@@ -258,12 +272,20 @@ class StreetIndex {
 
   /// Сұранысқа ең ұқсас көшелер (бір өзекті атаулар біреу болып
   /// біріктіріледі: «улица Абая» мен «Абай көшесі» — бір көше).
-  List<StreetMatch> match(NameKey q, {int limit = 5, double minScore = 0.6}) {
+  ///
+  /// [areas] — көшелердің орнына шағын аудандар/тұрғын массивтер ішінен.
+  /// Толық сұраныс ештеңеге ұқсамаса, оның БІР БӨЛІГІ бойынша да іздейді
+  /// («абай туран» → «Тұран көшесі»).
+  List<StreetMatch> match(
+    NameKey q, {
+    int limit = 5,
+    double minScore = 0.6,
+    bool areas = false,
+  }) {
     if (q.core.length < 2) return const [];
-    final scored = <StreetMatch>[];
-    for (final e in entries) {
-      final s = GeoText.similarityKey(q, e.key);
-      if (s >= minScore) scored.add(StreetMatch(e, s));
+    var scored = _score(q, minScore, areas, words: false);
+    if (!scored.any((m) => m.score >= 0.7)) {
+      scored = _score(q, minScore, areas, words: true);
     }
     scored.sort((a, b) {
       final c = b.score.compareTo(a.score);
@@ -279,6 +301,21 @@ class StreetIndex {
     }
     return out;
   }
+
+  List<StreetMatch> _score(
+    NameKey q,
+    double minScore,
+    bool areas, {
+    required bool words,
+  }) {
+    final out = <StreetMatch>[];
+    for (final e in entries) {
+      if (e.area != areas) continue;
+      final s = GeoText.similarityKey(q, e.key, words: words);
+      if (s >= minScore) out.add(StreetMatch(e, s));
+    }
+    return out;
+  }
 }
 
 class StreetEntry {
@@ -287,7 +324,10 @@ class StreetEntry {
   /// Көшенің бір не бірнеше нүктесі (орталыққа жақыны — бірінші).
   final List<LatLng> points;
 
-  StreetEntry(this.name, this.points);
+  /// Көше емес — шағын аудан / тұрғын массив.
+  final bool area;
+
+  StreetEntry(this.name, this.points, {this.area = false});
 
   late final NameKey key = NameKey(name);
   late final String core = GeoText.streetCore(name);
