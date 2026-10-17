@@ -383,7 +383,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.insights_rounded, size: 16, color: Gz.textSecondary),
+            const Icon(
+              Icons.insights_rounded,
+              size: 16,
+              color: Gz.textSecondary,
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -424,8 +428,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
             title: Text(t('Жүкті басқа адам қабылдайды'), style: Gz.h3),
             subtitle: Text(
-              t('Оған көлік қайда екені көрінетін сілтеме мен 4 таңбалы код '
-                  'барады'),
+              t(
+                'Оған көлік қайда екені көрінетін сілтеме мен 4 таңбалы код '
+                'барады',
+              ),
               style: Gz.caption,
             ),
           ),
@@ -681,11 +687,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       // Қосымша талаптар: сервер 0077-сіз болса — түсініктемеге мәтін болып
       // қосылады (орындаушы бәрібір оқиды).
       final extras = _isTaxi ? const OrderExtras() : _extras;
-      final extrasViaRpc =
-          !extras.isEmpty && await Repo.orderExtrasAvailable();
+      final extrasViaRpc = !extras.isEmpty && await Repo.orderExtrasAvailable();
       var comment = _comment.text.trim();
       if (!extras.isEmpty && !extrasViaRpc) {
-        comment = [comment, extras.asText()].where((s) => s.isNotEmpty).join('. ');
+        comment = [
+          comment,
+          extras.asText(),
+        ].where((s) => s.isNotEmpty).join('. ');
       }
       final id = await Repo.createOrder(
         vehicleType: _vehicle,

@@ -133,8 +133,10 @@ class _RecipientSectionState extends State<RecipientSection> {
     final ok = await confirmDialog(
       context,
       title: t('Жүк алушыға жетті ме?'),
-      message: t('Алушы кодты таба алмаса — жеткізуді өзіңіз растаңыз. '
-          'Сонда орындаушы заказды кодсыз аяқтай алады.'),
+      message: t(
+        'Алушы кодты таба алмаса — жеткізуді өзіңіз растаңыз. '
+        'Сонда орындаушы заказды кодсыз аяқтай алады.',
+      ),
       confirmLabel: t('Иә, жүк жетті'),
       confirmColor: Gz.green,
       icon: Icons.inventory_rounded,
@@ -143,7 +145,9 @@ class _RecipientSectionState extends State<RecipientSection> {
     try {
       await Repo.clientConfirmDelivery(widget.order.id);
       await _load();
-      if (mounted) showSnack(context, t('Расталды — орындаушы заказды аяқтай алады'));
+      if (mounted) {
+        showSnack(context, t('Расталды — орындаушы заказды аяқтай алады'));
+      }
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
     }
@@ -161,9 +165,11 @@ class _RecipientSectionState extends State<RecipientSection> {
         tone: NoticeTone.accent,
         icon: Icons.person_pin_circle_outlined,
         title: t('Жүкті басқа адам қабылдай ма?'),
-        message: t('Алушыны қосыңыз: оған WhatsApp арқылы көліктің қайда '
-            'екені көрінетін сілтеме мен 4 таңбалы код барады. Жүк тек '
-            'кодпен тапсырылады.'),
+        message: t(
+          'Алушыны қосыңыз: оған WhatsApp арқылы көліктің қайда '
+          'екені көрінетін сілтеме мен 4 таңбалы код барады. Жүк тек '
+          'кодпен тапсырылады.',
+        ),
         actionLabel: t('Алушыны қосу'),
         onAction: _edit,
       );
@@ -246,8 +252,10 @@ class _RecipientSectionState extends State<RecipientSection> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      t('Алушы осы кодты жүргізушіге айтқанда ғана заказ '
-                          'аяқталады.'),
+                      t(
+                        'Алушы осы кодты жүргізушіге айтқанда ғана заказ '
+                        'аяқталады.',
+                      ),
                       textAlign: TextAlign.center,
                       style: Gz.caption,
                     ),
@@ -282,7 +290,11 @@ class _RecipientSectionState extends State<RecipientSection> {
             ],
           ],
           if (!r.verified &&
-              const {'arrived', 'loading', 'in_transit'}.contains(o.status)) ...[
+              const {
+                'arrived',
+                'loading',
+                'in_transit',
+              }.contains(o.status)) ...[
             const SizedBox(height: 4),
             TextButton.icon(
               onPressed: _confirmDelivered,

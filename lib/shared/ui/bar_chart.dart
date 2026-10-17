@@ -131,12 +131,17 @@ class _GzBarChartState extends State<GzBarChart> {
                                   child: GestureDetector(
                                     behavior: HitTestBehavior.opaque,
                                     onTap: () => setState(
-                                      () => _selected = _selected == i ? null : i,
+                                      () =>
+                                          _selected = _selected == i ? null : i,
                                     ),
                                     child: Align(
                                       alignment: Alignment.bottomCenter,
-                                      child: _bar(rows[i], max, barW,
-                                          selected: _selected == i),
+                                      child: _bar(
+                                        rows[i],
+                                        max,
+                                        barW,
+                                        selected: _selected == i,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -173,15 +178,21 @@ class _GzBarChartState extends State<GzBarChart> {
           AnimatedSize(
             duration: const Duration(milliseconds: 160),
             child: sel == null
-                ? Text(t('Бағанды басыңыз — күннің мәні көрінеді'),
-                    style: Gz.caption)
+                ? Text(
+                    t('Бағанды басыңыз — күннің мәні көрінеді'),
+                    style: Gz.caption,
+                  )
                 : Wrap(
                     spacing: 14,
                     runSpacing: 4,
                     children: [
-                      Text(_dayLabel(sel),
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w800)),
+                      Text(
+                        _dayLabel(sel),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       for (final s in widget.series)
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -243,7 +254,6 @@ class _GzBarChartState extends State<GzBarChart> {
     );
   }
 }
-
 
 /// Үлкен соманы ықшам жазу: 1 284 000 → «1.3 млн ₸», 54 300 → «54.3 мың ₸».
 String fmtCompactT(num v) {

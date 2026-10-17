@@ -1139,10 +1139,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
           if (p.referredBy == null) ...[
             Text(
               t('Досыңыздың кодын енгізіңіз'),
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
             const SizedBox(height: 2),
             Text(

@@ -25,9 +25,9 @@
 		<key>CFBundleDisplayName</key>
 		<string>Tasu</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Location is used to mark your pickup point on the map and show nearby orders.</string>
+		<string>Location is used to mark your pickup point on the map, show nearby orders and, during an active order, show the driver’s position to the customer on the map.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Location is used to mark your pickup point on the map and show nearby orders.</string>
+		<string>Location is used to mark your pickup point on the map, show nearby orders and, during an active order, show the driver’s position to the customer on the map.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Camera access is used to take photos of cargo and upload driver documents.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
@@ -76,6 +76,7 @@
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
+			<string>location</string>
 		</array>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>

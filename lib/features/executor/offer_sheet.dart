@@ -26,11 +26,8 @@ Future<OfferDraft?> showOfferSheet(
 }) {
   return showGzSheet<OfferDraft>(
     context,
-    builder: (_) => _OfferSheet(
-      order: order,
-      counter: counter,
-      kmToPickup: kmToPickup,
-    ),
+    builder: (_) =>
+        _OfferSheet(order: order, counter: counter, kmToPickup: kmToPickup),
   );
 }
 
@@ -177,7 +174,8 @@ class _OfferSheetState extends State<_OfferSheet> {
             ),
             const SizedBox(height: 16),
             GzPrimaryButton(
-              label: '${t('Ұсыну')} · ${fmtT(widget.counter ? _price : (base ?? _price))} · ~$_eta ${t('мин')}',
+              label:
+                  '${t('Ұсыну')} · ${fmtT(widget.counter ? _price : (base ?? _price))} · ~$_eta ${t('мин')}',
               onPressed: () => Navigator.pop<OfferDraft>(context, (
                 price: widget.counter ? _price : (base ?? _price),
                 etaMin: _eta,

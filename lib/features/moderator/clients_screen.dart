@@ -298,7 +298,11 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
               children: [
                 Row(
                   children: [
-                    InitialsAvatar(p.fullName, radius: 30, imageUrl: p.avatarUrl),
+                    InitialsAvatar(
+                      p.fullName,
+                      radius: 30,
+                      imageUrl: p.avatarUrl,
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(

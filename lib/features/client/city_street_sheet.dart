@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/geo.dart';
 import '../../core/kz_cities.dart';
 import '../../core/lang.dart';
+import '../../core/street_index.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'address_picker.dart';
@@ -109,7 +110,11 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   // ---- іздеу ----
   final _search = TextEditingController();
   Timer? _debounce;
-  List<GeoPlace> _results = const [];
+  List<AddressHit> _results = const [];
+
+  /// Қаланың көше тізімі — қате жазылған атауды түзету үшін (фонда
+  /// жүктеледі; дайын болмаса іздеу онсыз да жұмыс істейді).
+  StreetIndex? _index;
   bool _loading = false;
 
   /// Іздеу желі/сервер қатесімен аяқталды (бос тізімнен өзгеше: «табылмады»
@@ -146,6 +151,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     }
     _detectCity();
     _loadBook();
+    _loadIndex();
   }
 
   @override
@@ -216,6 +222,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       _detectingCity = false;
     });
     // Қала анықталғанша клиент мәтін теріп қойған болса — енді іздейміз.
+    _loadIndex();
     if (_search.text.trim().length >= 2) unawaited(_runSearch());
   }
 
@@ -276,10 +283,11 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       });
     }
     try {
-      final res = await Geo.searchStreet(
+      final res = await Geo.searchAddress(
         city: city,
-        street: n,
-        near: _cityPoint,
+        query: n,
+        near: _center,
+        index: _index,
       );
       if (!mounted || seq != _searchSeq) return;
       setState(() {
@@ -307,15 +315,20 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   /// нәтижелері (Алматыда «Абая 15» деп іздегенде Талғар, Қарғалы,
   /// Панфилово… «улица Абая, 15») қаладағы нәтиже бар болса 3-ке дейін
   /// қысқартылады — әйтпесе олар тізімді толтырып, дұрысын көмеді.
-  List<GeoPlace> _inSelectedArea(List<GeoPlace> res) {
+  List<AddressHit> _inSelectedArea(List<AddressHit> res) {
     final inArea = res
-        .where((e) => Geo.sameCity(e.city, _city) || _pointInArea(e.point))
+        .where(
+          (e) =>
+              Geo.sameCity(e.place.city, _city) || _pointInArea(e.place.point),
+        )
         .toList();
     final own = inArea
-        .where((e) => e.city == null || Geo.sameCity(e.city, _city))
+        .where((e) => e.place.city == null || Geo.sameCity(e.place.city, _city))
         .toList();
     final around = inArea
-        .where((e) => e.city != null && !Geo.sameCity(e.city, _city))
+        .where(
+          (e) => e.place.city != null && !Geo.sameCity(e.place.city, _city),
+        )
         .toList();
     // Маңайдағы елді мекендер — жақыннан алысқа.
     final ref = _origin ?? _center;
@@ -323,8 +336,8 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       around.sort(
         (a, b) => Geo.haversineKm(
           ref,
-          a.point,
-        ).compareTo(Geo.haversineKm(ref, b.point)),
+          a.place.point,
+        ).compareTo(Geo.haversineKm(ref, b.place.point)),
       );
     }
     return [...own, ...(own.isEmpty ? around : around.take(3))];
@@ -456,8 +469,29 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
       // Қала ауысты — ескі нәтижелер басқа қалаға тиесілі.
       _results = const [];
     });
+    _loadIndex();
     // Терілген мәтін болса — жаңа қала бойынша қайта іздейміз.
     if (_search.text.trim().length >= 2) _onChanged(_search.text);
+  }
+
+  /// Таңдалған қаланың көше тізімін фонда жүктейді; дайын болғанда
+  /// терілген сұраныс қайта ізделеді (енді қате жазылғаны да табылады).
+  void _loadIndex() {
+    final city = _city;
+    final center = _center;
+    if (city == null || center == null) return;
+    final ready = StreetIndex.peek(city, center);
+    if (ready != null) {
+      _index = ready;
+      return;
+    }
+    unawaited(
+      StreetIndex.load(city, center, settlement: _area != null).then((idx) {
+        if (!mounted || idx == null || city != _city) return;
+        _index = idx;
+        if (_search.text.trim().length >= 2) unawaited(_runSearch());
+      }),
+    );
   }
 
   /// Картадан дәл жерді белгілеу (екінші деңгейлі әрекет).
@@ -474,38 +508,21 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
     await _use(res);
   }
 
-  /// Клиент жазған мәтінді адрес ретінде қолдану. Геокодер дәл тапса —
-  /// соның нүктесін алады; таппаса (Қазақстанда бұл жиі — тегін карта
-  /// деректерінде шағын аудандар жоқ) картаны ашып, дәл жерді клиенттің
-  /// өзі белгілейді (жазған мәтіні сақталады).
-  Future<void> _useTyped() async {
-    final text = _search.text.trim();
-    final city = _city;
-    if (text.length < 2 || city == null) return;
-    // Нүктені ЕШҚАШАН үнсіз алмаймыз: бұрын тізімнің бірінші нәтижесі
-    // алынатын, ал ол жиі БАСҚА көше болатын («Абая 15» → Көкқайнардағы
-    // Мәмбетов 15) — заказ қате жерге түсетін. Енді карта ең ықтимал
-    // жерде (терілген көшеге сәйкес нәтиже, болмаса қала ортасы) ашылады
-    // да, клиент пинді растайды. Жазған мәтіні адрес болып қалады.
-    final pq = Geo.parseStreetQuery(text);
-    final match = pq.key == null
-        ? null
-        : _results.where((p) => Geo.placeMatches(p, pq.key!)).firstOrNull;
-    await _confirmOnMap(text, match?.point ?? _center);
-  }
-
-  /// Нүктені картадан растату (адрес мәтіні — [label], өзгермейді).
-  Future<void> _confirmOnMap(String label, LatLng? at) async {
-    final city = _city;
+  /// Табылған КӨШЕДЕ үйді картадан көрсету: үй нөмірі картада жоқ болса
+  /// (Қазақстанда жиі), карта сол көшеде ашылады, клиент пинді үйіне
+  /// қояды. Мекенжай атауы әрқашан КАРТАДАН анықталады — клиент жазған
+  /// мәтін адрес болып кетпейді (атау мен нүкте ешқашан айырылмайды).
+  Future<void> _pinOnMap(AddressHit h) async {
     FocusScope.of(context).unfocus();
     final picked = await AddressPickerScreen.pick(
       context,
-      title: '${t('Картадан белгілеңіз:')} $label',
-      city: city,
-      initial: at ?? _center,
+      title: t('Үйді картадан көрсетіңіз'),
+      city: _city,
+      initial: h.place.point,
+      initialZoom: 17,
     );
     if (picked == null || !mounted) return;
-    await _use(PickedAddress(label, picked.point, picked.city ?? city));
+    await _use(picked);
   }
 
   /// Табылған мекенжайды «Үй»/«Жұмыс» етіп сақтау (таңдамай-ақ).
@@ -590,7 +607,9 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                   autofocus: true,
                   textInputAction: TextInputAction.search,
                   onChanged: (v) => setState(() => _onChanged(v)),
-                  onSubmitted: (_) => _useTyped(),
+                  // Enter — тек клавиатураны жабады: тізім толық көрінсін,
+                  // клиент дұрысын өзі таңдасын.
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   decoration: InputDecoration(
                     hintText: t('Көше, үй нөмірі не нысан аты'),
                     prefixIcon: const Icon(Icons.search_rounded),
@@ -627,19 +646,27 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                               });
                             },
                           ),
-                        Container(width: 1, height: 22, color: Gz.border),
-                        TextButton(
-                          onPressed: _findOnMap,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Gz.blue,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            minimumSize: const Size(0, 40),
+                        // Сұраныс терілгенде «Карта» тізімнің соңында тұрады
+                        // («Тізімде жоқ па?») — бір әрекет екі жерде болмасын.
+                        if (query.length < 2) ...[
+                          Container(width: 1, height: 22, color: Gz.border),
+                          TextButton(
+                            onPressed: _findOnMap,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Gz.blue,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              minimumSize: const Size(0, 40),
+                            ),
+                            child: Text(
+                              t('Карта'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            t('Карта'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -808,6 +835,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
 
   // ── ІЗДЕУ НӘТИЖЕЛЕРІ ───────────────────────────────────────────────
   Widget _resultList(String query) {
+    final empty = _results.isEmpty && !_loading;
     return ListView(
       padding: const EdgeInsets.only(top: 4, bottom: 12),
       children: [
@@ -838,34 +866,35 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
               ],
             ),
           )
-        else if (_results.isEmpty && !_loading)
+        else if (empty)
           _note(
             t(
-              'Тізімнен табылмады. Төмендегі «Осыны қолдану» арқылы '
-              'жазғаныңызды қалдырып, картадан дәл жерін белгілеңіз.',
+              'Мұндай мекенжай табылмады. Жазылуын тексеріңіз не нүктені '
+              'картадан көрсетіңіз — мекенжайын өзіміз анықтаймыз.',
             ),
           ),
-        // «Жазғанымды қолдану» — ӘРҚАШАН қолжетімді (тізім бос болса да,
-        // толы болса да): геокодер Қазақстандағы шағын аудандарды жиі
-        // танымайды, ал клиент өз адресін өзі жақсы біледі. Нүкте әрқашан
-        // картадан расталады — тізімдегі бөтен көшенің нүктесі алынбайды.
-        if (_city != null)
+        // Картадан көрсету — тізімде дұрысы болмаса. Мекенжай атауы
+        // КАРТАДАН анықталады (клиент жазған мәтін адрес болмайды).
+        if (_city != null && !_loading)
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
             child: _row(
-              icon: Icons.edit_location_alt_rounded,
-              iconColor: Gz.green,
-              title: '${t('Осыны қолдану')}: «$query»',
-              subtitle: t('Картадан дәл жерін белгілейсіз'),
-              onTap: _useTyped,
-              strong: true,
+              icon: Icons.map_rounded,
+              iconColor: empty ? Gz.green : Gz.blue,
+              title: empty
+                  ? t('Картадан көрсету')
+                  : t('Тізімде жоқ па? Картадан көрсетіңіз'),
+              subtitle: t('Нүктені қойсаңыз, мекенжайы өзі анықталады'),
+              onTap: _findOnMap,
+              strong: empty,
             ),
           ),
       ],
     );
   }
 
-  Widget _resultRow(GeoPlace r) {
+  Widget _resultRow(AddressHit h) {
+    final r = h.place;
     // Нәтиже қала маңындағы ауылда болса, ауыл атын АДРЕСКЕ қосамыз —
     // орындаушы қайда баратынын адрестің өзінен көруі керек. Тізімде ол
     // тақырыпта емес, астыңғы жолда («аудан, елді мекен») тұрады.
@@ -873,27 +902,30 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
         r.city != null && r.city!.isNotEmpty && !Geo.sameCity(r.city, _city);
     final label = other ? '${r.city}, ${r.name}' : r.name;
     final picked = PickedAddress(label, r.point, _city);
-    // Көше табылды, бірақ үй нөмірі картада жоқ — нүкте көшенің бір
-    // жерінде тұр, сондықтан картадан растатамыз.
-    final approx = r.kind == Geo.kStreetApprox;
     final place = r.city ?? _area ?? _city;
     final district = r.district;
-    final sub = approx
-        ? t('Үй картада жоқ — нүктені картадан растайсыз')
-        : [
-            if (district != null && !Geo.sameCity(district, place)) district,
-            ?place,
-          ].join(', ');
+    final where = [
+      if (district != null && !Geo.sameCity(district, place)) district,
+      ?place,
+    ].join(', ');
+    // Көше табылды, бірақ үй картада жоқ — үйді картадан көрсетеді.
+    final sub = h.needsPin
+        ? t('Көше табылды — үйді картадан көрсетесіз')
+        : where;
     return _placeRow(
-      icon: approx ? Icons.edit_location_alt_rounded : Icons.place_rounded,
-      iconColor: approx ? Gz.blue : Gz.textTertiary,
+      icon: h.needsPin
+          ? Icons.edit_location_alt_rounded
+          : (h.exactHouse ? Icons.home_rounded : Icons.place_rounded),
+      iconColor: h.needsPin
+          ? Gz.blue
+          : (h.exactHouse ? Gz.ink : Gz.textTertiary),
       title: r.name,
       subtitle: sub.isEmpty ? null : sub,
       distance: _distanceTo(r.point),
-      onTap: () => approx ? _confirmOnMap(label, r.point) : _use(picked),
+      onTap: () => h.needsPin ? _pinOnMap(h) : _use(picked),
       // Ұзақ басса — «Үй»/«Жұмыс» етіп сақтау (тізімді белгішелермен
       // шұбарламау үшін батырма емес, ұзақ басу).
-      onLongPress: approx ? null : () => _save(picked),
+      onLongPress: h.needsPin ? null : () => _save(picked),
     );
   }
 

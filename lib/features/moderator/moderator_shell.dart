@@ -350,10 +350,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
                   const GazelGoLogo(size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: InfoChip(
-                      text: t('Модератор'),
-                      color: Gz.violet,
-                    ),
+                    child: InfoChip(text: t('Модератор'), color: Gz.violet),
                   ),
                   const LanguageSwitcher(),
                 ],

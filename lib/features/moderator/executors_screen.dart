@@ -321,10 +321,14 @@ class ExecutorDraftTile extends StatelessWidget {
             ContactButtons(
               phone: phone!,
               whatsappText: row['role'] == 'executor'
-                  ? t('Сәлеметсіз бе! Tasu-да орындаушы ретінде '
-                        'тіркелуді бастапсыз. Аяқтауға көмек керек пе?')
-                  : t('Сәлеметсіз бе! Tasu-да тіркелуді бастапсыз. '
-                        'Аяқтауға көмек керек пе?'),
+                  ? t(
+                      'Сәлеметсіз бе! Tasu-да орындаушы ретінде '
+                      'тіркелуді бастапсыз. Аяқтауға көмек керек пе?',
+                    )
+                  : t(
+                      'Сәлеметсіз бе! Tasu-да тіркелуді бастапсыз. '
+                      'Аяқтауға көмек керек пе?',
+                    ),
             ),
           ],
         ],
@@ -452,7 +456,10 @@ class _ExecutorTile extends StatelessWidget {
 class ExecutorModActions {
   static List<PopupMenuEntry<String>> menu(ExecutorProfile ep) => [
     if (ep.status == 'approved')
-      PopupMenuItem(value: 'request_docs', child: Text(t('Құжат жаңартуды сұрау'))),
+      PopupMenuItem(
+        value: 'request_docs',
+        child: Text(t('Құжат жаңартуды сұрау')),
+      ),
     PopupMenuItem(value: 'balance', child: Text(t('Баланс түзету'))),
     if (ep.status == 'approved')
       PopupMenuItem(
@@ -474,7 +481,8 @@ class ExecutorModActions {
         case 'request_docs':
           final res = await showDialog<(List<String>, String)>(
             context: context,
-            builder: (ctx) => _RequestDocsDialog(isForeign: ep.isForeignCitizen),
+            builder: (ctx) =>
+                _RequestDocsDialog(isForeign: ep.isForeignCitizen),
           );
           if (res == null) return;
           await Repo.modRequestDocs(ep.userId, res.$1, res.$2);
@@ -497,7 +505,9 @@ class ExecutorModActions {
             icon: Icons.lock_open_rounded,
             confirmColor: Gz.green,
             title: t('Бұғаттан шығару'),
-            message: t('Орындаушы қайта заказ қабылдай алады. Жалғастырамыз ба?'),
+            message: t(
+              'Орындаушы қайта заказ қабылдай алады. Жалғастырамыз ба?',
+            ),
             confirmLabel: t('Бұғаттан шығару'),
           );
           if (!ok) return;
@@ -625,7 +635,8 @@ class _BalanceDialogState extends State<_BalanceDialog> {
           color: _add ? Gz.green : Gz.red,
           onPressed: v == null
               ? null
-              : () => Navigator.pop(context, (_add ? v : -v, _note.text.trim())),
+              : () =>
+                    Navigator.pop(context, (_add ? v : -v, _note.text.trim())),
         ),
       ],
     );
@@ -779,7 +790,10 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  InfoChip(text: statusLabel, color: statusColor),
+                                  InfoChip(
+                                    text: statusLabel,
+                                    color: statusColor,
+                                  ),
                                   const SizedBox(width: 8),
                                   if (p != null)
                                     RatingStars(

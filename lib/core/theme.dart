@@ -157,13 +157,19 @@ class Gz {
   /// Сүзгі бүкіл тайл қабатына БІР рет қолданылады (`osmTileLayer()`).
   static const mapFilter = ColorFilter.matrix(<double>[
     // R
-    0.97 * (0.2126 * 0.15 + 0.85), 0.97 * (0.7152 * 0.15), 0.97 * (0.0722 * 0.15),
+    0.97 * (0.2126 * 0.15 + 0.85),
+    0.97 * (0.7152 * 0.15),
+    0.97 * (0.0722 * 0.15),
     0, 8,
     // G
-    0.97 * (0.2126 * 0.15), 0.97 * (0.7152 * 0.15 + 0.85), 0.97 * (0.0722 * 0.15),
+    0.97 * (0.2126 * 0.15),
+    0.97 * (0.7152 * 0.15 + 0.85),
+    0.97 * (0.0722 * 0.15),
     0, 7,
     // B
-    0.97 * (0.2126 * 0.15), 0.97 * (0.7152 * 0.15), 0.97 * (0.0722 * 0.15 + 0.85),
+    0.97 * (0.2126 * 0.15),
+    0.97 * (0.7152 * 0.15),
+    0.97 * (0.0722 * 0.15 + 0.85),
     0, 5,
     // A
     0, 0, 0, 1, 0,
@@ -172,10 +178,10 @@ class Gz {
   /// Қызыл (қауіпті) толтырылған батырманың стилі — «Бұғаттау»,
   /// «Қабылдамау», «Растау (бас тарту)» т.б. Бүкіл қосымшада бірдей.
   static ButtonStyle dangerFilled() => FilledButton.styleFrom(
-        backgroundColor: red,
-        foregroundColor: Colors.white,
-        shadowColor: red.withValues(alpha: 0.35),
-      );
+    backgroundColor: red,
+    foregroundColor: Colors.white,
+    shadowColor: red.withValues(alpha: 0.35),
+  );
 
   /// Негізгі қаріп (assets/fonts — Rubik, қазақ әліпбиін толық қолдайды).
   static const fontFamily = 'Rubik';
@@ -206,41 +212,28 @@ class Gz {
   /// Карталарға жұмсақ, ЕКІ ҚАБАТТЫ көлеңке: жақын әрі тығыз көлеңке
   /// жиекті айқындайды, алыс әрі жайылған көлеңке тереңдік береді.
   static const cardShadow = [
-    BoxShadow(
-      color: Color(0x0A101828),
-      blurRadius: 3,
-      offset: Offset(0, 1),
-    ),
-    BoxShadow(
-      color: Color(0x14101828),
-      blurRadius: 18,
-      offset: Offset(0, 6),
-    ),
+    BoxShadow(color: Color(0x0A101828), blurRadius: 3, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x14101828), blurRadius: 18, offset: Offset(0, 6)),
   ];
 
   /// Қалқып тұрған элементтерге (панель, диалог, bottom sheet) — тереңірек.
   static const liftShadow = [
-    BoxShadow(
-      color: Color(0x0F101828),
-      blurRadius: 6,
-      offset: Offset(0, 2),
-    ),
-    BoxShadow(
-      color: Color(0x1F101828),
-      blurRadius: 34,
-      offset: Offset(0, 14),
-    ),
+    BoxShadow(color: Color(0x0F101828), blurRadius: 6, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0x1F101828), blurRadius: 34, offset: Offset(0, 14)),
   ];
 
   /// Түрлі-түсті «жарқ ету»: батырма/белсенді элемент өз түсімен жарқырайды.
-  static List<BoxShadow> glow(Color c, {double alpha = 0.38, double blur = 22}) =>
-      [
-        BoxShadow(
-          color: c.withValues(alpha: alpha),
-          blurRadius: blur,
-          offset: const Offset(0, 8),
-        ),
-      ];
+  static List<BoxShadow> glow(
+    Color c, {
+    double alpha = 0.38,
+    double blur = 22,
+  }) => [
+    BoxShadow(
+      color: c.withValues(alpha: alpha),
+      blurRadius: blur,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   // ---- ТИПОГРАФИКА ----
   // Мәтіннің көзге әдемі көрінуі үш нәрсеге тәуелді: ӨЛШЕМ САТЫСЫ (әр
@@ -255,69 +248,126 @@ class Gz {
 
   /// Экранның бас тақырыбы (кіру беті, hero сома).
   static const display = TextStyle(
-      fontSize: 28, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.7);
+    fontSize: 28,
+    fontWeight: FontWeight.w900,
+    height: 1.15,
+    letterSpacing: -0.7,
+  );
 
   /// Бөлім тақырыбы.
   static const h1 = TextStyle(
-      fontSize: 22, fontWeight: FontWeight.w900, height: 1.2, letterSpacing: -0.5);
+    fontSize: 22,
+    fontWeight: FontWeight.w900,
+    height: 1.2,
+    letterSpacing: -0.5,
+  );
 
   /// Карта/диалог тақырыбы.
   static const h2 = TextStyle(
-      fontSize: 18, fontWeight: FontWeight.w800, height: 1.25, letterSpacing: -0.3);
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
+    height: 1.25,
+    letterSpacing: -0.3,
+  );
 
   /// Тізім элементінің / карта бөлімінің тақырыбы.
   static const h3 = TextStyle(
-      fontSize: 16, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15);
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    height: 1.3,
+    letterSpacing: -0.15,
+  );
 
   /// Негізгі мәтін.
   static const body = TextStyle(fontSize: 15, height: 1.5);
 
   /// Қосымша түсіндірме мәтін.
   static const bodyMuted = TextStyle(
-      fontSize: 14, height: 1.5, color: textSecondary);
+    fontSize: 14,
+    height: 1.5,
+    color: textSecondary,
+  );
 
   /// Ұсақ белгі (күн, сан, статус астындағы жазу).
   static const caption = TextStyle(
-      fontSize: 12, height: 1.4, letterSpacing: 0.1, color: textSecondary);
+    fontSize: 12,
+    height: 1.4,
+    letterSpacing: 0.1,
+    color: textSecondary,
+  );
 
   /// Өріс/блок үстіндегі МИКРО тақырып — БАС ӘРІППЕН жазуға арналған.
   static const label = TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
-      height: 1.2,
-      letterSpacing: 0.8,
-      color: textSecondary);
+    fontSize: 11,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+    letterSpacing: 0.8,
+    color: textSecondary,
+  );
 
   /// Ақша сомасы — сандар тығыз әрі салмақты тұруы керек.
   static const money = TextStyle(
-      fontSize: 20, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.6);
+    fontSize: 20,
+    fontWeight: FontWeight.w900,
+    height: 1.15,
+    letterSpacing: -0.6,
+  );
 
   /// Үлкен сома (заказ бетінің басындағы баға).
   static const moneyLg = TextStyle(
-      fontSize: 24, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.8);
+    fontSize: 24,
+    fontWeight: FontWeight.w900,
+    height: 1.1,
+    letterSpacing: -0.8,
+  );
 
   /// Ең үлкен сома (баланс hero-картасы, баға степпері).
   static const moneyXl = TextStyle(
-      fontSize: 28, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.8);
+    fontSize: 28,
+    fontWeight: FontWeight.w900,
+    height: 1.1,
+    letterSpacing: -0.8,
+  );
 
   static const TextTheme _textTheme = TextTheme(
     displaySmall: display,
     headlineMedium: h1,
     headlineSmall: TextStyle(
-        fontSize: 20, fontWeight: FontWeight.w900, height: 1.2, letterSpacing: -0.4),
+      fontSize: 20,
+      fontWeight: FontWeight.w900,
+      height: 1.2,
+      letterSpacing: -0.4,
+    ),
     titleLarge: TextStyle(
-        fontSize: 18, fontWeight: FontWeight.w800, height: 1.25, letterSpacing: -0.3),
+      fontSize: 18,
+      fontWeight: FontWeight.w800,
+      height: 1.25,
+      letterSpacing: -0.3,
+    ),
     titleMedium: TextStyle(
-        fontSize: 16, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.15),
+      fontSize: 16,
+      fontWeight: FontWeight.w800,
+      height: 1.3,
+      letterSpacing: -0.15,
+    ),
     titleSmall: TextStyle(
-        fontSize: 14, fontWeight: FontWeight.w700, height: 1.3),
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      height: 1.3,
+    ),
     bodyLarge: TextStyle(fontSize: 16, height: 1.5, letterSpacing: 0),
     bodyMedium: TextStyle(fontSize: 14, height: 1.48, letterSpacing: 0),
     bodySmall: TextStyle(fontSize: 13, height: 1.42, letterSpacing: 0.1),
     labelLarge: TextStyle(
-        fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 0.1),
+      fontSize: 15,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.1,
+    ),
     labelMedium: TextStyle(
-        fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.1),
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.1,
+    ),
     labelSmall: label,
   );
 
@@ -368,79 +418,93 @@ class Gz {
       // басылмайды?» деп шатасатын (мыс. тіркелудегі нөмір расталмай тұрып
       // «Тіркелу»). Енді: расталмаған/толмаған = сұр, дайын = сары.
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: yellow,
-          foregroundColor: ink,
-          disabledBackgroundColor: disabledBg,
-          disabledForegroundColor: disabledFg,
-          minimumSize: const Size.fromHeight(54),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          elevation: 6,
-          // Көлеңке БРЕНД ТҮСІМЕН — батырманың астынан жылы сәуле шыққандай
-          // болады. Сұр көлеңке батырманы «кірлеткен» болып көрсететін.
-          shadowColor: yellow.withValues(alpha: 0.55),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
-          textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-              fontFamily: fontFamily),
-        ).copyWith(
-          // Өшірулі күйде көлеңке де болмауы керек — әйтпесе сұр батырма
-          // «басылатын» болып көрінеді. Басылған сәтте көлеңке кішірейеді:
-          // батырма шынымен «басылып» кеткендей әсер береді.
-          elevation: WidgetStateProperty.resolveWith((s) {
-            if (s.contains(WidgetState.disabled)) return 0;
-            if (s.contains(WidgetState.pressed)) return 2;
-            return 6;
-          }),
-          overlayColor: WidgetStateProperty.resolveWith(
-              (s) => s.contains(WidgetState.pressed)
-                  ? ink.withValues(alpha: 0.10)
-                  : ink.withValues(alpha: 0.05)),
-        ),
+        style:
+            FilledButton.styleFrom(
+              backgroundColor: yellow,
+              foregroundColor: ink,
+              disabledBackgroundColor: disabledBg,
+              disabledForegroundColor: disabledFg,
+              minimumSize: const Size.fromHeight(54),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              elevation: 6,
+              // Көлеңке БРЕНД ТҮСІМЕН — батырманың астынан жылы сәуле шыққандай
+              // болады. Сұр көлеңке батырманы «кірлеткен» болып көрсететін.
+              shadowColor: yellow.withValues(alpha: 0.55),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(rMd),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.1,
+                fontFamily: fontFamily,
+              ),
+            ).copyWith(
+              // Өшірулі күйде көлеңке де болмауы керек — әйтпесе сұр батырма
+              // «басылатын» болып көрінеді. Басылған сәтте көлеңке кішірейеді:
+              // батырма шынымен «басылып» кеткендей әсер береді.
+              elevation: WidgetStateProperty.resolveWith((s) {
+                if (s.contains(WidgetState.disabled)) return 0;
+                if (s.contains(WidgetState.pressed)) return 2;
+                return 6;
+              }),
+              overlayColor: WidgetStateProperty.resolveWith(
+                (s) => s.contains(WidgetState.pressed)
+                    ? ink.withValues(alpha: 0.10)
+                    : ink.withValues(alpha: 0.05),
+              ),
+            ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: ink,
-          // Ақ фон: сұр экран бетінде контур батырма «жоқ жер» емес, нақты
-          // батырма болып оқылады.
-          backgroundColor: surface,
-          disabledForegroundColor: disabledFg,
-          minimumSize: const Size.fromHeight(54),
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          side: const BorderSide(color: border, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
-          textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-              fontFamily: fontFamily),
-        ).copyWith(
-          // Басқанда/тінтуір үстіне келгенде жиегі БРЕНД түсіне ауысады —
-          // «бұл да батырма» деген белгі web/desktop-та да көрінеді.
-          side: WidgetStateProperty.resolveWith((s) {
-            if (s.contains(WidgetState.disabled)) {
-              return const BorderSide(color: disabledBg, width: 1.5);
-            }
-            if (s.contains(WidgetState.pressed) ||
-                s.contains(WidgetState.hovered)) {
-              return const BorderSide(color: yellow, width: 1.8);
-            }
-            return const BorderSide(color: border, width: 1.5);
-          }),
-          overlayColor: WidgetStatePropertyAll(yellow.withValues(alpha: 0.12)),
-        ),
+        style:
+            OutlinedButton.styleFrom(
+              foregroundColor: ink,
+              // Ақ фон: сұр экран бетінде контур батырма «жоқ жер» емес, нақты
+              // батырма болып оқылады.
+              backgroundColor: surface,
+              disabledForegroundColor: disabledFg,
+              minimumSize: const Size.fromHeight(54),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              side: const BorderSide(color: border, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(rMd),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.1,
+                fontFamily: fontFamily,
+              ),
+            ).copyWith(
+              // Басқанда/тінтуір үстіне келгенде жиегі БРЕНД түсіне ауысады —
+              // «бұл да батырма» деген белгі web/desktop-та да көрінеді.
+              side: WidgetStateProperty.resolveWith((s) {
+                if (s.contains(WidgetState.disabled)) {
+                  return const BorderSide(color: disabledBg, width: 1.5);
+                }
+                if (s.contains(WidgetState.pressed) ||
+                    s.contains(WidgetState.hovered)) {
+                  return const BorderSide(color: yellow, width: 1.8);
+                }
+                return const BorderSide(color: border, width: 1.5);
+              }),
+              overlayColor: WidgetStatePropertyAll(
+                yellow.withValues(alpha: 0.12),
+              ),
+            ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ink,
           disabledForegroundColor: disabledFg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(rSm),
+          ),
           textStyle: const TextStyle(
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-              fontFamily: fontFamily),
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.1,
+            fontFamily: fontFamily,
+          ),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
@@ -455,8 +519,10 @@ class Gz {
         // деген орын өзінен өзі көрініп тұрады (бұрын ақ-ақтың үстінде
         // жалаң жіңішке жиек қана болатын).
         fillColor: surfaceAlt,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 17,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: border, width: 1.4),
@@ -478,11 +544,18 @@ class Gz {
           borderRadius: BorderRadius.circular(rMd),
           borderSide: const BorderSide(color: red, width: 2),
         ),
-        hintStyle: const TextStyle(color: textTertiary, fontWeight: FontWeight.w400),
+        hintStyle: const TextStyle(
+          color: textTertiary,
+          fontWeight: FontWeight.w400,
+        ),
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
         errorStyle: const TextStyle(
-            color: red, fontSize: 12, fontWeight: FontWeight.w600, height: 1.3),
+          color: red,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          height: 1.3,
+        ),
       ),
       cardTheme: CardThemeData(
         color: surface,
@@ -504,16 +577,18 @@ class Gz {
         shadowColor: const Color(0x40101828),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rXl)),
         titleTextStyle: const TextStyle(
-            color: ink,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.3,
-            fontFamily: fontFamily),
+          color: ink,
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.3,
+          fontFamily: fontFamily,
+        ),
         contentTextStyle: const TextStyle(
-            color: textSecondary,
-            fontSize: 14,
-            height: 1.55,
-            fontFamily: fontFamily),
+          color: textSecondary,
+          fontSize: 14,
+          height: 1.55,
+          fontFamily: fontFamily,
+        ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surface,
@@ -531,25 +606,28 @@ class Gz {
         elevation: 8,
         insetPadding: const EdgeInsets.fromLTRB(14, 5, 14, 14),
         contentTextStyle: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            height: 1.4,
-            fontWeight: FontWeight.w600,
-            fontFamily: fontFamily),
+          color: Colors.white,
+          fontSize: 14,
+          height: 1.4,
+          fontWeight: FontWeight.w600,
+          fontFamily: fontFamily,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: textSecondary,
         titleTextStyle: const TextStyle(
-            color: ink,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            fontFamily: fontFamily),
+          color: ink,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          fontFamily: fontFamily,
+        ),
         subtitleTextStyle: const TextStyle(
-            color: textSecondary,
-            fontSize: 13,
-            height: 1.4,
-            fontFamily: fontFamily),
+          color: textSecondary,
+          fontSize: 13,
+          height: 1.4,
+          fontFamily: fontFamily,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
       ),
       chipTheme: ChipThemeData(
@@ -557,7 +635,10 @@ class Gz {
         selectedColor: yellow,
         side: const BorderSide(color: border),
         labelStyle: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w700, fontFamily: fontFamily),
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          fontFamily: fontFamily,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -570,7 +651,10 @@ class Gz {
         selectedItemColor: ink,
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
@@ -585,9 +669,7 @@ class Gz {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected)
-                ? ink
-                : textSecondary,
+            color: states.contains(WidgetState.selected) ? ink : textSecondary,
             size: 24,
           ),
         ),
@@ -599,9 +681,7 @@ class Gz {
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w800
                 : FontWeight.w600,
-            color: states.contains(WidgetState.selected)
-                ? ink
-                : textSecondary,
+            color: states.contains(WidgetState.selected) ? ink : textSecondary,
           ),
         ),
       ),
@@ -619,9 +699,15 @@ class Gz {
         ),
         overlayColor: WidgetStatePropertyAll(yellow.withValues(alpha: 0.10)),
         labelStyle: const TextStyle(
-            fontWeight: FontWeight.w800, fontSize: 14, fontFamily: fontFamily),
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
+          fontFamily: fontFamily,
+        ),
         unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600, fontSize: 14, fontFamily: fontFamily),
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          fontFamily: fontFamily,
+        ),
       ),
     );
   }
@@ -661,37 +747,40 @@ void showSnack(BuildContext context, String text, {bool error = false}) {
   ScaffoldMessenger.of(context)
     // Бірінің үстіне бірі жиналып қалмасын (әсіресе форма қателерінде).
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
+    ..showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                error ? Icons.priority_high_rounded : Icons.check_rounded,
+                size: 17,
+                color: Colors.white,
+              ),
             ),
-            child: Icon(
-              error ? Icons.priority_high_rounded : Icons.check_rounded,
-              size: 17,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text)),
-        ],
+            const SizedBox(width: 12),
+            Expanded(child: Text(text)),
+          ],
+        ),
+        backgroundColor: error ? Gz.red : Gz.ink,
+        duration: Duration(seconds: error ? 4 : 3),
       ),
-      backgroundColor: error ? Gz.red : Gz.ink,
-      duration: Duration(seconds: error ? 4 : 3),
-    ));
+    );
 }
 
 /// Backend қате кодтарын қазақшаға аудару.
 String errText(Object e) {
   final raw = e.toString();
   const map = {
-    'INSUFFICIENT_BALANCE': 'Балансыңыз жеткіліксіз. Алдымен баланс толтырыңыз.',
+    'INSUFFICIENT_BALANCE':
+        'Балансыңыз жеткіліксіз. Алдымен баланс толтырыңыз.',
     'ALREADY_ACTIVE':
         'Бұл тариф әлі белсенді. Ауысым бітсін не заказ лимиті бітсін — сосын қайта аласыз.',
     'NOT_APPROVED': 'Аккаунтыңыз әлі модерациядан өтпеген.',
@@ -719,12 +808,12 @@ String errText(Object e) {
     'TOO_MANY_ACTIVE': 'Белсенді заказ саны шектен асты (5).',
     'TOO_MANY_CANCELS':
         'Соңғы сағатта тым көп заказды өзіңіз тоқтаттыңыз. '
-            'Сәл үзіліс жасап, кейінірек қайталаңыз.',
+        'Сәл үзіліс жасап, кейінірек қайталаңыз.',
     'HAS_ACTIVE_ORDERS':
         'Белсенді заказыңыз бар — алдымен оны аяқтаңыз не тоқтатыңыз.',
     'ACCOUNT_BLOCKED':
         'Аккаунтыңыз уақытша бұғатталған (сенім деңгейі төмен түсті). '
-            'Қолдау қызметіне жазыңыз.',
+        'Қолдау қызметіне жазыңыз.',
     'DELETE_FAILED': 'Аккаунтты өшіру сәтсіз. Қолдау қызметіне жазыңыз.',
     'CANNOT_CANCEL_IN_PROGRESS':
         'Заказ орындалу үстінде — енді бас тартуға болмайды.',
@@ -743,7 +832,7 @@ String errText(Object e) {
     'TOO_MANY_PHOTOS': 'Бір хабарландыруға ең көбі 4 сурет салуға болады.',
     'TOO_MANY_LISTINGS':
         'Белсенді хабарландыру саны шектен асты (5). Жаңасын беру үшін '
-            'ескісінің бірін лентадан алып тастаңыз.',
+        'ескісінің бірін лентадан алып тастаңыз.',
     'LISTING_ACTIVE': 'Бұл хабарландыру әлі лентада тұр.',
     'ALREADY_REPORTED':
         'Сіз бұл хабарландыруға шағым бердіңіз. Модератор қарап жатыр.',
@@ -757,7 +846,7 @@ String errText(Object e) {
         'Бұл — өзіңіздің кодыңыз. Сізді шақырған адамның кодын енгізіңіз.',
     'REFERRAL_TOO_LATE':
         'Кодты бірінші заказды аяқтағанға дейін енгізу керек еді — енді '
-            'кеш. Бірақ өз кодыңызды таратып, бонус жинай бересіз.',
+        'кеш. Бірақ өз кодыңызды таратып, бонус жинай бересіз.',
     'BAD_CODE': 'Мұндай код жоқ. Тексеріп, қайта енгізіңіз (мыс. F591C6).',
     'DISABLED': 'Бұл мүмкіндік әзірге қосылмаған.',
     // --- жеткізу коды, заказ чаты (0076, 0078) ---
@@ -765,7 +854,7 @@ String errText(Object e) {
         'Заказды аяқтау үшін алушыдан 4 таңбалы жеткізу кодын сұраңыз.',
     'CODE_LOCKED':
         'Код тым көп рет қате енгізілді. Клиент қосымшада «Жүк жетті» деп '
-            'растауы керек.',
+        'растауы керек.',
     'CHAT_CLOSED': 'Бұл заказдың чаты жабылған.',
     'BAD_KEY': 'Бұл баптауды өзгертуге болмайды.',
     // Жаңа SQL-миграция әлі қолданылмаған (PostgREST функцияны таппады).
@@ -790,8 +879,7 @@ String errText(Object e) {
     'BAD_NAME': 'Атыңызды толық жазыңыз.',
     'BAD_ROLE': 'Рөл дұрыс емес.',
     'RATE_LIMITED': 'Тым жиі сұраныс. Сәл күтіп, қайталаңыз.',
-    'TG_NOT_VERIFIED':
-        'Алдымен нөміріңізді Telegram арқылы растаңыз.',
+    'TG_NOT_VERIFIED': 'Алдымен нөміріңізді Telegram арқылы растаңыз.',
     'SERVER_ERROR': 'Сервер қатесі. Қайталап көріңіз.',
     'AUTH': 'Қайта кіріңіз.',
     'NOT_FOUND': 'Жазба табылмады.',
@@ -804,11 +892,11 @@ String errText(Object e) {
     'Signups not allowed': 'Тіркелу уақытша жабық.',
     'Email not confirmed':
         'Email расталмаған. Поштаңыздағы сілтемені басыңыз немесе '
-            'Supabase-те Confirm email-ді өшіріңіз.',
+        'Supabase-те Confirm email-ді өшіріңіз.',
     'EMAIL_CONFIRM_REQUIRED':
         'Тіркелу өтті, бірақ Supabase-те "Confirm email" қосулы тұр. '
-            'Dashboard → Authentication → Sign In / Providers → Email → '
-            '"Confirm email" өшіріп, қайта тіркеліңіз.',
+        'Dashboard → Authentication → Sign In / Providers → Email → '
+        '"Confirm email" өшіріп, қайта тіркеліңіз.',
     'JWSError': 'API кілті қате (env.dart тексеріңіз).',
     'Invalid API key': 'API кілті қате (env.dart тексеріңіз).',
   };

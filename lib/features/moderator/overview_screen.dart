@@ -211,8 +211,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                   hint: t('орындаушыда'),
                   icon: Icons.local_shipping_outlined,
                   color: Gz.green,
-                  onTap: () =>
-                      ModeratorShell.openTab(ModeratorShell.tabOrders),
+                  onTap: () => ModeratorShell.openTab(ModeratorShell.tabOrders),
                 ),
               ),
             ],

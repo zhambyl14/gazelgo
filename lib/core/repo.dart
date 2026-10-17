@@ -1029,7 +1029,7 @@ class Repo {
       params: {'p_order_id': orderId},
     );
     return res == null ? null : Map<String, dynamic>.from(res as Map);
-  }, every: const Duration(seconds: 12));
+  }, every: const Duration(seconds: 5));
 
   /// Дос шақыру кодын енгізу — ТЕК байланыс жасайды (0062, фарм-
   /// қорғаныс). Сыйақы (орындаушыға баланс/клиентке санақ) шақырылған

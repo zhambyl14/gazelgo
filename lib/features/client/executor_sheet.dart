@@ -54,7 +54,9 @@ class _ExecutorSheet extends StatefulWidget {
 }
 
 class _ExecutorSheetState extends State<_ExecutorSheet> {
-  late final Future<(Profile?, ExecutorProfile?, Map<String, int>, List<Review>)>
+  late final Future<
+    (Profile?, ExecutorProfile?, Map<String, int>, List<Review>)
+  >
   _data = _load();
   late String _kind = widget.prefs.kindOf(widget.executorId);
   bool _busy = false;
@@ -85,9 +87,11 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
       final ok = await confirmDialog(
         context,
         title: t('Орындаушыны бұғаттау керек пе?'),
-        message: t('Ол енді сіздің заказдарыңызды көрмейді және ұсыныс '
-            'жібере алмайды. Кейін мәзірдегі «Менің орындаушыларым» '
-            'бөлімінен шығаруға болады.'),
+        message: t(
+          'Ол енді сіздің заказдарыңызды көрмейді және ұсыныс '
+          'жібере алмайды. Кейін мәзірдегі «Менің орындаушыларым» '
+          'бөлімінен шығаруға болады.',
+        ),
         confirmLabel: t('Бұғаттау'),
         confirmColor: Gz.red,
         icon: Icons.block_rounded,
@@ -99,14 +103,11 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
       await Repo.setExecutorPref(widget.executorId, kind);
       if (!mounted) return;
       setState(() => _kind = kind);
-      showSnack(
-        context,
-        switch (kind) {
-          'favorite' => t('Таңдаулыларға қосылды ❤'),
-          'block' => t('Орындаушы бұғатталды'),
-          _ => t('Тізімнен алынды'),
-        },
-      );
+      showSnack(context, switch (kind) {
+        'favorite' => t('Таңдаулыларға қосылды ❤'),
+        'block' => t('Орындаушы бұғатталды'),
+        _ => t('Тізімнен алынды'),
+      });
       Navigator.pop(context, kind);
     } catch (e) {
       if (mounted) showSnack(context, errText(e), error: true);
@@ -288,7 +289,8 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
                             ),
                             onPressed: _busy
                                 ? null
-                                : () => _set(_kind == 'block' ? 'none' : 'block'),
+                                : () =>
+                                      _set(_kind == 'block' ? 'none' : 'block'),
                             icon: const Icon(Icons.block_rounded, size: 18),
                             label: Text(
                               _kind == 'block'
@@ -301,8 +303,10 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      t('Таңдаулы орындаушыға жаңа заказыңыз туралы бірінші '
-                          'болып хабар барады.'),
+                      t(
+                        'Таңдаулы орындаушыға жаңа заказыңыз туралы бірінші '
+                        'болып хабар барады.',
+                      ),
                       textAlign: TextAlign.center,
                       style: Gz.caption,
                     ),

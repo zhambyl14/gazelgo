@@ -130,8 +130,9 @@ class VehicleSpec {
     this.builtIn = false,
   });
 
-  String get label =>
-      (Lang.current.value == AppLang.ru && labelRu.isNotEmpty) ? labelRu : labelKk;
+  String get label => (Lang.current.value == AppLang.ru && labelRu.isNotEmpty)
+      ? labelRu
+      : labelKk;
 
   String get description =>
       (Lang.current.value == AppLang.ru && descRu.isNotEmpty) ? descRu : descKk;
@@ -159,18 +160,18 @@ class VehicleSpec {
   }
 
   Map<String, dynamic> toMap() => {
-        'code': code,
-        'label_kk': labelKk,
-        'label_ru': labelRu,
-        'desc_kk': descKk,
-        'desc_ru': descRu,
-        'icon_url': iconUrl,
-        'emoji': emoji,
-        'sort_order': sortOrder,
-        'is_taxi': isTaxi,
-        'active': active,
-        'built_in': builtIn,
-      };
+    'code': code,
+    'label_kk': labelKk,
+    'label_ru': labelRu,
+    'desc_kk': descKk,
+    'desc_ru': descRu,
+    'icon_url': iconUrl,
+    'emoji': emoji,
+    'sort_order': sortOrder,
+    'is_taxi': isTaxi,
+    'active': active,
+    'built_in': builtIn,
+  };
 
   VehicleType get type => VehicleType(code);
 }
@@ -378,19 +379,19 @@ class VehicleCatalog {
 
   /// Белсенді түрлер (такси санаты + спецтехника), рет бойынша.
   static List<VehicleType> get active => [
-        for (final s in _all)
-          if (s.active) s.type,
-      ];
+    for (final s in _all)
+      if (s.active) s.type,
+  ];
 
   static List<VehicleType> get taxiTypes => [
-        for (final s in _all)
-          if (s.active && s.isTaxi) s.type,
-      ];
+    for (final s in _all)
+      if (s.active && s.isTaxi) s.type,
+  ];
 
   static List<VehicleType> get cargoTypes => [
-        for (final s in _all)
-          if (s.active && !s.isTaxi) s.type,
-      ];
+    for (final s in _all)
+      if (s.active && !s.isTaxi) s.type,
+  ];
 
   /// Код бойынша сипаттама. Каталогта жоқ код (мыс. модератор кейін өшірген
   /// түрмен берілген ескі заказ) үшін де БОС ЕМЕС жазба қайтарады — UI
@@ -402,7 +403,8 @@ class VehicleCatalog {
 
   static void _apply(List<VehicleSpec> specs) {
     if (specs.isEmpty) return;
-    final sorted = [...specs]..sort((a, b) {
+    final sorted = [...specs]
+      ..sort((a, b) {
         final c = a.sortOrder.compareTo(b.sortOrder);
         return c != 0 ? c : a.code.compareTo(b.code);
       });

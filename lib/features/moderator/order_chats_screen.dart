@@ -89,10 +89,8 @@ class _OrderChatsScreenState extends State<OrderChatsScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 6, 12, 24),
                   itemCount: list.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) => _ChatTile(
-                    row: list[i],
-                    onOpened: _reload,
-                  ),
+                  itemBuilder: (_, i) =>
+                      _ChatTile(row: list[i], onOpened: _reload),
                 ),
               );
             },

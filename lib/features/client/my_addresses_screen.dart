@@ -17,8 +17,8 @@ Future<bool> showSaveAddressSheet(
   SavedAddress? existing,
 }) async {
   final ok = await showGzSheet<bool>(
-      context,
-      builder: (_) => _SaveAddressSheet(place: place, existing: existing),
+    context,
+    builder: (_) => _SaveAddressSheet(place: place, existing: existing),
   );
   return ok ?? false;
 }
@@ -376,10 +376,7 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                       : a.address,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Gz.textSecondary,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Gz.textSecondary),
                 ),
               ],
             ),

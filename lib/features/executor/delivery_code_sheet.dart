@@ -94,8 +94,10 @@ class _DeliveryCodeSheetState extends State<_DeliveryCodeSheet> {
     return GzSheetBody(
       title: t('Жеткізу коды'),
       subtitle: name.isEmpty
-          ? t('Жүкті қабылдаған адамнан 4 таңбалы кодты сұраңыз — ол '
-                'кодты клиент жіберген сілтемеден көреді.')
+          ? t(
+              'Жүкті қабылдаған адамнан 4 таңбалы кодты сұраңыз — ол '
+              'кодты клиент жіберген сілтемеден көреді.',
+            )
           : '${t('Алушыдан кодты сұраңыз:')} $name. '
                 '${t('Ол кодты клиент жіберген сілтемеден көреді.')}',
       child: Column(
@@ -107,9 +109,11 @@ class _DeliveryCodeSheetState extends State<_DeliveryCodeSheet> {
               tone: NoticeTone.danger,
               icon: Icons.lock_outline_rounded,
               title: t('Код құлыпталды'),
-              message: t('Тым көп қате әрекет. Клиент қосымшада «Жүк жетті» '
-                  'деп растаса, заказды аяқтай аласыз. Қиындық болса — '
-                  'қолдау қызметіне жазыңыз.'),
+              message: t(
+                'Тым көп қате әрекет. Клиент қосымшада «Жүк жетті» '
+                'деп растаса, заказды аяқтай аласыз. Қиындық болса — '
+                'қолдау қызметіне жазыңыз.',
+              ),
             )
           else ...[
             TextField(
@@ -148,14 +152,18 @@ class _DeliveryCodeSheetState extends State<_DeliveryCodeSheet> {
             const SizedBox(height: 12),
             ContactButtons(
               phone: widget.recipientPhone!,
-              whatsappText: t('Сәлеметсіз бе! Мен Tasu жүргізушісімін, жүкті '
-                  'әкелдім. Жеткізу кодын айтып жібересіз бе?'),
+              whatsappText: t(
+                'Сәлеметсіз бе! Мен Tasu жүргізушісімін, жүкті '
+                'әкелдім. Жеткізу кодын айтып жібересіз бе?',
+              ),
             ),
           ],
           const SizedBox(height: 10),
           Text(
-            t('Алушы кодты таппаса — клиент өз қосымшасында «Жүк жетті» '
-                'деп растай алады.'),
+            t(
+              'Алушы кодты таппаса — клиент өз қосымшасында «Жүк жетті» '
+              'деп растай алады.',
+            ),
             textAlign: TextAlign.center,
             style: Gz.caption,
           ),

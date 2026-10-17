@@ -159,7 +159,8 @@ class _DashboardChartsState extends State<DashboardCharts> {
                 child: StatTile(
                   label: t('Жаңа тіркелу'),
                   value: '${_sum('new_clients') + _sum('new_executors')}',
-                  hint: '${_sum('new_clients')} ${t('клиент')} · '
+                  hint:
+                      '${_sum('new_clients')} ${t('клиент')} · '
                       '${_sum('new_executors')} ${t('орындаушы')}',
                   icon: Icons.person_add_alt_1_outlined,
                   color: Gz.blue,
@@ -174,11 +175,16 @@ class _DashboardChartsState extends State<DashboardCharts> {
             series: [
               ChartSeries('completed', t('Аяқталды'), Gz.green),
               ChartSeries('cancelled', t('Тоқтады'), Gz.red),
-              ChartSeries('other', t('Өзге (белсенді, іздеуде)'), Gz.disabledBg),
+              ChartSeries(
+                'other',
+                t('Өзге (белсенді, іздеуде)'),
+                Gz.disabledBg,
+              ),
             ],
             valueOf: (r, key) => switch (key) {
-              'other' => (_n(r, 'created') - _n(r, 'completed') - _n(r, 'cancelled'))
-                  .clamp(0, 1 << 30),
+              'other' =>
+                (_n(r, 'created') - _n(r, 'completed') - _n(r, 'cancelled'))
+                    .clamp(0, 1 << 30),
               _ => _n(r, key),
             },
             format: (v) => '$v',
@@ -198,7 +204,6 @@ class _DashboardChartsState extends State<DashboardCharts> {
     );
   }
 }
-
 
 /// Кесте — графиктегі әр мән графиксіз де оқылады (қолжетімділік).
 class _TableView extends StatelessWidget {

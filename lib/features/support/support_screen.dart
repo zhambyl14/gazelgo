@@ -119,10 +119,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 const SizedBox(height: 4),
                 Text(
                   t('Модератор жеке жауап береді.'),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(

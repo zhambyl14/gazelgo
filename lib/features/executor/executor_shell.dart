@@ -10,6 +10,7 @@ import '../../core/notify.dart';
 import '../../core/prefs.dart';
 import '../../core/push.dart';
 import '../../core/repo.dart';
+import '../../core/trip_tracker.dart';
 import '../../shared/widgets.dart';
 import 'active_order_screen.dart';
 import 'executor_home_screen.dart';
@@ -81,6 +82,8 @@ class _ExecutorShellState extends ConsumerState<ExecutorShell> {
     _locTimer?.cancel();
     _statsSub?.close();
     _life?.dispose();
+    // Шығып кетсе (logout) — фондағы орын жіберу бірден тоқтайды.
+    unawaited(TripTracker.stop());
     super.dispose();
   }
 
@@ -98,6 +101,8 @@ class _ExecutorShellState extends ConsumerState<ExecutorShell> {
     final active = s.busyOrderId != null;
     if (active) {
       if (!_settingOn('live_tracking')) return;
+      // Белсенді заказда орынды TripTracker үздіксіз жібереді (фонда да).
+      if (TripTracker.orderId == s.busyOrderId) return;
     } else {
       // Бос кезде — минутына бір рет, тек тарифте әрі линияда болса.
       if (!s.hasTariff || !s.onLine || !_settingOn('nearby_map')) return;
@@ -126,10 +131,23 @@ class _ExecutorShellState extends ConsumerState<ExecutorShell> {
   void _onStats(ExecutorStats s) {
     final old = _stats;
     _stats = s;
+    _syncTripTracker(s);
     // Алғашқы дерек не жаңа заказ қабылданған сәт — орынды бірден
     // жібереміз (клиент картасы 15с күтпей-ақ көлікті көреді).
     if (old == null || (old.busyOrderId == null && s.busyOrderId != null)) {
       unawaited(_publishLocation(force: true));
+    }
+  }
+
+  /// Белсенді заказ бар — орын ағынын қосамыз (навигатор ашылып, Tasu
+  /// фонға кетсе де клиенттің картасында көлік жылжи береді); заказ
+  /// аяқталса/тоқтаса — бірден өшіреміз (бос кезде фонда орын жиналмайды).
+  void _syncTripTracker(ExecutorStats s) {
+    final id = s.busyOrderId;
+    if (id != null && _settingOn('live_tracking')) {
+      unawaited(TripTracker.start(id));
+    } else if (TripTracker.orderId != null) {
+      unawaited(TripTracker.stop());
     }
   }
 

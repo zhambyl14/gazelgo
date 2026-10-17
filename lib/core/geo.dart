@@ -6,7 +6,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import 'geo_text.dart';
 import 'kz_cities.dart';
+import 'street_index.dart';
 
 /// Гео-қызметтер: адрес іздеу (Nominatim/OSM), маршрут (OSRM), локация.
 ///
@@ -516,6 +518,9 @@ class Geo {
       city: parsed.settlement,
       kind: _str(e['type']),
       district: _districtOf(a, parsed),
+      road: parsed.road,
+      house: parsed.house,
+      poi: parsed.poi,
     );
   }
 
@@ -618,7 +623,13 @@ class Geo {
       poi = null;
     }
 
-    return _Parsed(poi: poi, street: street, settlement: _cityOf(a));
+    return _Parsed(
+      poi: poi,
+      street: street,
+      settlement: _cityOf(a),
+      road: road,
+      house: house,
+    );
   }
 
   /// Nominatim қайтаратын әкімшілік жұрнақтар. Тізім қайталап қолданылады,
@@ -749,6 +760,7 @@ class Geo {
           street: parsed.street,
           settlement: parsed.settlement,
           point: p,
+          district: _districtOf(a, parsed),
         );
       }
       final dn = _str(j['display_name']);
@@ -757,6 +769,7 @@ class Geo {
         street: dn?.split(',').take(2).join(',').trim(),
         settlement: parsed.settlement,
         point: p,
+        district: _districtOf(a, parsed),
       );
     } catch (_) {
       return GeoAddress.unknown(p);
@@ -1032,6 +1045,309 @@ class Geo {
   }
 
   static double _rad(double d) => d * math.pi / 180;
+
+  // ---------------------------------------------------------------------
+  //  ҚАТЕГЕ ТӨЗІМДІ МЕКЕНЖАЙ ІЗДЕУ
+  // ---------------------------------------------------------------------
+
+  /// Мекенжай іздеу — клиент 1–2 әріп қате жазса да, латынмен не орысша
+  /// жалғаумен жазса да табады.
+  ///
+  /// ҮШ дереккөз қатар сұралады, себебі әрқайсысы өз тұсын жабады:
+  ///  • Nominatim (структуралық) — дұрыс жазылған «көше + үй»;
+  ///  • Nominatim (еркін мәтін) — ТРЦ/ЖК/дүкен атаулары;
+  ///  • Photon — қате жазылған сұраныс («абаяя 15», «хан шатр»).
+  /// Қаланың көше индексі ([StreetIndex]) дайын болса, қате жазылған көше
+  /// атауы ДҰРЫС атауға түзетіліп, Nominatim-ге сол атаумен тағы бір рет
+  /// сұралады («толеби 59» → «Төле би көшесі 59»).
+  ///
+  /// Нәтижелер сұранысқа ұқсастығы бойынша сұрыпталады; ұқсамайтындары
+  /// (геокодер «шамамен» тапқан бөтен көшелер) тізімге шықпайды.
+  /// Барлық дереккөз құласа — [GeoSearchException].
+  static Future<List<AddressHit>> searchAddress({
+    required String city,
+    required String query,
+    LatLng? near,
+    StreetIndex? index,
+  }) async {
+    final aq = AddressQuery.parse(query, city: city);
+    final qk = NameKey.query(aq.street);
+    if (qk.core.length < 2) return const [];
+    final bias = near ?? _cityCenter(city);
+
+    // 1) Құрылғыдағы көше тізімі бойынша түзету — желісіз, бірден.
+    final local = index?.match(qk, limit: 4) ?? const <StreetMatch>[];
+    final best = local.isEmpty ? null : local.first;
+    final corrected =
+        (best != null && best.score >= 0.7 && best.entry.core != qk.core)
+        ? best.entry.name
+        : null;
+    String withHouse(String street) =>
+        aq.house == null ? street : '$street ${aq.house}';
+
+    Future<List<GeoPlace>?> safe(Future<List<GeoPlace>> f) async {
+      try {
+        return await f;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final jobs = <Future<List<GeoPlace>?>>[
+      safe(_searchStructured(city: city, street: withHouse(aq.street))),
+      safe(_searchFree('${aq.text}, $city', near: bias)),
+      if (bias != null) safe(_searchPhoton(aq.text, near: bias)),
+      if (corrected != null)
+        safe(_searchStructured(city: city, street: withHouse(corrected))),
+    ];
+    final res = await Future.wait(jobs);
+    if (res.every((r) => r == null) && local.isEmpty) {
+      throw const GeoSearchException();
+    }
+
+    final hits = <AddressHit>[];
+    for (final p in dedupePlaces([for (final r in res) ...?r])) {
+      final h = _scoreHit(p, aq, qk, city);
+      if (h != null) hits.add(h);
+    }
+
+    // 2) Геокодер таппаған, бірақ индексте бар көшелер — «үйді картадан
+    //    көрсетесіз» деген жол болып ұсынылады (атауы — картадағы ДҰРЫС
+    //    атау, клиент жазғаны емес).
+    for (final m in local) {
+      if (m.score < 0.7) continue;
+      final dup = hits.any(
+        (h) =>
+            h.place.road != null &&
+            GeoText.streetCore(h.place.road!) == m.entry.core,
+      );
+      if (dup) continue;
+      hits.add(
+        AddressHit(
+          place: GeoPlace(
+            name: m.entry.name,
+            point: m.entry.nearestTo(bias),
+            city: city,
+            road: m.entry.name,
+            kind: kStreetIndex,
+          ),
+          score: m.score - 0.04,
+          exactHouse: false,
+          needsPin: true,
+        ),
+      );
+    }
+
+    hits.sort((a, b) {
+      final c = b.score.compareTo(a.score);
+      if (c != 0) return c;
+      if (bias == null) return 0;
+      return haversineKm(
+        bias,
+        a.place.point,
+      ).compareTo(haversineKm(bias, b.place.point));
+    });
+    return hits.take(12).toList(growable: false);
+  }
+
+  /// Индекстен алынған көше (геокодер бұл көшені таппаған).
+  static const kStreetIndex = 'street_index';
+
+  /// Бір нәтижені сұранысқа қарай бағалайды; ұқсамаса — null.
+  static AddressHit? _scoreHit(
+    GeoPlace p,
+    AddressQuery aq,
+    NameKey qk,
+    String city,
+  ) {
+    var text = 0.0;
+    for (final s in [p.road, p.poi, p.name]) {
+      if (s == null || s.isEmpty) continue;
+      final v = GeoText.similarityKey(qk, NameKey(s));
+      if (v > text) text = v;
+    }
+    if (text < 0.6) return null;
+    final street = p.house == null && _streetKinds.contains(p.kind);
+    var score = text;
+    var exact = false;
+    if (aq.house != null) {
+      if (p.house != null) {
+        if (_sameHouse(p.house!, aq.house!)) {
+          score += 0.3;
+          exact = true;
+        } else {
+          score -= 0.25;
+        }
+      }
+    }
+    if (p.city == null || sameCity(p.city, city)) score += 0.05;
+    return AddressHit(
+      place: p,
+      score: score,
+      exactHouse: exact,
+      needsPin: street,
+    );
+  }
+
+  static bool _sameHouse(String a, String b) {
+    String n(String s) =>
+        GeoText.fold(s).replaceAll(' ', '').replaceAll('/', '');
+    return n(a) == n(b);
+  }
+
+  /// Photon (komoot) — OSM негізіндегі, қате жазуға төзімді іздеу.
+  /// Таңдалған қаланың ~40 км аймағымен шектеледі.
+  static Future<List<GeoPlace>> _searchPhoton(
+    String q, {
+    required LatLng near,
+  }) async {
+    const box = 0.35;
+    final uri = Uri.https('photon.komoot.io', '/api/', {
+      'q': q,
+      'limit': '10',
+      'lat': '${near.latitude}',
+      'lon': '${near.longitude}',
+      'location_bias_scale': '0.2',
+      'zoom': '12',
+      'bbox':
+          '${near.longitude - box},${near.latitude - box},'
+          '${near.longitude + box},${near.latitude + box}',
+    });
+    final key = uri.toString();
+    final cached = _placeCache[key];
+    if (cached != null) return cached;
+    final res = await http
+        .get(uri, headers: kIsWeb ? null : _ua)
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200) {
+      throw GeoSearchException('HTTP ${res.statusCode}');
+    }
+    final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    final out = <GeoPlace>[];
+    for (final raw in (j['features'] as List?) ?? const []) {
+      try {
+        final f = (raw as Map).cast<String, dynamic>();
+        final pr = (f['properties'] as Map).cast<String, dynamic>();
+        final c = ((f['geometry'] as Map)['coordinates'] as List).cast<num>();
+        final type = _str(pr['type']);
+        final name = _str(pr['name']);
+        final street = _str(pr['street']);
+        final house = _str(pr['housenumber']);
+        final kind = _str(pr['osm_value']);
+        String? road;
+        String? poi;
+        if (type == 'street') {
+          road = name;
+        } else {
+          road = street;
+          poi =
+              (name != null &&
+                  (street == null ||
+                      name.toLowerCase() != street.toLowerCase()))
+              ? name
+              : null;
+        }
+        final streetPart = road == null
+            ? null
+            : (house == null ? road : '$road, $house');
+        final label = [poi, streetPart].whereType<String>().join(', ');
+        if (label.isEmpty) continue;
+        final settlement =
+            _str(pr['city']) ?? _str(pr['locality']) ?? _str(pr['county']);
+        out.add(
+          GeoPlace(
+            name: label,
+            point: LatLng(c[1].toDouble(), c[0].toDouble()),
+            city: settlement == null ? null : displayCity(settlement),
+            district: _str(pr['district']),
+            kind: type == 'street' ? 'residential' : kind,
+            road: road,
+            house: house,
+            poi: poi,
+          ),
+        );
+      } catch (_) {
+        // бір бұзық жазба тізімді құлатпауы керек
+      }
+    }
+    if (_placeCache.length > 60) _placeCache.clear();
+    _placeCache[key] = out;
+    return out;
+  }
+
+  /// Картадағы нүктенің КЛИЕНТКЕ КӨРСЕТІЛЕТІН мекенжайы — әрқашан
+  /// картадан анықталады (клиент жазған мәтін емес).
+  ///
+  /// Reverse-геокодер атау таппаса (шағын аудандарда жиі): маңайдағы
+  /// көше → аудан → елді мекен; ештеңе болмаса — «Картадағы нүкте».
+  /// Нүкте ДӘЛ болғандықтан орындаушы навигатормен дәл жерге келеді.
+  static Future<PointLabel> describePoint(LatLng p, {String? city}) async {
+    final addr = await reverseDetailed(p);
+    if (addr.label.isNotEmpty) {
+      return PointLabel(
+        addr.labelFor(city),
+        settlement: addr.settlement,
+        exact: true,
+      );
+    }
+    final street = await nearestStreetName(p);
+    final settlement = addr.settlement;
+    final needsSettlement = settlement != null && !sameCity(settlement, city);
+    if (street != null) {
+      return PointLabel(
+        needsSettlement ? '$settlement, $street' : street,
+        settlement: settlement,
+        exact: false,
+      );
+    }
+    final district = addr.district;
+    final base = district ?? (needsSettlement ? settlement : null);
+    return PointLabel(
+      base == null ? kMapPointLabel : '$base · $kMapPointLabel',
+      settlement: settlement,
+      exact: false,
+    );
+  }
+
+  /// Атауы табылмаған нүктенің жалпы атауы (t() арқылы аударылады).
+  static const kMapPointLabel = 'Картадағы нүкте';
+
+  /// [p] нүктесіне ЕҢ ЖАҚЫН аты бар көше (80 м ішінде) — Overpass.
+  static Future<String?> nearestStreetName(LatLng p) async {
+    try {
+      final q =
+          '[out:json][timeout:15];'
+          'way(around:80,${p.latitude},${p.longitude})[highway][name];'
+          'out tags center 12;';
+      final body = await _overpass(q);
+      if (body == null) return null;
+      final els =
+          ((jsonDecode(body) as Map<String, dynamic>)['elements'] as List?) ??
+          const [];
+      String? best;
+      var bestKm = double.infinity;
+      for (final raw in els) {
+        final e = (raw as Map).cast<String, dynamic>();
+        final tags = (e['tags'] as Map?)?.cast<String, dynamic>() ?? const {};
+        final name = _str(tags['name:kk']) ?? _str(tags['name']);
+        final c = (e['center'] as Map?)?.cast<String, dynamic>();
+        if (name == null || c == null) continue;
+        final km = haversineKm(
+          p,
+          LatLng((c['lat'] as num).toDouble(), (c['lon'] as num).toDouble()),
+        );
+        if (km < bestKm) {
+          bestKm = km;
+          best = name;
+        }
+      }
+      return best;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ============================================================================
 }
 
 /// Геокодер (Nominatim) жауап бермеді / қате қайтарды. «Ештеңе табылмады»
@@ -1060,6 +1376,12 @@ class GeoPlace {
   /// Іздеу нүктесінен қашықтық (метр) — маңайдағы нысандар тізімінде ғана.
   final double? distanceM;
 
+  /// Көше аты (үй нөмірінсіз), үй нөмірі және нысан аты — іздеу
+  /// нәтижесін сұранысқа салыстыру үшін (болса).
+  final String? road;
+  final String? house;
+  final String? poi;
+
   GeoPlace({
     required this.name,
     required this.point,
@@ -1067,6 +1389,9 @@ class GeoPlace {
     this.city,
     this.kind,
     this.distanceM,
+    this.road,
+    this.house,
+    this.poi,
   });
 }
 
@@ -1088,11 +1413,15 @@ class GeoAddress {
 
   final LatLng point;
 
+  /// Аудан/шағынаудан (болса) — атау табылмағанда нүктені сипаттау үшін.
+  final String? district;
+
   const GeoAddress({
     required this.poi,
     required this.street,
     required this.settlement,
     required this.point,
+    this.district,
   });
 
   factory GeoAddress.unknown(LatLng p) =>
@@ -1123,7 +1452,15 @@ class _Parsed {
   final String? poi;
   final String? street;
   final String? settlement;
-  const _Parsed({this.poi, this.street, this.settlement});
+  final String? road;
+  final String? house;
+  const _Parsed({
+    this.poi,
+    this.street,
+    this.settlement,
+    this.road,
+    this.house,
+  });
 
   String get label => [poi, street].whereType<String>().join(', ');
 }
@@ -1141,4 +1478,36 @@ class GeoRoute {
     required this.points,
     this.onRoad = false,
   });
+}
+
+/// Іздеудің бір нәтижесі — бағасы мен түрімен.
+class AddressHit {
+  final GeoPlace place;
+
+  /// Сұранысқа ұқсастық (+ үй нөмірі дәл болса бонус).
+  final double score;
+
+  /// Клиент жазған үй нөмірі дәл осы.
+  final bool exactHouse;
+
+  /// Бұл — КӨШЕ (үй нөмірі картада жоқ): үйді картадан көрсету керек.
+  final bool needsPin;
+
+  const AddressHit({
+    required this.place,
+    required this.score,
+    required this.exactHouse,
+    required this.needsPin,
+  });
+}
+
+/// Картадағы нүктенің атауы.
+class PointLabel {
+  final String label;
+  final String? settlement;
+
+  /// Геокодер мекенжайды тапты ма (жоқ болса — маңайдағы көше/аудан).
+  final bool exact;
+
+  const PointLabel(this.label, {this.settlement, required this.exact});
 }

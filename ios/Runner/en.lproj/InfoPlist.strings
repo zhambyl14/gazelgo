@@ -1,4 +1,4 @@
-"NSLocationWhenInUseUsageDescription" = "Location is used to mark your pickup point on the map and show nearby orders.";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "Location is used to mark your pickup point on the map and show nearby orders.";
+"NSLocationWhenInUseUsageDescription" = "Location is used to mark your pickup point on the map, show nearby orders and, during an active order, show the driver’s position to the customer on the map.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Location is used to mark your pickup point on the map, show nearby orders and, during an active order, show the driver’s position to the customer on the map.";
 "NSCameraUsageDescription" = "Camera access is used to take photos of cargo and upload driver documents.";
 "NSPhotoLibraryUsageDescription" = "Photo library access is used to choose cargo photos, your avatar, and document images.";

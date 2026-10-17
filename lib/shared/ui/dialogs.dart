@@ -140,24 +140,22 @@ Widget gzDialogPrimary(
   String label, {
   required VoidCallback? onPressed,
   Color? color,
-}) =>
-    FilledButton(
-      style: color == null
-          ? _dialogBtnStyle
-          : _dialogBtnStyle.copyWith(
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (s) => s.contains(WidgetState.disabled) ? Gz.disabledBg : color,
-              ),
-              foregroundColor: WidgetStateProperty.resolveWith(
-                (s) => s.contains(WidgetState.disabled)
-                    ? Gz.disabledFg
-                    : Colors.white,
-              ),
-              shadowColor: WidgetStatePropertyAll(color.withValues(alpha: 0.35)),
-            ),
-      onPressed: onPressed,
-      child: BtnLabel(label),
-    );
+}) => FilledButton(
+  style: color == null
+      ? _dialogBtnStyle
+      : _dialogBtnStyle.copyWith(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.disabled) ? Gz.disabledBg : color,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) =>
+                s.contains(WidgetState.disabled) ? Gz.disabledFg : Colors.white,
+          ),
+          shadowColor: WidgetStatePropertyAll(color.withValues(alpha: 0.35)),
+        ),
+  onPressed: onPressed,
+  child: BtnLabel(label),
+);
 
 /// Екі батырмалы растау диалогы. `true` — келісті.
 ///
@@ -352,8 +350,9 @@ class _InputDialogState extends State<_InputDialog> {
                     selected: _ctrl.text.trim() == p,
                     onSelected: (_) => setState(() {
                       _ctrl.text = p;
-                      _ctrl.selection =
-                          TextSelection.collapsed(offset: p.length);
+                      _ctrl.selection = TextSelection.collapsed(
+                        offset: p.length,
+                      );
                     }),
                   ),
               ],

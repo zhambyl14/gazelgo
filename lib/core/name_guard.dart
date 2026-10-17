@@ -7,10 +7,32 @@ import 'lang.dart';
 /// тіркелу өрісінің «Аты-жөніңіз» деген белгісіне сай.
 class NameGuard {
   static const _profanity = [
-    'бляд', 'сука', 'хуй', 'хуе', 'пизд', 'ебан', 'ёбан', 'муда', 'гандон',
-    'долбо', 'мразь', 'скотина', 'уебок', 'уёбок', 'залуп', 'сучка',
-    'fuck', 'shit', 'bitch', 'asshole', 'cunt',
-    'қотақ', 'сігіл', 'сикт', 'аңқа', 'малмын',
+    'бляд',
+    'сука',
+    'хуй',
+    'хуе',
+    'пизд',
+    'ебан',
+    'ёбан',
+    'муда',
+    'гандон',
+    'долбо',
+    'мразь',
+    'скотина',
+    'уебок',
+    'уёбок',
+    'залуп',
+    'сучка',
+    'fuck',
+    'shit',
+    'bitch',
+    'asshole',
+    'cunt',
+    'қотақ',
+    'сігіл',
+    'сикт',
+    'аңқа',
+    'малмын',
   ];
 
   static final _lettersOnly = RegExp(r'^[\p{L}\s\-]+$', unicode: true);
@@ -23,8 +45,10 @@ class NameGuard {
     if (!_lettersOnly.hasMatch(v)) {
       return t('Атта тек әріптер болуы керек (цифр/белгі жарамсыз)');
     }
-    final words =
-        v.split(RegExp(r'[\s\-]+')).where((w) => w.isNotEmpty).toList();
+    final words = v
+        .split(RegExp(r'[\s\-]+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.length < 2 || words.any((w) => w.length < 2)) {
       return t('Аты-жөніңізді толық жазыңыз (мыс: Асхат Серіков)');
     }

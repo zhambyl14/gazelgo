@@ -12,8 +12,11 @@ Future<void> callPhone(BuildContext context, String phone) async {
     ok = await launchUrl(Uri(scheme: 'tel', path: Phone.dial(phone)));
   } catch (_) {}
   if (!ok && context.mounted) {
-    showSnack(context, '${t('Қоңырау шалу мүмкін болмады')}: ${Phone.pretty(phone)}',
-        error: true);
+    showSnack(
+      context,
+      '${t('Қоңырау шалу мүмкін болмады')}: ${Phone.pretty(phone)}',
+      error: true,
+    );
   }
 }
 
@@ -33,8 +36,11 @@ Future<bool> openWhatsApp(
     ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   } catch (_) {}
   if (!ok && context.mounted) {
-    showSnack(context, '${t('WhatsApp ашылмады. Нөмір:')} ${Phone.pretty(phone)}',
-        error: true);
+    showSnack(
+      context,
+      '${t('WhatsApp ашылмады. Нөмір:')} ${Phone.pretty(phone)}',
+      error: true,
+    );
   }
   return ok;
 }
@@ -51,11 +57,11 @@ class ContactButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ButtonStyle style(Color c) => OutlinedButton.styleFrom(
-          foregroundColor: c,
-          minimumSize: const Size.fromHeight(44),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          side: BorderSide(color: Gz.tint(c, 0.45), width: 1.4),
-        );
+      foregroundColor: c,
+      minimumSize: const Size.fromHeight(44),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      side: BorderSide(color: Gz.tint(c, 0.45), width: 1.4),
+    );
     return Row(
       children: [
         Expanded(

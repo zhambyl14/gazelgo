@@ -84,9 +84,7 @@ class _OrderExtrasEditorState extends State<OrderExtrasEditor> {
 
   void _set(OrderExtras v) {
     // 2+ қабат жоқ болса, лифт сұрағы мағынасыз — тазалаймыз.
-    widget.onChanged(
-      v.needsElevator ? v : v.copyWith(elevator: () => null),
-    );
+    widget.onChanged(v.needsElevator ? v : v.copyWith(elevator: () => null));
   }
 
   Widget _floorStepper(String label, int? value, ValueChanged<int?> onSet) {
@@ -158,7 +156,9 @@ class _OrderExtrasEditorState extends State<OrderExtrasEditor> {
                           v.isEmpty
                               ? (widget.isTaxi
                                     ? t('Міндетті емес')
-                                    : t('Тиеушілер, қабат, лифт — міндетті емес'))
+                                    : t(
+                                        'Тиеушілер, қабат, лифт — міндетті емес',
+                                      ))
                               : v.asText(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -200,8 +200,7 @@ class _OrderExtrasEditorState extends State<OrderExtrasEditor> {
                                       : (n == 4 ? '4+' : '$n'),
                                 ),
                                 selected: v.loaders == n,
-                                onSelected: (_) =>
-                                    _set(v.copyWith(loaders: n)),
+                                onSelected: (_) => _set(v.copyWith(loaders: n)),
                               ),
                           ],
                         ),
@@ -362,10 +361,11 @@ class _EditOrderSheetState extends State<_EditOrderSheet> {
                     setState(() => _error = t('Жүкті сипаттаңыз'));
                     return;
                   }
-                  Navigator.pop(
-                    context,
-                    (_cargo.text.trim(), _comment.text.trim(), _extras),
-                  );
+                  Navigator.pop(context, (
+                    _cargo.text.trim(),
+                    _comment.text.trim(),
+                    _extras,
+                  ));
                 },
               ),
             ],

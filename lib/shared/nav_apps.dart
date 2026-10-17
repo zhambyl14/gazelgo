@@ -41,11 +41,7 @@ class NavApps {
 
   /// Нүктеге жол салу: сақталған навигатормен, ал таңдалмаған болса —
   /// алдымен таңдау терезесі.
-  static Future<void> open(
-    BuildContext context,
-    double lat,
-    double lng,
-  ) async {
+  static Future<void> open(BuildContext context, double lat, double lng) async {
     var app = await saved();
     if (app == null) {
       if (!context.mounted) return;
@@ -63,8 +59,10 @@ class NavApps {
       context,
       builder: (ctx) => GzSheetBody(
         title: t('Қай навигатормен жүресіз?'),
-        subtitle: t('Таңдауыңыз есте қалады — кейін «⋯» мәзірінен '
-            'өзгертуге болады.'),
+        subtitle: t(
+          'Таңдауыңыз есте қалады — кейін «⋯» мәзірінен '
+          'өзгертуге болады.',
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -92,9 +90,7 @@ class NavApps {
     if (!kIsWeb) {
       final ios = defaultTargetPlatform == TargetPlatform.iOS;
       final natives = switch (app) {
-        NavApp.dgis => [
-          'dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat',
-        ],
+        NavApp.dgis => ['dgis://2gis.ru/routeSearch/rsType/car/to/$lng,$lat'],
         NavApp.yandex => [
           'yandexnavi://build_route_on_map?lat_to=$lat&lon_to=$lng',
           'yandexmaps://maps.yandex.ru/?rtext=~$lat,$lng&rtt=auto',

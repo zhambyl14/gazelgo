@@ -210,16 +210,15 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                   itemBuilder: (_, i) {
                     final r = list[i];
                     final (icon, color, title) = _describe(r);
-                    final mod = profiles[r['moderator_id']]?.fullName ??
-                        t('Жүйе');
+                    final mod =
+                        profiles[r['moderator_id']]?.fullName ?? t('Жүйе');
                     final targetType = r['target_type'] as String?;
                     final targetId = r['target_id'] as String?;
                     final target = switch (targetType) {
-                      'executor' || 'user' =>
-                        profiles[targetId]?.fullName ?? '',
-                      'order' => targetId == null
-                          ? ''
-                          : '#${targetId.substring(0, 8)}',
+                      'executor' ||
+                      'user' => profiles[targetId]?.fullName ?? '',
+                      'order' =>
+                        targetId == null ? '' : '#${targetId.substring(0, 8)}',
                       _ => '',
                     };
                     final at = DateTime.tryParse(

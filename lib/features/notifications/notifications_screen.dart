@@ -41,10 +41,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     'order_status' ||
     'order_expired' ||
     'order_reminder' => (Icons.receipt_long_outlined, Gz.info),
-    'support_reply' || 'support_message' => (
-      Icons.support_agent_rounded,
-      Gz.violet,
-    ),
+    'support_reply' ||
+    'support_message' => (Icons.support_agent_rounded, Gz.violet),
     'topup_approved' => (Icons.account_balance_wallet_outlined, Gz.success),
     'topup_rejected' => (Icons.account_balance_wallet_outlined, Gz.danger),
     'broadcast' => (Icons.campaign_outlined, Gz.yellowDeep),
@@ -77,8 +75,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             return EmptyState(
               icon: Icons.notifications_none_rounded,
               title: t('Хабарлама әзірге жоқ'),
-              subtitle: t('Заказ, ұсыныс және қолдау қызметінің жауаптары '
-                  'осында сақталады.'),
+              subtitle: t(
+                'Заказ, ұсыныс және қолдау қызметінің жауаптары '
+                'осында сақталады.',
+              ),
             );
           }
           final rows = <Widget>[];
@@ -97,7 +97,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             final body = ru && (n.bodyRu?.isNotEmpty ?? false)
                 ? n.bodyRu!
                 : n.body;
-            final canOpen = n.data['type'] != null || n.data['order_id'] != null;
+            final canOpen =
+                n.data['type'] != null || n.data['order_id'] != null;
             rows.add(
               GzListRow(
                 icon: icon,

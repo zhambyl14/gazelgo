@@ -163,10 +163,7 @@ class _ListingsListState extends State<_ListingsList> {
                           ),
                           label: Text(
                             t('Өшіру'),
-                            style: const TextStyle(
-                              color: Gz.red,
-                              fontSize: 13,
-                            ),
+                            style: const TextStyle(color: Gz.red, fontSize: 13),
                           ),
                         ),
                       ],

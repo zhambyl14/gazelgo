@@ -176,7 +176,10 @@ class GzStepButton extends StatelessWidget {
       child: Material(
         color: Gz.surface,
         shape: CircleBorder(
-          side: BorderSide(color: enabled ? Gz.border : Gz.disabledBg, width: 1.4),
+          side: BorderSide(
+            color: enabled ? Gz.border : Gz.disabledBg,
+            width: 1.4,
+          ),
         ),
         child: InkWell(
           customBorder: const CircleBorder(),

@@ -166,10 +166,7 @@ class BonusProgressBar extends StatelessWidget {
 
 /// Бонустың ТОЛЫҚ шарттары мен прогресі — түсіндірме парақ.
 void showBonusSheet(BuildContext context, BonusInfo b) {
-  showGzSheet(
-      context,
-      builder: (_) => _BonusSheet(b),
-  );
+  showGzSheet(context, builder: (_) => _BonusSheet(b));
 }
 
 class _BonusSheet extends StatelessWidget {

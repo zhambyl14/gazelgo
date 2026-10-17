@@ -51,7 +51,9 @@ class _LiveExecutor {
       phone = m['phone'] as String? ?? '',
       busy = m['busy'] == true,
       onLine = m['on_line'] != false,
-      updatedAt = DateTime.tryParse(m['updated_at'] as String? ?? '')?.toLocal(),
+      updatedAt = DateTime.tryParse(
+        m['updated_at'] as String? ?? '',
+      )?.toLocal(),
       orderId = m['order_id'] as String?;
 }
 
@@ -349,8 +351,10 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                 GzNotice(
                   tone: NoticeTone.warning,
                   dense: true,
-                  message: t('Орындаушылардың орны көріну үшін серверде 0083 '
-                      'миграциясын қолданыңыз.'),
+                  message: t(
+                    'Орындаушылардың орны көріну үшін серверде 0083 '
+                    'миграциясын қолданыңыз.',
+                  ),
                 ),
               ],
             ],

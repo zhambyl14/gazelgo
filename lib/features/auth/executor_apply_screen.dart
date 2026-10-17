@@ -763,10 +763,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     'Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
                     'шығатын межгород) көресіз.',
                   ),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
@@ -825,10 +822,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     'Бетіңіз анық көрінетін селфи түсіріңіз — бұл сурет '
                     'профиліңізде көрсетіледі.',
                   ),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 _docTile(
@@ -847,10 +841,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 6),
                 Text(
                   t('Тек осы түрдегі заказдарды көресіз'),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 // «Такси» түрі тізімге модератор сол бөлімді ҚОСҚАНДА ғана
@@ -1028,10 +1019,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 4),
                 Text(
                   t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
-                  style: const TextStyle(
-                    color: Gz.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 _docTile(
