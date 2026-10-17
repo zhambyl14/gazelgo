@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/env.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -364,13 +365,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
-  /// «Көмек» батырмасының WhatsApp нөмірі. Тек цифрлар қалдырылады;
-  /// 8-ден басталса (8 747…) — 7-ге ауыстырамыз (wa.me елдік кодты талап етеді).
+  /// «Көмек» батырмасының WhatsApp нөмірі. Ортақ [Phone.normalize] ережесі:
+  /// «+7 702 …», «8 702 …», «702 …» — бәрі 7XXXXXXXXXX болады (wa.me елдік
+  /// кодты талап етеді).
   Future<void> _saveSupportContact() async {
-    var n = _supportWhatsApp.text.replaceAll(RegExp(r'D'), '');
-    if (n.length == 11 && n.startsWith('8')) n = '7${n.substring(1)}';
-    if (n.length == 10) n = '7$n';
-    if (!RegExp(r'^7d{10}$').hasMatch(n)) {
+    final n = Phone.normalize(_supportWhatsApp.text);
+    if (n == null) {
       showSnack(context, t('Нөмірді 7XXXXXXXXXX түрінде жазыңыз'), error: true);
       return;
     }

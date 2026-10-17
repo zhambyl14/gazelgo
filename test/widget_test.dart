@@ -8,6 +8,10 @@ void main() {
   group('Phone.normalize', () {
     test('accepts +7 / 8 / 10-digit forms', () {
       expect(Phone.normalize('+7 700 123 45 67'), '77001234567');
+      // Модератордың «Көмек» WhatsApp нөмірі (бұрын бұзық регекспен
+      // дұрыс нөмір де қабылданбайтын).
+      expect(Phone.normalize('77022669298'), '77022669298');
+      expect(Phone.normalize('8 702 266 92 98'), '77022669298');
       expect(Phone.normalize('8 (700) 123-45-67'), '77001234567');
       expect(Phone.normalize('7001234567'), '77001234567');
     });
