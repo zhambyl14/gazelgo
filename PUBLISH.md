@@ -104,7 +104,33 @@ flutter build appbundle --release   # Play Store үшін .aab
 - [ ] Data safety: локация (заказ үшін), фото (құжаттар), email/телефон (аккаунт)
 - [ ] Internal testing → тексеру → Production
 
-## 1.5 Ағымдағы релиз: 1.0.5 (24) — 2026-10-16
+## 1.4 Ағымдағы релиз: 1.0.6 (25) — 2026-10-17
+
+Жаңасы: жұмыс ноутбугының `tasu-redesign` мүмкіндіктері (ETA, заказ чаты,
+алушы + жеткізу коды, таңдаулы орындаушылар, хабарламалар, модератор
+құралдары), қатеге төзімді мекенжай іздеу, белсенді заказда орындаушының
+орны ФОНДА да жіберіледі (клиент көлікті картада тірі көреді).
+
+1. **Серверге алдымен**: `supabase/APPLY_0075_0083.sql` файлын толық
+   Supabase → SQL Editor-ға қойып, Run. Оларсыз қосымша ашылады, бірақ
+   жаңа мүмкіндіктер (ETA, чат, алушы коды…) жасырын тұрады.
+2. **Android**: `build/app/outputs/bundle/release/app-release.aab` →
+   Play Console → Create new release.
+   **МАҢЫЗДЫ (Play Console бір рет сұрайды)**: қосымша енді
+   `FOREGROUND_SERVICE_LOCATION` рұқсатын қолданады. App content →
+   «Foreground service permissions» бөлімінде «Location» түрін таңдап,
+   түсіндірме жазыңыз: «Орындаушы белсенді заказды орындап жатқанда (навигатор
+   ашық болса да) оның орны клиентке картада көрсетіледі; заказ біткенде
+   қызмет тоқтайды. Хабарландыру тақтасында үнемі көрінеді.» + қысқа видео
+   (орындаушы заказды қабылдап, навигаторды ашады, клиенттің картасында көлік
+   жылжиды). Сондай-ақ Data safety-де «Approximate/Precise location —
+   collected, shared with other users (customer), for app functionality».
+3. **iOS (Mac-та)**: `flutter pub get && cd ios && pod install && cd .. &&
+   flutter build ipa --release`. Info.plist-ке `UIBackgroundModes: location`
+   қосылды — App Review-те «Background location» сұрағына жоғарыдағы
+   түсіндірмені жазыңыз (тек белсенді заказ кезінде, көк индикатормен).
+
+## 1.5 Алдыңғы релиз: 1.0.5 (24) — 2026-10-16
 
 - **Android**: `build/app/outputs/bundle/release/app-release.aab` дайын
   (Tasu upload кілтімен қол қойылған, R8 қосулы). Play Console →
