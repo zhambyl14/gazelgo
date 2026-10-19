@@ -776,6 +776,17 @@ Push келмесе — Supabase Dashboard → Edge Functions → `push-notify` 
 BotFather-де ештеңе баптаудың қажеті жоқ (inline Mini App түймесіне кез
 келген HTTPS бет жарайды).
 
+### Telegram: START-сыз бір түртумен растау (tg-contact, 2026-10-19)
+
+Қосымша BotFather-де боттың **Main Mini App**-ы бапталса, `t.me/<bot>?startapp=<токен>`
+ашады: Telegram бірден «Нөмірді бөлісу» терезесін шығарады, START пен чаттағы
+түйме керек емес. Бапталмаса — бұрынғы бот ағыны (қосымша `tg-contact`
+функциясынан `getMe.has_main_web_app` арқылы өзі біледі).
+
+Бір реттік баптау: BotFather → `/mybots` → бот → **Bot Settings → Configure
+Mini App → Enable Mini App** → URL: `https://gazelgo.pages.dev/tg/`.
+`tg-contact` функциясы deploy жасалған (Verify JWT = OFF).
+
 ### Қолдау қызметкерлері: 0084 + `staff-admin` (2026-10-19)
 
 Модератор панелінде **Жүйе → Қызметкерлер**: телефон + құпиясөзбен
