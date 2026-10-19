@@ -270,8 +270,9 @@ class _RoleRouter extends ConsumerWidget {
           return _RetryScreen(onRetry: () => ref.invalidate(myProfileProvider));
         }
         // Сенім деңгейі бойынша бұғатталған аккаунт (0024) — модератордан
-        // басқа ешкім қосымшаға мүлдем кіре алмайды.
-        if (p.isBlocked && p.role != 'moderator') {
+        // басқа ешкім қосымшаға мүлдем кіре алмайды. Өшірілген қолдау
+        // қызметкері (0084) де — ол толық модератор емес.
+        if (p.isBlocked && (p.role != 'moderator' || p.isStaff)) {
           return BlockedScreen(profile: p);
         }
         switch (p.role) {

@@ -8,6 +8,7 @@ import '../../shared/widgets.dart';
 import '../profile/reviews_screen.dart';
 import 'applications_screen.dart' show DocGallery;
 import 'order_admin.dart';
+import 'staff_screen.dart' show StaffAccess;
 import 'trust_actions.dart' show kBlockReasonPresets;
 
 /// Барлық орындаушылар: іздеу, қарау, бұғаттау, баланс түзету.
@@ -460,7 +461,8 @@ class ExecutorModActions {
         value: 'request_docs',
         child: Text(t('Құжат жаңартуды сұрау')),
       ),
-    PopupMenuItem(value: 'balance', child: Text(t('Баланс түзету'))),
+    if (StaffAccess.can('balance'))
+      PopupMenuItem(value: 'balance', child: Text(t('Баланс түзету'))),
     if (ep.status == 'approved')
       PopupMenuItem(
         value: 'block',

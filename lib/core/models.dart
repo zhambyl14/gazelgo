@@ -98,6 +98,10 @@ class Profile {
   final int referralCount;
   final String? referredBy;
 
+  /// Қолдау қызметкерінің рұқсаттары (0084). null — толық модератор
+  /// (не мүлдем модератор емес); тізім — тек осы бөлімдер ашық.
+  final List<String>? staffPerms;
+
   Profile.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
       role = m['role'] as String? ?? 'client',
@@ -127,11 +131,24 @@ class Profile {
       _dualRole = m.containsKey('client_rating'),
       referralCode = m['referral_code'] as String?,
       referralCount = _i(m['referral_count']),
-      referredBy = m['referred_by'] as String?;
+      referredBy = m['referred_by'] as String?,
+      staffPerms = m['staff_perms'] is List
+          ? [for (final p in m['staff_perms'] as List) '$p']
+          : null;
 
   bool get isBlocked => blockedAt != null;
   bool get isExecutor => role == 'executor';
   bool get isModerator => role == 'moderator';
+
+  /// Қолдау қызметкері (модератор панелінің тек бір бөлігі ашық).
+  bool get isStaff => isModerator && staffPerms != null;
+
+  /// Толық модератор — қызметкерлерді басқара алады.
+  bool get isFullModerator => isModerator && staffPerms == null;
+
+  /// Модератор панелінің [perm] бөліміне рұқсат бар ма.
+  bool modCan(String perm) =>
+      isModerator && (staffPerms == null || staffPerms!.contains(perm));
 
   /// БАСҚА адамның рейтингін НАҚТЫ РӨЛ бойынша алу.
   ///

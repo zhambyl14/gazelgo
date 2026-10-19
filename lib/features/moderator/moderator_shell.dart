@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/lang.dart';
+import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
@@ -20,6 +23,7 @@ import 'order_chats_screen.dart';
 import 'orders_screen.dart';
 import 'overview_screen.dart';
 import 'reports_screen.dart';
+import 'staff_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
 import 'vehicle_types_screen.dart';
@@ -32,7 +36,10 @@ import 'vehicle_types_screen.dart';
 /// (Басқару · Адамдар · Қаржы · Байланыс · Контент · Жүйе), әр бөлімде
 /// күтіп тұрған істердің САНЫ (өтінімдер, толтырулар, чаттар, шағымдар),
 /// ал «☰» батырмасының бұрышында — барлығының қосындысы.
-class ModeratorShell extends StatefulWidget {
+///
+/// ҚОЛДАУ ҚЫЗМЕТКЕРІ (0084) де осы панельге кіреді, бірақ мәзірде тек
+/// модератор оған ашқан бөлімдер көрінеді ([Profile.modCan]).
+class ModeratorShell extends ConsumerStatefulWidget {
   const ModeratorShell({super.key});
 
   // Бөлім нөмірлері — push-хабарламадан өту үшін ([openTab]). Мәндері
@@ -53,6 +60,7 @@ class ModeratorShell extends StatefulWidget {
   static const int tabBroadcast = 13;
   static const int tabAudit = 14;
   static const int tabLiveMap = 15;
+  static const int tabStaff = 16;
 
   /// Бөлімге өту сұранысы (push-хабарламаны басқанда, Шолудан).
   static final ValueNotifier<int?> tabRequest = ValueNotifier<int?>(null);
@@ -62,7 +70,7 @@ class ModeratorShell extends StatefulWidget {
   static void openTab(int index) => tabRequest.value = index;
 
   @override
-  State<ModeratorShell> createState() => _ModeratorShellState();
+  ConsumerState<ModeratorShell> createState() => _ModeratorShellState();
 }
 
 /// Мәзірдегі бір бөлім.
@@ -73,6 +81,9 @@ class _Section {
   final String Function() title;
   final Widget Function() build;
 
+  /// Қызметкерге қажет рұқсат кілті (0084). null — тек толық модератор.
+  final String? perm;
+
   /// Шолу статистикасынан күтіп тұрған істердің санын алу.
   final int Function(Map<String, dynamic> s)? badge;
 
@@ -82,12 +93,24 @@ class _Section {
     this.color,
     this.title,
     this.build, {
+    required this.perm,
     this.badge,
   });
 }
 
-class _ModeratorShellState extends State<ModeratorShell> {
+class _ModeratorShellState extends ConsumerState<ModeratorShell> {
   int _index = ModeratorShell.tabOverview;
+
+  /// Ағымдағы адам (модератор не қызметкер). Қызметкерде [_loadStats]
+  /// сайын жаңартылады — модератор рұқсатты өзгертсе, мәзір қайта кірмей-ақ
+  /// жаңарады. Профиль жоқ болса, мәзір бос тұрады (толық деп есептемейміз).
+  late Profile? _me = ref.read(myProfileProvider).value;
+
+  bool _allowed(_Section s) {
+    final me = _me;
+    if (me == null) return false;
+    return s.perm == null ? me.isFullModerator : me.modCan(s.perm!);
+  }
   final _scaffold = GlobalKey<ScaffoldState>();
   Map<String, dynamic> _stats = const {};
   Timer? _timer;
@@ -104,6 +127,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabOverview,
+          perm: 'overview',
           Icons.space_dashboard_outlined,
           Gz.ink,
           () => t('Шолу'),
@@ -111,6 +135,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabLine,
+          perm: 'line',
           Icons.sensors_rounded,
           Gz.green,
           () => t('Линия'),
@@ -118,6 +143,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabLiveMap,
+          perm: 'live_map',
           Icons.map_outlined,
           Gz.blue,
           () => t('Тірі карта'),
@@ -125,6 +151,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabOrders,
+          perm: 'orders',
           Icons.receipt_long_outlined,
           Gz.violet,
           () => t('Заказдар'),
@@ -137,6 +164,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabApplications,
+          perm: 'applications',
           Icons.assignment_ind_outlined,
           Gz.blue,
           () => t('Өтінімдер'),
@@ -146,6 +174,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabExecutors,
+          perm: 'executors',
           Icons.local_shipping_outlined,
           Gz.ink,
           () => t('Орындаушылар'),
@@ -153,6 +182,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabClients,
+          perm: 'clients',
           Icons.people_outline_rounded,
           Gz.blue,
           () => t('Клиенттер'),
@@ -165,6 +195,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabTopups,
+          perm: 'topups',
           Icons.account_balance_wallet_outlined,
           Gz.yellowDeep,
           () => t('Толтырулар'),
@@ -178,6 +209,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabSupport,
+          perm: 'support',
           Icons.support_agent_rounded,
           Gz.green,
           () => t('Қолдау'),
@@ -186,6 +218,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabReports,
+          perm: 'reports',
           Icons.flag_outlined,
           Gz.red,
           () => t('Шағымдар'),
@@ -194,6 +227,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabOrderChats,
+          perm: 'order_chats',
           Icons.forum_outlined,
           Gz.blue,
           () => t('Заказ чаттары'),
@@ -201,6 +235,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabBroadcast,
+          perm: 'broadcast',
           Icons.campaign_outlined,
           Gz.yellowDeep,
           () => t('Жаппай хабарлама'),
@@ -213,6 +248,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabNews,
+          perm: 'news',
           Icons.auto_stories_outlined,
           Gz.violet,
           () => t('Жаңалықтар'),
@@ -220,6 +256,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabVehicles,
+          perm: 'vehicles',
           Icons.directions_car_outlined,
           Gz.ink,
           () => t('Көліктер'),
@@ -232,6 +269,7 @@ class _ModeratorShellState extends State<ModeratorShell> {
       [
         _Section(
           ModeratorShell.tabSettings,
+          perm: 'settings',
           Icons.tune_rounded,
           Gz.textSecondary,
           () => t('Баптаулар'),
@@ -239,18 +277,29 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ),
         _Section(
           ModeratorShell.tabAudit,
+          perm: 'audit',
           Icons.history_rounded,
           Gz.textSecondary,
           () => t('Әрекеттер журналы'),
           () => const AuditLogScreen(),
         ),
+        _Section(
+          ModeratorShell.tabStaff,
+          perm: null,
+          Icons.badge_outlined,
+          Gz.blue,
+          () => t('Қызметкерлер'),
+          () => const StaffScreen(),
+        ),
       ],
     ),
   ];
 
-  late final Map<int, _Section> _byIndex = {
+  /// Осы адамға РҰҚСАТ етілген бөлімдер ғана.
+  Map<int, _Section> get _byIndex => {
     for (final g in _groups)
-      for (final s in g.$2) s.index: s,
+      for (final s in g.$2)
+        if (_allowed(s)) s.index: s,
   };
 
   int get _totalBadge {
@@ -280,11 +329,28 @@ class _ModeratorShellState extends State<ModeratorShell> {
   }
 
   Future<void> _loadStats() async {
+    if (_me?.isStaff ?? false) unawaited(_refreshMe());
     try {
       final s = await Repo.modOverviewStats();
       if (mounted) setState(() => _stats = s);
     } catch (_) {
       // Санауыштар уақытша көрінбейді — панель жұмыс істей береді.
+    }
+  }
+
+  /// Қызметкердің рұқсаттарын серверден қайта оқу.
+  Future<void> _refreshMe() async {
+    try {
+      final p = await Repo.myProfile();
+      if (!mounted || p == null) return;
+      // Аккаунт өшірілсе — бұғат экранына (main.dart маршрутизаторы).
+      if (p.isBlocked) {
+        ref.invalidate(myProfileProvider);
+        return;
+      }
+      setState(() => _me = p);
+    } catch (_) {
+      // Желі жоқ — бұрынғы рұқсаттармен жалғасады.
     }
   }
 
@@ -309,7 +375,24 @@ class _ModeratorShellState extends State<ModeratorShell> {
 
   @override
   Widget build(BuildContext context) {
-    final current = _byIndex[_index]!;
+    StaffAccess.me = _me;
+    final sections = _byIndex;
+    // Таңдалған бөлімге рұқсат жоқ болса (қызметкер, не рұқсаты алынды) —
+    // рұқсат етілген біріншісі ашылады.
+    final current =
+        sections[_index] ?? (sections.isEmpty ? null : sections.values.first);
+    if (current == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(t('Қолдау қызметі'))),
+        drawer: _drawer(context),
+        body: EmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: t('Сізге әлі бөлім ашылмаған'),
+          subtitle: t('Модератор рұқсат бергенде бөлімдер осында пайда болады.'),
+        ),
+      );
+    }
+    _index = current.index; // мәзірде дұрыс жол белгіленсін
     return Scaffold(
       key: _scaffold,
       appBar: AppBar(
@@ -333,7 +416,10 @@ class _ModeratorShellState extends State<ModeratorShell> {
         ],
       ),
       drawer: _drawer(context),
-      body: KeyedSubtree(key: ValueKey(_index), child: current.build()),
+      body: KeyedSubtree(
+        key: ValueKey(current.index),
+        child: current.build(),
+      ),
     );
   }
 
@@ -350,7 +436,12 @@ class _ModeratorShellState extends State<ModeratorShell> {
                   const GazelGoLogo(size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: InfoChip(text: t('Модератор'), color: Gz.violet),
+                    child: InfoChip(
+                      text: (_me?.isStaff ?? false)
+                          ? t('Қолдау қызметі')
+                          : t('Модератор'),
+                      color: Gz.violet,
+                    ),
                   ),
                   const LanguageSwitcher(),
                 ],
@@ -361,24 +452,30 @@ class _ModeratorShellState extends State<ModeratorShell> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  for (final (groupTitle, sections) in _groups) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
-                      child: Text(groupTitle().toUpperCase(), style: Gz.label),
-                    ),
-                    for (final s in sections) _row(context, s),
-                  ],
+                  for (final (groupTitle, sections) in _groups)
+                    if (sections.any(_allowed)) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
+                        child: Text(
+                          groupTitle().toUpperCase(),
+                          style: Gz.label,
+                        ),
+                      ),
+                      for (final s in sections)
+                        if (_allowed(s)) _row(context, s),
+                    ],
                   const SizedBox(height: 8),
-                  _link(
-                    context,
-                    Icons.storefront_outlined,
-                    t('Хабарландырулар тізімі'),
-                    () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ListingsAdminScreen(),
+                  if (_me?.modCan('reports') ?? false)
+                    _link(
+                      context,
+                      Icons.storefront_outlined,
+                      t('Хабарландырулар тізімі'),
+                      () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ListingsAdminScreen(),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

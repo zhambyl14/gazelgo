@@ -29,7 +29,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     final ids = <String>{
       for (final r in rows) ...[
         if (r['moderator_id'] is String) r['moderator_id'] as String,
-        if (r['target_type'] == 'executor' || r['target_type'] == 'user')
+        if (r['target_type'] == 'executor' ||
+            r['target_type'] == 'user' ||
+            r['target_type'] == 'staff')
           if (r['target_id'] is String) r['target_id'] as String,
       ],
     };
@@ -44,7 +46,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       return _AuditFilter.money;
     }
     if (action == 'order_status') return _AuditFilter.orders;
-    if (action == 'setting_change' || action == 'broadcast') {
+    if (action == 'setting_change' ||
+        action == 'broadcast' ||
+        action.startsWith('staff_')) {
       return _AuditFilter.system;
     }
     return _AuditFilter.people;
@@ -127,6 +131,36 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         Icons.campaign_outlined,
         Gz.yellowDeep,
         '${t('Жаппай хабарлама')}: ${d['recipients'] ?? 0} ${t('адам')}',
+      ),
+      'staff_create' => (
+        Icons.person_add_alt_1_rounded,
+        Gz.blue,
+        t('Қызметкер қосылды'),
+      ),
+      'staff_perms' => (
+        Icons.badge_outlined,
+        Gz.blue,
+        t('Қызметкер рұқсаттары өзгерді'),
+      ),
+      'staff_password' => (
+        Icons.password_rounded,
+        Gz.textSecondary,
+        t('Қызметкер құпиясөзі ауыстырылды'),
+      ),
+      'staff_disable' => (
+        Icons.block_rounded,
+        Gz.danger,
+        t('Қызметкер аккаунты өшірілді'),
+      ),
+      'staff_enable' => (
+        Icons.lock_open_rounded,
+        Gz.success,
+        t('Қызметкер аккаунты қосылды'),
+      ),
+      'staff_delete' => (
+        Icons.delete_outline_rounded,
+        Gz.danger,
+        t('Қызметкер жойылды'),
       ),
       _ => (Icons.history_rounded, Gz.textSecondary, action),
     };

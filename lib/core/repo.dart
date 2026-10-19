@@ -2536,6 +2536,41 @@ class Repo {
         .limit(limit);
     return [for (final m in rows as List) Map<String, dynamic>.from(m)];
   }
+
+  // ---------- Қолдау қызметкерлері (0084) ----------
+
+  /// Қызметкерлер тізімі (тек толық модератор).
+  static Future<List<Map<String, dynamic>>> modStaffList() async {
+    final res = await c.rpc('mod_staff_list');
+    return [
+      for (final m in (res as List? ?? const [])) Map<String, dynamic>.from(m),
+    ];
+  }
+
+  /// Қызметкердің рұқсаттарын толық ауыстырады.
+  static Future<void> modStaffSetPerms(String userId, List<String> perms) =>
+      c.rpc(
+        'mod_staff_set_perms',
+        params: {'p_user': userId, 'p_perms': perms},
+      );
+
+  /// `staff-admin` edge функциясы: create | set_password | set_disabled |
+  /// delete. Сервер қатесінің кодын (PHONE_TAKEN, WEAK_PASSWORD…) Exception
+  /// етіп қайтарады — [errText] оны мәтінге айналдырады.
+  static Future<void> staffAdmin(
+    String action,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      await c.functions.invoke('staff-admin', body: {'action': action, ...body});
+    } on FunctionException catch (e) {
+      final d = e.details;
+      if (d is Map && d['error'] != null) {
+        throw Exception(d['error'].toString());
+      }
+      throw Exception(e.status == 404 ? 'NO_STAFF_FUNCTION' : 'SERVER_ERROR');
+    }
+  }
 }
 
 // ================= RIVERPOD PROVIDERS =================
