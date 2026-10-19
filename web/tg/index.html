@@ -82,8 +82,8 @@
           title: "Нөміріңізді растаңыз",
           body: "Төмендегі түймені басып, ашылған терезеде «Бөлісу»-ді таңдаңыз.",
           button: "📱 Нөмірімді бөлісу",
-          doneTitle: "Нөмір жіберілді",
-          doneBody: "Tasu қосымшасына оралып, тіркелуді жалғастырыңыз.",
+          doneTitle: "Нөміріңіз расталды",
+          doneBody: "Tasu қосымшасына оралыңыз — тіркелу жалғасады.",
           oldTitle: "Telegram ескі нұсқада",
           oldBody: "Чаттағы пернетақта орнындағы «📱 Нөмірімді бөлісу» түймесін басыңыз немесе Telegram-ды жаңартыңыз."
         },
@@ -91,8 +91,8 @@
           title: "Подтвердите номер",
           body: "Нажмите кнопку ниже и выберите «Поделиться» в открывшемся окне.",
           button: "📱 Поделиться номером",
-          doneTitle: "Номер отправлен",
-          doneBody: "Вернитесь в приложение Tasu и продолжите регистрацию.",
+          doneTitle: "Номер подтверждён",
+          doneBody: "Вернитесь в приложение Tasu — регистрация продолжится.",
           oldTitle: "Старая версия Telegram",
           oldBody: "Нажмите кнопку «📱 Нөмірімді бөлісу» на клавиатуре чата или обновите Telegram."
         }
@@ -122,19 +122,43 @@
       tg.ready();
       tg.expand();
 
+      // Қосымшадан `t.me/<bot>?startapp=<токен>` арқылы ашылса — токен осында.
+      // Онда нөмірді tg-contact функциясына өзіміз жібереміз (START-сыз ағын);
+      // токенсіз (чаттағы түймеден) ашылса — контакт ботқа хат болып барады.
+      var FN = "https://xibxaqcrdpgyzohfplda.supabase.co/functions/v1/tg-contact";
+      var token = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "";
+
+      function post(body) {
+        body.init_data = tg.initData;
+        return fetch(FN, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        }).catch(function () { /* бот арқылы қосалқы жол бар */ });
+      }
+
+      function finish() {
+        show("done");
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+        setTimeout(function () { tg.close(); }, 1800);
+      }
+
+      // Токенді осы Telegram аккаунтына алдын ала байлаймыз: «Бөлісу»-ден
+      // кейін ботқа келетін contact хаты да сол токенді таба алады.
+      var linked = token ? post({ action: "link" }) : Promise.resolve();
+
       var busy = false;
       function ask() {
         if (busy) return;
         busy = true;
         try {
-          tg.requestContact(function (shared) {
+          tg.requestContact(function (shared, res) {
             busy = false;
-            if (shared) {
-              show("done");
-              if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
-              setTimeout(function () { tg.close(); }, 1500);
-            }
-            // Бас тартса — бет қалады, түймені қайта басуға болады.
+            if (!shared) return; // бас тартса — түйме тұр, қайта басуға болады
+            if (!token) { finish(); return; }
+            linked.then(function () {
+              return post({ action: "verify", contact: res && res.response });
+            }).then(finish, finish);
           });
         } catch (e) {
           busy = false;

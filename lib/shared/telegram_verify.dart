@@ -32,6 +32,10 @@ class _TelegramVerifyState extends State<TelegramVerify> {
   String? _phone;
   bool _busy = false;
   bool _noTg = false; // Telegram орнатылмаған (мобильде анықталса)
+
+  /// START-сыз ағын (Main Mini App) қолжетімді ме — серверден сұралады.
+  /// Иә болса, Telegram бірден «Нөмірді бөлісу» терезесін ашады.
+  bool _miniApp = false;
   Timer? _poll;
 
   @override
@@ -43,10 +47,14 @@ class _TelegramVerifyState extends State<TelegramVerify> {
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
+      // Токен мен режимді ҚАТАР сұраймыз — күту уақыты қосылмасын.
+      final mini = Repo.tgMiniAppEnabled();
       final token = await Repo.tgStartVerification();
+      final miniApp = await mini;
       if (!mounted) return;
       setState(() {
         _token = token;
+        _miniApp = miniApp;
         _busy = false;
       });
       _open(); // мобильде бірден ашылады (вебте түйме арқылы ашылады)
@@ -69,7 +77,11 @@ class _TelegramVerifyState extends State<TelegramVerify> {
     final t = _token;
     if (t == null) return;
     final bot = Env.telegramBot;
-    final https = Uri.parse('https://t.me/$bot?start=$t');
+    // `startapp` — Telegram START-сыз бірден Mini App-ты ашады (бот
+    // Main Mini App-ы BotFather-де бапталса ғана, [_miniApp]); әйтпесе
+    // бұрынғы `start` — бот чаты ашылып, адам START басады.
+    final param = _miniApp ? 'startapp' : 'start';
+    final https = Uri.parse('https://t.me/$bot?$param=$t');
     // Вебте tg:// схемасы жоқ әрі await popup-ты бөгейді — тікелей https ашамыз.
     if (kIsWeb) {
       launchUrl(https, mode: LaunchMode.externalApplication);
@@ -79,7 +91,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
     // `t.me` доменін МҮЛДЕМ пайдаланбайды → ҚР-дағы `t.me` DNS-бұғаттауын
     // айналып өтеді. Қосымша ЖОҚ болса — бұзылған `t.me` браузер-сілтемесіне
     // ЛАҚТЫРМАЙ, «Telegram орнату» экранын көрсетеміз (тұйыққа тіремейміз).
-    final tg = Uri.parse('tg://resolve?domain=$bot&start=$t');
+    final tg = Uri.parse('tg://resolve?domain=$bot&$param=$t');
     () async {
       var installed = false;
       try {
@@ -235,7 +247,9 @@ class _TelegramVerifyState extends State<TelegramVerify> {
               Expanded(
                 child: Text(
                   waiting
-                      ? t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз')
+                      ? (_miniApp
+                          ? t('Telegram-да ашылған терезеде «Бөлісу»-ді басыңыз')
+                          : t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз'))
                       : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
                   style: const TextStyle(
                     color: Gz.telegramDark,

@@ -134,6 +134,22 @@ async function handle(update: TgUpdate) {
       .limit(1)
       .maybeSingle();
     if (!pending) {
+      // Mini App (tg-contact) нөмірді бұрын растап қойса — бұл хат сол
+      // бөлісудің көшірмесі ғана: қате емес, «расталды» деп жауап береміз.
+      const { data: done } = await admin
+        .from("telegram_verifications")
+        .select("token")
+        .eq("telegram_chat_id", chatId)
+        .eq("verified", true)
+        .gt("expires_at", new Date().toISOString())
+        .limit(1)
+        .maybeSingle();
+      if (done) {
+        await send(chatId,
+          "✅ Нөміріңіз расталды! Tasu қосымшасына оралып, тіркелуді жалғастырыңыз.",
+          { remove_keyboard: true });
+        return;
+      }
       await send(chatId,
         "Белсенді тіркелу табылмады. Қосымшадан «Telegram арқылы растау»-ды қайта бастаңыз.",
         { remove_keyboard: true });

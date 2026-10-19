@@ -33,6 +33,21 @@ class Repo {
     return res as String;
   }
 
+  /// Нөмірді START-сыз растау (Telegram Main Mini App, `tg-contact`)
+  /// қолжетімді ме. Функция жоқ, желі баяу не қате болса — false: қосымша
+  /// бұрынғы бот ағынымен жүреді.
+  static Future<bool> tgMiniAppEnabled() async {
+    try {
+      final res = await c.functions
+          .invoke('tg-contact', body: {'action': 'status'})
+          .timeout(const Duration(seconds: 4));
+      final d = res.data;
+      return d is Map && d['miniapp'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Telegram верификация статусын сұрайды (0026) — {verified, phone}.
   static Future<Map<String, dynamic>> tgCheckVerification(String token) async {
     final res = await c.rpc(
