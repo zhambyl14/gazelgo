@@ -4,9 +4,14 @@
 // Ағын (0026 миграциясы):
 //   1) Пайдаланушы қосымшадан `t.me/<bot>?start=<токен>` арқылы ботты ашады.
 //      → Telegram бізге `/start <токен>` мәтінін жібереді.
-//      → Біз токенді осы chat_id-мен байланыстырып, «Нөмірімді бөлісу»
-//        түймесі бар пернетақтаны көрсетеміз.
-//   2) Пайдаланушы түймені басады → Telegram НӨМІРДІ ӨЗІ РАСТАП, ботқа
+//      → Біз токенді осы chat_id-мен байланыстырып, ХАТТЫҢ АСТЫНА
+//        «📱 Нөмірімді бөлісу» inline түймесін жібереміз (+ пернетақта
+//        түймесін қосалқы жол ретінде).
+//   2) Inline түйме Mini App-ты (web/tg/index.html) ашады, ол бірден
+//      Telegram-ның «Нөмірді бөлісу» терезесін шығарады. Пернетақта
+//      түймесінен айырмашылығы: хатпен бірге тұрады, жүйелік пернетақта
+//      ашық тұрса да көрінеді (бұрын адамдар түймені таппай қалатын).
+//      Келісілсе → Telegram НӨМІРДІ ӨЗІ РАСТАП, ботқа
 //      contact жібереді (contact.user_id == from.id болса ғана — өз нөмірі).
 //      → Біз сол chat_id-дегі күтіп тұрған токенді verified=true қыламыз.
 //
@@ -15,11 +20,14 @@
 // `X-Telegram-Bot-Api-Secret-Token` header-ін жібереді, соны тексереміз.
 //
 // Қажет Edge Function Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET.
+// Қалауынша: TG_CONTACT_APP_URL — Mini App беті (әдепкі: веб домендегі /tg/).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const CONTACT_APP_URL = Deno.env.get("TG_CONTACT_APP_URL") ??
+  "https://gazelgo.pages.dev/tg/";
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("ok", { status: 200 });
@@ -63,6 +71,12 @@ async function handle(update: TgUpdate) {
     const parts = text.split(/\s+/);
     const token = parts.length > 1 ? parts[1] : "";
     if (!token) {
+      // Токенсіз /start: бұрын басталған тіркелу болса — түймені қайта
+      // береміз (адамдар түймені таппай /start-ты қайта жазады).
+      if (await hasPending(chatId)) {
+        await askContact(chatId);
+        return;
+      }
       await send(chatId,
         "Сәлеметсіз бе! Тіркелуді аяқтау үшін Tasu қосымшасынан «Telegram арқылы растау» түймесін басыңыз.");
       return;
@@ -83,15 +97,7 @@ async function handle(update: TgUpdate) {
       .from("telegram_verifications")
       .update({ telegram_chat_id: chatId })
       .eq("token", token);
-    await send(
-      chatId,
-      "Нөміріңізді растау үшін төмендегі түймені басыңыз 👇",
-      {
-        keyboard: [[{ text: "📱 Нөмірімді бөлісу", request_contact: true }]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    );
+    await askContact(chatId, true);
     return;
   }
 
@@ -142,6 +148,57 @@ async function handle(update: TgUpdate) {
     );
     return;
   }
+
+  // 3) Басқа кез келген хат (нөмірді мәтінмен жазу, «қандай түйме?» т.б.):
+  //    тіркелу күтіп тұрса — түймені қайта жібереміз. Мәтінмен жазылған
+  //    нөмірді қабылдамаймыз: оны Telegram растамайды (кез келген нөмір
+  //    жазуға болады), тек түйме арқылы бөлісілген контакт — расталған.
+  if (await hasPending(chatId)) {
+    await askContact(chatId);
+  }
+}
+
+/// Осы чатта расталмаған, мерзімі өтпеген тіркелу бар ма.
+async function hasPending(chatId: number): Promise<boolean> {
+  const { data } = await admin
+    .from("telegram_verifications")
+    .select("token")
+    .eq("telegram_chat_id", chatId)
+    .eq("verified", false)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
+/// «Нөмірімді бөлісу» түймесін жібереді.
+///
+/// Негізгісі — ХАТТЫҢ АСТЫНДАҒЫ inline түйме: ол Mini App-ты ашып, бірден
+/// Telegram-ның «Нөмірді бөлісу» терезесін шығарады, жүйелік пернетақта
+/// ашық тұрса да көрінеді. Қосалқысы — бұрынғы пернетақта түймесі (Mini App
+/// жоқ ескі Telegram үшін): [first] болса, алдымен соны орнатамыз, inline
+/// хат соңынан келеді — экранда ең төменгісі сол болсын.
+async function askContact(chatId: number, first = false) {
+  if (first) {
+    await send(
+      chatId,
+      "Tasu-ға қош келдіңіз! Тіркелуді аяқтау үшін нөміріңізді растайық.",
+      {
+        keyboard: [[{ text: "📱 Нөмірімді бөлісу", request_contact: true }]],
+        resize_keyboard: true,
+        is_persistent: true,
+      },
+    );
+  }
+  await send(
+    chatId,
+    "Нөміріңізді растау үшін төмендегі түймені басыңыз 👇",
+    {
+      inline_keyboard: [[
+        { text: "📱 Нөмірімді бөлісу", web_app: { url: CONTACT_APP_URL } },
+      ]],
+    },
+  );
 }
 
 /// +7/8/10-таңбалы қазақстандық нөмірден 7XXXXXXXXXX шығарады, әйтпесе null.

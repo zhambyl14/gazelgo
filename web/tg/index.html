@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+  Tasu · Telegram Mini App: нөмірді бір түртумен бөлісу.
+
+  Неге керек: Telegram-да хаттың астындағы (inline) түйме нөмір сұрай
+  алмайды — `request_contact` тек пернетақта түймесінде бар. Ал пернетақта
+  ашық тұрса, ол түйме көрінбейді де, адамдар «қандай түйме?» деп қалады.
+  Сондықтан бот хаттың астына осы бетті ашатын inline түйме жібереді, ал
+  бет бірден Telegram-ның өз «Нөмірді бөлісу» терезесін шығарады
+  (WebApp.requestContact, Bot API 6.9+). Келісілсе, Telegram контактіні
+  ботқа хат ретінде өзі жібереді — telegram-webhook оны бұрынғыдай растайды.
+-->
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Tasu · Нөмірді растау</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #ffffff);
+      --text: var(--tg-theme-text-color, #101828);
+      --hint: var(--tg-theme-hint-color, #64748b);
+      --brand: #ffc61a;
+      --brand-ink: #101828;
+      --ok: #0ea65b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      text-align: center;
+    }
+    main { width: 100%; max-width: 380px; }
+    .icon { font-size: 56px; line-height: 1; margin-bottom: 16px; }
+    h1 { font-size: 21px; margin: 0 0 8px; }
+    p { font-size: 15px; line-height: 1.45; margin: 0 0 24px; color: var(--hint); }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 700;
+      background: var(--brand);
+      color: var(--brand-ink);
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    .ok .icon { color: var(--ok); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main id="ask">
+    <div class="icon">📱</div>
+    <h1 data-t="title"></h1>
+    <p data-t="body"></p>
+    <button id="share" type="button" data-t="button"></button>
+  </main>
+  <main id="done" class="ok" hidden>
+    <div class="icon">✅</div>
+    <h1 data-t="doneTitle"></h1>
+    <p data-t="doneBody"></p>
+  </main>
+  <main id="old" hidden>
+    <div class="icon">⌨️</div>
+    <h1 data-t="oldTitle"></h1>
+    <p data-t="oldBody"></p>
+  </main>
+
+  <script>
+    (function () {
+      var T = {
+        kk: {
+          title: "Нөміріңізді растаңыз",
+          body: "Төмендегі түймені басып, ашылған терезеде «Бөлісу»-ді таңдаңыз.",
+          button: "📱 Нөмірімді бөлісу",
+          doneTitle: "Нөмір жіберілді",
+          doneBody: "Tasu қосымшасына оралып, тіркелуді жалғастырыңыз.",
+          oldTitle: "Telegram ескі нұсқада",
+          oldBody: "Чаттағы пернетақта орнындағы «📱 Нөмірімді бөлісу» түймесін басыңыз немесе Telegram-ды жаңартыңыз."
+        },
+        ru: {
+          title: "Подтвердите номер",
+          body: "Нажмите кнопку ниже и выберите «Поделиться» в открывшемся окне.",
+          button: "📱 Поделиться номером",
+          doneTitle: "Номер отправлен",
+          doneBody: "Вернитесь в приложение Tasu и продолжите регистрацию.",
+          oldTitle: "Старая версия Telegram",
+          oldBody: "Нажмите кнопку «📱 Нөмірімді бөлісу» на клавиатуре чата или обновите Telegram."
+        }
+      };
+
+      var tg = window.Telegram && window.Telegram.WebApp;
+      var lang = "kk";
+      try {
+        var code = tg.initDataUnsafe.user.language_code || "";
+        if (code.indexOf("ru") === 0) lang = "ru";
+      } catch (e) { /* әдепкі — қазақша */ }
+
+      document.querySelectorAll("[data-t]").forEach(function (el) {
+        el.textContent = T[lang][el.getAttribute("data-t")];
+      });
+
+      function show(id) {
+        ["ask", "done", "old"].forEach(function (s) {
+          document.getElementById(s).hidden = s !== id;
+        });
+      }
+
+      if (!tg || !tg.isVersionAtLeast || !tg.isVersionAtLeast("6.9")) {
+        show("old");
+        return;
+      }
+      tg.ready();
+      tg.expand();
+
+      var busy = false;
+      function ask() {
+        if (busy) return;
+        busy = true;
+        try {
+          tg.requestContact(function (shared) {
+            busy = false;
+            if (shared) {
+              show("done");
+              if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+              setTimeout(function () { tg.close(); }, 1500);
+            }
+            // Бас тартса — бет қалады, түймені қайта басуға болады.
+          });
+        } catch (e) {
+          busy = false;
+        }
+      }
+
+      document.getElementById("share").addEventListener("click", ask);
+      // Бет ашылған бойда терезені өзіміз шығарамыз — адамға бір-ақ түрту
+      // («Бөлісу») қалады. Клиент бұғаттаса, түйме тұр.
+      setTimeout(ask, 300);
+    })();
+  </script>
+</body>
+</html>
