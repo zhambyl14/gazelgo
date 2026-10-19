@@ -179,15 +179,27 @@ async function hasPending(chatId: number): Promise<boolean> {
 /// жоқ ескі Telegram үшін): [first] болса, алдымен соны орнатамыз, inline
 /// хат соңынан келеді — экранда ең төменгісі сол болсын.
 async function askContact(chatId: number, first = false) {
+  const replyKeyboard = {
+    keyboard: [[{ text: "📱 Нөмірімді бөлісу", request_contact: true }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+  // Mini App беті әлі жарияланбаса (веб ескі нұсқада) — inline түйме
+  // қосымшаның өзін ашып қояр еді. Ондай кезде бұрынғыдай тек пернетақта
+  // түймесін береміз; бет шыққан сәтте inline түйме өзі қосылады.
+  if (!(await contactAppLive())) {
+    await send(
+      chatId,
+      "Нөміріңізді растау үшін төмендегі түймені басыңыз 👇",
+      replyKeyboard,
+    );
+    return;
+  }
   if (first) {
     await send(
       chatId,
       "Tasu-ға қош келдіңіз! Тіркелуді аяқтау үшін нөміріңізді растайық.",
-      {
-        keyboard: [[{ text: "📱 Нөмірімді бөлісу", request_contact: true }]],
-        resize_keyboard: true,
-        is_persistent: true,
-      },
+      replyKeyboard,
     );
   }
   await send(
@@ -199,6 +211,24 @@ async function askContact(chatId: number, first = false) {
       ]],
     },
   );
+}
+
+/// Mini App беті шынымен жарияланған ба (SPA fallback-тағы Flutter беті
+/// емес, ішінде `requestContact` бар біздің бет). Нәтиже 10 минут кэштеледі.
+let appLive: { ok: boolean; at: number } | null = null;
+async function contactAppLive(): Promise<boolean> {
+  if (appLive && Date.now() - appLive.at < 10 * 60 * 1000) return appLive.ok;
+  let ok = false;
+  try {
+    const r = await fetch(CONTACT_APP_URL, {
+      signal: AbortSignal.timeout(3000),
+    });
+    ok = r.ok && (await r.text()).includes("requestContact");
+  } catch (_) {
+    ok = false;
+  }
+  appLive = { ok, at: Date.now() };
+  return ok;
 }
 
 /// +7/8/10-таңбалы қазақстандық нөмірден 7XXXXXXXXXX шығарады, әйтпесе null.
