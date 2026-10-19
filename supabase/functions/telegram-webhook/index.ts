@@ -26,8 +26,14 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-const CONTACT_APP_URL = Deno.env.get("TG_CONTACT_APP_URL") ??
-  "https://gazelgo.pages.dev/tg/";
+/// Mini App бетінің мекенжайлары — бірінші жарияланғаны қолданылады.
+/// Cloudflare Pages негізгі доменге тек `main`-ді шығарады, ал әр тармақтың
+/// өз мекенжайы бар (`<тармақ>.gazelgo.pages.dev`) — `main`-ге біріктірілгенше
+/// бет тармақ мекенжайынан ашылады.
+const CONTACT_APP_URLS = [
+  Deno.env.get("TG_CONTACT_APP_URL") ?? "https://gazelgo.pages.dev/tg/",
+  "https://tasu-redesign.gazelgo.pages.dev/tg/",
+];
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("ok", { status: 200 });
@@ -187,7 +193,8 @@ async function askContact(chatId: number, first = false) {
   // Mini App беті әлі жарияланбаса (веб ескі нұсқада) — inline түйме
   // қосымшаның өзін ашып қояр еді. Ондай кезде бұрынғыдай тек пернетақта
   // түймесін береміз; бет шыққан сәтте inline түйме өзі қосылады.
-  if (!(await contactAppLive())) {
+  const appUrl = await contactAppUrl();
+  if (!appUrl) {
     await send(
       chatId,
       "Нөміріңізді растау үшін төмендегі түймені басыңыз 👇",
@@ -207,28 +214,32 @@ async function askContact(chatId: number, first = false) {
     "Нөміріңізді растау үшін төмендегі түймені басыңыз 👇",
     {
       inline_keyboard: [[
-        { text: "📱 Нөмірімді бөлісу", web_app: { url: CONTACT_APP_URL } },
+        { text: "📱 Нөмірімді бөлісу", web_app: { url: appUrl } },
       ]],
     },
   );
 }
 
 /// Mini App беті шынымен жарияланған ба (SPA fallback-тағы Flutter беті
-/// емес, ішінде `requestContact` бар біздің бет). Нәтиже 10 минут кэштеледі.
-let appLive: { ok: boolean; at: number } | null = null;
-async function contactAppLive(): Promise<boolean> {
-  if (appLive && Date.now() - appLive.at < 10 * 60 * 1000) return appLive.ok;
-  let ok = false;
-  try {
-    const r = await fetch(CONTACT_APP_URL, {
-      signal: AbortSignal.timeout(3000),
-    });
-    ok = r.ok && (await r.text()).includes("requestContact");
-  } catch (_) {
-    ok = false;
+/// емес, ішінде `requestContact` бар біздің бет) — жарияланғанының
+/// мекенжайы, әйтпесе null. Нәтиже 10 минут кэштеледі.
+let appLive: { url: string | null; at: number } | null = null;
+async function contactAppUrl(): Promise<string | null> {
+  if (appLive && Date.now() - appLive.at < 10 * 60 * 1000) return appLive.url;
+  let url: string | null = null;
+  for (const u of CONTACT_APP_URLS) {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(3000) });
+      if (r.ok && (await r.text()).includes("requestContact")) {
+        url = u;
+        break;
+      }
+    } catch (_) {
+      // келесі мекенжайды көреміз
+    }
   }
-  appLive = { ok, at: Date.now() };
-  return ok;
+  appLive = { url, at: Date.now() };
+  return url;
 }
 
 /// +7/8/10-таңбалы қазақстандық нөмірден 7XXXXXXXXXX шығарады, әйтпесе null.
