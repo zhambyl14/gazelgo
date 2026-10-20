@@ -26,13 +26,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-/// Mini App бетінің мекенжайлары — бірінші жарияланғаны қолданылады.
-/// Cloudflare Pages негізгі доменге тек `main`-ді шығарады, ал әр тармақтың
-/// өз мекенжайы бар (`<тармақ>.gazelgo.pages.dev`) — `main`-ге біріктірілгенше
-/// бет тармақ мекенжайынан ашылады.
+/// Mini App беті (Cloudflare Pages, `main` тармағы). Тізім — домен ауысқанда
+/// ескісі мен жаңасын қатар ұстауға болсын деп; бірінші жарияланғаны алынады.
 const CONTACT_APP_URLS = [
   Deno.env.get("TG_CONTACT_APP_URL") ?? "https://gazelgo.pages.dev/tg/",
-  "https://tasu-redesign.gazelgo.pages.dev/tg/",
 ];
 
 Deno.serve(async (req: Request) => {
