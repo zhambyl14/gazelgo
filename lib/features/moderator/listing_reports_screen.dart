@@ -103,7 +103,7 @@ class _SectionLabel extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w800,
         fontSize: 13,
         color: Gz.textSecondary,
@@ -198,7 +198,7 @@ class _ReportCardState extends State<_ReportCard> {
               ),
               Text(
                 fmtDate(r.createdAt),
-                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                style: TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -206,7 +206,7 @@ class _ReportCardState extends State<_ReportCard> {
             const SizedBox(height: 6),
             Text(
               '«${r.reason}»',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: Gz.textSecondary,
                 fontStyle: FontStyle.italic,
@@ -251,7 +251,7 @@ class _ReportCardState extends State<_ReportCard> {
                         '${r.vehicleType.label} · ${r.city}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Gz.textSecondary,
@@ -261,7 +261,7 @@ class _ReportCardState extends State<_ReportCard> {
                     if (!r.listingAlive)
                       Text(
                         t('өшірілген'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: Gz.textSecondary,
@@ -331,7 +331,7 @@ class _ReportCardState extends State<_ReportCard> {
                       ),
                       child: Text(
                         t('Бұғатталған'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Gz.red,
@@ -339,7 +339,7 @@ class _ReportCardState extends State<_ReportCard> {
                       ),
                     ),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right,
                     size: 18,
                     color: Gz.textSecondary,
@@ -354,11 +354,11 @@ class _ReportCardState extends State<_ReportCard> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.people_alt_outlined, size: 15, color: Gz.red),
+                Icon(Icons.people_alt_outlined, size: 15, color: Gz.red),
                 const SizedBox(width: 6),
                 Text(
                   '${t('Бұл хабарландыруға шағым саны:')} ${r.reportsTotal}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Gz.red,
@@ -414,7 +414,7 @@ class _ReportCardState extends State<_ReportCard> {
                     r.action == 'deleted'
                         ? t('Хабарландыру өшірілді')
                         : t('Негізсіз деп жабылды'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Gz.textSecondary,
@@ -424,7 +424,7 @@ class _ReportCardState extends State<_ReportCard> {
                 if (r.resolvedAt != null)
                   Text(
                     fmtDate(r.resolvedAt),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Gz.textSecondary,
                     ),
@@ -467,7 +467,7 @@ class _Photo extends StatelessWidget {
             width: size,
             height: size,
             color: Gz.surface,
-            child: const Icon(Icons.broken_image, color: Gz.textSecondary),
+            child: Icon(Icons.broken_image, color: Gz.textSecondary),
           ),
         ),
       ),

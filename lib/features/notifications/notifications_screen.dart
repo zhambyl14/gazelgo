@@ -115,7 +115,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: Gz.danger,
                           shape: BoxShape.circle,
                         ),

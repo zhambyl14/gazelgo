@@ -68,7 +68,7 @@ class ListingCard extends StatelessWidget {
                                   l.vehicleType.label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: Gz.textSecondary,
@@ -94,7 +94,7 @@ class ListingCard extends StatelessWidget {
                             l.body,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               height: 1.45,
                               color: Gz.textSecondary,

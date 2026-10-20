@@ -487,7 +487,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 14,
-            color: selected ? Gz.ink : Gz.textSecondary,
+            color: selected ? Gz.onBrand : Gz.textSecondary,
           ),
         ),
       ),
@@ -540,7 +540,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 if (hint != null)
                   Text(
                     t(hint),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Gz.textSecondary,
                     ),
@@ -705,7 +705,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.assignment_late,
                               color: Gz.red,
                               size: 20,
@@ -738,7 +738,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                           const SizedBox(height: 6),
                           Text(
                             '«${widget.existing!.docsUpdateComment}»',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Gz.textSecondary,
                               fontStyle: FontStyle.italic,
                               fontSize: 13,
@@ -763,7 +763,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     'Заказдарды тек осы қаладан (қала ішінде + осы қаладан '
                     'шығатын межгород) көресіз.',
                   ),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
@@ -800,7 +800,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                             ),
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.chevron_right,
                           color: Gz.textSecondary,
                         ),
@@ -822,7 +822,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     'Бетіңіз анық көрінетін селфи түсіріңіз — бұл сурет '
                     'профиліңізде көрсетіледі.',
                   ),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 _docTile(
@@ -841,7 +841,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 6),
                 Text(
                   t('Тек осы түрдегі заказдарды көресіз'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 // «Такси» түрі тізімге модератор сол бөлімді ҚОСҚАНДА ғана
@@ -1019,7 +1019,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 4),
                 Text(
                   t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 _docTile(
@@ -1209,7 +1209,7 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
                 ? Center(
                     child: Text(
                       t('Табылмады'),
-                      style: const TextStyle(color: Gz.textSecondary),
+                      style: TextStyle(color: Gz.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -1217,7 +1217,7 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
                     itemCount: _filtered.length,
                     separatorBuilder: (_, i) => const Divider(height: 1),
                     itemBuilder: (_, i) => ListTile(
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.location_city_outlined,
                         color: Gz.textSecondary,
                       ),

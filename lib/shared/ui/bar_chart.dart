@@ -117,7 +117,7 @@ class _GzBarChartState extends State<GzBarChart> {
                       return Stack(
                         children: [
                           // Жоғарғы жіңішке тор сызығы (ең үлкен мән деңгейі).
-                          const Positioned(
+                          Positioned(
                             top: 0,
                             left: 0,
                             right: 0,
@@ -156,7 +156,7 @@ class _GzBarChartState extends State<GzBarChart> {
             ],
           ),
           // Негіз (baseline) — жалғыз, жіңішке.
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 44),
             child: Divider(height: 1, thickness: 1, color: Gz.border),
           ),

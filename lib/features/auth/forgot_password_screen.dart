@@ -84,7 +84,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         color: Gz.bg,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.lock_reset,
                         size: 32,
                         color: Gz.ink,
@@ -104,7 +104,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         'Нөміріңізді Telegram арқылы растап, жаңа құпиясөз '
                         'орнатыңыз — SMS қажет емес.',
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 15,
                         height: 1.5,

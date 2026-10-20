@@ -94,7 +94,7 @@ class _UpdateGateState extends State<UpdateGate> {
   @override
   Widget build(BuildContext context) {
     if (!_checked) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: Gz.surface,
         body: Center(child: CircularProgressIndicator(color: Gz.ink)),
       );
@@ -130,7 +130,7 @@ class _UpdateGateState extends State<UpdateGate> {
                           'жаңартыңыз.',
                         ),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Gz.textSecondary),
+                  style: TextStyle(color: Gz.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 FilledButton(onPressed: _openStore, child: Text(t('Жаңарту'))),

@@ -229,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, size: 30, color: Gz.ink),
+              Icon(icon, size: 30, color: selected ? Gz.onBrand : Gz.ink),
               const SizedBox(height: 8),
               Text(
                 t(title),
@@ -242,7 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Text(
                 t(subtitle),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                style: TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -276,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           '${_step + 1}/$_stepCount · ${labels[_step]}',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: Gz.textSecondary,
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -318,12 +318,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // адамдар осы қадамда ұзақ ойланып қалмауы үшін.
         Row(
           children: [
-            const Icon(Icons.swap_horiz, size: 15, color: Gz.textSecondary),
+            Icon(Icons.swap_horiz, size: 15, color: Gz.textSecondary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 t('Екінші рөлді кейін де қосасыз'),
-                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                style: TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ),
           ],
@@ -394,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onChanged: (v) => setState(() => _agree = v),
           label: Text.rich(
             TextSpan(
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.45,
                 color: Gz.textSecondary,
@@ -403,7 +403,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextSpan(
                   text: t('Пайдаланушы келісімі'),
                   recognizer: _termsTap,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Gz.ink,
                     decoration: TextDecoration.underline,
@@ -413,7 +413,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextSpan(
                   text: t('Құпиялылық саясаты'),
                   recognizer: _privacyTap,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Gz.ink,
                     decoration: TextDecoration.underline,

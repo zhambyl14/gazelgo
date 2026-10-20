@@ -562,7 +562,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                             ? Icons.local_taxi_rounded
                                             : Icons.local_shipping_rounded,
                                         size: 19,
-                                        color: Gz.ink,
+                                        color: Gz.onBrand,
                                       ),
                                     ),
                                     const SizedBox(width: 11),
@@ -590,7 +590,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color: Gz.textSecondary,
                                                 fontSize: 12,
                                                 height: 1.2,
@@ -610,11 +610,11 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                       turns: _panelCollapsed ? 0.5 : 0,
                                       child: Container(
                                         padding: const EdgeInsets.all(3),
-                                        decoration: const BoxDecoration(
+                                        decoration: BoxDecoration(
                                           color: Gz.surfaceAlt,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.keyboard_arrow_down_rounded,
                                           color: Gz.textSecondary,
                                           size: 22,
@@ -712,7 +712,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                                           strokeWidth: 2,
                                                         ),
                                                   )
-                                                : const Icon(
+                                                : Icon(
                                                     Icons.edit_outlined,
                                                     size: 16,
                                                     color: Gz.textSecondary,
@@ -728,14 +728,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                                   t('Қайда жеткіземіз?'),
                                               dim: _to == null,
                                               onTap: _pickTo,
-                                              trailing: const Icon(
+                                              trailing: Icon(
                                                 Icons.chevron_right,
                                                 color: Gz.textSecondary,
                                               ),
                                             )
                                           else
                                             RouteField(
-                                              mark: const Icon(
+                                              mark: Icon(
                                                 Icons.sports_score,
                                                 size: 20,
                                                 color: Gz.red,
@@ -746,7 +746,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                                   .map((d) => d.address)
                                                   .join('  →  '),
                                               onTap: _openStopsSheet,
-                                              trailing: const Icon(
+                                              trailing: Icon(
                                                 Icons.chevron_right,
                                                 color: Gz.textSecondary,
                                               ),
@@ -868,7 +868,7 @@ class _NearbyPill extends StatelessWidget {
                       '${t('Жақын маңда')} $count ${t('бос көлік')}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: Gz.ink,
@@ -935,7 +935,7 @@ class _ProfileButton extends ConsumerWidget {
         ).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
         child: Container(
           padding: const EdgeInsets.all(3),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Gz.surface,
             shape: BoxShape.circle,
             boxShadow: Gz.cardShadow,

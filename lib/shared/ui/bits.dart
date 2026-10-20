@@ -78,7 +78,7 @@ class StatTile extends StatelessWidget {
   final String value;
   final String? hint;
   final IconData? icon;
-  final Color color;
+  final Color? color;
   final VoidCallback? onTap;
 
   const StatTile({
@@ -87,12 +87,13 @@ class StatTile extends StatelessWidget {
     required this.value,
     this.hint,
     this.icon,
-    this.color = Gz.ink,
+    this.color,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? Gz.ink;
     final body = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -134,7 +135,7 @@ class StatTile extends StatelessWidget {
               hint!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
+              style: TextStyle(fontSize: 11, color: Gz.textSecondary),
             ),
         ],
       ),
@@ -232,7 +233,7 @@ class SectionTitle extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.4,
                       color: Gz.textSecondary,
@@ -277,7 +278,7 @@ class CountBadge extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w900,
           height: 1.1,
-          color: urgent ? Colors.white : Gz.ink,
+          color: urgent ? Colors.white : Gz.onBrand,
         ),
       ),
     );
@@ -288,7 +289,7 @@ class CountBadge extends StatelessWidget {
 /// оң жақта «›» немесе өз виджеті. Профиль, мәзір, баптаулар — бәрі осы.
 class GzListRow extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final Color? color;
   final String title;
   final String? subtitle;
   final Widget? trailing;
@@ -300,7 +301,7 @@ class GzListRow extends StatelessWidget {
   const GzListRow({
     super.key,
     required this.icon,
-    this.color = Gz.ink,
+    this.color,
     required this.title,
     this.subtitle,
     this.trailing,
@@ -310,6 +311,7 @@ class GzListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? Gz.ink;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
       horizontalTitleGap: 12,
@@ -342,7 +344,7 @@ class GzListRow extends StatelessWidget {
           trailing ??
           (onTap == null
               ? null
-              : const Icon(
+              : Icon(
                   Icons.chevron_right_rounded,
                   size: 20,
                   color: Gz.textTertiary,

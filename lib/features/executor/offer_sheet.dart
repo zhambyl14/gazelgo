@@ -121,7 +121,7 @@ class _OfferSheetState extends State<_OfferSheet> {
             ],
             Row(
               children: [
-                const Icon(Icons.timer_outlined, size: 18, color: Gz.ink),
+                Icon(Icons.timer_outlined, size: 18, color: Gz.ink),
                 const SizedBox(width: 6),
                 Expanded(child: Text(t('Неше минутта жетесіз?'), style: Gz.h3)),
                 if (widget.kmToPickup != null)
@@ -212,7 +212,7 @@ class _EtaChip extends StatelessWidget {
           height: 52,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? Gz.ink : Gz.surface,
+            color: selected ? Gz.inkFill : Gz.surface,
             borderRadius: BorderRadius.circular(Gz.rMd),
             border: Border.all(
               color: selected ? Gz.yellow : Gz.border,

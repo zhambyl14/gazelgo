@@ -17,7 +17,7 @@ class SupportOrderButton extends StatelessWidget {
     return SectionCard(
       padding: EdgeInsets.zero,
       child: ListTile(
-        leading: const Icon(Icons.support_agent, color: Gz.ink),
+        leading: Icon(Icons.support_agent, color: Gz.ink),
         title: Text(
           t('Қолдау қызметі'),
           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -94,7 +94,7 @@ class _SupportScreenState extends State<SupportScreen> {
               'Көп сұрақтың жауабы осында. Таппасаңыз — төменнен '
               'модераторға жазыңыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
           for (final (q, a) in _faq) _FaqItem(question: t(q), answer: t(a)),
@@ -119,7 +119,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 const SizedBox(height: 4),
                 Text(
                   t('Модератор жеке жауап береді.'),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
@@ -320,7 +320,7 @@ class _FaqItem extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 answer,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.textSecondary,
                   fontSize: 14,
                   height: 1.45,
@@ -377,7 +377,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.circle, size: 10, color: Gz.green),
+                        Icon(Icons.circle, size: 10, color: Gz.green),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(

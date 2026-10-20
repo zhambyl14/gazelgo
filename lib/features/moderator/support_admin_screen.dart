@@ -95,7 +95,7 @@ class _ThreadTile extends StatelessWidget {
                   ),
                 ),
                 if (waiting)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Icon(
                       Icons.mark_chat_unread,
@@ -213,7 +213,7 @@ class _ModeratorUserContext extends StatelessWidget {
                         '${profile.phone} · ${orders.length} заказ · Trust ${profile.trustScore}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Gz.textSecondary,
                           fontSize: 12,
                         ),
@@ -270,7 +270,7 @@ class _OrderContextBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.receipt_long, size: 18, color: Gz.ink),
+                    Icon(Icons.receipt_long, size: 18, color: Gz.ink),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -285,7 +285,7 @@ class _OrderContextBar extends StatelessWidget {
                   '${o.fromDisplay} → ${o.toDisplay}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                  style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                 ),
                 const SizedBox(height: 6),
                 SizedBox(
@@ -294,7 +294,7 @@ class _OrderContextBar extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 38),
                       foregroundColor: Gz.ink,
-                      side: const BorderSide(color: Gz.border),
+                      side: BorderSide(color: Gz.border),
                     ),
                     onPressed: () => showOrderAdminSheet(context, orderId),
                     icon: const Icon(Icons.tune, size: 16),

@@ -3,11 +3,13 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
+import 'package:flutter/services.dart'
+    show DeviceOrientation, SystemChrome, SystemUiOverlayStyle;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/app_theme.dart';
 import 'core/env.dart';
 import 'core/lang.dart';
 import 'core/models.dart';
@@ -102,6 +104,7 @@ Future<void> main() async {
   }
   await Notify.init();
   await Lang.init();
+  await AppTheme.init();
   // Көлік түрлерінің каталогы (0050): алдымен ҚҰРЫЛҒЫДАҒЫ кэштен —
   // жылдам әрі желісіз де жұмыс істейді, сол себепті бірінші кадрда
   // тізім дұрыс. Серверден жаңарту фонда жүреді: жауап келгенде
@@ -124,8 +127,48 @@ Future<void> main() async {
   runApp(const ProviderScope(child: GazelGoApp()));
 }
 
-class GazelGoApp extends StatelessWidget {
+class GazelGoApp extends StatefulWidget {
   const GazelGoApp({super.key});
+
+  @override
+  State<GazelGoApp> createState() => _GazelGoAppState();
+}
+
+class _GazelGoAppState extends State<GazelGoApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    AppTheme.isDark.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    AppTheme.isDark.removeListener(_onThemeChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// «Құрылғыдағыдай» режимде телефон қараңғы/жарық күйге ауысты.
+  @override
+  void didChangePlatformBrightness() => AppTheme.refresh();
+
+  /// Қара/ақ режим ауысты. Тілден айырмашылығы — MaterialApp-ты ҚАЙТА
+  /// ҚҰРМАЙМЫЗ (әйтпесе ашық беттер жабылып, клиенттің заказ беті не
+  /// орындаушының белсенді заказы басынан ашылар еді, ал «құрылғыдағыдай»
+  /// режимде бұл кешке өздігінен болар еді). Оның орнына бүкіл ағаштағы
+  /// әр элементті қайта салдырамыз: `Gz` түстері getter, сондықтан әр
+  /// build жаңа реңкті оқиды; навигация, енгізілген мәтін, күй — сақталады.
+  void _onThemeChanged() {
+    if (!mounted) return;
+    setState(() {});
+    void markAll(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(markAll);
+    }
+
+    (context as Element).visitChildren(markAll);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +187,9 @@ class GazelGoApp extends StatelessWidget {
         title: 'Tasu',
         debugShowCheckedModeBanner: false,
         theme: Gz.theme(),
+        // Тақырып ауысқанда бәрі БІР СӘТТЕ ауыссын: Gz түстері анимациясыз
+        // ауысады, ал Theme-ге тәуелді бөліктер баяу ауысса — сәйкессіздік.
+        themeAnimationDuration: Duration.zero,
         // Жүйелік Material/Cupertino элементтерін (артқа тултипі, мәтін
         // таңдау мәзірі, күнтізбе, семантика) таңдалған тілде көрсету.
         locale: Locale(lang == AppLang.ru ? 'ru' : 'kk'),
@@ -166,9 +212,16 @@ class GazelGoApp extends StatelessWidget {
                 maxScaleFactor: 1.25,
               ),
             ),
-            // Тік (9:16) формат: телефонда — өзгеріссіз, кең терезеде
-            // (веб/ноутбук/планшет) қосымша сол пропорцияда ортада салынады.
-            child: PortraitFrame(child: WebPushBanner(child: child!)),
+            // AppBar-сыз экрандарда (карта) да күй жолағының иконкалары
+            // фонға қарама-қарсы болсын (AppBar өзінікін өзі қояды).
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: Gz.dark
+                  ? SystemUiOverlayStyle.light
+                  : SystemUiOverlayStyle.dark,
+              // Тік (9:16) формат: телефонда — өзгеріссіз, кең терезеде
+              // (веб/ноутбук/планшет) қосымша сол пропорцияда ортада салынады.
+              child: PortraitFrame(child: WebPushBanner(child: child!)),
+            ),
           );
         },
         home: _appHome(),
@@ -182,7 +235,7 @@ class _NotConfigured extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Padding(
         padding: EdgeInsets.all(24),
         child: Center(
@@ -467,7 +520,7 @@ class _SplashState extends State<_Splash> with TickerProviderStateMixin {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'Tasu',
                           style: TextStyle(
                             fontSize: 28,
@@ -484,7 +537,7 @@ class _SplashState extends State<_Splash> with TickerProviderStateMixin {
                             child: Text(
                               t('Жүк тасымалы және арнайы техника платформасы'),
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Gz.textSecondary,
                                 fontSize: 14,
                               ),
@@ -562,7 +615,7 @@ class _RetryScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off, size: 48, color: Gz.textSecondary),
+              Icon(Icons.wifi_off, size: 48, color: Gz.textSecondary),
               const SizedBox(height: 16),
               Text(
                 t('Жүктеу мүмкін болмады'),

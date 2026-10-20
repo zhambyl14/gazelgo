@@ -46,7 +46,7 @@ class _TopupsScreenState extends State<TopupsScreen> {
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
-                    color: _status == s ? Gz.ink : Gz.textSecondary,
+                    color: _status == s ? Gz.onBrand : Gz.textSecondary,
                   ),
                   onSelected: (v) {
                     _status = s;
@@ -124,7 +124,7 @@ class _TopupCard extends StatelessWidget {
                       ),
                       Text(
                         '${snap.data?.phone ?? ''} · ${fmtDate(req.createdAt)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Gz.textSecondary,
                           fontSize: 13,
                         ),
@@ -135,7 +135,7 @@ class _TopupCard extends StatelessWidget {
               ),
               Text(
                 fmtT(req.amount),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: Gz.green,
@@ -156,7 +156,7 @@ class _TopupCard extends StatelessWidget {
           else
             Text(
               t('Чек тіркелмеген'),
-              style: const TextStyle(color: Gz.red, fontSize: 13),
+              style: TextStyle(color: Gz.red, fontSize: 13),
             ),
           if (req.status == 'pending') ...[
             const SizedBox(height: 12),
@@ -183,7 +183,7 @@ class _TopupCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               '${t('Ескерту:')} ${req.note}',
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           ],
         ],
@@ -278,7 +278,7 @@ class _BotVerdict extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               summary!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Gz.textSecondary,
                 fontSize: 12,
                 height: 1.35,

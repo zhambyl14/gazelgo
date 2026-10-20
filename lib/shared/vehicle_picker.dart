@@ -151,7 +151,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
             height: 16,
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.info_outline,
                   size: 14,
                   color: Gz.textSecondary,
@@ -165,7 +165,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
                       desc,
                       maxLines: 1,
                       softWrap: false,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 12,
                         height: 1.1,
@@ -400,11 +400,11 @@ class VehicleCategoryTabs extends StatelessWidget {
                   ),
                   child: Text(
                     badge,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       height: 1.2,
                       fontWeight: FontWeight.w900,
-                      color: Gz.ink,
+                      color: Gz.onBrand,
                     ),
                   ),
                 ),

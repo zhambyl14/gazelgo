@@ -165,7 +165,7 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                         children: [
                           CountBadge(pending[i].$2, urgent: true),
                           const SizedBox(width: 4),
-                          const Icon(
+                          Icon(
                             Icons.chevron_right_rounded,
                             color: Gz.textTertiary,
                           ),

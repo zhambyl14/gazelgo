@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/app_theme.dart';
 import '../core/lang.dart';
 import '../core/models.dart';
 import '../core/push.dart';
@@ -144,7 +145,7 @@ class _BusyButtonState extends State<BusyButton> {
     // көмескі көрінетін.
     final spinnerColor = widget.outlined
         ? Gz.ink
-        : (widget.color == null ? Gz.ink : Colors.white);
+        : (widget.color == null ? Gz.onBrand : Colors.white);
     final child = _busy
         ? SizedBox(
             width: 22,
@@ -234,8 +235,8 @@ class GzPrimaryButton extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: onPressed,
-            splashColor: Gz.ink.withValues(alpha: 0.10),
-            highlightColor: Gz.ink.withValues(alpha: 0.06),
+            splashColor: Gz.onBrand.withValues(alpha: 0.10),
+            highlightColor: Gz.onBrand.withValues(alpha: 0.06),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -245,7 +246,7 @@ class GzPrimaryButton extends StatelessWidget {
                     Icon(
                       icon,
                       size: 20,
-                      color: enabled ? Gz.ink : Gz.disabledFg,
+                      color: enabled ? Gz.onBrand : Gz.disabledFg,
                     ),
                     const SizedBox(width: 9),
                   ],
@@ -256,7 +257,7 @@ class GzPrimaryButton extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.1,
-                        color: enabled ? Gz.ink : Gz.disabledFg,
+                        color: enabled ? Gz.onBrand : Gz.disabledFg,
                       ),
                     ),
                   ),
@@ -334,7 +335,7 @@ class ConfirmCheck extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       t('Автоматты қойылды — қаласаңыз алып тастаңыз'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: Gz.textSecondary,
                       ),
@@ -445,16 +446,16 @@ class AddAddressButton extends StatelessWidget {
                       color: Gz.yellow,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_rounded,
                       size: 15,
-                      color: Gz.ink,
+                      color: Gz.onBrand,
                     ),
                   ),
                   const SizedBox(width: 7),
                   BtnLabel(
                     label ?? t('Мекенжай қосу'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.1,
@@ -544,7 +545,7 @@ class RouteFieldsCard extends StatelessWidget {
                 children: [
                   Text(
                     f.label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 1.2,
                       color: Gz.textSecondary,
@@ -781,7 +782,7 @@ class ProfileBrief extends StatelessWidget {
                   ),
                   if ((p?.trips ?? 0) > 0) ...[
                     const SizedBox(width: 8),
-                    const Icon(
+                    Icon(
                       Icons.local_shipping,
                       size: 12,
                       color: Gz.textSecondary,
@@ -789,7 +790,7 @@ class ProfileBrief extends StatelessWidget {
                     const SizedBox(width: 2),
                     Text(
                       '${p!.trips}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: Gz.textSecondary,
                       ),
@@ -802,7 +803,7 @@ class ProfileBrief extends StatelessWidget {
                   subtitle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                  style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                 ),
             ],
           ),
@@ -875,7 +876,7 @@ class EmptyState extends StatelessWidget {
                 child: Text(
                   subtitle!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Gz.textSecondary,
                     fontSize: 14,
                     height: 1.5,
@@ -919,7 +920,7 @@ class LoadErrorState extends StatelessWidget {
                 color: Gz.tint(Gz.red, 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.cloud_off_outlined,
                 size: 36,
                 color: Gz.red,
@@ -942,7 +943,7 @@ class LoadErrorState extends StatelessWidget {
               child: Text(
                 subtitle ?? t('Интернетті тексеріп, қайта көріңіз.'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.textSecondary,
                   fontSize: 14,
                   height: 1.5,
@@ -1180,7 +1181,7 @@ class OrderCard extends StatelessWidget {
                   order.cargoDesc,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Gz.textSecondary,
                     fontSize: 13,
                     height: 1.45,
@@ -1347,7 +1348,7 @@ class InfoRow extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: BtnLabel(
                 label,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 14),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 14),
               ),
             ),
           ),
@@ -1357,7 +1358,7 @@ class InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
                 height: 1.4,
@@ -1418,7 +1419,7 @@ class OrderPhotosStrip extends StatelessWidget {
                       width: 84,
                       height: 84,
                       color: Gz.bg,
-                      child: const Icon(
+                      child: Icon(
                         Icons.broken_image,
                         color: Gz.textSecondary,
                       ),
@@ -1541,7 +1542,7 @@ class _ReviewPromptState extends State<ReviewPrompt> {
       return SectionCard(
         child: Row(
           children: [
-            const Icon(Icons.check_circle, color: Gz.green),
+            Icon(Icons.check_circle, color: Gz.green),
             const SizedBox(width: 10),
             Expanded(child: Text(t('Пікіріңіз үшін рахмет!'))),
           ],
@@ -1664,7 +1665,7 @@ class GazelGoHero extends StatelessWidget {
           filterQuality: FilterQuality.medium,
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Tasu',
           style: TextStyle(
             fontSize: 28,
@@ -1682,7 +1683,7 @@ class GazelGoHero extends StatelessWidget {
             child: Text(
               subtitle!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Gz.textSecondary,
                 fontSize: 14,
                 height: 1.5,
@@ -1755,10 +1756,10 @@ class ReportSuspiciousButton extends StatelessWidget {
     return SectionCard(
       padding: EdgeInsets.zero,
       child: ListTile(
-        leading: const Icon(Icons.report_outlined, color: Gz.red),
+        leading: Icon(Icons.report_outlined, color: Gz.red),
         title: Text(
           t('Күдікті жағдай туралы хабарлау'),
-          style: const TextStyle(fontWeight: FontWeight.w700, color: Gz.red),
+          style: TextStyle(fontWeight: FontWeight.w700, color: Gz.red),
         ),
         subtitle: Text(t('Заңсыз/қауіпті жағдайға күдіктенсеңіз')),
         onTap: () => _report(context),
@@ -1816,7 +1817,72 @@ class LanguageSwitcher extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.3,
-            color: active ? Gz.ink : Gz.textSecondary,
+            color: active ? Gz.onBrand : Gz.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Интерфейс режимін ауыстыру: ☀ ақ · ☾ қара · ◐ құрылғыдағыдай.
+/// [LanguageSwitcher]-мен бір үлгіде (жанында тұрады).
+class ThemeSwitcher extends StatelessWidget {
+  const ThemeSwitcher({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<AppThemeMode>(
+      valueListenable: AppTheme.mode,
+      builder: (context, mode, _) => Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Gz.surfaceAlt,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Gz.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _pill(Icons.light_mode_rounded, t('Ақ'), mode, AppThemeMode.light),
+            _pill(Icons.dark_mode_rounded, t('Қара'), mode, AppThemeMode.dark),
+            _pill(
+              Icons.brightness_auto_rounded,
+              t('Құрылғыдағыдай'),
+              mode,
+              AppThemeMode.system,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pill(
+    IconData icon,
+    String tooltip,
+    AppThemeMode current,
+    AppThemeMode value,
+  ) {
+    final active = current == value;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => AppTheme.set(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: active ? Gz.brandGradient : null,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: active ? Gz.glow(Gz.yellow, alpha: 0.35, blur: 8) : null,
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: active ? Gz.onBrand : Gz.textSecondary,
           ),
         ),
       ),

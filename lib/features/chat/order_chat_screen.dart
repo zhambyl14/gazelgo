@@ -289,7 +289,7 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
                             : IconButton.filled(
                                 style: IconButton.styleFrom(
                                   backgroundColor: Gz.yellow,
-                                  foregroundColor: Gz.ink,
+                                  foregroundColor: Gz.onBrand,
                                 ),
                                 tooltip: t('Жіберу'),
                                 onPressed: () => _send(),
@@ -365,7 +365,7 @@ class _Bubble extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (showFlag) ...[
-                      const Icon(Icons.flag_rounded, size: 14, color: Gz.red),
+                      Icon(Icons.flag_rounded, size: 14, color: Gz.red),
                       const SizedBox(width: 3),
                     ],
                     Text(
@@ -379,7 +379,14 @@ class _Bubble extends StatelessWidget {
                   ],
                 ),
               ),
-            Text(msg.body, style: const TextStyle(fontSize: 15, height: 1.35)),
+            Text(
+              msg.body,
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.35,
+                color: mine && !mod ? Gz.onBrand : Gz.ink,
+              ),
+            ),
             const SizedBox(height: 3),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -389,7 +396,7 @@ class _Bubble extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: mine && !mod
-                        ? Gz.ink.withValues(alpha: 0.55)
+                        ? Gz.onBrand.withValues(alpha: 0.55)
                         : Gz.textSecondary,
                   ),
                 ),
@@ -400,7 +407,7 @@ class _Bubble extends StatelessWidget {
                         ? Icons.done_rounded
                         : Icons.done_all_rounded,
                     size: 14,
-                    color: Gz.ink.withValues(alpha: 0.55),
+                    color: Gz.onBrand.withValues(alpha: 0.55),
                   ),
                 ],
               ],

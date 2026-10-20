@@ -136,9 +136,9 @@ class _IconCropScreenState extends State<IconCropScreen> {
   Widget build(BuildContext context) {
     final size = _imageSize;
     return Scaffold(
-      backgroundColor: Gz.ink,
+      backgroundColor: Gz.inkDeep,
       appBar: AppBar(
-        backgroundColor: Gz.ink,
+        backgroundColor: Gz.inkDeep,
         foregroundColor: Colors.white,
         title: Text(t('Иконканы кесу'), style: const TextStyle(fontSize: 16)),
         actions: [
@@ -181,7 +181,7 @@ class _IconCropScreenState extends State<IconCropScreen> {
                               ? null
                               : () => _apply(side.toDouble()),
                           icon: _busy
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(

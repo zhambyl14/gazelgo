@@ -48,7 +48,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
   Widget _card(WebPushPrompt prompt) {
     final install = prompt == WebPushPrompt.install;
     return Material(
-      color: Gz.ink,
+      color: Gz.inkFill,
       elevation: 8,
       borderRadius: BorderRadius.circular(20),
       child: Padding(
@@ -101,7 +101,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: Gz.yellow,
-                    foregroundColor: Gz.ink,
+                    foregroundColor: Gz.onBrand,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     minimumSize: const Size(0, 38),
                   ),
@@ -110,7 +110,7 @@ class _WebPushBannerState extends State<WebPushBanner> {
                 ),
               ),
             IconButton(
-              icon: const Icon(Icons.close, color: Gz.textTertiary),
+              icon: Icon(Icons.close, color: Gz.textTertiary),
               onPressed: () => setState(() => _dismissed = true),
             ),
           ],

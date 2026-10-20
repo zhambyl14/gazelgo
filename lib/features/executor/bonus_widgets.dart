@@ -10,7 +10,7 @@ import '../../shared/widgets.dart';
 /// Бонус бағдарламасының түсі — бүкіл қосымшада БІРДЕЙ (лента жолағы,
 /// профиль картасы, тарих экраны). Күлгін: сары бренд түсі «тариф/баланс»
 /// мағынасында бос емес, сол себепті бонус одан айқын ажырап тұрады.
-const _bonusColor = Gz.violet;
+final _bonusColor = Gz.violet;
 
 /// Лентаның ҮСТІНДЕ тұратын ықшам бонус жолағы (0059).
 ///
@@ -99,7 +99,7 @@ class BonusStrip extends ConsumerWidget {
                                       '${b.inCycle}/${b.target} ${t('заказ')}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -157,7 +157,7 @@ class BonusProgressBar extends StatelessWidget {
           value: v,
           minHeight: height,
           backgroundColor: _bonusColor.withValues(alpha: 0.15),
-          valueColor: const AlwaysStoppedAnimation(_bonusColor),
+          valueColor: AlwaysStoppedAnimation(_bonusColor),
         ),
       ),
     );
@@ -202,7 +202,7 @@ class _BonusSheet extends StatelessWidget {
                     color: _bonusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.card_giftcard_rounded,
                     color: _bonusColor,
                     size: 24,
@@ -222,7 +222,7 @@ class _BonusSheet extends StatelessWidget {
                       ),
                       Text(
                         '${b.target} ${t('заказ')} → ${fmtT(b.amount)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Gz.textSecondary,
                           fontSize: 13,
                         ),
@@ -238,7 +238,7 @@ class _BonusSheet extends StatelessWidget {
               children: [
                 Text(
                   '${b.finished ? b.target : b.inCycle}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     color: _bonusColor,
@@ -247,7 +247,7 @@ class _BonusSheet extends StatelessWidget {
                 ),
                 Text(
                   ' / ${b.target}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Gz.textSecondary,
@@ -363,7 +363,7 @@ class _BonusSheet extends StatelessWidget {
               ),
               Text(
                 body,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.textSecondary,
                   fontSize: 13,
                   height: 1.4,
@@ -380,7 +380,7 @@ class _BonusSheet extends StatelessWidget {
     children: [
       Text(
         label,
-        style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+        style: TextStyle(color: Gz.textSecondary, fontSize: 12),
       ),
       const SizedBox(height: 3),
       FittedBox(
@@ -439,7 +439,7 @@ class BonusHistoryScreen extends StatelessWidget {
                 return SectionCard(
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.emoji_events_rounded,
                         color: _bonusColor,
                       ),
@@ -455,7 +455,7 @@ class BonusHistoryScreen extends StatelessWidget {
                       ),
                       Text(
                         fmtT(total),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 16,
                           color: _bonusColor,
@@ -479,7 +479,7 @@ class BonusHistoryScreen extends StatelessWidget {
                         color: _bonusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.card_giftcard_rounded,
                         size: 18,
                         color: _bonusColor,
@@ -499,7 +499,7 @@ class BonusHistoryScreen extends StatelessWidget {
                           ),
                           Text(
                             fmtDate(a.createdAt),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Gz.textSecondary,
                               fontSize: 12,
                             ),
@@ -509,7 +509,7 @@ class BonusHistoryScreen extends StatelessWidget {
                     ),
                     Text(
                       '+${fmtT(a.amount)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
                         color: Gz.green,
@@ -542,7 +542,7 @@ class BonusProfileCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.card_giftcard_rounded,
                 size: 18,
                 color: _bonusColor,
@@ -583,7 +583,7 @@ class BonusProfileCard extends ConsumerWidget {
               ),
               Text(
                 '+${fmtT(b.amount)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 14,
                   color: _bonusColor,
@@ -600,7 +600,7 @@ class BonusProfileCard extends ConsumerWidget {
                       '${t('балансқа түсті')}'
                 : '${t('Бонусқа')} ${b.left} ${t('заказ қалды')} · '
                       '${t('Барлығы')} ${fmtT(b.earnedTotal)}',
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 12),
           ),
         ],
       ),

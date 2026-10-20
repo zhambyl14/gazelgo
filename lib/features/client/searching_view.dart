@@ -312,7 +312,7 @@ class _RoadPainter extends CustomPainter {
       Offset.zero & size,
       Radius.circular(size.height / 2),
     );
-    canvas.drawRRect(r, Paint()..color = Gz.ink);
+    canvas.drawRRect(r, Paint()..color = Gz.inkFill);
     const dash = 10.0, gap = 9.0;
     final y = size.height / 2;
     final p = Paint()
@@ -378,7 +378,7 @@ class SearchStatusCard extends StatelessWidget {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     height: 1.15,
                     fontWeight: FontWeight.w900,
@@ -427,7 +427,7 @@ class SearchTimerChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
-        color: Gz.ink,
+        color: Gz.inkFill,
         borderRadius: BorderRadius.circular(Gz.rLg),
       ),
       child: Row(
@@ -469,7 +469,7 @@ class SearchCountBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Gz.ink,
+        color: Gz.inkFill,
         borderRadius: BorderRadius.circular(Gz.rSm),
       ),
       child: Text(
@@ -533,7 +533,7 @@ class SearchPriceCard extends StatelessWidget {
                       vehicle.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: Gz.ink,
@@ -545,7 +545,7 @@ class SearchPriceCard extends StatelessWidget {
                         meta,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           color: Gz.textSecondary,
                         ),
@@ -566,7 +566,7 @@ class SearchPriceCard extends StatelessWidget {
                       child: Text(
                         price,
                         maxLines: 1,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           height: 1.1,
                           fontWeight: FontWeight.w900,
@@ -579,7 +579,7 @@ class SearchPriceCard extends StatelessWidget {
                   Text(
                     t('Сіздің бағаңыз'),
                     maxLines: 1,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Gz.textSecondary,
                     ),

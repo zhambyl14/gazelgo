@@ -266,6 +266,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       trailing: const LanguageSwitcher(),
                     ),
                     _NavRow(
+                      icon: Icons.contrast_rounded,
+                      color: Gz.violet,
+                      title: t('Түс режимі'),
+                      trailing: const ThemeSwitcher(),
+                    ),
+                    _NavRow(
                       icon: Icons.description_outlined,
                       color: Gz.textSecondary,
                       title: t('Заңдық құжаттар'),
@@ -347,7 +353,7 @@ class _ProfileHero extends StatelessWidget {
                 ),
                 child: Container(
                   padding: const EdgeInsets.all(2.5),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Gz.surface,
                     shape: BoxShape.circle,
                   ),
@@ -382,7 +388,7 @@ class _ProfileHero extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Gz.ink,
+                      color: Gz.inkFill,
                       shape: BoxShape.circle,
                       border: Border.all(color: Gz.surface, width: 2),
                     ),
@@ -402,7 +408,7 @@ class _ProfileHero extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.4,
@@ -413,7 +419,7 @@ class _ProfileHero extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           p.phone,
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 14),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 14),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -562,7 +568,7 @@ class _HeroStat extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Gz.ink,
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -581,7 +587,7 @@ class _HeroStat extends StatelessWidget {
           child: Text(
             label.toUpperCase(),
             maxLines: 1,
-            style: const TextStyle(
+            style: TextStyle(
               color: Gz.textSecondary,
               fontSize: 10,
               height: 1.2,
@@ -621,7 +627,7 @@ class _GroupCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4, bottom: 7),
             child: Text(
               title!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
                 color: Gz.textSecondary,
@@ -691,7 +697,7 @@ class _NavRow extends StatelessWidget {
           trailing ??
           (onTap == null
               ? null
-              : const Icon(Icons.chevron_right, color: Gz.textSecondary)),
+              : Icon(Icons.chevron_right, color: Gz.textSecondary)),
       onTap: onTap,
     );
   }
@@ -745,7 +751,7 @@ class _VehicleCard extends StatelessWidget {
                     meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.textSecondary,
                       fontSize: 13,
                     ),
@@ -791,10 +797,10 @@ class _AccountSettingsScreen extends StatelessWidget {
           child: SectionCard(
             padding: EdgeInsets.zero,
             child: ListTile(
-              leading: const Icon(Icons.delete_forever_outlined, color: Gz.red),
+              leading: Icon(Icons.delete_forever_outlined, color: Gz.red),
               title: Text(
                 t('Аккаунтты өшіру'),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.red,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1042,7 +1048,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
         children: [
           Row(
             children: [
-              const Icon(Icons.card_giftcard, color: Gz.violet),
+              Icon(Icons.card_giftcard, color: Gz.violet),
               const SizedBox(width: 8),
               Text(
                 t('Досыңды шақыр'),
@@ -1064,7 +1070,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                     'Досыңыз кодыңызды енгізіп, БІРІНШІ заказын аяқтаса — '
                     'шақыру санағыңыз өседі',
                   ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 6),
           if (p.referralCode != null) ...[
@@ -1074,7 +1080,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                   child: Text(
                     '${t('Сіз')} ${p.referralCount} '
                     '${t('адам шақырдыңыз')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.textSecondary,
                       fontSize: 13,
                     ),
@@ -1147,7 +1153,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                 'Тіркелу кезінде енгізуді ұмытсаңыз — осы жерден енгізіңіз. '
                 'Бірінші заказыңызды аяқтағанға ДЕЙІН үлгеру керек.',
               ),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 8),
             // Өріс пен батырма БІР ҚАТАРДА тұрған: тар экранда өріс

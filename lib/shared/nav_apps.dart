@@ -72,7 +72,7 @@ class NavApps {
                 color: a.color,
                 title: a.label,
                 trailing: a == current
-                    ? const Icon(Icons.check_circle_rounded, color: Gz.green)
+                    ? Icon(Icons.check_circle_rounded, color: Gz.green)
                     : null,
                 onTap: () => Navigator.pop(ctx, a),
               ),

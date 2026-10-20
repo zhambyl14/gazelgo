@@ -658,7 +658,7 @@ class _FeedToolbar extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? Gz.ink : Colors.transparent,
+              color: on ? Gz.inkFill : Colors.transparent,
               borderRadius: BorderRadius.circular(Gz.rSm),
             ),
             child: FittedBox(
@@ -734,7 +734,7 @@ class _FeedToolbar extends StatelessWidget {
                             SizedBox(
                               width: 22,
                               child: s == sort
-                                  ? const Icon(
+                                  ? Icon(
                                       Icons.check_rounded,
                                       size: 18,
                                       color: Gz.green,
@@ -803,9 +803,9 @@ class _ToolButton extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: active ? Gz.ink : Gz.surface,
+        color: active ? Gz.inkFill : Gz.surface,
         borderRadius: radius,
-        border: Border.all(color: active ? Gz.ink : Gz.border),
+        border: Border.all(color: active ? Gz.inkFill : Gz.border),
       ),
       child: Icon(icon, size: 20, color: active ? Gz.yellow : Gz.ink),
     );
@@ -853,13 +853,13 @@ class _FeedEmpty extends StatelessWidget {
               color: Gz.tint(Gz.yellow, 0.22),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.radar_rounded, size: 38, color: Gz.ink),
+            child: Icon(Icons.radar_rounded, size: 38, color: Gz.ink),
           ),
           const SizedBox(height: 14),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
               color: Gz.ink,
@@ -869,7 +869,7 @@ class _FeedEmpty extends StatelessWidget {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.4,
               color: Gz.textSecondary,
@@ -1070,7 +1070,7 @@ class _FeedCard extends StatelessWidget {
                             o.vehicleType.label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                               height: 1.25,
@@ -1093,7 +1093,7 @@ class _FeedCard extends StatelessWidget {
                         children: [
                           BtnLabel(
                             fmtT(o.displayPrice),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
                               height: 1.1,
@@ -1105,7 +1105,7 @@ class _FeedCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             BtnLabel(
                               t('Клиент бағасы'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: Gz.textSecondary,
@@ -1147,7 +1147,7 @@ class _FeedCard extends StatelessWidget {
                           o.cargoDesc,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             height: 1.3,
                             color: Gz.textSecondary,
@@ -1158,7 +1158,7 @@ class _FeedCard extends StatelessWidget {
                     ],
                   ),
                 ],
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 11),
                   child: Divider(height: 1, thickness: 1, color: Gz.border),
                 ),
@@ -1219,15 +1219,15 @@ class _CardCta extends StatelessWidget {
           Flexible(
             child: BtnLabel(
               t('Қабылдау'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Gz.ink,
+                color: Gz.onBrand,
               ),
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.arrow_forward_rounded, size: 17, color: Gz.ink),
+          Icon(Icons.arrow_forward_rounded, size: 17, color: Gz.ink),
         ],
       ),
     ),
@@ -1342,14 +1342,14 @@ class _FreshnessState extends State<_Freshness>
     if (!_isNew) {
       return Row(
         children: [
-          const Icon(Icons.schedule_rounded, size: 13, color: Gz.textTertiary),
+          Icon(Icons.schedule_rounded, size: 13, color: Gz.textTertiary),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               _ago(d),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.2,
                 fontWeight: FontWeight.w600,
@@ -1377,7 +1377,7 @@ class _FreshnessState extends State<_Freshness>
                 child: Container(
                   width: 7,
                   height: 7,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Gz.green,
                     shape: BoxShape.circle,
                   ),
@@ -1387,7 +1387,7 @@ class _FreshnessState extends State<_Freshness>
             const SizedBox(width: 5),
             Text(
               t('ЖАҢА'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 height: 1.2,
                 fontWeight: FontWeight.w900,
@@ -1517,7 +1517,7 @@ class _CompactRoute extends StatelessWidget {
                   ),
                   child: Text(
                     '+$stops ${t('аялдама')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       height: 1.2,
                       fontWeight: FontWeight.w800,
@@ -1546,7 +1546,7 @@ class _CompactRoute extends StatelessWidget {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
             height: 1.3,
@@ -1800,7 +1800,7 @@ class _OrderSheet extends StatelessWidget {
                           if (o.cargoDesc.isNotEmpty)
                             Text(
                               o.cargoDesc,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 height: 1.45,
                                 fontWeight: FontWeight.w600,
@@ -1823,7 +1823,7 @@ class _OrderSheet extends StatelessWidget {
                       title: t('Түсініктеме'),
                       child: Text(
                         o.comment,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           height: 1.45,
                           color: Gz.ink,
@@ -1913,7 +1913,7 @@ class _FactsGrid extends StatelessWidget {
       ),
       if (o.distanceKm > 0)
         _FactTile(
-          lead: const Icon(Icons.route_rounded, size: 18, color: Gz.blue),
+          lead: Icon(Icons.route_rounded, size: 18, color: Gz.blue),
           color: Gz.blue,
           label: t('Қашықтық'),
           value: _km(o.distanceKm),
@@ -1944,7 +1944,7 @@ class _FactsGrid extends StatelessWidget {
         ),
       if (created != null)
         _FactTile(
-          lead: const Icon(
+          lead: Icon(
             Icons.schedule_rounded,
             size: 18,
             color: Gz.textSecondary,
@@ -1957,7 +1957,7 @@ class _FactsGrid extends StatelessWidget {
         ),
       if (o.scheduledAt != null)
         _FactTile(
-          lead: const Icon(Icons.event_rounded, size: 18, color: Gz.blue),
+          lead: Icon(Icons.event_rounded, size: 18, color: Gz.blue),
           color: Gz.blue,
           label: t('Алдын ала'),
           value: _when(o.scheduledAt!),
@@ -2025,7 +2025,7 @@ class _FactTile extends StatelessWidget {
               const SizedBox(height: 3),
               BtnLabel(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   height: 1.2,
@@ -2068,7 +2068,7 @@ class _SheetActions extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(50),
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        side: const BorderSide(color: Gz.ink, width: 1.6),
+        side: BorderSide(color: Gz.ink, width: 1.6),
       ),
       onPressed: () {
         Navigator.of(context).pop();
@@ -2078,7 +2078,7 @@ class _SheetActions extends StatelessWidget {
     );
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Gz.surface,
         border: Border(top: BorderSide(color: Gz.border)),
         boxShadow: [
@@ -2105,7 +2105,7 @@ class _SheetActions extends StatelessWidget {
           ],
           BtnLabel(
             fmtT(o.displayPrice),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
               height: 1.1,
@@ -2165,7 +2165,7 @@ class _DirectionStrip extends StatelessWidget {
     final accent = o.intercity ? Gz.violet : Gz.blue;
     final from = _place(o.fromCity, o.fromDisplay);
     final to = _place(o.toCity, o.toDisplay);
-    const cityStyle = TextStyle(
+    final cityStyle = TextStyle(
       fontSize: 18,
       fontWeight: FontWeight.w900,
       height: 1.15,
@@ -2315,7 +2315,7 @@ class _PricePin extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
           decoration: BoxDecoration(
-            color: Gz.ink,
+            color: Gz.inkFill,
             borderRadius: BorderRadius.circular(Gz.rSm),
             boxShadow: Gz.cardShadow,
           ),
@@ -2353,7 +2353,7 @@ class _PinTailPainter extends CustomPainter {
       ..lineTo(size.width, 0)
       ..lineTo(size.width / 2, size.height)
       ..close();
-    canvas.drawPath(path, Paint()..color = Gz.ink);
+    canvas.drawPath(path, Paint()..color = Gz.inkFill);
   }
 
   @override

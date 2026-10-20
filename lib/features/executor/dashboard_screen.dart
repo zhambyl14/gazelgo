@@ -141,7 +141,7 @@ class ExecutorDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 tariffDefinitionText(cfg),
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 12),
               _TariffCard(
@@ -330,7 +330,7 @@ class _TariffCard extends StatelessWidget {
                   ),
                   child: Text(
                     t('Белсенді'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.green,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
@@ -342,7 +342,7 @@ class _TariffCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             description,
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
           // Белсенді болса — қайта сатуға болмайды (ауысым бітсін не заказ
@@ -381,7 +381,7 @@ class _TariffCard extends StatelessWidget {
                         if (until != null)
                           Text(
                             '${t('Ауысым')} ${fmtTime(until)} ${t('дейін')}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Gz.textSecondary,
                               fontSize: 12,
                             ),

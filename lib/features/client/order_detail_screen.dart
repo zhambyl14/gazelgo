@@ -398,7 +398,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               onPressed: _cancel,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Gz.red,
-                side: const BorderSide(color: Gz.red),
+                side: BorderSide(color: Gz.red),
               ),
               icon: const Icon(Icons.close),
               label: Text(t('Заказды тоқтату')),
@@ -1044,7 +1044,7 @@ class _SearchingScreenState extends State<_SearchingScreen> {
 
   Widget _sheetBody(Order o, ScrollController scroll, bool scheduled) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Gz.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(Gz.rXl)),
         boxShadow: [
@@ -1101,12 +1101,12 @@ class _SearchingScreenState extends State<_SearchingScreen> {
               padding: const EdgeInsets.only(top: 4, bottom: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.event_rounded, size: 18, color: Gz.violet),
+                  Icon(Icons.event_rounded, size: 18, color: Gz.violet),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       fmtDate(o.scheduledAt),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
                         color: Gz.violet,
@@ -1236,7 +1236,7 @@ class _SearchingScreenState extends State<_SearchingScreen> {
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(50),
             foregroundColor: Gz.red,
-            side: const BorderSide(color: Gz.red),
+            side: BorderSide(color: Gz.red),
           ),
           icon: const Icon(Icons.close_rounded),
           label: Text(t('Заказды тоқтату')),
@@ -1259,7 +1259,7 @@ class _OsmAttribution extends StatelessWidget {
           color: Gz.surface.withValues(alpha: 0.82),
           borderRadius: BorderRadius.circular(Gz.rXs),
         ),
-        child: const Text(
+        child: Text(
           '© OpenStreetMap',
           style: TextStyle(
             fontSize: 10,
@@ -1393,7 +1393,7 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
             const SizedBox(height: 12),
             Text(
               t('Немесе өзіңіз көтеріңіз'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 color: Gz.textSecondary,
@@ -1529,7 +1529,7 @@ class _OfferCard extends StatelessWidget {
                 if (note.isNotEmpty)
                   Text(
                     '«$note»',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.textSecondary,
                       fontStyle: FontStyle.italic,
                       fontSize: 13,
@@ -1549,7 +1549,7 @@ class _OfferCard extends StatelessWidget {
                     // көлденең padding кішірейтілген.
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     foregroundColor: Gz.red,
-                    side: const BorderSide(color: Gz.border),
+                    side: BorderSide(color: Gz.border),
                   ),
                   onPressed: () async {
                     try {
@@ -1651,14 +1651,14 @@ class _ExecutorBriefState extends State<_ExecutorBrief> {
                       ),
                       if (widget.favorite) ...[
                         const SizedBox(width: 4),
-                        const Icon(
+                        Icon(
                           Icons.favorite_rounded,
                           size: 15,
                           color: Gz.red,
                         ),
                       ],
                       const SizedBox(width: 2),
-                      const Icon(
+                      Icon(
                         Icons.chevron_right_rounded,
                         size: 18,
                         color: Gz.textSecondary,
@@ -1759,7 +1759,7 @@ class _ExecutorCard extends StatelessWidget {
                                 ),
                                 if (favorite) ...[
                                   const SizedBox(width: 4),
-                                  const Icon(
+                                  Icon(
                                     Icons.favorite_rounded,
                                     size: 15,
                                     color: Gz.red,

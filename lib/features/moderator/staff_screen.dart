@@ -203,7 +203,7 @@ class _StaffScreenState extends State<StaffScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
+              Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
             ],
           ),
         ),

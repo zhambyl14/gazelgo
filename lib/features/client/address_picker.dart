@@ -174,7 +174,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
         const SizedBox(height: 10),
         Text(
           t('Осы жерде — түртіп таңдаңыз:'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
             color: Gz.textSecondary,
@@ -206,7 +206,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_nearbyIcon(p.kind), size: 15, color: Gz.ink),
+                      Icon(_nearbyIcon(p.kind), size: 15, color: active ? Gz.onBrand : Gz.ink),
                       const SizedBox(width: 6),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 190),
@@ -342,7 +342,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 2),
                             child: Icon(
                               Icons.location_on,
@@ -375,7 +375,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.info_outline,
                               size: 14,
                               color: Gz.blue,
@@ -384,7 +384,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                             Expanded(
                               child: Text(
                                 '${t('Елді мекен:')} $_centerCity',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: Gz.blue,
@@ -402,7 +402,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                             'Бұл жердің нақты мекенжайы картада жоқ — нүкте '
                             'дәл сақталады, орындаушы навигатормен дәл келеді.',
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: Gz.textSecondary,
                           ),

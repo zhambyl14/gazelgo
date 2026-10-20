@@ -274,7 +274,7 @@ class ExecutorDraftTile extends StatelessWidget {
                   color: Gz.tint(Gz.yellow, 0.18),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.pending_actions_rounded,
                   color: Gz.yellowDeep,
                   size: 20,
@@ -466,7 +466,7 @@ class ExecutorModActions {
     if (ep.status == 'approved')
       PopupMenuItem(
         value: 'block',
-        child: Text(t('Бұғаттау'), style: const TextStyle(color: Gz.red)),
+        child: Text(t('Бұғаттау'), style: TextStyle(color: Gz.red)),
       ),
     if (ep.status == 'blocked')
       PopupMenuItem(value: 'unblock', child: Text(t('Бұғаттан шығару'))),

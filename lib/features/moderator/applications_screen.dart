@@ -83,7 +83,7 @@ class _SectionLabel extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w800,
         fontSize: 13,
         color: Gz.textSecondary,
@@ -134,7 +134,7 @@ class _DocsReviewTile extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   '${t('Жаңартылды')}: $fields',
-                  style: const TextStyle(fontSize: 13, color: Gz.textSecondary),
+                  style: TextStyle(fontSize: 13, color: Gz.textSecondary),
                 ),
               ],
               const SizedBox(height: 10),
@@ -315,7 +315,7 @@ class ApplicationDetailScreen extends StatelessWidget {
                             ),
                             Text(
                               profile?.phone ?? '',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Gz.textSecondary,
                                 fontSize: 13,
                               ),
@@ -582,7 +582,7 @@ class DocImage extends StatelessWidget {
             child: Center(
               child: Text(
                 t('жоқ'),
-                style: const TextStyle(color: Gz.textTertiary, fontSize: 12),
+                style: TextStyle(color: Gz.textTertiary, fontSize: 12),
               ),
             ),
           ),
@@ -628,7 +628,7 @@ class DocImage extends StatelessWidget {
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.picture_as_pdf_rounded,
                             color: Gz.red,
                             size: 32,
@@ -636,7 +636,7 @@ class DocImage extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             t('PDF ашу'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -649,7 +649,7 @@ class DocImage extends StatelessWidget {
                         cacheHeight:
                             (height * MediaQuery.devicePixelRatioOf(context))
                                 .round(),
-                        errorBuilder: (_, _, _) => const Center(
+                        errorBuilder: (_, _, _) => Center(
                           child: Icon(
                             Icons.broken_image_outlined,
                             color: Gz.textTertiary,
@@ -737,9 +737,9 @@ class _DocViewerScreenState extends State<DocViewerScreen> {
   Widget build(BuildContext context) {
     final docs = widget.docs;
     return Scaffold(
-      backgroundColor: Gz.ink,
+      backgroundColor: Gz.inkDeep,
       appBar: AppBar(
-        backgroundColor: Gz.ink,
+        backgroundColor: Gz.inkDeep,
         foregroundColor: Colors.white,
         title: Text(
           '${_index + 1}/${docs.length} · ${docs[_index].$2}',

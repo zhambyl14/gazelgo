@@ -45,7 +45,7 @@ class _OrderChatsScreenState extends State<OrderChatsScreen> {
               ),
               const SizedBox(width: 6),
               ChoiceChip(
-                avatar: const Icon(Icons.flag_rounded, size: 16, color: Gz.red),
+                avatar: Icon(Icons.flag_rounded, size: 16, color: Gz.red),
                 label: Text(t('Белгіленгендер')),
                 selected: _flaggedOnly,
                 onSelected: (_) {
@@ -139,7 +139,7 @@ class _ChatTile extends StatelessWidget {
               Row(
                 children: [
                   if (flagged > 0) ...[
-                    const Icon(Icons.flag_rounded, size: 18, color: Gz.red),
+                    Icon(Icons.flag_rounded, size: 18, color: Gz.red),
                     const SizedBox(width: 4),
                   ],
                   Expanded(

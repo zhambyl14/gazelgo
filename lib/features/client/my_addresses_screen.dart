@@ -119,7 +119,7 @@ class _SaveAddressSheetState extends State<_SaveAddressSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.place_outlined, size: 18, color: Gz.red),
+                    Icon(Icons.place_outlined, size: 18, color: Gz.red),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -206,7 +206,7 @@ class _SaveAddressSheetState extends State<_SaveAddressSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: sel ? Gz.ink : Gz.bg,
+          color: sel ? Gz.inkFill : Gz.bg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: sel ? Gz.ink : Gz.border),
         ),
@@ -303,7 +303,7 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
       appBar: AppBar(title: Text(t('Менің мекенжайларым'))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _add,
-        backgroundColor: Gz.ink,
+        backgroundColor: Gz.inkFill,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_location_alt_outlined),
         label: Text(t('Мекенжай қосу')),
@@ -376,13 +376,13 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                       : a.address,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: Gz.textSecondary),
+                  style: TextStyle(fontSize: 13, color: Gz.textSecondary),
                 ),
               ],
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Gz.textSecondary),
+            icon: Icon(Icons.more_vert, color: Gz.textSecondary),
             onSelected: (v) async {
               switch (v) {
                 case 'primary':
@@ -420,9 +420,9 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                 value: 'delete',
                 child: Row(
                   children: [
-                    const Icon(Icons.delete_outline, size: 20, color: Gz.red),
+                    Icon(Icons.delete_outline, size: 20, color: Gz.red),
                     const SizedBox(width: 10),
-                    Text(t('Өшіру'), style: const TextStyle(color: Gz.red)),
+                    Text(t('Өшіру'), style: TextStyle(color: Gz.red)),
                   ],
                 ),
               ),

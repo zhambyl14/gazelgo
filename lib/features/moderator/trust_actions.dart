@@ -163,7 +163,7 @@ class _TrustSheetState extends State<_TrustSheet> {
                       ),
                       Text(
                         p.phone,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Gz.textSecondary,
                           fontSize: 13,
                         ),
@@ -178,7 +178,7 @@ class _TrustSheetState extends State<_TrustSheet> {
               const SizedBox(height: 8),
               Text(
                 '${t('Себебі:')} $_reason',
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 13),
               ),
             ],
             if (p.phone.isNotEmpty) ...[

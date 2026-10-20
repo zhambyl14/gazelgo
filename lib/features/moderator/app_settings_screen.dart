@@ -872,7 +872,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'орындаушы · гест) бөлек қойылады. Осы қосқыш өшулі болса — '
               'карта ешкімге көрінбейді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -909,7 +909,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Астыңғы қосқыш — тек сары «ЖАҢА» жапсырмасы: бөлім '
               'ескіргенде оны бөлімнің өзін өшірмей-ақ алып тастайсыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -939,7 +939,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'қызметін, клиенттер жұмысын жариялайды. Әр хабарландыру '
               '7 күн тұрады, сосын автоматты өшеді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -967,7 +967,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'уақытқа созылатыны және сол ауысымда қанша заказ алуға '
               'болатыны.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1082,7 +1082,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'түседі — қолма-қол шешіп алынбайды, тариф сатып алуға '
               'жұмсалады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1195,7 +1195,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Kaspi деректері')),
           Text(
             t('Орындаушылар балансты осыған аударады.'),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1260,7 +1260,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'автоматты толтырады. Күдікті болса — тиіспейді, Telegram-ға '
               'себебін жазады, шешімді сіз қабылдайсыз.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1336,7 +1336,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     'Чек скриншоттан кейін қайтарылып алынса — тек осылай '
                     'білуге болады.',
                   ),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 BusyButton(
@@ -1359,7 +1359,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               '«оператор» деген сұраныс келсе — бот тиіспейді, Telegram-ге '
               'ескерту барады, модератор өзі жалғастырады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1381,7 +1381,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'WhatsApp-ына апарады. Кірген пайдаланушылар қолдау чатын '
               'қолданады.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1410,7 +1410,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент аяқталған/тоқтатылған заказды бір батырмамен қайта '
               'ашады (маршрут пен көлік түрі дайын тұрады).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1429,7 +1429,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент заказды белгілі бір күн-уақытқа жоспарлай алады — '
               'сол уақыт келгенше орындаушыларға көрінбейді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1480,7 +1480,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент белсенді заказда орындаушының ағымдағы орнын картадан '
               'көреді (орындаушы GPS-і 15 секунд сайын жіберіледі).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1499,7 +1499,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиенттің басты картасында жақын маңдағы бос орындаушылардың '
               'көліктері көрінеді (нақты орны емес, ~100 м дәлдікпен).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1518,7 +1518,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент пен орындаушы заказ ішінде жазыса алады. Барлық чатты '
               'модератор «Заказ чаттары» бөлімінде көреді.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1537,7 +1537,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'Клиент заказдың сілтемесін жақынына жібере алады — олар '
               'қосымшасыз, кірместен барысты қарайды.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1560,7 +1560,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'ОРЫНДАУШЫ шақырса — балансына сома, КЛИЕНТ шақырса — тек '
               'санағы өседі.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           _toggleCard(
@@ -1622,7 +1622,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
               'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -1717,7 +1717,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   alignment: Alignment.centerLeft,
                   child: BtnLabel(
                     enabled ? onLabel : offLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Gz.textSecondary,
                     ),
@@ -1774,7 +1774,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             const SizedBox(width: 6),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Gz.textSecondary,
@@ -1843,7 +1843,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.insights_outlined,
                 size: 18,
                 color: Gz.textSecondary,
@@ -1884,7 +1884,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             const SizedBox(height: 14),
             Text(
               t('Ең көп бонус алғандар'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Gz.textSecondary,
@@ -1932,7 +1932,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 3),
             FittedBox(
@@ -1950,7 +1950,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             const SizedBox(height: 2),
             Text(
               hint,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 11),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 11),
             ),
           ],
         ),

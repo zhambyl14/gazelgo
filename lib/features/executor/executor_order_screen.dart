@@ -231,7 +231,7 @@ class _ExecutorOrderScreenState extends State<ExecutorOrderScreen> {
       action: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           foregroundColor: Gz.red,
-          side: const BorderSide(color: Gz.border),
+          side: BorderSide(color: Gz.border),
         ),
         onPressed: () async {
           try {
@@ -424,9 +424,9 @@ class _WaitingHeaderState extends State<_WaitingHeader>
                         color: Gz.yellow,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.hourglass_top_rounded,
-                        color: Gz.ink,
+                        color: Gz.onBrand,
                         size: 22,
                       ),
                     ),
@@ -664,7 +664,7 @@ class _StateBanner extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.45,
                     color: Gz.textSecondary,
@@ -812,7 +812,7 @@ class _FactTile extends StatelessWidget {
                   f.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Gz.textSecondary,
@@ -900,7 +900,7 @@ class _OfferActions extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(54),
               padding: const EdgeInsets.symmetric(horizontal: 6),
-              side: const BorderSide(color: Gz.ink, width: 1.6),
+              side: BorderSide(color: Gz.ink, width: 1.6),
             ),
             onPressed: () => _offer(context, counter: true),
             child: BtnLabel(t('Өз бағам')),

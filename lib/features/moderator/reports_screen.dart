@@ -99,7 +99,7 @@ class _SectionLabel extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w800,
         fontSize: 13,
         color: Gz.textSecondary,
@@ -205,7 +205,7 @@ class _ReportTileState extends State<_ReportTile> {
               ),
               Text(
                 fmtDate(r.createdAt),
-                style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+                style: TextStyle(fontSize: 12, color: Gz.textSecondary),
               ),
             ],
           ),
@@ -213,7 +213,7 @@ class _ReportTileState extends State<_ReportTile> {
             const SizedBox(height: 6),
             Text(
               '«${r.reason}»',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: Gz.textSecondary,
                 fontStyle: FontStyle.italic,
@@ -228,7 +228,7 @@ class _ReportTileState extends State<_ReportTile> {
               '${o.fromDisplay} → ${o.toDisplay}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: Gz.textSecondary),
+              style: TextStyle(fontSize: 12, color: Gz.textSecondary),
             ),
           ],
           if (_reported != null) ...[
@@ -265,7 +265,7 @@ class _ReportTileState extends State<_ReportTile> {
                       blocked: _reported!.isBlocked,
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right,
                       size: 18,
                       color: Gz.textSecondary,

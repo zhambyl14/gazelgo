@@ -28,7 +28,7 @@ class GzDialogFrame extends StatelessWidget {
   final IconData? icon;
 
   /// Иконка белгісінің түсі (мағынасына қарай: қызыл — қауіпті әрекет).
-  final Color color;
+  final Color? color;
   final String title;
   final String? message;
 
@@ -45,7 +45,7 @@ class GzDialogFrame extends StatelessWidget {
   const GzDialogFrame({
     super.key,
     this.icon,
-    this.color = Gz.ink,
+    this.color,
     required this.title,
     this.message,
     this.content,
@@ -55,6 +55,7 @@ class GzDialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? Gz.ink;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: SingleChildScrollView(
@@ -96,7 +97,7 @@ class GzDialogFrame extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 message!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.textSecondary,
                   fontSize: 14,
                   height: 1.5,
@@ -145,7 +146,10 @@ Widget gzDialogPrimary(
       ? _dialogBtnStyle
       : _dialogBtnStyle.copyWith(
           backgroundColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.disabled) ? Gz.disabledBg : color,
+            // «ink» қара режимде ақшыл — толтыру үшін inkFill.
+            (s) => s.contains(WidgetState.disabled)
+                ? Gz.disabledBg
+                : (color == Gz.ink ? Gz.inkFill : color),
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
             (s) =>
@@ -168,16 +172,17 @@ Future<bool> confirmDialog(
   required String message,
   String? cancelLabel,
   required String confirmLabel,
-  Color confirmColor = Gz.ink,
+  Color? confirmColor,
   IconData? icon,
   bool emphasizeCancel = false,
 }) async {
   final cancelText = cancelLabel ?? t('Жоқ');
+  final cc = confirmColor ?? Gz.ink;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => GzDialogFrame(
       icon: icon,
-      color: confirmColor,
+      color: cc,
       title: title,
       message: message,
       actions: emphasizeCancel
@@ -189,10 +194,10 @@ Future<bool> confirmDialog(
               ),
               OutlinedButton(
                 style: _dialogBtnStyle.copyWith(
-                  foregroundColor: WidgetStatePropertyAll(confirmColor),
+                  foregroundColor: WidgetStatePropertyAll(cc),
                   side: WidgetStatePropertyAll(
                     BorderSide(
-                      color: confirmColor.withValues(alpha: 0.4),
+                      color: cc.withValues(alpha: 0.4),
                       width: 1.4,
                     ),
                   ),
@@ -205,7 +210,7 @@ Future<bool> confirmDialog(
               gzDialogCancel(ctx, cancelText, result: false),
               gzDialogPrimary(
                 confirmLabel,
-                color: confirmColor,
+                color: cc,
                 onPressed: () => Navigator.pop(ctx, true),
               ),
             ],
@@ -222,7 +227,7 @@ Future<void> gzInfoDialog(
   required String title,
   required String message,
   IconData icon = Icons.info_outline_rounded,
-  Color color = Gz.info,
+  Color? color,
   String? actionLabel,
   VoidCallback? onAction,
 }) {
@@ -230,7 +235,7 @@ Future<void> gzInfoDialog(
     context: context,
     builder: (ctx) => GzDialogFrame(
       icon: icon,
-      color: color,
+      color: color ?? Gz.info,
       title: title,
       message: message,
       actions: [

@@ -368,20 +368,20 @@ class _CodeCard extends StatelessWidget {
         children: [
           Text(
             t('Жеткізу коды'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: Gz.ink,
+              color: Gz.onBrand,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             code.split('').join(' '),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
               letterSpacing: 10,
-              color: Gz.ink,
+              color: Gz.onBrand,
             ),
           ),
           const SizedBox(height: 4),
@@ -391,7 +391,7 @@ class _CodeCard extends StatelessWidget {
               'ешкімге бермеңіз.',
             ),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Gz.ink),
+            style: TextStyle(fontSize: 13, color: Gz.ink),
           ),
         ],
       ),
@@ -408,7 +408,7 @@ class _TasuPromo extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Gz.ink,
+        color: Gz.inkFill,
         borderRadius: BorderRadius.circular(Gz.rLg),
       ),
       child: Row(
@@ -443,7 +443,7 @@ class _TasuPromo extends StatelessWidget {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Gz.yellow,
-              foregroundColor: Gz.ink,
+              foregroundColor: Gz.onBrand,
               minimumSize: const Size(0, 40),
             ),
             onPressed: () => launchUrl(Uri.parse(Env.webBaseUrl)),

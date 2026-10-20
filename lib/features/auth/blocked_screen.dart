@@ -44,7 +44,7 @@ class BlockedScreen extends ConsumerWidget {
                   color: Gz.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.block, size: 52, color: Gz.red),
+                child: Icon(Icons.block, size: 52, color: Gz.red),
               ),
               const SizedBox(height: 20),
               Text(
@@ -63,13 +63,13 @@ class BlockedScreen extends ConsumerWidget {
                         'қойылды.',
                       ),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 15),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 15),
               ),
               const SizedBox(height: 8),
               Text(
                 t('Мәселені шешу үшін қолдау қызметіне хабарласыңыз.'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 28),
               SizedBox(

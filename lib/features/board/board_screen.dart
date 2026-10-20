@@ -159,7 +159,7 @@ class _BoardTabsState extends ConsumerState<_BoardTabs>
           ? FloatingActionButton.extended(
               onPressed: _create,
               backgroundColor: Gz.yellow,
-              foregroundColor: Gz.ink,
+              foregroundColor: Gz.onBrand,
               icon: const Icon(Icons.add),
               label: Text(
                 isExecutor ? t('Қызмет беру') : t('Жұмыс беру'),
@@ -248,7 +248,7 @@ class _FeedTab extends StatelessWidget {
                         t('Барлық хабарландыру'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           color: Gz.textSecondary,
                           fontWeight: FontWeight.w600,
@@ -366,7 +366,7 @@ class _FilterButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: on ? Gz.ink : Gz.surface,
+          color: on ? Gz.inkFill : Gz.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: on ? Gz.yellow : Gz.border,
@@ -398,10 +398,10 @@ class _FilterButton extends StatelessWidget {
                 ),
                 child: Text(
                   '$count',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: Gz.ink,
+                    color: Gz.onBrand,
                   ),
                 ),
               ),
@@ -448,7 +448,7 @@ class _ActiveChip extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 24, height: 24),
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.close, size: 15, color: Gz.textSecondary),
+            icon: Icon(Icons.close, size: 15, color: Gz.textSecondary),
           ),
         ],
       ),
@@ -556,7 +556,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_city_outlined,
                       size: 18,
                       color: Gz.green,
@@ -576,14 +576,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                     if (_city != null)
                       GestureDetector(
                         onTap: () => setState(() => _city = null),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
                           size: 18,
                           color: Gz.textSecondary,
                         ),
                       )
                     else
-                      const Icon(
+                      Icon(
                         Icons.expand_more,
                         size: 19,
                         color: Gz.textSecondary,
@@ -640,7 +640,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   Widget _label(String text) => Text(
     text,
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 13,
       fontWeight: FontWeight.w800,
       color: Gz.textSecondary,
@@ -653,7 +653,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
-        color: active ? Gz.ink : Gz.surface,
+        color: active ? Gz.inkFill : Gz.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: active ? Gz.yellow : Gz.border,
@@ -798,7 +798,7 @@ class _MineTab extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           subtitle,
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
       ],
     ),

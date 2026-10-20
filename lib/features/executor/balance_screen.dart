@@ -172,7 +172,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.account_balance_wallet, color: Gz.red),
+                    Icon(Icons.account_balance_wallet, color: Gz.red),
                     const SizedBox(width: 8),
                     Text(
                       t('Kaspi арқылы толтыру'),
@@ -292,7 +292,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                       'Kaspi скриншотты бұғаттаса — чекті «Поделиться» → PDF '
                       'ретінде осында тіркеңіз',
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.textSecondary,
                       fontSize: 12,
                     ),
@@ -358,7 +358,7 @@ class _BalanceScreenState extends ConsumerState<BalanceScreen> {
                 return SectionCard(
                   child: Text(
                     t('Транзакциялар әзірге жоқ.'),
-                    style: const TextStyle(color: Gz.textSecondary),
+                    style: TextStyle(color: Gz.textSecondary),
                   ),
                 );
               }

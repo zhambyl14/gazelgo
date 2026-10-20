@@ -71,6 +71,19 @@ class Prefs {
     await p.setString(_kLanguage, v);
   }
 
+  static const _kThemeMode = 'app_theme_mode';
+
+  /// Интерфейс режимі: 'light' (әдепкі), 'dark' не 'system'.
+  static Future<String> themeMode() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kThemeMode) ?? 'light';
+  }
+
+  static Future<void> setThemeMode(String v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kThemeMode, v);
+  }
+
   static const _kRegistrationDraft = 'registration_draft_key';
 
   static Future<String?> registrationDraftKey() async {

@@ -218,7 +218,7 @@ class _ListingSheetState extends State<_ListingSheet> {
                 l.vehicleType.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Gz.textSecondary,
@@ -309,7 +309,7 @@ class _ListingSheetState extends State<_ListingSheet> {
                             l.kind == ListingKind.service
                                 ? t('Орындаушы')
                                 : t('Клиент'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -338,18 +338,18 @@ class _ListingSheetState extends State<_ListingSheet> {
                 'хабарландыруға делдал емес. Алдын ала ақша аудармаңыз.',
               ),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
           ] else
             Text(
               t('Байланыс нөмірі қолжетімсіз — хабарландырудың мерзімі өткен.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           const SizedBox(height: 10),
           TextButton.icon(
             onPressed: () => _report(l),
-            icon: const Icon(Icons.flag_outlined, size: 18, color: Gz.red),
-            label: Text(t('Шағымдану'), style: const TextStyle(color: Gz.red)),
+            icon: Icon(Icons.flag_outlined, size: 18, color: Gz.red),
+            label: Text(t('Шағымдану'), style: TextStyle(color: Gz.red)),
           ),
         ],
 
@@ -364,7 +364,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.visibility_outlined, color: Gz.blue, size: 22),
+                Icon(Icons.visibility_outlined, color: Gz.blue, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -379,7 +379,7 @@ class _ListingSheetState extends State<_ListingSheet> {
                       ),
                       Text(
                         t('Бұл санды тек сіз көресіз.'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: Gz.textSecondary,
                         ),
@@ -406,10 +406,10 @@ class _ListingSheetState extends State<_ListingSheet> {
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: () => _delete(l),
-            icon: const Icon(Icons.delete_outline, size: 18, color: Gz.red),
+            icon: Icon(Icons.delete_outline, size: 18, color: Gz.red),
             label: Text(
               t('Біржола өшіру'),
-              style: const TextStyle(color: Gz.red),
+              style: TextStyle(color: Gz.red),
             ),
           ),
         ],
@@ -477,7 +477,7 @@ class _PhotoGallery extends StatelessWidget {
                   width: 220,
                   height: 170,
                   color: Gz.bg,
-                  child: const Icon(
+                  child: Icon(
                     Icons.broken_image,
                     color: Gz.textSecondary,
                   ),

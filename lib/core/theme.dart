@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'lang.dart';
 
@@ -11,6 +12,11 @@ import 'lang.dart';
 ///     бірақ оның үстіне ұсақ мәтін жазылмайды.
 /// Осылайша дизайн жарқын әрі әдемі болады, ал оқылымдылық құрбан болмайды.
 class Gz {
+  /// ҚАРА РЕЖИМ белсенді ме. Мәнін [AppTheme] қояды (таңдалған режим +
+  /// құрылғы баптауы), өзгергенде бүкіл ағашты қайта салдырады — сол
+  /// себепті төмендегі «тірі» түстер `const` емес, getter.
+  static bool dark = false;
+
   // ---- Бренд (сары — такси/логистика тілі) ----
   /// Негізгі бренд сарысы — батырма, индикатор, белсенді күй.
   static const yellow = Color(0xFFFFC61A);
@@ -21,37 +27,67 @@ class Gz {
   /// Басылған күй / иконка реңкі.
   static const yellowDark = Color(0xFFE8A800);
 
-  /// Ақ фондағы САРЫ МӘТІН үшін ғана (контраст 4.3:1) — `yellowDark`
-  /// мәтінге тым ашық, оны тек иконка/толтыруға қалдырамыз.
-  static const yellowDeep = Color(0xFFB67A00);
+  /// Фондағы САРЫ МӘТІН үшін ғана (ақ фонда контраст 4.3:1) — `yellowDark`
+  /// мәтінге тым ашық, оны тек иконка/толтыруға қалдырамыз. Қара фонда
+  /// керісінше ашық сары оқылады.
+  static Color get yellowDeep =>
+      dark ? const Color(0xFFFFC94D) : const Color(0xFFB67A00);
 
   /// Сарының жылы сыңары — градиенттің төменгі шеті.
   static const amber = Color(0xFFFF9E1B);
 
   // ---- Негізгі қара-көк ----
-  static const ink = Color(0xFF101828);
-  static const inkSoft = Color(0xFF1D2939);
+  /// НЕГІЗГІ МӘТІН мен иконка түсі: жарық режимде қара-көк, қара режимде
+  /// ақшыл. ФОН (толтыру) үшін — [inkFill], сары үстіндегі мәтін үшін —
+  /// [onBrand].
+  static Color get ink =>
+      dark ? const Color(0xFFEEF2F8) : const Color(0xFF101828);
+  static Color get inkSoft =>
+      dark ? const Color(0xFF2A3445) : const Color(0xFF1D2939);
+
+  /// Қою ТОЛТЫРУ (қара батырма, snackbar, қараңғы чип) — үстінде ақ мәтін.
+  /// Қара режимде фоннан ерекшеленетін көтеріңкі сұр-көк.
+  static Color get inkFill =>
+      dark ? const Color(0xFF2B3546) : const Color(0xFF101828);
+
+  /// Сары (бренд) фондағы мәтін мен иконка — екі режимде де қою.
+  static const onBrand = inkDeep;
+
+  /// ӘРҚАШАН қою қара-көк (екі режимде де): фото көрермен фоны, карта
+  /// белгісінің көлеңкесі, кең экрандағы жиек.
+  static const inkDeep = Color(0xFF101828);
 
   // ---- Беттер ----
-  /// Экран фоны — суық-бейтарап, сарымен әдемі үйлеседі әрі бұрынғыдан
-  /// жарқынырақ.
-  static const bg = Color(0xFFF4F7FC);
-  static const surface = Colors.white;
+  /// Экран фоны — суық-бейтарап, сарымен әдемі үйлеседі.
+  static Color get bg => dark ? const Color(0xFF0B1018) : const Color(0xFFF4F7FC);
 
-  /// Ақ беттің ІШІНДЕГІ жұмсақ блоктар (өріс, адрес жолы, чип фоны).
-  static const surfaceAlt = Color(0xFFF6F9FD);
-  static const border = Color(0xFFE7ECF4);
-  static const textSecondary = Color(0xFF64748B);
+  /// Карта, панель, диалог беті.
+  static Color get surface =>
+      dark ? const Color(0xFF151C27) : const Color(0xFFFFFFFF);
+
+  /// Беттің ІШІНДЕГІ жұмсақ блоктар (өріс, адрес жолы, чип фоны).
+  static Color get surfaceAlt =>
+      dark ? const Color(0xFF1C2431) : const Color(0xFFF6F9FD);
+  static Color get border =>
+      dark ? const Color(0xFF2A3443) : const Color(0xFFE7ECF4);
+  static Color get textSecondary =>
+      dark ? const Color(0xFF9AA8BC) : const Color(0xFF64748B);
 
   /// Placeholder/hint — екінші деңгейден де солғын.
-  static const textTertiary = Color(0xFF94A3B8);
+  static Color get textTertiary =>
+      dark ? const Color(0xFF6B7A90) : const Color(0xFF94A3B8);
 
   // ---- Семантика: мәтінге жарамды негізгі реңк ----
-  static const green = Color(0xFF0EA65B);
-  static const red = Color(0xFFE4344A);
-  static const blue = Color(0xFF2F7BF6);
-  static const violet = Color(0xFF8B5CF6);
-  static const night = Color(0xFF4338CA);
+  // Қара режимде сәл ашығырақ — қою фонда да оқылуы үшін.
+  static Color get green =>
+      dark ? const Color(0xFF34D17A) : const Color(0xFF0EA65B);
+  static Color get red => dark ? const Color(0xFFFF6B7E) : const Color(0xFFE4344A);
+  static Color get blue =>
+      dark ? const Color(0xFF6AA6FF) : const Color(0xFF2F7BF6);
+  static Color get violet =>
+      dark ? const Color(0xFFA78BFA) : const Color(0xFF8B5CF6);
+  static Color get night =>
+      dark ? const Color(0xFF8B93FF) : const Color(0xFF4338CA);
 
   // ---- Семантика: тек толтыру/градиентке арналған жарқын реңк ----
   static const greenBright = Color(0xFF22C55E);
@@ -60,8 +96,10 @@ class Gz {
 
   /// Басылмайтын (disabled) батырманың түстері — «әлі дайын емес» деген
   /// белгі. Бүкіл қосымшада БІРДЕЙ: шарт орындалғанша сұр, орындалса сары.
-  static const disabledBg = Color(0xFFEBEFF5);
-  static const disabledFg = Color(0xFFA3AFBD);
+  static Color get disabledBg =>
+      dark ? const Color(0xFF253041) : const Color(0xFFEBEFF5);
+  static Color get disabledFg =>
+      dark ? const Color(0xFF5F6E84) : const Color(0xFFA3AFBD);
 
   // ---- МАҒЫНАЛЫҚ РӨЛДЕР ----
   // Түстің МАҒЫНАСЫ бүкіл қосымшада бірдей (клиент, орындаушы, модератор):
@@ -71,23 +109,33 @@ class Gz {
   //   danger  — қате / бас тарту / қауіпті әрекет;
   //   accent  — межгород / жоспарлы тапсырыс / аялдама.
   // Баннер, чип, статус — бәрі осы бес рөлдің бірін ғана қолданады.
-  static const success = green;
-  static const info = blue;
+  static Color get success => green;
+  static Color get info => blue;
 
-  /// Ескерту мәтіні мен иконкасы (ақ фонда оқылатын қою сары-қоңыр).
-  static const warning = yellowDeep;
-  static const danger = red;
-  static const accent = violet;
+  /// Ескерту мәтіні мен иконкасы (фонда оқылатын сары-қоңыр).
+  static Color get warning => yellowDeep;
+  static Color get danger => red;
+  static Color get accent => violet;
 
   /// Рейтинг жұлдызы (бүкіл қосымшада бір реңк).
   static const star = Color(0xFFF59E0B);
 
   /// Telegram бренд түстері (нөмірді Telegram арқылы растау экраны).
   static const telegram = Color(0xFF2B7DC4);
-  static const telegramDark = Color(0xFF1C5A91);
-  static const telegramSoft = Color(0xFFEAF4FF);
+  static Color get telegramDark =>
+      dark ? const Color(0xFF8EC5FF) : const Color(0xFF1C5A91);
+  static Color get telegramSoft =>
+      dark ? const Color(0xFF13263A) : const Color(0xFFEAF4FF);
 
-  static const telegramBorder = Color(0xFF9DCBF5);
+  static Color get telegramBorder =>
+      dark ? const Color(0xFF214B73) : const Color(0xFF9DCBF5);
+
+  /// Карта белгілерінің (тамшы, нысана, көлік) толтыру түстері — екі
+  /// режимде де бірдей: белгі картаның үстінде, ішінде ақ белгі тұрады.
+  static const pinGreen = Color(0xFF0EA65B);
+  static const pinRed = Color(0xFFE4344A);
+  static const pinBlue = Color(0xFF2F7BF6);
+  static const pinViolet = Color(0xFF8B5CF6);
 
   /// Көлеңке реңктері (карта белгілері, қалқыма элементтер).
   static const shadowTight = Color(0x38101828);
@@ -155,7 +203,9 @@ class Gz {
   /// біздің сары/қара белгілер мен маршрут сызығы анық оқылады.
   /// Тайлдар баяғыдай ТЕГІН OSM серверінен келеді — тек түсі өзгереді.
   /// Сүзгі бүкіл тайл қабатына БІР рет қолданылады (`osmTileLayer()`).
-  static const mapFilter = ColorFilter.matrix(<double>[
+  static ColorFilter get mapFilter => dark ? _mapFilterDark : _mapFilterLight;
+
+  static const _mapFilterLight = ColorFilter.matrix(<double>[
     // R
     0.97 * (0.2126 * 0.15 + 0.85),
     0.97 * (0.7152 * 0.15),
@@ -173,6 +223,15 @@ class Gz {
     0, 5,
     // A
     0, 0, 0, 1, 0,
+  ]);
+
+  /// Қара режим: тайлдарды инверттеп, реңкін 180° бұрамыз (су көк, саябақ
+  /// жасыл болып қалады), сосын [bg]-ға жақын қараңғылатамыз.
+  static const _mapFilterDark = ColorFilter.matrix(<double>[
+    0.4879, -1.2155, -0.1224, 0, 222.75, //
+    -0.3621, -0.3655, -0.1224, 0, 226.75, //
+    -0.3621, -1.2155, 0.7276, 0, 234.75, //
+    0, 0, 0, 1, 0, //
   ]);
 
   /// Қызыл (қауіпті) толтырылған батырманың стилі — «Бұғаттау»,
@@ -282,14 +341,14 @@ class Gz {
   static const body = TextStyle(fontSize: 15, height: 1.5);
 
   /// Қосымша түсіндірме мәтін.
-  static const bodyMuted = TextStyle(
+  static TextStyle get bodyMuted => TextStyle(
     fontSize: 14,
     height: 1.5,
     color: textSecondary,
   );
 
   /// Ұсақ белгі (күн, сан, статус астындағы жазу).
-  static const caption = TextStyle(
+  static TextStyle get caption => TextStyle(
     fontSize: 12,
     height: 1.4,
     letterSpacing: 0.1,
@@ -297,7 +356,7 @@ class Gz {
   );
 
   /// Өріс/блок үстіндегі МИКРО тақырып — БАС ӘРІППЕН жазуға арналған.
-  static const label = TextStyle(
+  static TextStyle get label => TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w800,
     height: 1.2,
@@ -329,7 +388,7 @@ class Gz {
     letterSpacing: -0.8,
   );
 
-  static const TextTheme _textTheme = TextTheme(
+  static TextTheme get _textTheme => TextTheme(
     displaySmall: display,
     headlineMedium: h1,
     headlineSmall: TextStyle(
@@ -371,15 +430,19 @@ class Gz {
     labelSmall: label,
   );
 
+  /// Ағымдағы палитрадан ([dark]) тақырып құрады — режим ауысқанда
+  /// main.dart оны қайта шақырады.
   static ThemeData theme() {
     final base = ThemeData(
       useMaterial3: true,
+      brightness: dark ? Brightness.dark : Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: yellow,
+        brightness: dark ? Brightness.dark : Brightness.light,
         primary: yellow,
-        onPrimary: ink,
+        onPrimary: onBrand,
         secondary: ink,
-        onSecondary: yellow,
+        onSecondary: dark ? onBrand : yellow,
         surface: surface,
         onSurface: ink,
         surfaceContainerHighest: surfaceAlt,
@@ -397,9 +460,12 @@ class Gz {
       highlightColor: yellow.withValues(alpha: 0.08),
     );
     return base.copyWith(
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: surface,
         foregroundColor: ink,
+        // Күй жолағы (сағат, батарея) фонға қарама-қарсы реңкте.
+        systemOverlayStyle:
+            dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
@@ -421,7 +487,7 @@ class Gz {
         style:
             FilledButton.styleFrom(
               backgroundColor: yellow,
-              foregroundColor: ink,
+              foregroundColor: onBrand,
               disabledBackgroundColor: disabledBg,
               disabledForegroundColor: disabledFg,
               minimumSize: const Size.fromHeight(54),
@@ -450,8 +516,8 @@ class Gz {
               }),
               overlayColor: WidgetStateProperty.resolveWith(
                 (s) => s.contains(WidgetState.pressed)
-                    ? ink.withValues(alpha: 0.10)
-                    : ink.withValues(alpha: 0.05),
+                    ? onBrand.withValues(alpha: 0.10)
+                    : onBrand.withValues(alpha: 0.05),
               ),
             ),
       ),
@@ -465,7 +531,7 @@ class Gz {
               disabledForegroundColor: disabledFg,
               minimumSize: const Size.fromHeight(54),
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              side: const BorderSide(color: border, width: 1.5),
+              side: BorderSide(color: border, width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rMd),
               ),
@@ -480,13 +546,13 @@ class Gz {
               // «бұл да батырма» деген белгі web/desktop-та да көрінеді.
               side: WidgetStateProperty.resolveWith((s) {
                 if (s.contains(WidgetState.disabled)) {
-                  return const BorderSide(color: disabledBg, width: 1.5);
+                  return BorderSide(color: disabledBg, width: 1.5);
                 }
                 if (s.contains(WidgetState.pressed) ||
                     s.contains(WidgetState.hovered)) {
                   return const BorderSide(color: yellow, width: 1.8);
                 }
-                return const BorderSide(color: border, width: 1.5);
+                return BorderSide(color: border, width: 1.5);
               }),
               overlayColor: WidgetStatePropertyAll(
                 yellow.withValues(alpha: 0.12),
@@ -525,11 +591,11 @@ class Gz {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(rMd),
-          borderSide: const BorderSide(color: border, width: 1.4),
+          borderSide: BorderSide(color: border, width: 1.4),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(rMd),
-          borderSide: const BorderSide(color: border, width: 1.4),
+          borderSide: BorderSide(color: border, width: 1.4),
         ),
         // Фокус — БРЕНД сақинасы: қай өрісте тұрғаны бірден көзге түседі.
         focusedBorder: OutlineInputBorder(
@@ -538,19 +604,19 @@ class Gz {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(rMd),
-          borderSide: const BorderSide(color: red, width: 1.4),
+          borderSide: BorderSide(color: red, width: 1.4),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(rMd),
-          borderSide: const BorderSide(color: red, width: 2),
+          borderSide: BorderSide(color: red, width: 2),
         ),
-        hintStyle: const TextStyle(
+        hintStyle: TextStyle(
           color: textTertiary,
           fontWeight: FontWeight.w400,
         ),
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
-        errorStyle: const TextStyle(
+        errorStyle: TextStyle(
           color: red,
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -566,7 +632,7 @@ class Gz {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          side: const BorderSide(color: border),
+          side: BorderSide(color: border),
         ),
         shadowColor: const Color(0x1A101828),
       ),
@@ -576,21 +642,21 @@ class Gz {
         elevation: 12,
         shadowColor: const Color(0x40101828),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rXl)),
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           color: ink,
           fontSize: 18,
           fontWeight: FontWeight.w900,
           letterSpacing: -0.3,
           fontFamily: fontFamily,
         ),
-        contentTextStyle: const TextStyle(
+        contentTextStyle: TextStyle(
           color: textSecondary,
           fontSize: 14,
           height: 1.55,
           fontFamily: fontFamily,
         ),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         elevation: 16,
@@ -599,10 +665,10 @@ class Gz {
           borderRadius: BorderRadius.vertical(top: Radius.circular(rXl)),
         ),
       ),
-      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      dividerTheme: DividerThemeData(color: border, thickness: 1),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: ink,
+        backgroundColor: inkFill,
         elevation: 8,
         insetPadding: const EdgeInsets.fromLTRB(14, 5, 14, 14),
         contentTextStyle: const TextStyle(
@@ -616,13 +682,13 @@ class Gz {
       ),
       listTileTheme: ListTileThemeData(
         iconColor: textSecondary,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           color: ink,
           fontSize: 15,
           fontWeight: FontWeight.w700,
           fontFamily: fontFamily,
         ),
-        subtitleTextStyle: const TextStyle(
+        subtitleTextStyle: TextStyle(
           color: textSecondary,
           fontSize: 13,
           height: 1.4,
@@ -633,20 +699,25 @@ class Gz {
       chipTheme: ChipThemeData(
         backgroundColor: surfaceAlt,
         selectedColor: yellow,
-        side: const BorderSide(color: border),
-        labelStyle: const TextStyle(
+        side: BorderSide(color: border),
+        labelStyle: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
           fontFamily: fontFamily,
+          // Таңдалған чип сары — үстіндегі мәтін екі режимде де қою.
+          color: WidgetStateColor.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? onBrand : ink,
+          ),
         ),
+        checkmarkColor: onBrand,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSm)),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
+      progressIndicatorTheme: ProgressIndicatorThemeData(
         color: yellowDark,
         linearTrackColor: disabledBg,
         circularTrackColor: Colors.transparent,
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surface,
         selectedItemColor: ink,
         unselectedItemColor: textSecondary,
@@ -669,7 +740,7 @@ class Gz {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? ink : textSecondary,
+            color: states.contains(WidgetState.selected) ? onBrand : textSecondary,
             size: 24,
           ),
         ),
@@ -769,7 +840,7 @@ void showSnack(BuildContext context, String text, {bool error = false}) {
             Expanded(child: Text(text)),
           ],
         ),
-        backgroundColor: error ? Gz.red : Gz.ink,
+        backgroundColor: error ? Gz.red : Gz.inkFill,
         duration: Duration(seconds: error ? 4 : 3),
       ),
     );

@@ -299,7 +299,7 @@ class _PartyCard extends StatelessWidget {
               const SizedBox(width: 8),
               TrustBadge(score: p.trustScore, blocked: p.isBlocked),
               const SizedBox(width: 4),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: 18,
                 color: Gz.textSecondary,

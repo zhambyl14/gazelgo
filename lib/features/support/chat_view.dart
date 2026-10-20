@@ -155,7 +155,7 @@ class _ChatViewState extends State<ChatView> {
             child: Text(
               t('Чат аяқталды. Жаңа хабарлама жазсаңыз, қайта ашылады.'),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
           ),
         SafeArea(
@@ -197,7 +197,7 @@ class _ChatViewState extends State<ChatView> {
                     : IconButton.filled(
                         style: IconButton.styleFrom(
                           backgroundColor: Gz.yellow,
-                          foregroundColor: Gz.ink,
+                          foregroundColor: Gz.onBrand,
                           elevation: 4,
                           shadowColor: Gz.yellow.withValues(alpha: 0.5),
                         ),
@@ -297,13 +297,19 @@ class _Bubble extends StatelessWidget {
                 ),
               ),
             if (msg.body.isNotEmpty)
-              Text(msg.body, style: const TextStyle(fontSize: 15)),
+              Text(
+                msg.body,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: mine ? Gz.onBrand : Gz.ink,
+                ),
+              ),
             const SizedBox(height: 3),
             Text(
               fmtTime(msg.createdAt),
               style: TextStyle(
                 fontSize: 11,
-                color: mine ? Gz.ink.withValues(alpha: 0.5) : Gz.textSecondary,
+                color: mine ? Gz.onBrand.withValues(alpha: 0.5) : Gz.textSecondary,
               ),
             ),
           ],

@@ -708,7 +708,7 @@ class NewsStoryCaption extends StatelessWidget {
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: Gz.yellow,
-                    foregroundColor: Gz.ink,
+                    foregroundColor: Gz.onBrand,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),

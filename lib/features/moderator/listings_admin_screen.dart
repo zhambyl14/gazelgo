@@ -142,7 +142,7 @@ class _ListingsListState extends State<_ListingsList> {
                             '${l.authorRole == 'executor' ? t('Орындаушы') : t('Клиент')}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                               fontWeight: FontWeight.w600,
@@ -156,14 +156,14 @@ class _ListingsListState extends State<_ListingsList> {
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.delete_outline,
                             size: 17,
                             color: Gz.red,
                           ),
                           label: Text(
                             t('Өшіру'),
-                            style: const TextStyle(color: Gz.red, fontSize: 13),
+                            style: TextStyle(color: Gz.red, fontSize: 13),
                           ),
                         ),
                       ],

@@ -93,7 +93,7 @@ class AppDrawer extends ConsumerWidget {
                         if (isGuest)
                           Text(
                             t('Сіз әлі аккаунтқа кірмегенсіз'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -114,11 +114,11 @@ class AppDrawer extends ConsumerWidget {
                                 ),
                                 child: Text(
                                   isExecutor ? t('Орындаушы') : t('Клиент'),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.2,
-                                    color: Gz.ink,
+                                    color: Gz.onBrand,
                                   ),
                                 ),
                               ),
@@ -135,7 +135,7 @@ class AppDrawer extends ConsumerWidget {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Gz.ink),
+                    icon: Icon(Icons.close, color: Gz.ink),
                   ),
                 ],
               ),
@@ -296,7 +296,7 @@ class AppDrawer extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.language,
                           size: 21,
                           color: Gz.textSecondary,
@@ -312,6 +312,30 @@ class AppDrawer extends ConsumerWidget {
                           ),
                         ),
                         const LanguageSwitcher(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.contrast_rounded,
+                          size: 21,
+                          color: Gz.textSecondary,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            t('Түс режимі'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const ThemeSwitcher(),
                       ],
                     ),
                   ),
@@ -334,7 +358,7 @@ class AppDrawer extends ConsumerWidget {
             if (isGuest) ...[
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.login, color: Gz.ink),
+                leading: Icon(Icons.login, color: Gz.ink),
                 title: Text(
                   t('Кіру / Тіркелу'),
                   style: const TextStyle(fontWeight: FontWeight.w800),
@@ -371,7 +395,7 @@ class AppDrawer extends ConsumerWidget {
                 children: [
                   CountBadge(badge),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
                     size: 20,
                     color: Gz.textTertiary,
@@ -530,7 +554,7 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
                       alignment: Alignment.centerLeft,
                       child: BtnLabel(
                         _subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: Gz.textSecondary,
                         ),
@@ -548,11 +572,11 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
               else
                 Container(
                   padding: const EdgeInsets.all(5),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Gz.surface,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.swap_horiz_rounded,
                     size: 18,
                     color: Gz.textSecondary,
@@ -607,7 +631,7 @@ class _BoardCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.storefront_rounded, size: 21, color: Gz.ink),
+                  Icon(Icons.storefront_rounded, size: 21, color: Gz.ink),
                   const SizedBox(width: 8),
                   // Жүйе шрифті үлкейтілген телефондарда «Хабарландырулар»
                   // рамкаға сыймай ЕКІ ЖОЛҒА бөлініп кететін
@@ -642,7 +666,7 @@ class _BoardCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Gz.ink,
+                        color: Gz.inkFill,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -662,7 +686,7 @@ class _BoardCard extends StatelessWidget {
                 isExecutor
                     ? t('Жұмыстарды қараңыз, қызметіңізді жариялаңыз')
                     : t('Қызметтерді қараңыз, жұмысыңызды жариялаңыз'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 1.45,
                   color: Gz.textSecondary,

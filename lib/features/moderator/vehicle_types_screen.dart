@@ -194,7 +194,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
             'тұрады. Қосқыш өшірулі түр клиентке КӨРІНБЕЙДІ. Түрді '
             'басып атауын, анықтамасын және иконкасын өзгертесіз.',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 13),
         ),
       ],
     ),
@@ -216,7 +216,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
           children: [
             ReorderableDragStartListener(
               index: index,
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Icon(Icons.drag_indicator, color: Gz.textSecondary),
               ),
@@ -258,7 +258,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
                           s.descKk,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Gz.textSecondary,
                             fontSize: 12,
                           ),
@@ -275,7 +275,7 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
             IconButton(
               tooltip: t('Жою'),
               onPressed: _saving ? null : () => _delete(s),
-              icon: const Icon(Icons.delete_outline, color: Gz.red, size: 20),
+              icon: Icon(Icons.delete_outline, color: Gz.red, size: 20),
             ),
           ],
         ),
@@ -506,7 +506,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                     'өлшемі автоматты келтіріледі.',
                   ),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -565,7 +565,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
               'Каруселде таңдалған түрдің АСТЫНДА бір жол болып шығады — '
               'сол себепті ҚЫСҚА жазыңыз (мыс. «Ауыр жүк»).',
             ),
-            style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 10),
           TextField(

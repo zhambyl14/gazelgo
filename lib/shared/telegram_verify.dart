@@ -146,7 +146,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.verified, color: Gz.green),
+            Icon(Icons.verified, color: Gz.green),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -154,7 +154,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                 children: [
                   Text(
                     t('Нөмір расталды'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                       color: Gz.green,
@@ -190,7 +190,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, size: 18, color: Gz.warning),
+                Icon(Icons.info_outline, size: 18, color: Gz.warning),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
@@ -198,7 +198,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                       'Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
                       'түймесін басыңыз.',
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Gz.ink,
                       fontSize: 13,
                       height: 1.4,
@@ -251,7 +251,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                           ? t('Telegram-да ашылған терезеде «Бөлісу»-ді басыңыз')
                           : t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз'))
                       : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Gz.telegramDark,
                     fontSize: 13,
                     height: 1.4,
@@ -297,7 +297,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                 const SizedBox(width: 8),
                 Text(
                   t('Растауды күтудеміз…'),
-                  style: const TextStyle(color: Gz.telegramDark, fontSize: 12),
+                  style: TextStyle(color: Gz.telegramDark, fontSize: 12),
                 ),
               ],
             ),
@@ -306,14 +306,14 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             // (Telegram-ның ішкі іздеуі t.me доменін пайдаланбайды).
             if (kIsWeb) ...[
               const SizedBox(height: 12),
-              const Divider(height: 1, color: Gz.telegramBorder),
+              Divider(height: 1, color: Gz.telegramBorder),
               const SizedBox(height: 10),
               Text(
                 t(
                   'Сілтеме ашылмаса: Telegram-ды қолмен ашып, ботты іздеңіз '
                   'де, кодты жіберіңіз.',
                 ),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.telegramDark,
                   fontSize: 12,
                   height: 1.4,
@@ -348,7 +348,7 @@ class _CopyRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Gz.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Gz.telegramBorder),
         ),
@@ -356,7 +356,7 @@ class _CopyRow extends StatelessWidget {
           children: [
             Text(
               '$label: ',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Gz.telegramDark,
@@ -365,7 +365,7 @@ class _CopyRow extends StatelessWidget {
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontFamily: 'monospace',
                   color: Gz.ink,

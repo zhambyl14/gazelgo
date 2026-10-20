@@ -287,11 +287,11 @@ class _OrderAdminTile extends StatelessWidget {
       onTap: () => showOrderAdminSheet(context, order.id, onChanged: onChanged),
       footer: Row(
         children: [
-          const Icon(Icons.tag_rounded, size: 14, color: Gz.textTertiary),
+          Icon(Icons.tag_rounded, size: 14, color: Gz.textTertiary),
           const SizedBox(width: 3),
           Text(
             id,
-            style: const TextStyle(color: Gz.textTertiary, fontSize: 12),
+            style: TextStyle(color: Gz.textTertiary, fontSize: 12),
           ),
           const Spacer(),
           Text(fmtDate(order.createdAt), style: Gz.caption),

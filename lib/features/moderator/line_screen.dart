@@ -137,7 +137,7 @@ class _LineScreenState extends State<LineScreen> {
             SectionCard(
               child: Text(
                 t('Қазір ешкім линияда емес'),
-                style: const TextStyle(color: Gz.textSecondary),
+                style: TextStyle(color: Gz.textSecondary),
               ),
             ),
           for (final e in online)
@@ -163,7 +163,7 @@ class _LineScreenState extends State<LineScreen> {
                           ),
                           Text(
                             vehicleTypeFrom(e['vehicle_type'] as String?).label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -198,7 +198,7 @@ class _LineScreenState extends State<LineScreen> {
             SectionCard(
               child: Text(
                 t('Іздеудегі заказ жоқ'),
-                style: const TextStyle(color: Gz.textSecondary),
+                style: TextStyle(color: Gz.textSecondary),
               ),
             ),
           for (final o in _searching)
@@ -247,7 +247,7 @@ class _LineScreenState extends State<LineScreen> {
             '$label · $hint', // label/hint аргументтер шақыру жерінде t() арқылы аударылады
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: Gz.textSecondary),
+            style: TextStyle(fontSize: 11, color: Gz.textSecondary),
           ),
         ],
       ),

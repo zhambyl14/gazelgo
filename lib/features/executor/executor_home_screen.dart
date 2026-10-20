@@ -183,7 +183,7 @@ class _BalancePill extends StatelessWidget {
                     gradient: Gz.brandGradient,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add_rounded, size: 16, color: Gz.ink),
+                  child: Icon(Icons.add_rounded, size: 16, color: Gz.onBrand),
                 ),
               ],
             ),
@@ -356,7 +356,7 @@ class _LineControlBar extends ConsumerWidget {
                   ),
                 ),
               ],
-              const Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
+              Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
             ],
           ),
         ),
@@ -448,7 +448,7 @@ class _StatusCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 13,
                         height: 1.5,
@@ -643,7 +643,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_on_outlined, color: Gz.blue, size: 20),
+          Icon(Icons.location_on_outlined, color: Gz.blue, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -676,7 +676,7 @@ class _CitySwitchBannerState extends ConsumerState<_CitySwitchBanner> {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             onPressed: () => setState(() => _dismissed = true),
-            icon: const Icon(Icons.close, color: Gz.textSecondary),
+            icon: Icon(Icons.close, color: Gz.textSecondary),
           ),
         ],
       ),

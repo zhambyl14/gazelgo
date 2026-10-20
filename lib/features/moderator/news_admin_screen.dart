@@ -245,7 +245,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
             '(сүйреп ауыстырыңыз). Бөлімнің ӨЗІН «Баптаулар» табынан '
             'қосасыз.',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 13),
         ),
         if (_items.isEmpty) ...[
           const SizedBox(height: 40),
@@ -307,7 +307,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _windowLabel(s),
-                  style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -337,7 +337,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
                     constraints: const BoxConstraints(),
                     tooltip: t('Өшіру'),
                     onPressed: () => _delete(s),
-                    icon: const Icon(Icons.delete_outline, color: Gz.red),
+                    icon: Icon(Icons.delete_outline, color: Gz.red),
                   ),
                   const SizedBox(width: 6),
                 ],
@@ -358,7 +358,7 @@ class _NewsAdminScreenState extends ConsumerState<NewsAdminScreen> {
         height: 68,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) =>
-            const Icon(Icons.broken_image_outlined, color: Gz.textSecondary),
+            Icon(Icons.broken_image_outlined, color: Gz.textSecondary),
       );
     } else if (s.isVideo) {
       inner = const Icon(Icons.play_circle_fill, color: Gz.yellow, size: 26);
@@ -1014,7 +1014,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: Gz.yellow,
-                    foregroundColor: Gz.ink,
+                    foregroundColor: Gz.onBrand,
                     shape: const StadiumBorder(),
                   ),
                   onPressed: _stopTextEdit,
@@ -1319,7 +1319,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: Gz.yellow,
-                foregroundColor: Gz.ink,
+                foregroundColor: Gz.onBrand,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: const StadiumBorder(),
               ),
@@ -1397,7 +1397,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                 : t('Галереядан таңдау'),
           ),
           trailing: _mediaType == 'image'
-              ? const Icon(Icons.check_circle, color: Gz.green)
+              ? Icon(Icons.check_circle, color: Gz.green)
               : null,
           onTap: () async {
             Navigator.pop(context);
@@ -1414,7 +1414,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                 : t('Қысқа видео (40 МБ-қа дейін)'),
           ),
           trailing: _mediaType == 'video'
-              ? const Icon(Icons.check_circle, color: Gz.green)
+              ? Icon(Icons.check_circle, color: Gz.green)
               : null,
           onTap: () async {
             Navigator.pop(context);
@@ -1427,7 +1427,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
           title: Text(t('Мәтін')),
           subtitle: Text(t('Медиасыз — түсті фонға жазу')),
           trailing: _mediaType == 'text'
-              ? const Icon(Icons.check_circle, color: Gz.green)
+              ? Icon(Icons.check_circle, color: Gz.green)
               : null,
           onTap: () async {
             // Жүктелген файл серверде қалады, бірақ САҚТАҒАНДА мәтіндік
@@ -1457,7 +1457,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             'Мәтіндік стористе — бүкіл фон. Суретте/видеода — айналасындағы '
             'жиек түсі.',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -1505,7 +1505,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         children: [
           Row(
             children: [
-              const Icon(Icons.music_note, color: Gz.violet),
+              Icon(Icons.music_note, color: Gz.violet),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -1542,7 +1542,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
                     });
                     setSheet(() {});
                   },
-                  icon: const Icon(Icons.close, color: Gz.red),
+                  icon: Icon(Icons.close, color: Gz.red),
                 ),
               ],
             ],
@@ -1583,7 +1583,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
       children: [
         Text(
           t('Бос болса — түйме мүлдем шықпайды.'),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),
         TextField(
@@ -1618,7 +1618,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             'Сурет пен мәтін осынша секунд тұрады. Видеода видеоның өз '
             'ұзақтығы қолданылады.',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         Row(
           children: [
@@ -1659,7 +1659,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             'Мерзімі өткенде сторис қолданушыға МҮЛДЕМ көрінбейді (сіз оны '
             'осында өңдей бересіз).',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -1685,7 +1685,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
         const Divider(height: 24),
         Row(
           children: [
-            const Icon(Icons.schedule, size: 19, color: Gz.textSecondary),
+            Icon(Icons.schedule, size: 19, color: Gz.textSecondary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -1728,7 +1728,7 @@ class _NewsStoryComposerState extends State<NewsStoryComposer> {
             'Кемінде біреуін таңдаңыз. «Гест» — қосымшаға әлі кірмеген '
             'қолданушы.',
           ),
-          style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),
         Wrap(

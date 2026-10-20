@@ -481,6 +481,21 @@ class _ModeratorShellState extends ConsumerState<ModeratorShell> {
             ),
             const Divider(height: 1),
             Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 14, 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.contrast_rounded,
+                    size: 20,
+                    color: Gz.textSecondary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(t('Түс режимі'), style: Gz.h3)),
+                  const ThemeSwitcher(),
+                ],
+              ),
+            ),
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: GzListRow(
                 icon: Icons.logout_rounded,

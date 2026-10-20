@@ -150,7 +150,7 @@ class _StopsSheetState extends State<StopsSheet> {
             ),
             Text(
               t('Сүйреп ретін ауыстырыңыз — соңғысы маршруттың финишы'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 10),
             ConstrainedBox(
@@ -225,7 +225,7 @@ class _StopsSheetState extends State<StopsSheet> {
                           // себепті мекенжайды түрту «өзгерту» болып қалады.
                           ReorderableDragStartListener(
                             index: i,
-                            child: const Padding(
+                            child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 6),
                               child: Icon(
                                 Icons.drag_handle,
@@ -248,7 +248,7 @@ class _StopsSheetState extends State<StopsSheet> {
               Text(
                 '${t('Ең көбі')} ${kMaxExtraStops + 1} ${t('мекенжай')}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+                style: TextStyle(color: Gz.textSecondary, fontSize: 12),
               ),
             const SizedBox(height: 10),
             FilledButton(

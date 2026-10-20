@@ -50,7 +50,7 @@ class ReviewsScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '$ratingCount ${t('пікір')}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Gz.textSecondary,
                         fontSize: 13,
                       ),
@@ -83,7 +83,7 @@ class ReviewsScreen extends StatelessWidget {
                                       r.authorRole == 'executor'
                                           ? t('Орындаушыдан')
                                           : t('Клиенттен'),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         color: Gz.textSecondary,
                                       ),
@@ -100,7 +100,7 @@ class ReviewsScreen extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   fmtDate(r.createdAt),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Gz.textSecondary,
                                   ),

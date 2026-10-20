@@ -235,7 +235,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                                   'Оны орындаушылар «Жұмыстар» бөлімінен көреді '
                                   'де, өздері хабарласады.',
                                 ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             height: 1.35,
                             color: Gz.textSecondary,
@@ -283,7 +283,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_city_outlined,
                       size: 20,
                       color: Gz.green,
@@ -301,7 +301,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                         ),
                       ),
                     ),
-                    const Icon(Icons.expand_more, color: Gz.textSecondary),
+                    Icon(Icons.expand_more, color: Gz.textSecondary),
                   ],
                 ),
               ),
@@ -320,7 +320,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                       'мыс: Құрылыс алаңына 10 күн бойы құм тасу керек. '
                       'Ұзақ мерзімге фура іздеймін.',
                     ),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -340,7 +340,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             const SizedBox(height: 4),
             Text(
               t('Бос қалдырсаңыз — «Келісім бойынша» деп көрсетіледі.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 13),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -379,7 +379,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                           ),
                           Text(
                             t('мыс: «10 күнге фура керек»'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Gz.textSecondary,
                             ),
@@ -449,13 +449,13 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             Text(
               '${t('Суреттер')} $kListingDays ${t('күн сақталады, содан кейін '
               'автоматты өшіріледі.')}',
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
             if (_isRepost) ...[
               const SizedBox(height: 6),
               Text(
                 t('Мерзімі біткенде ескі суреттер өшірілген — қайта салыңыз.'),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.red,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

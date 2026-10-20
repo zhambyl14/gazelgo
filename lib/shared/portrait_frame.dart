@@ -34,7 +34,7 @@ class PortraitFrame extends StatelessWidget {
     if (size.width <= maxWidth + 0.5) return child;
 
     return ColoredBox(
-      color: Gz.ink,
+      color: Gz.inkDeep,
       child: Center(
         child: SizedBox(
           width: maxWidth,

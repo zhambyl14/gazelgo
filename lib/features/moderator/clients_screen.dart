@@ -214,7 +214,7 @@ class _ClientTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
+              Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
             ],
           ),
         ),
@@ -316,7 +316,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                             'ID: ${p.id}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Gz.textTertiary,
                               fontSize: 11,
                             ),

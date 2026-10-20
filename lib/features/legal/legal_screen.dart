@@ -210,7 +210,7 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         b.text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
           letterSpacing: -0.4,
@@ -223,7 +223,7 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         b.text,
-        style: const TextStyle(fontSize: 13, color: Gz.textSecondary),
+        style: TextStyle(fontSize: 13, color: Gz.textSecondary),
       ),
     ),
     _BlockKind.section => _sectionHeader(b),
@@ -231,14 +231,14 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text.rich(
         TextSpan(
-          style: const TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
+          style: TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
           children: [
             // Тармақ нөмірі ӘРҚАШАН қалың әрі мәтіннен бөлек түсті:
             // қолданушы «3.2» деп сілтеме жасағанда оны көзбен
             // бірден табады.
             TextSpan(
               text: '${b.number}  ',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w900,
                 color: Gz.ink,
               ),
@@ -265,7 +265,7 @@ class _LegalDocState extends State<_LegalDoc> {
           Expanded(
             child: Text(
               b.text,
-              style: const TextStyle(fontSize: 14, height: 1.5, color: Gz.ink),
+              style: TextStyle(fontSize: 14, height: 1.5, color: Gz.ink),
             ),
           ),
         ],
@@ -275,7 +275,7 @@ class _LegalDocState extends State<_LegalDoc> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         b.text,
-        style: const TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
+        style: TextStyle(fontSize: 14, height: 1.55, color: Gz.ink),
       ),
     ),
   };
@@ -302,8 +302,8 @@ class _LegalDocState extends State<_LegalDoc> {
             width: 26,
             height: 26,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: Gz.ink,
+            decoration: BoxDecoration(
+              color: Gz.inkFill,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -320,7 +320,7 @@ class _LegalDocState extends State<_LegalDoc> {
               padding: const EdgeInsets.only(top: 3),
               child: Text(
                 b.text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                   height: 1.25,

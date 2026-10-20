@@ -189,7 +189,7 @@ class _RecipientSectionState extends State<RecipientSection> {
                   color: Gz.tint(Gz.violet, 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_pin_circle_rounded,
                   color: Gz.violet,
                 ),
@@ -241,7 +241,7 @@ class _RecipientSectionState extends State<RecipientSection> {
                   const SizedBox(height: 2),
                   Text(
                     code.split('').join(' '),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 4,

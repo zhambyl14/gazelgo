@@ -318,7 +318,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   top: false,
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: Gz.surface,
                       boxShadow: Gz.cardShadow,
                     ),
@@ -446,7 +446,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Gz.red,
-                      side: const BorderSide(color: Gz.red),
+                      side: BorderSide(color: Gz.red),
                     ),
                     onPressed: () => _cancel(o.id),
                     icon: const Icon(Icons.close),
@@ -564,7 +564,7 @@ class _TripPriceCard extends StatelessWidget {
               color: Gz.yellow.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.payments_rounded,
               color: Gz.yellowDeep,
               size: 22,
@@ -576,7 +576,7 @@ class _TripPriceCard extends StatelessWidget {
               t('Заказ құны'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Gz.textSecondary,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -591,7 +591,7 @@ class _TripPriceCard extends StatelessWidget {
               child: Text(
                 fmtT(order.displayPrice),
                 maxLines: 1,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Gz.ink,
                   fontSize: 24,
                   height: 1.1,
@@ -792,7 +792,7 @@ class _TripStepperState extends State<_TripStepper>
       return Container(
         width: size,
         height: size,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Gz.green,
           shape: BoxShape.circle,
         ),
@@ -832,7 +832,7 @@ class _TripStepperState extends State<_TripStepper>
             child: child,
           );
         },
-        child: Icon(icon, size: 15, color: Gz.ink),
+        child: Icon(icon, size: 15, color: Gz.onBrand),
       ),
     );
   }
@@ -975,7 +975,7 @@ class _NextStepCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       body,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: Gz.textSecondary,
@@ -1160,7 +1160,7 @@ class _RouteMark extends StatelessWidget {
         width: 20,
         height: 20,
         alignment: Alignment.center,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Gz.violet,
           shape: BoxShape.circle,
         ),
@@ -1233,12 +1233,12 @@ class _NavPill extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.navigation_rounded, size: 15, color: Gz.blue),
+                Icon(Icons.navigation_rounded, size: 15, color: Gz.blue),
                 if (!compact) ...[
                   const SizedBox(width: 5),
                   Text(
                     t('Жол салу'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 1.1,
                       fontWeight: FontWeight.w800,
@@ -1352,7 +1352,7 @@ class _NoteBlock extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           text,
-          style: const TextStyle(fontSize: 15, height: 1.45, color: Gz.ink),
+          style: TextStyle(fontSize: 15, height: 1.45, color: Gz.ink),
         ),
       ],
     );
@@ -1435,7 +1435,7 @@ class _ClientCardState extends State<_ClientCard> {
                                 '  · ${p.tripsAs('client')} ${t('рейс')}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: Gz.textSecondary,
                                 ),
@@ -1512,7 +1512,7 @@ class _RecipientCard extends StatelessWidget {
                   color: Gz.tint(Gz.violet, 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_pin_circle_rounded,
                   color: Gz.violet,
                 ),

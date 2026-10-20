@@ -30,7 +30,7 @@ Widget osmTileLayer() => ColorFiltered(
 Color _lighten(Color c, double a) => Color.lerp(c, Colors.white, a)!;
 
 /// Түстің ҚОЮ сыңары — градиенттің төменгі шеті (көлеңкелі жақ).
-Color _deepen(Color c, double a) => Color.lerp(c, Gz.ink, a)!;
+Color _deepen(Color c, double a) => Color.lerp(c, Gz.inkDeep, a)!;
 
 /// `num.clamp` статикалық типі `num` — өлшемдер `double` болып қалуы үшін
 /// өз шектегішімізді қолданамыз (аналайзер шағымданбайды).
@@ -117,7 +117,7 @@ class MapPin extends StatelessWidget {
 
   /// Алу нүктесі (A) — ақ сақиналы дөңгелек + солғын ореол.
   /// Тамшыдан ӘДЕЙІ ЖЕҢІЛ көрінеді: «бастау» соңғы нүктемен таласпауы керек.
-  const MapPin.origin({super.key, this.size = 28, this.color = Gz.green})
+  const MapPin.origin({super.key, this.size = 28, this.color = Gz.pinGreen})
     : kind = MapPinKind.origin,
       number = null,
       label = null,
@@ -128,7 +128,7 @@ class MapPin extends StatelessWidget {
     this.number, {
     super.key,
     this.size = 26,
-    this.color = Gz.violet,
+    this.color = Gz.pinViolet,
   }) : kind = MapPinKind.stop,
        label = null,
        icon = null;
@@ -138,7 +138,7 @@ class MapPin extends StatelessWidget {
   const MapPin.destination({
     super.key,
     this.size = 30,
-    this.color = Gz.red,
+    this.color = Gz.pinRed,
     this.icon,
     this.label,
   }) : kind = MapPinKind.destination,
@@ -149,7 +149,7 @@ class MapPin extends StatelessWidget {
   const MapPin.vehicle({
     super.key,
     this.size = 38,
-    this.color = Gz.blue,
+    this.color = Gz.pinBlue,
     this.icon = Icons.local_shipping_rounded,
   }) : kind = MapPinKind.vehicle,
        number = null,
@@ -405,7 +405,7 @@ class MapPin extends StatelessWidget {
 /// (қораптың биіктігі — [MapPin.heightFor]), демек ұш = координата.
 Marker pointMarker(
   LatLng p, {
-  Color color = Gz.green,
+  Color color = Gz.pinGreen,
   IconData? icon,
   int? number,
   double size = 30,
@@ -424,7 +424,7 @@ Marker pointMarker(
 ///
 /// Симметриялы белгі болғандықтан `Alignment.center` (flutter_map-тың
 /// әдепкісі): координата дөңгелектің дәл ортасында.
-Marker originMarker(LatLng p, {Color color = Gz.green, double size = 28}) =>
+Marker originMarker(LatLng p, {Color color = Gz.pinGreen, double size = 28}) =>
     Marker(
       point: p,
       width: size,
@@ -444,7 +444,7 @@ Marker executorLiveMarker(
   LatLng p, {
   VehicleType? vehicleType,
   double? heading,
-  Color color = Gz.blue,
+  Color color = Gz.pinBlue,
   IconData icon = Icons.local_shipping_rounded,
   double size = 38,
 }) {
@@ -1110,7 +1110,7 @@ class _RouteMapState extends State<RouteMap> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.open_in_full_rounded,
                           size: 14,
                           color: Gz.ink,
@@ -1118,7 +1118,7 @@ class _RouteMapState extends State<RouteMap> {
                         const SizedBox(width: 6),
                         Text(
                           t('Картаны ашу'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             height: 1.1,
                             fontWeight: FontWeight.w800,
@@ -1489,7 +1489,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                     color: Gz.surface.withValues(alpha: 0.82),
                     borderRadius: BorderRadius.circular(Gz.rXs),
                   ),
-                  child: const Text(
+                  child: Text(
                     '© OpenStreetMap',
                     style: TextStyle(
                       fontSize: 10,
@@ -1554,14 +1554,14 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                       width: 17,
                                       height: 17,
                                       child: _loading
-                                          ? const Padding(
+                                          ? Padding(
                                               padding: EdgeInsets.all(1.5),
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
                                                 color: Gz.blue,
                                               ),
                                             )
-                                          : const Icon(
+                                          : Icon(
                                               Icons.route_rounded,
                                               size: 17,
                                               color: Gz.blue,
@@ -1586,7 +1586,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                                         milliseconds: 200,
                                       ),
                                       turns: _sheetOpen ? 0 : 0.5,
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.keyboard_arrow_down_rounded,
                                         color: Gz.textSecondary,
                                       ),
@@ -2130,7 +2130,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.gps_not_fixed_rounded,
                           size: 15,
                           color: Gz.textSecondary,
@@ -2141,7 +2141,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
                             widget.vehicle == null
                                 ? t('Көліктің орны әзірге белгісіз')
                                 : t('Сигнал әлсіз — соңғы белгілі орны'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Gz.textSecondary,
@@ -2160,12 +2160,12 @@ class _LiveTrackMapState extends State<LiveTrackMap>
             child: IgnorePointer(
               child: Container(
                 padding: const EdgeInsets.all(7),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Gz.surface,
                   shape: BoxShape.circle,
                   boxShadow: Gz.cardShadow,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.open_in_full_rounded,
                   size: 15,
                   color: Gz.ink,

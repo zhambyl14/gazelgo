@@ -383,7 +383,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.insights_rounded,
               size: 16,
               color: Gz.textSecondary,
@@ -422,7 +422,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           SwitchListTile(
             value: _withRecipient,
             onChanged: (v) => setState(() => _withRecipient = v),
-            secondary: const Icon(
+            secondary: Icon(
               Icons.person_pin_circle_outlined,
               color: Gz.violet,
             ),
@@ -549,7 +549,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.schedule_rounded,
                 size: 18,
                 color: Gz.textSecondary,
@@ -588,7 +588,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             const SizedBox(height: 6),
             Text(
               t('Заказ дәл сол уақытқа дейін орындаушыларға көрінбейді.'),
-              style: const TextStyle(color: Gz.textSecondary, fontSize: 12),
+              style: TextStyle(color: Gz.textSecondary, fontSize: 12),
             ),
           ],
         ],
@@ -783,7 +783,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         child: Padding(
           padding: const EdgeInsets.only(top: 16),
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Gz.bg,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -951,7 +951,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 const Divider(height: 20),
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.route,
                                       size: 17,
                                       color: Gz.textSecondary,
@@ -964,7 +964,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 16),
-                                    const Icon(
+                                    Icon(
                                       Icons.schedule,
                                       size: 17,
                                       color: Gz.textSecondary,
@@ -1074,7 +1074,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              const Text(
+                              Text(
                                 '*',
                                 style: TextStyle(
                                   color: Gz.red,
@@ -1229,7 +1229,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         const SizedBox(height: 4),
                         Text(
                           t('Орындаушылар келіседі не өз бағасын ұсынады'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Gz.textSecondary,
                             fontSize: 13,
                           ),
@@ -1250,21 +1250,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           ),
                           decoration: InputDecoration(
                             hintText: '${t('Бағаңыз (мин.')} $_minPrice)',
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: Gz.textSecondary,
                             ),
                             prefixIcon: const Icon(Icons.payments_outlined),
                             suffixText: '₸ ',
-                            suffixStyle: const TextStyle(
+                            suffixStyle: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                               color: Gz.textSecondary,
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
+                              borderSide: BorderSide(
                                 color: Gz.ink,
                                 width: 1.6,
                               ),
@@ -1292,7 +1292,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             }),
                             label: Text.rich(
                               TextSpan(
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   height: 1.4,
                                   color: Gz.textSecondary,
@@ -1307,7 +1307,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                   TextSpan(
                                     text: t('Тізім'),
                                     recognizer: _legalListTap,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       color: Gz.ink,
                                       decoration: TextDecoration.underline,
@@ -1378,7 +1378,7 @@ class _CountChip extends StatelessWidget {
         height: 44,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? Gz.ink : Gz.surface,
+          color: selected ? Gz.inkFill : Gz.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? Gz.yellow : Gz.border,
@@ -1432,7 +1432,7 @@ class _EditableAddr extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       color: Gz.textSecondary,
                     ),
@@ -1449,7 +1449,7 @@ class _EditableAddr extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.edit, size: 16, color: Gz.textSecondary),
+            Icon(Icons.edit, size: 16, color: Gz.textSecondary),
             // Аралық аялдамаға ғана — алып тастау (0047).
             if (onRemove != null)
               IconButton(

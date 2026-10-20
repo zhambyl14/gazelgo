@@ -237,7 +237,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                       for (final r in rows)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
+                          leading: CircleAvatar(
                             backgroundColor: Gz.bg,
                             child: Icon(Icons.check, color: Gz.green),
                           ),

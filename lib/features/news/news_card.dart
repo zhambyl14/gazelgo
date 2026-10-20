@@ -121,8 +121,8 @@ class _NewsDrawerCardState extends ConsumerState<NewsDrawerCard> {
                     ),
                     child: Text(
                       unseenCount > 1 ? '$unseenCount ${t('жаңа')}' : t('Жаңа'),
-                      style: const TextStyle(
-                        color: Gz.ink,
+                      style: TextStyle(
+                        color: Gz.onBrand,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.2,

@@ -631,7 +631,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                         else if (query.isNotEmpty)
                           IconButton(
                             visualDensity: VisualDensity.compact,
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.cancel_rounded,
                               size: 20,
                               color: Gz.textTertiary,
@@ -742,7 +742,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                     ),
                     child: Text(
                       _city!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         height: 1.2,
                         fontWeight: FontWeight.w800,
@@ -751,7 +751,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                     ),
                   ),
                 ],
-                const Icon(
+                Icon(
                   Icons.expand_more_rounded,
                   size: 18,
                   color: Gz.textSecondary,
@@ -812,7 +812,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.travel_explore_rounded,
                   size: 40,
                   color: Gz.textTertiary,
@@ -952,7 +952,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
   /// астында «аудан, қала», оң жақта ҚАШЫҚТЫҚ («12,5 км»).
   Widget _placeRow({
     required IconData icon,
-    Color iconColor = Gz.textTertiary,
+    Color? iconColor,
     required String title,
     String? subtitle,
     String? distance,
@@ -966,7 +966,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Row(
           children: [
-            Icon(icon, size: 24, color: iconColor),
+            Icon(icon, size: 24, color: iconColor ?? Gz.textTertiary),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -989,7 +989,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.3,
                         color: Gz.textSecondary,
@@ -1003,7 +1003,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
               const SizedBox(width: 10),
               Text(
                 distance,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   color: Gz.textSecondary,
                   fontWeight: FontWeight.w500,
@@ -1081,7 +1081,7 @@ class _CityStreetSheetState extends State<CityStreetSheet> {
                           subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             height: 1.3,
                             color: Gz.textSecondary,
@@ -1240,7 +1240,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                     children: [
                       for (final c in _filtered)
                         ListTile(
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.location_city_rounded,
                             color: Gz.textSecondary,
                           ),
@@ -1257,7 +1257,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                         ),
                         for (final p in _found)
                           ListTile(
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.holiday_village_rounded,
                               color: Gz.green,
                             ),

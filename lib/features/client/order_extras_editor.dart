@@ -145,7 +145,7 @@ class _OrderExtrasEditorState extends State<OrderExtrasEditor> {
               padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
               child: Row(
                 children: [
-                  const Icon(Icons.tune_rounded, color: Gz.violet),
+                  Icon(Icons.tune_rounded, color: Gz.violet),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

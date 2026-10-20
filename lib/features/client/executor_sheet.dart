@@ -163,7 +163,7 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
                                 ),
                                 if (_kind == 'favorite') ...[
                                   const SizedBox(width: 6),
-                                  const Icon(
+                                  Icon(
                                     Icons.favorite_rounded,
                                     color: Gz.red,
                                     size: 18,
