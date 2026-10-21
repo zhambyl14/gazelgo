@@ -441,8 +441,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               _staffMode
                   ? t('Telegram арқылы кіру')
-                  : t('Қызметкер ме? Құпиясөзбен кіру'),
-              style: const TextStyle(fontSize: 13),
+                  : t('Құпиясөзбен кіру'),
+              style: const TextStyle(fontSize: 12),
             ),
           ),
         ),
