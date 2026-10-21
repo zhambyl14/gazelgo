@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/env.dart';
 import '../../core/lang.dart';
@@ -33,6 +34,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   /// орындаушы да такси түрін таңдай алмайды.
   bool _taxiEnabled = false;
   bool _taxiSaving = false;
+
+  /// «Ұмай такси» (0086): `vehicle_types` кестесіндегі 'umay' жолы. null —
+  /// сервер жолды қайтармады (0086 миграциясы әлі қолданылмаған не желі
+  /// қатесі): онда басқару элементтері орнына ескерту көрсетіледі.
+  VehicleSpec? _umay;
+  bool _umayActive = false;
+  bool _umaySaving = false;
+  final _umayNameKk = TextEditingController();
+  final _umayNameRu = TextEditingController();
+  final _umayDescKk = TextEditingController();
+  final _umayDescRu = TextEditingController();
 
   /// «ЖАҢА» белгілері (0058) — фичаның ӨЗІНЕН бөлек. Фича қосулы қалады,
   /// тек «жаңа» деген жапсырма алынады (уақыт өте ол ескіреді).
@@ -157,6 +169,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _iosUrl.dispose();
     _updateMessage.dispose();
     _supportWhatsApp.dispose();
+    _umayNameKk.dispose();
+    _umayNameRu.dispose();
+    _umayDescKk.dispose();
+    _umayDescRu.dispose();
     _schedMinHours.dispose();
     _schedMaxDays.dispose();
     _referralBonusAmount.dispose();
@@ -247,10 +263,96 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _referralBonusAmount.text = '${referral['executor_bonus_amount'] ?? 200}';
       _referralClientPoints.text =
           '${referral['client_points_per_referral'] ?? 1}';
+      // Ұмай жолы жеке жүктеледі — қатесі баптау экранын бұғаттамайды.
+      await _loadUmay();
     } catch (e) {
       _error = errText(e);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// 'umay' жолын серверден оқиды. Жол жоқ не сұраныс сәтсіз болса —
+  /// [_umay] null болып қалады (экран құламайды).
+  Future<void> _loadUmay() async {
+    VehicleSpec? found;
+    try {
+      final rows = await Repo.modVehicleTypes();
+      for (final r in rows) {
+        if (r['code'] == VehicleType.umay.code) {
+          found = VehicleSpec.fromMap(r);
+        }
+      }
+    } catch (_) {
+      found = null;
+    }
+    _umay = found;
+    if (found != null) {
+      _umayActive = found.active;
+      _umayNameKk.text = found.labelKk;
+      _umayNameRu.text = found.labelRu;
+      _umayDescKk.text = found.descKk;
+      _umayDescRu.text = found.descRu;
+    }
+  }
+
+  /// Өзгерістен кейін қосымшаның каталогын жаңартады — клиенттегі такси
+  /// каруселі сол мезетте жаңа атау/күйді көрсетеді.
+  Future<void> _refreshCatalog() async {
+    await VehicleCatalog.load(Repo.vehicleCatalog);
+    if (mounted) {
+      ProviderScope.containerOf(context).invalidate(taxiEnabledProvider);
+    }
+  }
+
+  /// Ұмай такси қосу/өшіру (= `vehicle_types.active`).
+  Future<void> _toggleUmay(bool v) async {
+    setState(() {
+      _umayActive = v;
+      _umaySaving = true;
+    });
+    try {
+      await Repo.modSaveVehicleType(code: VehicleType.umay.code, active: v);
+      await _refreshCatalog();
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Ұмай такси ҚОСЫЛДЫ') : t('Ұмай такси ӨШІРІЛДІ'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _umayActive = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _umaySaving = false);
+    }
+  }
+
+  /// Атауы мен қысқаша сипаттамасын (қазақша/орысша) сақтау.
+  Future<void> _saveUmayTexts() async {
+    final nameKk = _umayNameKk.text.trim();
+    if (nameKk.isEmpty) {
+      showSnack(context, t('Қазақша атауын жазыңыз'), error: true);
+      return;
+    }
+    try {
+      await Repo.modSaveVehicleType(
+        code: VehicleType.umay.code,
+        labelKk: nameKk,
+        labelRu: _umayNameRu.text.trim(),
+        descKk: _umayDescKk.text.trim(),
+        descRu: _umayDescRu.text.trim(),
+      );
+      await _loadUmay();
+      await _refreshCatalog();
+      if (mounted) {
+        setState(() {});
+        showSnack(context, t('Сақталды'));
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
     }
   }
 
@@ -931,6 +1033,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               onChanged: (v) => _toggleNewBadge(v, board: false),
             ),
           ],
+          const SizedBox(height: 24),
+          ..._umaySection(),
           const SizedBox(height: 24),
           _sectionTitle(t('Хабарландырулар тақтасы')),
           Text(
@@ -1684,6 +1788,96 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   /// Бір ғана қосқыштан тұратын фича картасы (такси, хабарландырулар…) —
   /// бірден сақталады, бөлек «Сақтау» батырмасы жоқ.
+  /// «Ұмай такси» бөлімі (0086): қосу/өшіру, атауы мен сипаттамасы.
+  List<Widget> _umaySection() {
+    final umay = _umay;
+    return [
+      _sectionTitle(umay?.label ?? t('Ұмай такси')),
+      if (umay == null)
+        GzNotice(
+          tone: NoticeTone.warning,
+          message: t(
+            'Ұмай такси серверде табылмады. Алдымен 0086 миграциясын '
+            'қолданыңыз (Supabase SQL Editor), содан кейін экранды қайта ашыңыз.',
+          ),
+        )
+      else ...[
+        Text(
+          t(
+            'Тек әйел жүргізушілер орындайтын такси түрі (әйелдер мен '
+            'кішкентай балаларға). Әйел жүргізушілер әдеттегі заказдарды '
+            'да, Ұмай заказдарын да көреді; басқа орындаушыларға Ұмай '
+            'заказдары МҮЛДЕМ көрінбейді. Жүргізушіні «Орындаушылар» → '
+            'орындаушы карточкасындағы «Ұмай жүргізушісі» қосқышымен '
+            'белгілейсіз — алдымен соларды белгілеп, сосын осыны қосыңыз. '
+            'Клиент Ұмайды «Такси» бөлімі қосулы болғанда ғана көреді.',
+          ),
+          style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        _toggleCard(
+          enabled: _umayActive,
+          saving: _umaySaving,
+          icon: _umayActive ? Icons.favorite : Icons.favorite_border,
+          onLabel: t('Клиентте Ұмай такси көрінеді'),
+          offLabel: t('Ұмай такси жасырылған (әлі қосылмаған)'),
+          onChanged: _toggleUmay,
+        ),
+        if (_umayActive && !_taxiEnabled) ...[
+          const SizedBox(height: 8),
+          GzNotice(
+            tone: NoticeTone.warning,
+            message: t('«Такси бөлімі» өшулі — Ұмай клиентке көрінбейді.'),
+            dense: true,
+          ),
+        ],
+        const SizedBox(height: 8),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _umayNameKk,
+                decoration: InputDecoration(
+                  labelText: t('Атауы (қазақша)'),
+                  prefixIcon: const Icon(Icons.edit_outlined),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _umayNameRu,
+                decoration: InputDecoration(
+                  labelText: t('Атауы (орысша)'),
+                  prefixIcon: const Icon(Icons.translate_rounded),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _umayDescKk,
+                maxLength: 90,
+                decoration: InputDecoration(
+                  labelText: t('Қысқаша сипаттама (қазақша)'),
+                  prefixIcon: const Icon(Icons.notes_rounded),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _umayDescRu,
+                maxLength: 90,
+                decoration: InputDecoration(
+                  labelText: t('Қысқаша сипаттама (орысша)'),
+                  prefixIcon: const Icon(Icons.notes_rounded),
+                ),
+              ),
+              const SizedBox(height: 8),
+              BusyButton(label: t('Сақтау'), onPressed: _saveUmayTexts),
+            ],
+          ),
+        ),
+      ],
+    ];
+  }
+
   Widget _toggleCard({
     required bool enabled,
     required bool saving,
@@ -1717,10 +1911,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   alignment: Alignment.centerLeft,
                   child: BtnLabel(
                     enabled ? onLabel : offLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Gz.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                   ),
                 ),
               ],
@@ -1843,11 +2034,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.insights_outlined,
-                size: 18,
-                color: Gz.textSecondary,
-              ),
+              Icon(Icons.insights_outlined, size: 18, color: Gz.textSecondary),
               const SizedBox(width: 8),
               Text(
                 t('Бонус есебі'),
@@ -1948,10 +2135,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              hint,
-              style: TextStyle(color: Gz.textSecondary, fontSize: 11),
-            ),
+            Text(hint, style: TextStyle(color: Gz.textSecondary, fontSize: 11)),
           ],
         ),
       );

@@ -1057,6 +1057,17 @@ class Repo {
     );
   }
 
+  /// Әйел жүргізуші белгісін қою/алу (Ұмай такси). Тек 'executors'
+  /// рұқсаты бар модератор; сервер жағында 0086 миграциясы керек.
+  static Future<void> modSetExecutorUmay(String userId, bool on) async {
+    forgetProfile(userId);
+    await c.rpc(
+      'mod_set_executor_umay',
+      params: {'p_user': userId, 'p_on': on},
+    );
+    forgetProfile(userId);
+  }
+
   static Future<void> modReviewTopup(
     String id,
     bool approve,

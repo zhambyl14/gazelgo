@@ -743,6 +743,40 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
   Future<void> _act(String action) =>
       ExecutorModActions.run(context, ep, action, onDone: _refresh);
 
+  bool _umaySaving = false;
+
+  /// Ауыстырғыштың көрінетін күйі: сервер жауап бергенше оптимистік мән.
+  bool? _umayShown;
+
+  /// «Ұмай жүргізушісі» белгісін қою/алу. Көрінетін күй бірден ауысады
+  /// (optimistic); қате болса қайтарылып, хабар шығады.
+  Future<void> _toggleUmay(bool v) async {
+    if (_umaySaving) return;
+    setState(() {
+      _umaySaving = true;
+      _umayShown = v;
+    });
+    try {
+      await Repo.modSetExecutorUmay(ep.userId, v);
+      await _refresh();
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Ұмай жүргізушісі болып белгіленді') : t('Ұмай белгісі алынды'),
+        );
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _umaySaving = false;
+          _umayShown = null;
+        });
+      }
+    }
+  }
+
   List<(String?, String)> get _docs => [
     (ep.licensePath, t('Жүргізуші куәлігі')),
     (ep.licenseSelfiePath, t('Правамен селфи')),
@@ -994,6 +1028,22 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                     InfoRow(t('Баланс'), fmtT(ep.balance)),
                     InfoRow(t('Жалпы табыс'), fmtT(ep.totalEarned)),
+                    // Ұмай такси: әйел жүргізуші белгісі. Тек такси
+                    // жүргізушісіне (немесе белгісі бар болса — алу үшін).
+                    if ((ep.vehicleType == VehicleType.taxi || ep.isUmay) &&
+                        StaffAccess.can('executors'))
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          t('Ұмай жүргізушісі'),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          t('Әйел жүргізуші — Ұмай заказдарын да көреді'),
+                        ),
+                        value: _umayShown ?? ep.isUmay,
+                        onChanged: _umaySaving ? null : _toggleUmay,
+                      ),
                   ],
                 ),
               ),

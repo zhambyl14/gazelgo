@@ -92,6 +92,8 @@ flutter:
 
   assets:
     - assets/vehicles/
+    # Лентадағы жаңа заказ дыбысы (lib/core/order_alert.dart).
+    - assets/sounds/
     # Тек қосымша ішінде қолданылатын логотип; icon/splash суреттері —
     # тек генераторларға (flutter_launcher_icons / native_splash) арналған.
     - assets/icon/tasu_logo.png

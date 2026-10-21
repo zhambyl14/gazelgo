@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -8,7 +10,7 @@ import '../core/geo.dart';
 import '../core/lang.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
-import 'vehicle_picker.dart';
+import 'vehicle_top_view.dart';
 
 /// OSM тайл қабаты — Tasu реңкімен ([Gz.mapFilter]: OSM-нің өз түстері
 /// сақталып, тек сәл жұмсартылады). Тайлдар баяғыдай ТЕГІН OSM серверінен
@@ -23,6 +25,57 @@ Widget osmTileLayer() => ColorFiltered(
   child: TileLayer(
     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     userAgentPackageName: 'kz.gazelgo.app',
+    maxNativeZoom: 19,
+    // Экраннан тыс алдын ала тайл сұрамаймыз, қате тайлдар кадрдан
+    // шыққанда тасталады — жылдам масштабтағанда сұраныс тасқыны болмайды.
+    panBuffer: 0,
+    evictErrorTileStrategy: EvictErrorTileStrategy.notVisibleRespectMargin,
+  ),
+);
+
+/// Ең кіші масштаб: әлем (256·2³ = 2048 px) кез келген телефоннан кең —
+/// карта көлденең қайталанбайды.
+const double kMapMinZoom = 3;
+const double kMapMaxZoom = 18.5;
+
+/// Карта центрі шыға алмайтын аумақ — Қазақстан + кең шет.
+final LatLngBounds kMapBounds = LatLngBounds(
+  const LatLng(35, 40),
+  const LatLng(60, 95),
+);
+
+/// Барлық картаның ортақ [MapOptions]-ы.
+///
+/// БҰРЫН шымшып кішірейткенде масштабтың төменгі шегі жоқ еді: әлем ондаған
+/// рет қатар салынып, әр маркер мен маршрут сонша рет көшіріліп, қосымша
+/// қатып қалатын. Енді [kMapMinZoom]–[kMapMaxZoom] аралығы мен [kMapBounds]
+/// шекарасы бәріне бірдей. Бұру әдепкіде өшірулі — кездейсоқ қисайған
+/// карта ең жиі шағым.
+MapOptions gzMapOptions({
+  required LatLng initialCenter,
+  required double initialZoom,
+  CameraFit? initialCameraFit,
+  bool interactive = true,
+  bool allowRotate = false,
+  void Function(MapCamera camera, bool hasGesture)? onPositionChanged,
+  VoidCallback? onMapReady,
+  Color? backgroundColor,
+}) => MapOptions(
+  initialCenter: initialCenter,
+  initialZoom: initialZoom,
+  initialCameraFit: initialCameraFit,
+  minZoom: kMapMinZoom,
+  maxZoom: kMapMaxZoom,
+  cameraConstraint: CameraConstraint.containCenter(bounds: kMapBounds),
+  backgroundColor: backgroundColor ?? Gz.bg,
+  onPositionChanged: onPositionChanged,
+  onMapReady: onMapReady,
+  interactionOptions: InteractionOptions(
+    flags: !interactive
+        ? InteractiveFlag.none
+        : allowRotate
+        ? InteractiveFlag.all
+        : InteractiveFlag.all & ~InteractiveFlag.rotate,
   ),
 );
 
@@ -467,13 +520,12 @@ Marker executorLiveMarker(
   );
 }
 
-/// Картадағы көліктің белгісі — ӨЗ ТҮРІНІҢ суретімен.
+/// Картадағы көліктің белгісі — ТӨБЕСІНЕН көрінетін көлік ([VehicleTopView]).
 ///
-/// Ақ дөңгелек «шайба» + брендтік сары сақина, ішінде көлік түрінің түрлі-
-/// түсті суреті ([vehicleIcon] — модератор жүктеген иконка, кірістірілген
-/// PNG не эмодзи). Клиент картада «маған газель келе жатыр» дегенді бір
-/// қарағанда көреді. [heading] (градус, 0 = солтүстік) берілсе — сақинаның
-/// сыртында қозғалыс бағытын көрсететін үшбұрыш нұсқар тұрады.
+/// Такси — жеңіл көлік, газель/жеткізу — фургон, ауыр көлік — кабина +
+/// кузов, техника — ықшам машина. [heading] (градус, 0 = солтүстік) берілсе
+/// көлік ТҰТАС сол бағытқа бұрылады — Yandex Go/Uber сияқты. Астындағы
+/// солғын сары ореол белгінің «тірі» екенін білдіреді.
 ///
 /// Бір белгі бүкіл қосымшада: клиенттің тірі картасы ([LiveTrackMap]),
 /// басты беттегі жақын маңдағы бос көліктер, модератордың тірі картасы.
@@ -492,7 +544,6 @@ class VehicleMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = size;
-    final puck = d * 0.78;
     return SizedBox(
       width: d,
       height: d,
@@ -501,55 +552,14 @@ class VehicleMarker extends StatelessWidget {
         children: [
           // Солғын ореол — белгі «тірі» екенін білдіреді.
           Container(
-            width: d,
-            height: d,
+            width: d * 0.9,
+            height: d * 0.9,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Gz.yellow.withValues(alpha: 0.18),
+              color: Gz.yellow.withValues(alpha: 0.2),
             ),
           ),
-          if (heading != null)
-            Transform.rotate(
-              angle: heading! * math.pi / 180,
-              child: SizedBox(
-                width: d,
-                height: d,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Icon(
-                    Icons.navigation_rounded,
-                    size: d * 0.3,
-                    color: Gz.ink,
-                  ),
-                ),
-              ),
-            ),
-          Container(
-            width: puck,
-            height: puck,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(
-                color: Gz.yellow,
-                width: _clampD(d * 0.06, 2, 3.2),
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Gz.shadowTight,
-                  blurRadius: 4,
-                  offset: Offset(0, 1.5),
-                ),
-                BoxShadow(
-                  color: Gz.shadowWide,
-                  blurRadius: 12,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            child: vehicleIcon(type, size: puck * 0.62),
-          ),
+          VehicleTopView(type: type, size: d, heading: heading),
         ],
       ),
     );
@@ -869,6 +879,258 @@ void _requestRoad(
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  ОРЫНДАУШЫДАН A НҮКТЕСІНЕ ДЕЙІНГІ СҰР ЖОЛ
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Нүктенің сынық сызыққа ең жақын проекциясы: [seg]-кесінді, ондағы
+/// үлес [t] (0…1), проекция нүктесі және одан қашықтық (метр).
+class _LineHit {
+  final int seg;
+  final double t;
+  final LatLng point;
+  final double distM;
+  const _LineHit(this.seg, this.t, this.point, this.distM);
+}
+
+/// Метр/градус (ендік бойынша).
+const double _mPerDeg = 111320;
+
+/// Жергілікті ЖАЗЫҚ координатада (бойлық cos(ендік)-ке көбейтіледі) ең
+/// жақын кесіндіні табады. Қала көлеміндегі қашықтыққа дәлдігі жеткілікті.
+_LineHit? _nearestOnLine(List<LatLng> line, LatLng p) {
+  if (line.length < 2) return null;
+  final k = math.cos(p.latitude * math.pi / 180) * _mPerDeg;
+  _LineHit? best;
+  for (var i = 0; i + 1 < line.length; i++) {
+    final a = line[i], b = line[i + 1];
+    final ax = (a.longitude - p.longitude) * k;
+    final ay = (a.latitude - p.latitude) * _mPerDeg;
+    final dx = (b.longitude - a.longitude) * k;
+    final dy = (b.latitude - a.latitude) * _mPerDeg;
+    final l2 = dx * dx + dy * dy;
+    final t = l2 < 1e-9 ? 0.0 : _clampD(-(ax * dx + ay * dy) / l2, 0, 1);
+    final x = ax + dx * t, y = ay + dy * t;
+    final d = math.sqrt(x * x + y * y);
+    if (best == null || d < best.distM) {
+      best = _LineHit(
+        i,
+        t,
+        LatLng(
+          a.latitude + (b.latitude - a.latitude) * t,
+          a.longitude + (b.longitude - a.longitude) * t,
+        ),
+        d,
+      );
+    }
+  }
+  return best;
+}
+
+/// Сызықтың [p] нүктесінен КЕЙІНГІ бөлігі: сұр жол көліктің өзінен
+/// басталып, ол жүрген сайын қысқара береді.
+List<LatLng> _trimLine(List<LatLng> line, LatLng p) {
+  final h = _nearestOnLine(line, p);
+  if (h == null) return line;
+  return [p, h.point, ...line.sublist(h.seg + 1)];
+}
+
+/// Сызық бойындағы жинақталған қашықтық (метр) — көлікті ЖОЛ БОЙЫМЕН
+/// жылжыту үшін.
+class _PathMeasure {
+  final List<LatLng> line;
+  final List<double> cum;
+
+  _PathMeasure._(this.line, this.cum);
+
+  factory _PathMeasure(List<LatLng> line) {
+    final cum = <double>[0];
+    for (var i = 1; i < line.length; i++) {
+      cum.add(cum.last + Geo.haversineKm(line[i - 1], line[i]) * 1000);
+    }
+    return _PathMeasure._(line, cum);
+  }
+
+  double get length => cum.last;
+
+  /// Нүктенің сызық бойындағы орны (метр) және сызықтан қашықтығы.
+  ({double s, double off})? locate(LatLng p) {
+    final h = _nearestOnLine(line, p);
+    if (h == null) return null;
+    final segLen = cum[h.seg + 1] - cum[h.seg];
+    return (s: cum[h.seg] + segLen * h.t, off: h.distM);
+  }
+
+  /// [s] метрдегі нүкте және сол жердегі жол бағыты (градус).
+  (LatLng, double) at(double s) {
+    final v = _clampD(s, 0, length);
+    var lo = 0, hi = cum.length - 1;
+    while (hi - lo > 1) {
+      final mid = (lo + hi) >> 1;
+      if (cum[mid] <= v) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    final a = line[lo], b = line[hi];
+    final segLen = cum[hi] - cum[lo];
+    final t = segLen < 1e-6 ? 0.0 : (v - cum[lo]) / segLen;
+    return (
+      LatLng(
+        a.latitude + (b.latitude - a.latitude) * t,
+        a.longitude + (b.longitude - a.longitude) * t,
+      ),
+      bearingDeg(a, b),
+    );
+  }
+}
+
+/// Орындаушыдан A-ға дейінгі жолды OSRM-нен СИРЕК сұрайтын көмекші.
+///
+/// Әр GPS нүктесінде жаңа сұрау жібермейді (тегін серверге салмақ әрі
+/// кэшті толтырып жібереді): тек мақсат ауысқанда, көлік жолдан 80 м-ден
+/// астам шыққанда немесе 90 с өтіп, көлік едәуір жылжығанда ғана. Арада
+/// бар жол көліктің орнынан кесіліп көрсетіледі ([trimmed]).
+class _ApproachRoad {
+  List<LatLng> points = const [];
+  bool onRoad = false;
+  LatLng? _askedFrom;
+  LatLng? _to;
+  DateTime? _askedAt;
+  bool _busy = false;
+
+  void reset() {
+    points = const [];
+    onRoad = false;
+    _askedFrom = null;
+    _to = null;
+    _askedAt = null;
+  }
+
+  /// Көліктің жаңа орны. Жол жаңарса [onChange] шақырылады.
+  void update(LatLng from, LatLng to, VoidCallback onChange) {
+    if (_to != to) {
+      reset();
+      _to = to;
+    }
+    if (_busy) return;
+    final now = DateTime.now();
+    final age = _askedAt == null
+        ? const Duration(days: 1)
+        : now.difference(_askedAt!);
+    final off = onRoad ? (_nearestOnLine(points, from)?.distM ?? 1e9) : 0.0;
+    final need =
+        _askedFrom == null ||
+        (!onRoad && age > const Duration(seconds: 30)) ||
+        (onRoad && off > 80 && age > const Duration(seconds: 10)) ||
+        (age > const Duration(seconds: 90) &&
+            Geo.haversineKm(from, _askedFrom!) > 0.05);
+    if (!need) return;
+    _busy = true;
+    _askedFrom = from;
+    _askedAt = now;
+    Geo.route(from, to).then((r) {
+      _busy = false;
+      if (_to != to) return;
+      onRoad = r.onRoad && r.points.length >= 2;
+      points = onRoad ? r.points : [from, to];
+      onChange();
+    });
+  }
+
+  /// Көліктің [car] орнынан басталатын қалған жол.
+  List<LatLng> trimmed(LatLng car) {
+    final to = _to;
+    if (to == null) return const [];
+    if (!onRoad) return [car, to];
+    return _trimLine(points, car);
+  }
+}
+
+/// СҰР жол сызығы — орындаушыдан A-ға дейін. Заказдың өз маршрутының
+/// (қара + сары) АСТЫНДА салынады: «бұл жүргізушінің келетін жолы, заказ
+/// емес» дегені бір қарағанда түсінікті.
+const Color kApproachGrey = Gz.approachGrey;
+
+List<Polyline> approachPolylines(List<LatLng> points, {required bool onRoad}) {
+  if (points.length < 2) return const [];
+  if (!onRoad) {
+    final arc = _arcPoints(points);
+    return [
+      Polyline(
+        points: arc,
+        strokeWidth: 6,
+        color: Colors.white.withValues(alpha: 0.85),
+      ),
+      Polyline(
+        points: arc,
+        strokeWidth: 3.2,
+        color: kApproachGrey,
+        pattern: StrokePattern.dashed(segments: const [8, 7]),
+      ),
+    ];
+  }
+  return [
+    Polyline(
+      points: points,
+      strokeWidth: 8,
+      color: Colors.white.withValues(alpha: 0.85),
+    ),
+    Polyline(points: points, strokeWidth: 5, color: kApproachGrey),
+  ];
+}
+
+/// Тірі көліктің бір сәттегі күйі: [pos] — қазір көрініп тұрған (жылжу
+/// ортасындағы) орны, [fix] — серверден келген соңғы нақты нүкте.
+@immutable
+class LiveVehicleFix {
+  final LatLng pos;
+  final LatLng fix;
+  final double? heading;
+  final VehicleType type;
+
+  const LiveVehicleFix({
+    required this.pos,
+    required this.fix,
+    required this.type,
+    this.heading,
+  });
+}
+
+/// Жылжып жүрген көлік + (керек болса) оны сұр жолдың басымен қосатын
+/// қысқа кесінді. Сұр жол соңғы НАҚТЫ нүктеден кесіледі, ал көлік оған
+/// қарай жылжып келе жатады — арадағы аз ғана бос орынды осы толтырады.
+Widget _liveVehicleLayers(LiveVehicleFix? f, {required bool connect}) {
+  if (f == null) return const SizedBox.shrink();
+  return Stack(
+    children: [
+      if (connect)
+        PolylineLayer(
+          polylines: [
+            Polyline(
+              points: [f.pos, f.fix],
+              strokeWidth: 5,
+              color: kApproachGrey,
+            ),
+          ],
+        ),
+      MarkerLayer(
+        markers: [
+          executorLiveMarker(f.pos, vehicleType: f.type, heading: f.heading),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Орындаушының белгісі: көлік түрі белгілі болса — төбеден көрінетін
+/// көлік, әйтпесе — көк «мен осындамын» нүктесі.
+Marker _approachMarker(LatLng p, VehicleType? type, double? heading) =>
+    type == null
+    ? myLocationMarker(p)
+    : executorLiveMarker(p, vehicleType: type, heading: heading);
+
 /// Маршрутты көрсететін шағын карта (A → B + сызық).
 ///
 /// ЖАҢА (0068): карта — ЕНДІ ТҮЙМЕ. Түртсе, толық экранды интерактивті
@@ -909,6 +1171,16 @@ class RouteMap extends StatefulWidget {
   /// Қашықтық (км) — толық экранның төменгі жолағында көрсетіледі.
   final double? distanceKm;
 
+  /// Орындаушының қазіргі орны. Берілсе — картада орындаушы және одан A
+  /// нүктесіне дейінгі СҰР жол ([approachPolylines]) салынады: заказды
+  /// алмас бұрын «маған қанша жүру керек» дегенді көзбен бағалау үшін.
+  final LatLng? approachFrom;
+
+  /// Орындаушының көлік түрі ([approachFrom] белгісі үшін). null — көк
+  /// «мен осындамын» нүктесі.
+  final VehicleType? approachVehicle;
+  final double? approachHeading;
+
   const RouteMap({
     super.key,
     required this.from,
@@ -922,6 +1194,9 @@ class RouteMap extends StatefulWidget {
     this.toLabel,
     this.stopLabels = const [],
     this.distanceKm,
+    this.approachFrom,
+    this.approachVehicle,
+    this.approachHeading,
   });
 
   @override
@@ -945,17 +1220,44 @@ class _RouteMapState extends State<RouteMap> {
   List<LatLng> get _linePoints =>
       _road.isNotEmpty ? _road : _arcPoints(_waypoints);
 
+  /// Орындаушыдан A-ға дейінгі сұр жол.
+  final _approach = _ApproachRoad();
+
+  List<LatLng> get _approachLine {
+    final p = widget.approachFrom;
+    return p == null ? const [] : _approach.trimmed(p);
+  }
+
   /// Камера қамтуы тиіс нүктелер: белгілер + сызықтың өзі.
   List<LatLng> get _boundsPoints => [
     ..._waypoints,
     for (final m in widget.extraMarkers) m.point,
+    ?widget.approachFrom,
     ..._linePoints,
+    ..._approachLine,
   ];
 
   @override
   void initState() {
     super.initState();
     _loadRoad();
+    _loadApproach(refit: true);
+  }
+
+  /// Сұр жолды сұрайды (керек болса ғана — [_ApproachRoad] шешеді). Жол
+  /// алғаш келгенде камера оны да қамтиды.
+  void _loadApproach({bool refit = false}) {
+    final p = widget.approachFrom;
+    if (p == null) {
+      _approach.reset();
+      return;
+    }
+    final first = _approach.points.isEmpty;
+    _approach.update(p, widget.from, () {
+      if (!mounted) return;
+      setState(() {});
+      if (first || refit) _fit();
+    });
   }
 
   @override
@@ -970,6 +1272,18 @@ class _RouteMapState extends State<RouteMap> {
       _road = widget.routePoints;
       _loadRoad();
       _fit();
+    }
+    if (old.approachFrom != widget.approachFrom || moved) {
+      _loadApproach(refit: old.approachFrom == null);
+      // Орындаушы кадрдан шығып бара жатса ғана камераны жылжытамыз —
+      // әр GPS нүктесінде карта «секірмесін».
+      final p = widget.approachFrom;
+      if (p != null && _ready) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (!_map.camera.visibleBounds.contains(p)) _fit();
+        });
+      }
     }
   }
 
@@ -1018,6 +1332,9 @@ class _RouteMapState extends State<RouteMap> {
           toLabel: widget.toLabel,
           stopLabels: widget.stopLabels,
           distanceKm: widget.distanceKm,
+          approachFrom: widget.approachFrom,
+          approachVehicle: widget.approachVehicle,
+          approachHeading: widget.approachHeading,
         ),
       ),
     );
@@ -1027,6 +1344,7 @@ class _RouteMapState extends State<RouteMap> {
   Widget build(BuildContext context) {
     final from = widget.from;
     final all = _boundsPoints;
+    final me = widget.approachFrom;
     final flat = _degenerate(all);
     // Картаның айналасында ЖИЕК бар: ақ карточкаға тікелей жапсырылған
     // тайл суреті «жамау» болып көрінетін — жіңішке жиек оны нақты
@@ -1045,14 +1363,11 @@ class _RouteMapState extends State<RouteMap> {
               child: IgnorePointer(
                 child: FlutterMap(
                   mapController: _map,
-                  options: MapOptions(
+                  options: gzMapOptions(
                     onMapReady: _onReady,
                     initialCenter: flat ? from : const LatLng(48.02, 66.9),
                     initialZoom: flat ? 15 : 5,
-                    // Тайл жүктелгенше көрінетін фон — толық экрандағы
-                    // картамен БІРДЕЙ. Әдепкі сұрғылт (0xFFE0E0E0) ақ
-                    // карточканың ішінде «сынған сурет» болып көрінетін.
-                    backgroundColor: Gz.bg,
+                    interactive: false,
                     initialCameraFit: flat
                         ? null
                         : CameraFit.bounds(
@@ -1062,12 +1377,16 @@ class _RouteMapState extends State<RouteMap> {
                             // қалатын еді.
                             padding: const EdgeInsets.all(48),
                           ),
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.none,
-                    ),
                   ),
                   children: [
                     osmTileLayer(),
+                    if (me != null)
+                      PolylineLayer(
+                        polylines: approachPolylines(
+                          _approachLine,
+                          onRoad: _approach.onRoad,
+                        ),
+                      ),
                     PolylineLayer(
                       polylines: _routeLines(
                         _road.isNotEmpty ? _road : _waypoints,
@@ -1079,7 +1398,15 @@ class _RouteMapState extends State<RouteMap> {
                         from: from,
                         to: widget.to,
                         stops: widget.stops,
-                        extra: widget.extraMarkers,
+                        extra: [
+                          ...widget.extraMarkers,
+                          if (me != null)
+                            _approachMarker(
+                              me,
+                              widget.approachVehicle,
+                              widget.approachHeading,
+                            ),
+                        ],
                       ),
                     ),
                   ],
@@ -1165,6 +1492,16 @@ class RouteMapScreen extends StatefulWidget {
   final List<String> stopLabels;
   final double? distanceKm;
 
+  /// [RouteMap.approachFrom]-дағыдай: орындаушы + A-ға дейінгі сұр жол.
+  final LatLng? approachFrom;
+  final VehicleType? approachVehicle;
+  final double? approachHeading;
+
+  /// Тірі көлік ([LiveTrackMap]-тан): берілсе, толық экранда да көлік
+  /// ЖЫЛЖЫП тұрады, ал [approachToA] болса — A-ға дейінгі сұр жол да.
+  final ValueListenable<LiveVehicleFix?>? live;
+  final bool approachToA;
+
   const RouteMapScreen({
     super.key,
     required this.from,
@@ -1176,6 +1513,11 @@ class RouteMapScreen extends StatefulWidget {
     this.toLabel,
     this.stopLabels = const [],
     this.distanceKm,
+    this.approachFrom,
+    this.approachVehicle,
+    this.approachHeading,
+    this.live,
+    this.approachToA = false,
   });
 
   @override
@@ -1211,6 +1553,18 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   /// «есептеліп жатыр ма, әлде мәлімет жоқ па?» деген белгісіздік.
   bool _loading = false;
 
+  final _approach = _ApproachRoad();
+
+  /// Сұр жол соңғы рет кесілген көлік нүктесі (тірі режимде).
+  LatLng? _approachFix;
+
+  /// Сұр жолдың бастауы: тірі көліктің соңғы нүктесі не берілген орын.
+  LatLng? get _me =>
+      widget.live == null ? widget.approachFrom : widget.live!.value?.fix;
+
+  bool get _showApproach =>
+      widget.live == null ? widget.approachFrom != null : widget.approachToA;
+
   @override
   void initState() {
     super.initState();
@@ -1218,6 +1572,32 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       _loading = true;
       _loadRoute();
     }
+    widget.live?.addListener(_onLive);
+    _updateApproach();
+  }
+
+  @override
+  void dispose() {
+    widget.live?.removeListener(_onLive);
+    super.dispose();
+  }
+
+  /// Тірі көліктің ЖАҢА нүктесі келгенде ғана сұр жол қайта кесіледі
+  /// (әр анимация кадрында емес).
+  void _onLive() {
+    final fix = widget.live?.value?.fix;
+    if (fix == null || fix == _approachFix) return;
+    setState(() => _approachFix = fix);
+    _updateApproach();
+  }
+
+  void _updateApproach() {
+    final p = _me;
+    if (!_showApproach || p == null) return;
+    _approachFix = p;
+    _approach.update(p, widget.from, () {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadRoute() async {
@@ -1272,6 +1652,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     ...widget.stops,
     widget.to,
     for (final m in widget.extraMarkers) m.point,
+    ?_me,
   ];
 
   /// Бүкіл маршрут кадрға сыятындай етіп камераны қайта теңшейді.
@@ -1327,37 +1708,53 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
             Positioned.fill(
               child: FlutterMap(
                 mapController: _map,
-                options: MapOptions(
+                options: gzMapOptions(
                   initialCenter: flat ? widget.from : const LatLng(48.02, 66.9),
                   initialZoom: flat ? 15 : 5,
-                  // Тайл жүктелгенше көрінетін фон. Әдепкі сұрғылт
-                  // (0xFFE0E0E0) қосымшаның ашық реңкінен «жамау» болып
-                  // бөлектеніп тұратын.
-                  backgroundColor: Gz.bg,
                   initialCameraFit: flat
                       ? null
                       : CameraFit.bounds(
                           bounds: LatLngBounds.fromPoints(_all),
                           padding: const EdgeInsets.fromLTRB(44, 120, 44, 240),
                         ),
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                  ),
                 ),
                 children: [
                   osmTileLayer(),
+                  if (_showApproach && _approachFix != null)
+                    PolylineLayer(
+                      polylines: approachPolylines(
+                        _approach.trimmed(_approachFix!),
+                        onRoad: _approach.onRoad,
+                      ),
+                    ),
                   PolylineLayer(polylines: _routeLines(line, onRoad: onRoad)),
                   MarkerLayer(
                     markers: _routeMarkers(
                       from: widget.from,
                       to: widget.to,
                       stops: widget.stops,
-                      extra: widget.extraMarkers,
+                      extra: [
+                        ...widget.extraMarkers,
+                        if (widget.live == null && widget.approachFrom != null)
+                          _approachMarker(
+                            widget.approachFrom!,
+                            widget.approachVehicle,
+                            widget.approachHeading,
+                          ),
+                      ],
                       // Толық экранда пиндер сәл ірілеу — саусақпен көрсетуге
                       // де, алыстан қарауға да ыңғайлы.
                       scale: 1.15,
                     ),
                   ),
+                  if (widget.live != null)
+                    RepaintBoundary(
+                      child: ValueListenableBuilder<LiveVehicleFix?>(
+                        valueListenable: widget.live!,
+                        builder: (_, f, _) =>
+                            _liveVehicleLayers(f, connect: _showApproach),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1814,8 +2211,13 @@ class TrackRoute {
 /// (тұрақты жылдамдықпен) — Yandex Go-дағыдай шынайы қозғалыс.
 ///
 /// Заказдың өз маршруты (A → аялдамалар → B) [RouteMap]-дегідей нақты ЖОЛ
-/// бойымен, Tasu стилінде салынады (жол табылмаса — үзік доға). Көлікке
-/// дейін жол сызылмайды — мақсат: клиент жүргізушінің ҚАЙДА екенін көрсін.
+/// бойымен, Tasu стилінде салынады (жол табылмаса — үзік доға). Жүргізуші
+/// A-ға келе жатқанда (`accepted`) көліктен A-ға дейінгі жол СҰР түспен
+/// көрсетіледі ([approachPolylines]) және көлік жүрген сайын қысқарады.
+///
+/// Жол геометриясы бар кезде көлік екі GPS нүктесінің арасында түзу
+/// сызықпен емес, ЖОЛДЫҢ ӨЗІМЕН жылжиды, бағыты да жолдың бұрылысына
+/// қарай бұрылады — шынайы қозғалыс.
 ///
 /// Камера өзі теңшеледі: заказ қабылданғанда — көлік пен A нүктесі
 /// (жүргізуші сізге келе жатыр), жолға шыққан соң — көлік пен B нүктесі.
@@ -1891,24 +2293,56 @@ class _LiveTrackMapState extends State<LiveTrackMap>
   /// Заказ маршрутының нақты жол нүктелері (бос — әзірге жоқ, доға).
   List<LatLng> _road = const [];
 
+  /// Көліктен A-ға дейінгі сұр жол (тек `accepted` кезінде).
+  final _approach = _ApproachRoad();
+
+  /// Көлік ЖОЛ БОЙЫМЕН жылжып жатса — сол сызық пен басы/соңы (метр).
+  _PathMeasure? _path;
+  double _pathS0 = 0;
+  double _pathS1 = 0;
+
+  /// Толық экранға берілетін тірі күй ([RouteMapScreen.live]).
+  final _live = ValueNotifier<LiveVehicleFix?>(null);
+
   TrackRoute get _o => widget.route;
   LatLng get _a => _o.from;
   LatLng get _b => _o.to;
   bool get _toPickup => _o.status == 'accepted' || _o.status == 'arrived';
   LatLng get _target => _toPickup ? _a : _b;
 
-  /// Көліктің ҚАЗІР көрініп тұрған орны (жылжу ортасында — аралық нүкте).
-  LatLng? get _current {
+  /// A-ға келе жатыр — сұр жол көрсетіледі.
+  bool get _driving => _o.status == 'accepted';
+
+  /// Көлік қазір жүріп келе жатқан жолдың геометриясы (жылжу үшін).
+  List<LatLng> get _activeLine {
+    if (_driving) return _approach.onRoad ? _approach.points : const [];
+    return _road;
+  }
+
+  /// Көліктің ҚАЗІР көрініп тұрған орны мен бағыты (жылжу ортасында —
+  /// аралық нүкте).
+  (LatLng, double?)? get _currentState {
     final to = _animTo;
     final from = _animFrom;
     if (to == null) return null;
-    if (from == null) return to;
+    if (from == null) return (to, _bearing);
     final k = _curve.transform(_anim.value);
-    return LatLng(
-      from.latitude + (to.latitude - from.latitude) * k,
-      from.longitude + (to.longitude - from.longitude) * k,
+    final path = _path;
+    if (path != null) {
+      final (p, b) = path.at(_pathS0 + (_pathS1 - _pathS0) * k);
+      // Орнында тұрғанда жол бағыты емес, соңғы белгілі бағыт қалады.
+      return (p, (_pathS1 - _pathS0).abs() > 3 ? b : _bearing);
+    }
+    return (
+      LatLng(
+        from.latitude + (to.latitude - from.latitude) * k,
+        from.longitude + (to.longitude - from.longitude) * k,
+      ),
+      _bearing,
     );
   }
+
+  LatLng? get _current => _currentState?.$1;
 
   @override
   void initState() {
@@ -1916,7 +2350,73 @@ class _LiveTrackMapState extends State<LiveTrackMap>
     _animTo = widget.vehicle;
     _bearing = widget.heading;
     if (widget.vehicle != null) _lastFixAt = DateTime.now();
+    _anim.addListener(_pushLive);
     _loadRoad();
+    _loadApproach();
+    _pushLive();
+  }
+
+  bool _pushQueued = false;
+
+  void _pushLive() {
+    // build кезінде (initState/didUpdateWidget ішіндегі `forward`) басқа
+    // беттегі тыңдаушыға (толық экран) setState жіберуге болмайды —
+    // келесі кадрға қалдырамыз.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_pushQueued) return;
+      _pushQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _pushQueued = false;
+        if (mounted) _pushLive();
+      });
+      return;
+    }
+    final s = _currentState;
+    final fix = _animTo;
+    _live.value = s == null || fix == null
+        ? null
+        : LiveVehicleFix(
+            pos: s.$1,
+            fix: fix,
+            heading: s.$2,
+            type: _o.vehicleType,
+          );
+  }
+
+  /// Көліктің соңғы нүктесінен A-ға дейінгі сұр жолды сұрайды (сирек —
+  /// [_ApproachRoad] өзі шешеді).
+  void _loadApproach() {
+    final v = _animTo;
+    if (!_driving || v == null) {
+      if (!_driving) _approach.reset();
+      return;
+    }
+    _approach.update(v, _a, () {
+      if (!mounted) return;
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fit();
+      });
+    });
+  }
+
+  /// Жаңа нүктеге дейінгі жылжуды ЖОЛ БОЙЫМЕН жасауға бола ма: екі нүкте
+  /// де жолдың бойында (60 м ішінде) және алға қарай жүріп жатса ғана.
+  /// Әйтпесе (жолдан ауытқыды, кері бұрылды) — түзу жылжу.
+  void _planPath(LatLng from, LatLng to) {
+    _path = null;
+    final line = _activeLine;
+    if (line.length < 2) return;
+    final m = _PathMeasure(line);
+    final a = m.locate(from), b = m.locate(to);
+    if (a == null || b == null || a.off > 60 || b.off > 60) return;
+    final along = b.s - a.s;
+    final straight = Geo.haversineKm(from, to) * 1000;
+    if (along < -5 || along > straight * 3 + 80) return;
+    _path = m;
+    _pathS0 = a.s;
+    _pathS1 = b.s;
   }
 
   void _loadRoad() {
@@ -1959,14 +2459,18 @@ class _LiveTrackMapState extends State<LiveTrackMap>
       final glide = _glideFor(now);
       _lastFixAt = now;
       _curve = glide > _glideShort ? Curves.linear : Curves.easeInOut;
+      _planPath(prev, v);
       _animFrom = prev;
       _animTo = v;
       _anim.duration = glide;
       _anim.forward(from: 0);
       refit = true;
+      _loadApproach();
     } else if (widget.heading != null) {
       _bearing = widget.heading;
     }
+    if (widget.route.status != old.route.status) _loadApproach();
+    _pushLive();
     // Камераны build аяқталған соң ғана жылжытамыз (didUpdateWidget build
     // ішінде шақырылады — MapController-ді сол сәтте қозғау қауіпті).
     if (refit) {
@@ -1978,16 +2482,27 @@ class _LiveTrackMapState extends State<LiveTrackMap>
 
   @override
   void dispose() {
+    _anim.removeListener(_pushLive);
     _anim.dispose();
+    // [_live] әдейі dispose етілмейді: толық экран ([RouteMapScreen]) әлі
+    // ашық болып, бұл карта ертерек жабылса, ол өз dispose-ында тыңдаушысын
+    // алып тастайды — жабылған нотификаторда бұл қате болар еді.
     super.dispose();
+  }
+
+  /// A-ға дейінгі сұр жолдың көрінетін бөлігі (соңғы нақты нүктеден).
+  List<LatLng> get _approachLine {
+    final v = _animTo;
+    if (!_driving || v == null) return const [];
+    return _approach.trimmed(v);
   }
 
   void _fit() {
     if (!_ready) return;
     // Көліктің ҚАЗІР көрініп тұрған орны да кадрда болуы керек: ол жаңа
     // нүктеге қарай бірнеше секунд жылжиды — әйтпесе кадрдың сыртынан
-    // «кіріп» келер еді.
-    final pts = [?_current, ?_animTo, _target];
+    // «кіріп» келер еді. Сұр жол айналма болса — ол да кадрда.
+    final pts = [?_current, ?_animTo, _target, ..._approachLine];
     try {
       if (pts.length < 2 ||
           _degenerate(pts) ||
@@ -2007,7 +2522,6 @@ class _LiveTrackMapState extends State<LiveTrackMap>
   }
 
   void _openFull(BuildContext context) {
-    final v = _animTo;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RouteMapScreen(
@@ -2015,14 +2529,9 @@ class _LiveTrackMapState extends State<LiveTrackMap>
           to: _b,
           stops: _o.stops,
           routePoints: _road,
-          extraMarkers: [
-            if (v != null)
-              executorLiveMarker(
-                v,
-                vehicleType: _o.vehicleType,
-                heading: _bearing,
-              ),
-          ],
+          // Толық экранда да көлік ТІРІ жылжиды.
+          live: _live,
+          approachToA: _driving,
           fromLabel: _o.fromLabel,
           toLabel: _o.toLabel,
           stopLabels: _o.stopLabels,
@@ -2050,23 +2559,26 @@ class _LiveTrackMapState extends State<LiveTrackMap>
             child: IgnorePointer(
               child: FlutterMap(
                 mapController: _map,
-                options: MapOptions(
+                options: gzMapOptions(
                   initialCenter: widget.vehicle ?? _target,
                   initialZoom: 14,
-                  backgroundColor: Gz.bg,
+                  interactive: false,
                   onMapReady: () {
                     _ready = true;
                     _fit();
                   },
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.none,
-                  ),
                 ),
                 children: [
                   osmTileLayer(),
-                  // Тек заказдың өз маршруты. Көлікке дейін жол САЛЫНБАЙДЫ
-                  // (пайдаланушы шешімі): клиентке көліктің ҚАЙДА екені мен
-                  // қалай жылжып келе жатқаны көрінсе жеткілікті.
+                  // Жүргізуші A-ға келе жатқанда — оның жолы СҰР түспен,
+                  // заказ маршрутының астында.
+                  if (_driving && _animTo != null)
+                    PolylineLayer(
+                      polylines: approachPolylines(
+                        _approachLine,
+                        onRoad: _approach.onRoad,
+                      ),
+                    ),
                   PolylineLayer(
                     polylines: _routeLines(
                       onRoad ? _road : _o.waypoints,
@@ -2085,21 +2597,10 @@ class _LiveTrackMapState extends State<LiveTrackMap>
                   // бүкіл картаны бір шекарада салады, онсыз ұзақ жылжу кезінде
                   // әр кадрда сүзгіленген тайл қабаты да қайта салынар еді.
                   RepaintBoundary(
-                    child: AnimatedBuilder(
-                      animation: _anim,
-                      builder: (_, _) {
-                        final c = _current;
-                        return MarkerLayer(
-                          markers: [
-                            if (c != null)
-                              executorLiveMarker(
-                                c,
-                                vehicleType: _o.vehicleType,
-                                heading: _bearing,
-                              ),
-                          ],
-                        );
-                      },
+                    child: ValueListenableBuilder<LiveVehicleFix?>(
+                      valueListenable: _live,
+                      builder: (_, f, _) =>
+                          _liveVehicleLayers(f, connect: _driving),
                     ),
                   ),
                 ],

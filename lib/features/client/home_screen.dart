@@ -403,7 +403,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
             bottom: _bottomInset,
             child: FlutterMap(
               mapController: _map,
-              options: MapOptions(
+              options: gzMapOptions(
                 initialCenter: Geo.almaty,
                 initialZoom: 13,
                 onPositionChanged: _onMapMove,

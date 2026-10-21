@@ -38,6 +38,20 @@ class _ExecutorOrderScreenState extends State<ExecutorOrderScreen> {
 
   bool _redirected = false;
 
+  /// Орындаушының орны (рұқсат сұралмайды) — картада өзі мен A-ға дейінгі
+  /// сұр жол.
+  LatLng? _me;
+
+  @override
+  void initState() {
+    super.initState();
+    Geo.quietPosition().then((p) {
+      if (mounted && p != null) {
+        setState(() => _me = LatLng(p.latitude, p.longitude));
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final myId = Repo.uid;
@@ -127,6 +141,8 @@ class _ExecutorOrderScreenState extends State<ExecutorOrderScreen> {
             toLabel: o.toDisplay,
             stopLabels: o.stops.map((s) => s.display).toList(),
             distanceKm: o.distanceKm,
+            // Тек заказ әлі ашық тұрғанда: алмас бұрын «қанша жүремін».
+            approachFrom: o.status == 'searching' ? _me : null,
           ),
           const SizedBox(height: 10),
           SectionCard(
@@ -704,13 +720,18 @@ class _FactsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final taxi = o.vehicleType == VehicleType.taxi;
+    final taxi = o.vehicleType.isPassenger;
     final facts = <_Fact>[
+      // Ұмай заказы — көлік ұяшығы қызғылт (атау екі рет жазылмайды).
       _Fact(
-        taxi ? Icons.local_taxi_rounded : Icons.local_shipping_rounded,
+        o.vehicleType.isUmay
+            ? Icons.favorite_rounded
+            : taxi
+            ? Icons.local_taxi_rounded
+            : Icons.local_shipping_rounded,
         t('Көлік'),
         o.vehicleType.label,
-        Gz.yellowDeep,
+        o.vehicleType.isUmay ? kUmayPink : Gz.yellowDeep,
       ),
       if (o.distanceKm > 0)
         _Fact(

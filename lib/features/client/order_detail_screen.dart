@@ -190,7 +190,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final res = await showEditOrderSheet(context, o);
     if (res == null || !mounted) return;
     final (cargo, comment, extras) = res;
-    final isTaxi = o.vehicleType == VehicleType.taxi;
+    final isTaxi = o.vehicleType.isPassenger;
     try {
       await Repo.updateOrderDetails(
         o.id,
@@ -577,7 +577,7 @@ class _ConfirmLoadingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaxi = vehicleType == VehicleType.taxi;
+    final isTaxi = vehicleType.isPassenger;
     return BusyButton(
       label: t(isTaxi ? 'Отырғызу басталды' : 'Тиеу басталды'),
       icon: Icons.check_circle,
@@ -985,7 +985,7 @@ class _SearchingScreenState extends State<_SearchingScreen> {
     final single = _isPoint(waypoints);
     return FlutterMap(
       mapController: _map,
-      options: MapOptions(
+      options: gzMapOptions(
         onMapReady: () {
           _mapReady = true;
           if (_road.isNotEmpty && !_userMoved) _fit();
@@ -1002,11 +1002,6 @@ class _SearchingScreenState extends State<_SearchingScreen> {
                 padding: _fitPadding(),
                 maxZoom: 16.5,
               ),
-        backgroundColor: Gz.bg,
-        // Бұру өшірулі — кездейсоқ қисайып қалған карта ең жиі шағым.
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-        ),
       ),
       children: [
         osmTileLayer(),
@@ -1651,11 +1646,7 @@ class _ExecutorBriefState extends State<_ExecutorBrief> {
                       ),
                       if (widget.favorite) ...[
                         const SizedBox(width: 4),
-                        Icon(
-                          Icons.favorite_rounded,
-                          size: 15,
-                          color: Gz.red,
-                        ),
+                        Icon(Icons.favorite_rounded, size: 15, color: Gz.red),
                       ],
                       const SizedBox(width: 2),
                       Icon(
@@ -1837,7 +1828,7 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaxi = vehicleType == VehicleType.taxi;
+    final isTaxi = vehicleType.isPassenger;
     final steps = [
       for (final s in _steps)
         (s.$1, t(s.$1 == 'loading' && isTaxi ? 'Отырғызу' : s.$2)),

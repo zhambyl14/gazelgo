@@ -159,12 +159,17 @@ class _ExecutorShellState extends ConsumerState<ExecutorShell> {
       }
       final ep = await Repo.myExecutorProfile();
       if (ep == null) return;
+      // Ұмай жүргізушісі (әйел, көлігі такси) әдеттегі такси заказдарымен
+      // қатар Ұмай заказдарын да көреді.
+      final types = (ep.isUmay && ep.vehicleType == VehicleType.taxi)
+          ? [VehicleType.taxi.db, VehicleType.umay.db]
+          : [ep.vehicleType.db];
       final rows = await Repo.c
           .from('orders')
           .select('id')
           .eq('status', 'searching')
           .eq('type', 'bidding')
-          .eq('vehicle_type', ep.vehicleType.db)
+          .inFilter('vehicle_type', types)
           .order('created_at', ascending: false)
           .limit(10);
       final ids = (rows as List).map((m) => m['id'] as String).toList();

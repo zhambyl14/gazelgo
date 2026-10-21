@@ -231,7 +231,7 @@ class WaitingTimerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final since = order.arrivedAt;
-    final isTaxi = order.vehicleType == VehicleType.taxi;
+    final isTaxi = order.vehicleType.isPassenger;
     return _Ticker(
       builder: (context, now) {
         final waited = since == null ? null : now.difference(since);

@@ -206,7 +206,11 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_nearbyIcon(p.kind), size: 15, color: active ? Gz.onBrand : Gz.ink),
+                      Icon(
+                        _nearbyIcon(p.kind),
+                        size: 15,
+                        color: active ? Gz.onBrand : Gz.ink,
+                      ),
                       const SizedBox(width: 6),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 190),
@@ -280,7 +284,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
         children: [
           FlutterMap(
             mapController: _map,
-            options: MapOptions(
+            options: gzMapOptions(
               initialCenter: _center,
               initialZoom: widget.initialZoom,
               onPositionChanged: (camera, hasGesture) {
@@ -375,11 +379,7 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 14,
-                              color: Gz.blue,
-                            ),
+                            Icon(Icons.info_outline, size: 14, color: Gz.blue),
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(

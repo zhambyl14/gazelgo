@@ -217,11 +217,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
         Positioned.fill(
           child: FlutterMap(
             mapController: _map,
-            options: MapOptions(
-              initialCenter: Geo.almaty,
-              initialZoom: 11,
-              backgroundColor: Gz.bg,
-            ),
+            options: gzMapOptions(initialCenter: Geo.almaty, initialZoom: 11),
             children: [
               osmTileLayer(),
               MarkerLayer(

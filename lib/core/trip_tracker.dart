@@ -36,6 +36,11 @@ class TripTracker {
   /// Қай заказ үшін жұмыс істеп тұр (жоқ болса null).
   static String? get orderId => _orderId;
 
+  /// Орындаушының ӨЗ соңғы GPS нүктесі (әр жаңа нүктеде жаңарады) —
+  /// белсенді заказ экраны картада өз орны мен A-ға дейінгі жолды тірі
+  /// көрсету үшін тыңдайды. Ағын тоқтаса — null.
+  static final ValueNotifier<Position?> position = ValueNotifier(null);
+
   /// Белсенді заказ басталды/жалғасып тұр — орын ағынын қосады. Бірдей
   /// заказ үшін қайта шақыру қауіпсіз (ештеңе өзгермейді).
   static Future<void> start(String orderId) async {
@@ -67,6 +72,7 @@ class TripTracker {
     _sub = null;
     _orderId = null;
     _last = null;
+    position.value = null;
     _lastSent = null;
     _lastSentAt = null;
     await s?.cancel();
@@ -114,6 +120,7 @@ class TripTracker {
 
   static void _onPosition(Position p) {
     _last = p;
+    position.value = p;
     _send(p);
   }
 

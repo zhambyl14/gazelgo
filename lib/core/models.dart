@@ -47,7 +47,7 @@ String statusLabel(String s, {VehicleType? vehicleType}) => switch (s) {
   'accepted' => t('Қабылданды · жолда'),
   'arrived' => t('Орындаушы келді'),
   'loading' =>
-    vehicleType == VehicleType.taxi
+    (vehicleType?.isPassenger ?? false)
         ? t('Отырғызу жүріп жатыр')
         : t('Тиеу жүріп жатыр'),
   'in_transit' => t('Тасымалдауда'),
@@ -231,6 +231,10 @@ class ExecutorProfile {
   final List<String> docsUpdateFields;
   final bool docsReviewPending;
   final bool orderPushEnabled;
+
+  /// Әйел жүргізуші (Ұмай такси заказдарын да көреді). Тек модератор қояды;
+  /// 0086 миграциясы қолданылмаса баған жоқ — онда false.
+  final bool isUmay;
   final DateTime? createdAt;
 
   ExecutorProfile.fromMap(Map<String, dynamic> m)
@@ -263,6 +267,7 @@ class ExecutorProfile {
           (m['docs_update_fields'] as List?)?.cast<String>() ?? const [],
       docsReviewPending = m['docs_review_pending'] as bool? ?? false,
       orderPushEnabled = m['order_push_enabled'] as bool? ?? true,
+      isUmay = m['is_umay'] as bool? ?? false,
       createdAt = _dt(m['created_at']);
 
   /// Құжат өрісінің атауы (ағымдағы тілде).

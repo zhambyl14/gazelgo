@@ -110,7 +110,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   /// МАҢЫЗДЫ: «Доставка» ({@link VehicleType.delivery}) такси САНАТЫНДА
   /// болғанымен, ол ЖҮК жеткізу — сол себепті формасы кәдімгі жүк заказы
   /// сияқты (не жеткізу керек + фото). Тек осы `_isTaxi` таксиге тән.
-  bool get _isTaxi => _vehicle == VehicleType.taxi;
+  bool get _isTaxi => _vehicle.isPassenger;
 
   /// Доставка заказы ма — жүк формасы, бірақ жеңіл көлікпен.
   bool get _isDelivery => _vehicle == VehicleType.delivery;
@@ -383,11 +383,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.insights_rounded,
-              size: 16,
-              color: Gz.textSecondary,
-            ),
+            Icon(Icons.insights_rounded, size: 16, color: Gz.textSecondary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -422,10 +418,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           SwitchListTile(
             value: _withRecipient,
             onChanged: (v) => setState(() => _withRecipient = v),
-            secondary: Icon(
-              Icons.person_pin_circle_outlined,
-              color: Gz.violet,
-            ),
+            secondary: Icon(Icons.person_pin_circle_outlined, color: Gz.violet),
             title: Text(t('Жүкті басқа адам қабылдайды'), style: Gz.h3),
             subtitle: Text(
               t(
@@ -549,11 +542,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.schedule_rounded,
-                size: 18,
-                color: Gz.textSecondary,
-              ),
+              Icon(Icons.schedule_rounded, size: 18, color: Gz.textSecondary),
               const SizedBox(width: 7),
               Text(
                 t('Қашан керек?'),
@@ -1015,6 +1004,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         // белгісі де МАҒЫНАСЫЗ (олар ЖҮККЕ қатысты) —
                         // оның орнына тек ЖОЛАУШЫ САНЫ сұралады.
                         if (_isTaxi) ...[
+                          // Ұмай такси: жүргізуші тек әйел адам.
+                          if (_vehicle.isUmay) ...[
+                            GzNotice(
+                              tone: NoticeTone.accent,
+                              icon: Icons.favorite_rounded,
+                              message: t(
+                                'Жүргізуші — әйел адам. Әйелдер мен балаларға арналған.',
+                              ),
+                              dense: true,
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           Text(
                             t('Жолаушы саны'),
                             style: const TextStyle(
@@ -1264,10 +1265,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(
-                                color: Gz.ink,
-                                width: 1.6,
-                              ),
+                              borderSide: BorderSide(color: Gz.ink, width: 1.6),
                             ),
                           ),
                         ),
@@ -1432,10 +1430,7 @@ class _EditableAddr extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Gz.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Gz.textSecondary),
                   ),
                   Text(
                     value,

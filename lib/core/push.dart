@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart'
 
 import 'firebase_options.dart';
 import 'notify.dart';
+import 'order_alert.dart';
 import 'repo.dart';
 import 'web_notify.dart';
 
@@ -321,6 +322,9 @@ class Push {
     final title = n?.title ?? m.data['title'] as String?;
     final body = n?.body ?? m.data['body'] as String? ?? '';
     if (title == null || title.isEmpty) return;
+    // Лента экранда тұрса, жаңа заказды ол өзі көрсетеді (дыбыс, жарқыл) —
+    // хабарламаны қайта шығарсақ, дыбыс екі рет естілер еді.
+    if (m.data['type'] == 'new_order' && OrderAlert.feedVisible) return;
 
     if (kIsWeb) {
       showWebNotification(title, body);

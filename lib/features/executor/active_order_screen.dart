@@ -10,6 +10,7 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../core/trip_tracker.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/nav_apps.dart';
 import '../../shared/order_live.dart';
@@ -58,11 +59,18 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   /// Жақындық шегі (км): нақты нүктеде емес, жақын болса жеткілікті.
   static const _proximityKm = 1.5;
 
+  /// Тірі трекер ([TripTracker.position]) әлі нүкте бермесе — бір рет
+  /// тыныш алынған орын (картада өз орны мен A-ға дейінгі жол үшін).
+  Position? _quietPos;
+
   @override
   void initState() {
     super.initState();
     Repo.orderChatAvailable().then((v) {
       if (mounted) setState(() => _chatAvailable = v);
+    });
+    Geo.quietPosition().then((p) {
+      if (mounted && p != null) setState(() => _quietPos = p);
     });
   }
 
@@ -387,15 +395,33 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                RouteMap(
-                  from: LatLng(o.fromLat, o.fromLng),
-                  to: LatLng(o.toLat, o.toLng),
-                  stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
-                  height: 180,
-                  fromLabel: o.fromDisplay,
-                  toLabel: o.toDisplay,
-                  stopLabels: o.stops.map((s) => s.display).toList(),
-                  distanceKm: o.distanceKm,
+                // A-ға келе жатқанда — өз орны (тірі) мен A-ға дейінгі сұр
+                // жол. OSRM-ді әр GPS нүктесінде сұрамайды (RouteMap өзі
+                // сирек сұрайды, арада жолды кеседі).
+                ValueListenableBuilder<Position?>(
+                  valueListenable: TripTracker.position,
+                  builder: (context, live, _) {
+                    final me = o.status == 'accepted'
+                        ? (live ?? _quietPos)
+                        : null;
+                    return RouteMap(
+                      from: LatLng(o.fromLat, o.fromLng),
+                      to: LatLng(o.toLat, o.toLng),
+                      stops: o.stops.map((s) => LatLng(s.lat, s.lng)).toList(),
+                      height: 180,
+                      fromLabel: o.fromDisplay,
+                      toLabel: o.toDisplay,
+                      stopLabels: o.stops.map((s) => s.display).toList(),
+                      distanceKm: o.distanceKm,
+                      approachFrom: me == null
+                          ? null
+                          : LatLng(me.latitude, me.longitude),
+                      approachVehicle: o.vehicleType,
+                      approachHeading: me == null || me.heading < 0
+                          ? null
+                          : me.heading,
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 // Маршрут тізімі: әр нүктенің жанында «Жол салу» батырмасы —
@@ -516,22 +542,24 @@ class _TripHero extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
+              // Ұмай заказы — көлік чипінің өзі қызғылт (атау екі рет
+              // жазылмайды).
               _HeroChip(
-                icon: o.vehicleType == VehicleType.taxi
+                icon: o.vehicleType.isUmay
+                    ? Icons.favorite_rounded
+                    : o.vehicleType.isPassenger
                     ? Icons.local_taxi_rounded
                     : Icons.local_shipping_rounded,
                 text: o.vehicleType.label,
                 strong: true,
+                color: o.vehicleType.isUmay ? kUmayPinkLight : null,
               ),
               for (final m in _tripMeta(o)) _HeroChip(icon: m.$1, text: m.$2),
             ],
           ),
           if (o.status != 'cancelled') ...[
             const SizedBox(height: 18),
-            _TripStepper(
-              status: o.status,
-              taxi: o.vehicleType == VehicleType.taxi,
-            ),
+            _TripStepper(status: o.status, taxi: o.vehicleType.isPassenger),
           ],
         ],
       ),
@@ -564,11 +592,7 @@ class _TripPriceCard extends StatelessWidget {
               color: Gz.yellow.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.payments_rounded,
-              color: Gz.yellowDeep,
-              size: 22,
-            ),
+            child: Icon(Icons.payments_rounded, color: Gz.yellowDeep, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -612,10 +636,14 @@ class _HeroChip extends StatelessWidget {
   final IconData icon;
   final String text;
   final bool strong;
+
+  /// Берілсе — белгі осы түспен (мыс. Ұмай үшін қызғылт).
+  final Color? color;
   const _HeroChip({
     required this.icon,
     required this.text,
     this.strong = false,
+    this.color,
   });
 
   @override
@@ -623,12 +651,16 @@ class _HeroChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
       decoration: BoxDecoration(
-        color: strong
+        color: color != null
+            ? color!.withValues(alpha: 0.16)
+            : strong
             ? Gz.yellow.withValues(alpha: 0.16)
             : Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(Gz.rLg),
         border: Border.all(
-          color: strong
+          color: color != null
+              ? color!.withValues(alpha: 0.4)
+              : strong
               ? Gz.yellow.withValues(alpha: 0.35)
               : Colors.white.withValues(alpha: 0.12),
         ),
@@ -636,7 +668,11 @@ class _HeroChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: strong ? Gz.yellow : Colors.white70),
+          Icon(
+            icon,
+            size: 14,
+            color: color ?? (strong ? Gz.yellow : Colors.white70),
+          ),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -644,7 +680,7 @@ class _HeroChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: strong ? Gz.yellow : Colors.white70,
+                color: color ?? (strong ? Gz.yellow : Colors.white70),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -792,10 +828,7 @@ class _TripStepperState extends State<_TripStepper>
       return Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          color: Gz.green,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: Gz.green, shape: BoxShape.circle),
         child: const Icon(Icons.check_rounded, size: 16, color: Colors.white),
       );
     }
@@ -855,7 +888,7 @@ class _NextStepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final taxi = o.vehicleType == VehicleType.taxi;
+    final taxi = o.vehicleType.isPassenger;
     final reason = o.cancelReason?.trim() ?? '';
     final (Color color, IconData icon, String title, String body)?
     spec = switch (o.status) {
@@ -1160,10 +1193,7 @@ class _RouteMark extends StatelessWidget {
         width: 20,
         height: 20,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Gz.violet,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: Gz.violet, shape: BoxShape.circle),
         child: Text(
           '$number',
           style: const TextStyle(
@@ -1272,7 +1302,7 @@ class ExecOrderNotes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final taxi = o.vehicleType == VehicleType.taxi;
+    final taxi = o.vehicleType.isPassenger;
     final blocks = <Widget>[
       if (o.cargoDesc.trim().isNotEmpty)
         _NoteBlock(
@@ -1350,10 +1380,7 @@ class _NoteBlock extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 7),
-        Text(
-          text,
-          style: TextStyle(fontSize: 15, height: 1.45, color: Gz.ink),
-        ),
+        Text(text, style: TextStyle(fontSize: 15, height: 1.45, color: Gz.ink)),
       ],
     );
   }
@@ -1512,10 +1539,7 @@ class _RecipientCard extends StatelessWidget {
                   color: Gz.tint(Gz.violet, 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.person_pin_circle_rounded,
-                  color: Gz.violet,
-                ),
+                child: Icon(Icons.person_pin_circle_rounded, color: Gz.violet),
               ),
               const SizedBox(width: 12),
               Expanded(

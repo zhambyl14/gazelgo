@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' hide Path;
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
+import '../../core/order_alert.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -127,6 +128,19 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   bool _mapView = false;
   Set<String> _hidden = {};
 
+  /// ДЫБЫС үшін: осы экран ашылғалы көрген БАРЛЫҚ заказ (қойынды сүзгісіне
+  /// қарамай). null — алғашқы жүктелу әлі келмеді (онда дыбыс жоқ).
+  Set<String>? _seenAll;
+
+  /// Жаңа келген, әлі ашылмаған заказдар — карточкасы жарқырап тұрады.
+  final Set<String> _glow = {};
+  final Map<String, Timer> _glowTimers = {};
+
+  /// Тізім төмен айналдырылып тұрса — жоғарыдағы «Жаңа заказ» жолағы.
+  final _scroll = ScrollController();
+  int _bannerCount = 0;
+  Timer? _bannerTimer;
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +149,78 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       if (mounted) setState(() => _pos = p);
     });
     _restoreView();
+    OrderAlert.load();
+    OrderAlert.feedProbe = _visible;
+  }
+
+  @override
+  void dispose() {
+    if (OrderAlert.feedProbe == _visible) OrderAlert.feedProbe = null;
+    for (final t in _glowTimers.values) {
+      t.cancel();
+    }
+    _bannerTimer?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Лента ШЫНЫМЕН көрініп тұр ма: қосымша алдыңғы планда, үстінде басқа
+  /// бет (заказ, чат) ашылмаған.
+  bool _visible() =>
+      mounted &&
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+      (ModalRoute.of(context)?.isCurrent ?? true);
+
+  /// Лентаның әр жаңа снапшоты. Алғашқы жүктелуде, қойынды ауысқанда,
+  /// жасырылған заказда дыбыс ОЙНАМАЙДЫ — тек шынымен жаңа заказ келгенде.
+  void _onFeed(List<Order>? list) {
+    if (list == null) return;
+    final ids = {
+      for (final o in list)
+        if (!_hidden.contains(o.id)) o.id,
+    };
+    final seen = _seenAll;
+    if (seen == null) {
+      _seenAll = ids;
+      return;
+    }
+    final fresh = ids.difference(seen);
+    seen.addAll(ids);
+    // Ұзақ жұмыста жиын шексіз өспесін.
+    if (seen.length > 600) _seenAll = ids;
+    if (fresh.isEmpty) return;
+    setState(() {
+      _glow.addAll(fresh);
+      if (_scroll.hasClients && _scroll.offset > 120) {
+        _bannerCount += fresh.length;
+      }
+    });
+    for (final id in fresh) {
+      _glowTimers[id]?.cancel();
+      _glowTimers[id] = Timer(_freshWindow, () {
+        _glowTimers.remove(id);
+        if (mounted) setState(() => _glow.remove(id));
+      });
+    }
+    if (_bannerCount > 0) {
+      _bannerTimer?.cancel();
+      _bannerTimer = Timer(const Duration(seconds: 10), () {
+        if (mounted) setState(() => _bannerCount = 0);
+      });
+    }
+    if (_visible()) OrderAlert.play();
+  }
+
+  void _scrollToTop() {
+    _bannerTimer?.cancel();
+    setState(() => _bannerCount = 0);
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   /// Соңғы таңдалған қойынды мен рет (Prefs-тегі «scope» ұяшығы —
@@ -201,6 +287,10 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(executorStatsStreamProvider);
     final feedAsync = ref.watch(executorFeedStreamProvider);
+    ref.listen<AsyncValue<List<Order>>>(
+      executorFeedStreamProvider,
+      (_, next) => _onFeed(next.value),
+    );
 
     return statsAsync.when(
       loading: () => const _FeedSkeleton(),
@@ -358,6 +448,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
           color: Gz.ink,
           onRefresh: _manualRefresh,
           child: ListView.separated(
+            controller: _scroll,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             // 0-элемент — бонус жолағы (0059). Бағдарлама өшірулі болса ол
@@ -375,11 +466,14 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                 index: i - 1,
                 animate: fresh.contains(o.id) && (!firstLoad || i - 1 < 6),
                 played: _introduced,
-                child: _FeedCard(
-                  order: o,
-                  myPos: _pos,
-                  onTap: () => _openOrder(o),
-                  onLongPress: () => _hide(o),
+                child: _NewGlow(
+                  active: _glow.contains(o.id),
+                  child: _FeedCard(
+                    order: o,
+                    myPos: _pos,
+                    onTap: () => _openOrder(o),
+                    onLongPress: () => _hide(o),
+                  ),
                 ),
               );
             },
@@ -388,7 +482,24 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
         return Column(
           children: [
             tabs,
-            Expanded(child: list),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: list),
+                  Positioned(
+                    top: 10,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _NewOrdersBanner(
+                        count: _bannerCount,
+                        onTap: _scrollToTop,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         );
       },
@@ -419,6 +530,8 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// ашылмайды, оған не істеу керегі айтылады (тариф сатып алу / күту /
   /// қайта толтыру). Құқығы болса — толық детальдар парағы ашылады.
   void _openOrder(Order o) {
+    // Ашылған заказ енді «жаңа» болып жарқырамайды.
+    if (_glow.remove(o.id)) setState(() {});
     final gate = _actionGate(o);
     if (gate != null) {
       _showGate(gate);
@@ -429,6 +542,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       builder: (_) => _OrderSheet(
         order: o,
         myPos: _pos,
+        myVehicle: ref.read(myExecutorProfileProvider).value?.vehicleType,
         // Клиент бағасы жоқ заказда «Келісу» мүмкін емес — тек өз баға.
         onAgree: o.clientPrice == null
             ? null
@@ -895,6 +1009,94 @@ class _FeedEmpty extends StatelessWidget {
 /// Әр заказ үшін БІР-АҚ рет ойналады ([played] жиыны): тізімді айналдырып
 /// қайта оралғанда немесе стрим жаңарғанда карточкалар қайта секірмейді.
 /// Алғашқы жүктелуде алғашқы бірнеше карточка сатылап (stagger) кіреді.
+/// Жаңа ғана келген заказдың карточкасы — брендтік сары жиек пен жұмсақ
+/// жарқыл. Бір минуттан кейін не заказды ашқанда біртіндеп сөнеді. «ЖАҢА»
+/// жазуы карточканың өзінде ([_Freshness]) — мұнда қайталанбайды.
+class _NewGlow extends StatelessWidget {
+  final bool active;
+  final Widget child;
+  const _NewGlow({required this.active, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_cardRadius),
+        boxShadow: active ? Gz.glow(Gz.yellow, alpha: 0.5, blur: 16) : null,
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_cardRadius),
+        border: Border.all(
+          color: active ? Gz.yellow : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Тізім төмен айналдырылып тұрғанда жоғарыда шығатын «Жаңа заказ шықты»
+/// жолағы — түртсе, тізім басына оралады. [count] = 0 болса жасырын.
+class _NewOrdersBanner extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+  const _NewOrdersBanner({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final show = count > 0;
+    return IgnorePointer(
+      ignoring: !show,
+      child: AnimatedSlide(
+        offset: show ? Offset.zero : const Offset(0, -1.6),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutBack,
+        child: AnimatedOpacity(
+          opacity: show ? 1 : 0,
+          duration: const Duration(milliseconds: 220),
+          child: Material(
+            color: Gz.inkDeep,
+            shape: const StadiumBorder(),
+            elevation: 6,
+            shadowColor: Gz.shadowWide,
+            child: InkWell(
+              customBorder: const StadiumBorder(),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.arrow_upward_rounded,
+                      size: 17,
+                      color: Gz.yellow,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      count <= 1
+                          ? t('Жаңа заказ шықты')
+                          : '${t('Жаңа заказдар')}: $count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Entrance extends StatefulWidget {
   final String id;
   final int index;
@@ -987,7 +1189,7 @@ class _FeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final o = order;
     final toPickup = _pickupKm(myPos, o);
-    final isTaxi = o.vehicleType == VehicleType.taxi;
+    final isTaxi = o.vehicleType.isPassenger;
     // Баға клиенттікі ме — орындаушы «келісемін» десе дәл осы сома.
     final isClientPrice =
         o.clientPrice != null && o.displayPrice == o.clientPrice;
@@ -1075,7 +1277,9 @@ class _FeedCard extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                               height: 1.25,
                               letterSpacing: -0.1,
-                              color: Gz.ink,
+                              // Ұмай заказы — атауы қызғылт: жеке чипсіз де
+                              // бірден көзге түседі (атау қайталанбайды).
+                              color: o.vehicleType.isUmay ? kUmayPink : Gz.ink,
                             ),
                           ),
                           const SizedBox(height: 3),
@@ -1715,20 +1919,26 @@ class _OrderSheet extends StatelessWidget {
   final VoidCallback onCounter;
 
   /// Орындаушының ағымдағы орны — алу нүктесіне дейінгі қашықтықты
-  /// көрсету үшін (GPS рұқсаты жоқ болса null).
+  /// көрсету үшін (GPS рұқсаты жоқ болса null). Картада орындаушы мен
+  /// одан A-ға дейінгі СҰР жол да осыдан салынады.
   final Position? myPos;
+
+  /// Орындаушының өз көлік түрі — картадағы белгісі үшін.
+  final VehicleType? myVehicle;
 
   const _OrderSheet({
     required this.order,
     required this.onAgree,
     required this.onCounter,
     this.myPos,
+    this.myVehicle,
   });
 
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final isTaxi = o.vehicleType == VehicleType.taxi;
+    final isTaxi = o.vehicleType.isPassenger;
+    final me = myPos;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.86,
@@ -1770,6 +1980,13 @@ class _OrderSheet extends StatelessWidget {
                       toLabel: o.toDisplay,
                       stopLabels: o.stops.map((s) => s.display).toList(),
                       distanceKm: o.distanceKm > 0 ? o.distanceKm : null,
+                      approachFrom: me == null
+                          ? null
+                          : LatLng(me.latitude, me.longitude),
+                      approachVehicle: myVehicle,
+                      approachHeading: me == null || me.heading < 0
+                          ? null
+                          : me.heading,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1944,11 +2161,7 @@ class _FactsGrid extends StatelessWidget {
         ),
       if (created != null)
         _FactTile(
-          lead: Icon(
-            Icons.schedule_rounded,
-            size: 18,
-            color: Gz.textSecondary,
-          ),
+          lead: Icon(Icons.schedule_rounded, size: 18, color: Gz.textSecondary),
           color: Gz.textSecondary,
           label: t('Жарияланды'),
           value: ago.isEmpty
@@ -2266,10 +2479,9 @@ class _FeedMap extends StatelessWidget {
     final points = [for (final o in orders) LatLng(o.fromLat, o.fromLng), ?me];
     final single = points.length < 2;
     return FlutterMap(
-      options: MapOptions(
+      options: gzMapOptions(
         initialCenter: points.isEmpty ? Geo.almaty : points.first,
         initialZoom: 13,
-        backgroundColor: Gz.bg,
         initialCameraFit: single
             ? null
             : CameraFit.bounds(

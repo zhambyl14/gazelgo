@@ -612,7 +612,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     // Такси өшулі болса — тізімде де болмайды (0046).
                     for (final v
                         in (widget.taxiOn
-                            ? VehicleType.values
+                            ? VehicleType.values.withoutUmay()
                             : kCargoVehicleTypes))
                       _chip(
                         v.label,
@@ -796,10 +796,7 @@ class _MineTab extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
         ),
         const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: TextStyle(color: Gz.textSecondary, fontSize: 12),
-        ),
+        Text(subtitle, style: TextStyle(color: Gz.textSecondary, fontSize: 12)),
       ],
     ),
   );

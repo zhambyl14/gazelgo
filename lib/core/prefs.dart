@@ -58,6 +58,19 @@ class Prefs {
     await p.setBool(_kOrderNotify, v);
   }
 
+  static const _kOrderSound = 'executor_order_sound';
+
+  /// Лентада жаңа заказ шыққанда дыбыс ойнасын ба? (әдепкі — қосулы)
+  static Future<bool> orderSound() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_kOrderSound) ?? true;
+  }
+
+  static Future<void> setOrderSound(bool v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kOrderSound, v);
+  }
+
   static const _kLanguage = 'app_language';
 
   /// Қосымша тілі: 'kk' (әдепкі) не 'ru'.

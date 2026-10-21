@@ -59,7 +59,8 @@ class Gz {
 
   // ---- Беттер ----
   /// Экран фоны — суық-бейтарап, сарымен әдемі үйлеседі.
-  static Color get bg => dark ? const Color(0xFF0B1018) : const Color(0xFFF4F7FC);
+  static Color get bg =>
+      dark ? const Color(0xFF0B1018) : const Color(0xFFF4F7FC);
 
   /// Карта, панель, диалог беті.
   static Color get surface =>
@@ -81,7 +82,8 @@ class Gz {
   // Қара режимде сәл ашығырақ — қою фонда да оқылуы үшін.
   static Color get green =>
       dark ? const Color(0xFF34D17A) : const Color(0xFF0EA65B);
-  static Color get red => dark ? const Color(0xFFFF6B7E) : const Color(0xFFE4344A);
+  static Color get red =>
+      dark ? const Color(0xFFFF6B7E) : const Color(0xFFE4344A);
   static Color get blue =>
       dark ? const Color(0xFF6AA6FF) : const Color(0xFF2F7BF6);
   static Color get violet =>
@@ -136,6 +138,23 @@ class Gz {
   static const pinRed = Color(0xFFE4344A);
   static const pinBlue = Color(0xFF2F7BF6);
   static const pinViolet = Color(0xFF8B5CF6);
+
+  /// Ұмай такси (0086) — қызғылт белгі түсі (чип, атау) және ашық сыңары.
+  static const umayPink = Color(0xFFD6336C);
+  static const umayPinkLight = Color(0xFFFF8AB8);
+
+  /// Орындаушыдан A нүктесіне дейінгі СҰР жол (картада).
+  static const approachGrey = Color(0xFF8D96A5);
+
+  /// Төбеден көрінетін көлік белгісінің бөлшектері (екі режимде де бірдей):
+  /// Ұмай көлігінің корпусы, әйнек, фара, артқы шам, шынжыр табан, көлеңке.
+  static const vehicleUmayBody = Color(0xFFF472B6);
+  static const vehicleGlass = Color(0xFF1F2A3D);
+  static const vehicleGlassHi = Color(0xFF3C4B66);
+  static const vehicleHeadlight = Color(0xFFFFF6C2);
+  static const vehicleTaillight = Color(0xFFE4344A);
+  static const vehicleTracks = Color(0xFF2B3445);
+  static const vehicleShadow = Color(0x55101828);
 
   /// Көлеңке реңктері (карта белгілері, қалқыма элементтер).
   static const shadowTight = Color(0x38101828);
@@ -341,11 +360,8 @@ class Gz {
   static const body = TextStyle(fontSize: 15, height: 1.5);
 
   /// Қосымша түсіндірме мәтін.
-  static TextStyle get bodyMuted => TextStyle(
-    fontSize: 14,
-    height: 1.5,
-    color: textSecondary,
-  );
+  static TextStyle get bodyMuted =>
+      TextStyle(fontSize: 14, height: 1.5, color: textSecondary);
 
   /// Ұсақ белгі (күн, сан, статус астындағы жазу).
   static TextStyle get caption => TextStyle(
@@ -464,8 +480,9 @@ class Gz {
         backgroundColor: surface,
         foregroundColor: ink,
         // Күй жолағы (сағат, батарея) фонға қарама-қарсы реңкте.
-        systemOverlayStyle:
-            dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
@@ -610,10 +627,7 @@ class Gz {
           borderRadius: BorderRadius.circular(rMd),
           borderSide: BorderSide(color: red, width: 2),
         ),
-        hintStyle: TextStyle(
-          color: textTertiary,
-          fontWeight: FontWeight.w400,
-        ),
+        hintStyle: TextStyle(color: textTertiary, fontWeight: FontWeight.w400),
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
         errorStyle: TextStyle(
@@ -740,7 +754,9 @@ class Gz {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? onBrand : textSecondary,
+            color: states.contains(WidgetState.selected)
+                ? onBrand
+                : textSecondary,
             size: 24,
           ),
         ),

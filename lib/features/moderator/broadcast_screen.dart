@@ -131,7 +131,10 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
             ),
             items: [
               DropdownMenuItem(value: null, child: Text(t('Барлық көлік'))),
-              for (final v in [...kCargoVehicleTypes, ...kTaxiVehicleTypes])
+              for (final v in [
+                ...kCargoVehicleTypes,
+                ...kTaxiVehicleTypes,
+              ].withoutUmay())
                 DropdownMenuItem(value: v, child: Text(v.label)),
             ],
             onChanged: (v) => setState(() => _vehicle = v),

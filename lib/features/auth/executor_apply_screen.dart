@@ -540,10 +540,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 if (hint != null)
                   Text(
                     t(hint),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Gz.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                   ),
                 Text(
                   doc.isSet ? t('Жүктелді ✓') : t('Фото қажет'),
@@ -800,10 +797,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                             ),
                           ),
                         ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: Gz.textSecondary,
-                        ),
+                        Icon(Icons.chevron_right, color: Gz.textSecondary),
                       ],
                     ),
                   ),
@@ -846,10 +840,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 const SizedBox(height: 10),
                 // «Такси» түрі тізімге модератор сол бөлімді ҚОСҚАНДА ғана
                 // қосылады (0046) — әйтпесе таксист заказ көрмей отыратын.
+                // «Ұмай такси» мұнда ЖОҚ: әйел жүргізушіге оны модератор
+                // карточкасынан береді, көлігі әдеттегідей «Такси» болады.
                 VehicleTypeCarousel(
                   selected: _vehicleType,
                   types: (ref.watch(taxiEnabledProvider).value ?? false)
-                      ? VehicleType.values
+                      ? VehicleType.values.withoutUmay()
                       : kCargoVehicleTypes,
                   onChanged: (v) {
                     setState(() => _vehicleType = v);

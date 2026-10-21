@@ -257,7 +257,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             VehicleTypeCarousel(
               selected: _vehicle,
               types: (ref.watch(taxiEnabledProvider).value ?? false)
-                  ? VehicleType.values
+                  ? VehicleType.values.withoutUmay()
                   : kCargoVehicleTypes,
               onChanged: (v) => setState(() => _vehicle = v),
             ),

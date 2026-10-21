@@ -11,6 +11,7 @@ import 'i18n/ru_moderator.dart';
 import 'i18n/ru_news.dart';
 import 'i18n/ru_redesign.dart';
 import 'i18n/ru_shared.dart';
+import 'i18n/ru_umay.dart';
 import 'prefs.dart';
 import 'repo.dart';
 
@@ -65,6 +66,8 @@ final Map<String, String> _kkToRu = {
   ...ruNews,
   // Бірыңғай дизайн және жаңа мүмкіндіктер (2026-10).
   ...ruRedesign,
+  // Ұмай такси (0086) — тек әйел жүргізушілерге арналған такси түрі.
+  ...ruUmay,
   // Екі тармақты біріктіру кезінде қосылған мәтіндер — ЕҢ СОҢҒЫ.
   ...ruMerge,
 };

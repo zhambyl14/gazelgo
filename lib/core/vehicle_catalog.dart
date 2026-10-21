@@ -14,11 +14,13 @@
 library;
 
 import 'dart:convert';
+import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'lang.dart';
+import 'theme.dart';
 
 // ---------------------------------------------------------------------------
 // VehicleType — көлік түрінің КОДЫ
@@ -35,6 +37,9 @@ class VehicleType {
   // істейтін әдепкі тізім). Кодта аты-жөнімен қолданылады. ----
   static const taxi = VehicleType('taxi');
   static const delivery = VehicleType('delivery');
+
+  /// «Ұмай такси» — тек әйел жүргізушілер орындайтын жолаушы тасымалы.
+  static const umay = VehicleType('umay');
   static const gazelle = VehicleType('gazelle');
   static const manipulator = VehicleType('manipulator');
   static const avtovyshka = VehicleType('avtovyshka');
@@ -68,9 +73,25 @@ class VehicleType {
   String toString() => 'VehicleType($code)';
 }
 
+/// Ұмай такси белгісінің түсі (ашық фонда) және қараңғы фонға арналған
+/// ашығырақ нұсқасы — чиптер мен белгілер үшін.
+const Color kUmayPink = Gz.umayPink;
+const Color kUmayPinkLight = Gz.umayPinkLight;
+
 /// «Такси» САНАТЫНЫҢ түрлері (такси + доставка) — модератор «Такси»
 /// бөлімін қоспайынша клиентке де, орындаушыға да көрінбейді.
 List<VehicleType> get kTaxiVehicleTypes => VehicleCatalog.taxiTypes;
+
+/// Орындаушы өз көлігін таңдайтын тізімдерден Ұмайды алып тастау: Ұмай —
+/// көлік түрі емес, әйел жүргізушіге модератор беретін қосымша рұқсат
+/// (көлігі әрқашан 'taxi' болып қалады). Басқа бөлімдерде (хабарландыру,
+/// хабарландыру тақтасы) де мағынасыз.
+extension VehicleTypeListX on List<VehicleType> {
+  List<VehicleType> withoutUmay() => [
+    for (final v in this)
+      if (!v.isUmay) v,
+  ];
+}
 
 /// «Спецтехника» санаты — такси санатына кірмейтіндердің бәрі әрі такси
 /// өшулі кездегі әдепкі тізім.
@@ -196,6 +217,21 @@ const List<VehicleSpec> kBuiltInVehicleSpecs = [
     emoji: '🚕',
     sortOrder: 10,
     isTaxi: true,
+    builtIn: true,
+  ),
+  // Ұмай такси: сервердегі 0086 жолымен бірдей. Әдепкіде ӨШІК — каталог
+  // жүктелмей тұрғанда немесе миграция қолданылмаған кезде клиентке
+  // көрінбейді; модератор қосқан соң серверден active=true келеді.
+  VehicleSpec(
+    code: 'umay',
+    labelKk: 'Ұмай такси',
+    labelRu: 'Умай такси',
+    descKk: 'Тек әйел жүргізушілер · әйелдер мен балаларға',
+    descRu: 'Только женщины-водители · для женщин и детей',
+    emoji: '🌸',
+    sortOrder: 15,
+    isTaxi: true,
+    active: false,
     builtIn: true,
   ),
   VehicleSpec(
@@ -481,4 +517,12 @@ extension VehicleTypeX on VehicleType {
 
   /// «Такси» санатына жата ма.
   bool get isTaxiCategory => spec.isTaxi;
+
+  /// Жолаушы тасымалы ма: такси немесе Ұмай такси. Доставка такси санатында
+  /// тұрса да жүк тасиды, сондықтан бұған КІРМЕЙДІ.
+  bool get isPassenger =>
+      code == VehicleType.taxi.code || code == VehicleType.umay.code;
+
+  /// Тек әйел жүргізушілерге арналған Ұмай такси ма.
+  bool get isUmay => code == VehicleType.umay.code;
 }

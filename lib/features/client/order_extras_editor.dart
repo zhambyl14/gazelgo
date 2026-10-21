@@ -308,7 +308,7 @@ class _EditOrderSheetState extends State<_EditOrderSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isTaxi = widget.order.vehicleType == VehicleType.taxi;
+    final isTaxi = widget.order.vehicleType.isPassenger;
     return GzSheetBody(
       title: t('Заказды өңдеу'),
       subtitle: t('Өзгеріс орындаушыларға бірден көрінеді.'),
