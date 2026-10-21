@@ -63,19 +63,21 @@ Deno.serve(async (req: Request) => {
 
   const { data: row } = await admin
     .from("telegram_verifications")
-    .select("token, verified")
+    .select("*")
     .eq("token", token)
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
   if (!row) return json({ error: "EXPIRED" }, 410);
-  if (row.verified) return json({ ok: true, verified: true }, 200);
+  // Тіл (0085): Mini App беті қосымшаның тілінде көрінсін.
+  const lang = row.lang === "ru" ? "ru" : row.lang === "kk" ? "kk" : null;
+  if (row.verified) return json({ ok: true, verified: true, lang }, 200);
 
   if (body.action === "link") {
     await admin
       .from("telegram_verifications")
       .update({ telegram_chat_id: userId })
       .eq("token", token);
-    return json({ ok: true }, 200);
+    return json({ ok: true, lang }, 200);
   }
 
   if (body.action === "verify") {

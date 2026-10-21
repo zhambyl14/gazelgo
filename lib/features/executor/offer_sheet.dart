@@ -152,10 +152,13 @@ class _OfferSheetState extends State<_OfferSheet> {
               runSpacing: 6,
               children: [
                 for (final p in _phrases)
-                  ChoiceChip(
-                    label: Text(t(p)),
+                  GzPickChip(
+                    label: t(p),
                     selected: _msg.text == t(p),
-                    onSelected: (_) => setState(() => _msg.text = t(p)),
+                    // Қайта басса — таңдау алынады (хат міндетті емес).
+                    onTap: () => setState(
+                      () => _msg.text = _msg.text == t(p) ? '' : t(p),
+                    ),
                   ),
               ],
             ),

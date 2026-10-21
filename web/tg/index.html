@@ -83,7 +83,7 @@
           body: "Төмендегі түймені басып, ашылған терезеде «Бөлісу»-ді таңдаңыз.",
           button: "📱 Нөмірімді бөлісу",
           doneTitle: "Нөміріңіз расталды",
-          doneBody: "Tasu қосымшасына оралыңыз — тіркелу жалғасады.",
+          doneBody: "Tasu қосымшасына оралыңыз — бірден кіресіз.",
           oldTitle: "Telegram ескі нұсқада",
           oldBody: "Чаттағы пернетақта орнындағы «📱 Нөмірімді бөлісу» түймесін басыңыз немесе Telegram-ды жаңартыңыз."
         },
@@ -92,22 +92,35 @@
           body: "Нажмите кнопку ниже и выберите «Поделиться» в открывшемся окне.",
           button: "📱 Поделиться номером",
           doneTitle: "Номер подтверждён",
-          doneBody: "Вернитесь в приложение Tasu — регистрация продолжится.",
+          doneBody: "Вернитесь в приложение Tasu — вход выполнится сразу.",
           oldTitle: "Старая версия Telegram",
-          oldBody: "Нажмите кнопку «📱 Нөмірімді бөлісу» на клавиатуре чата или обновите Telegram."
+          oldBody: "Нажмите кнопку «📱 Поделиться номером» на клавиатуре чата или обновите Telegram."
         }
       };
 
       var tg = window.Telegram && window.Telegram.WebApp;
+      // Тіл: 1) бот түймесіндегі `?lang=` (қосымшаның тілі), 2) сервер
+      // `link` жауабындағы тіл (START-сыз ағын), 3) Telegram-ның өз тілі.
       var lang = "kk";
-      try {
-        var code = tg.initDataUnsafe.user.language_code || "";
-        if (code.indexOf("ru") === 0) lang = "ru";
-      } catch (e) { /* әдепкі — қазақша */ }
+      var fromUrl = (location.search.match(/[?&]lang=(kk|ru)\b/) || [])[1];
+      if (fromUrl) {
+        lang = fromUrl;
+      } else {
+        try {
+          var code = tg.initDataUnsafe.user.language_code || "";
+          if (code.indexOf("ru") === 0) lang = "ru";
+        } catch (e) { /* әдепкі — қазақша */ }
+      }
 
-      document.querySelectorAll("[data-t]").forEach(function (el) {
-        el.textContent = T[lang][el.getAttribute("data-t")];
-      });
+      function applyLang(l) {
+        if (l !== "kk" && l !== "ru") return;
+        lang = l;
+        document.documentElement.lang = l;
+        document.querySelectorAll("[data-t]").forEach(function (el) {
+          el.textContent = T[lang][el.getAttribute("data-t")];
+        });
+      }
+      applyLang(lang);
 
       function show(id) {
         ["ask", "done", "old"].forEach(function (s) {
@@ -145,7 +158,14 @@
 
       // Токенді осы Telegram аккаунтына алдын ала байлаймыз: «Бөлісу»-ден
       // кейін ботқа келетін contact хаты да сол токенді таба алады.
-      var linked = token ? post({ action: "link" }) : Promise.resolve();
+      var linked = token
+        ? post({ action: "link" }).then(function (r) {
+            // Сервер токенмен бірге сақталған тілді қайтарады (0085).
+            return r && r.json ? r.json().then(function (j) {
+              if (!fromUrl && j && j.lang) applyLang(j.lang);
+            }, function () {}) : null;
+          })
+        : Promise.resolve();
 
       var busy = false;
       function ask() {

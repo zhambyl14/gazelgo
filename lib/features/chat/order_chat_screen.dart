@@ -242,9 +242,12 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
                       for (final p in _phrases)
                         Padding(
                           padding: const EdgeInsets.only(right: 6),
-                          child: ActionChip(
-                            label: Text(p),
-                            onPressed: _sending ? null : () => _send(p),
+                          child: Center(
+                            child: GzPickChip(
+                              label: p,
+                              icon: Icons.bolt_rounded,
+                              onTap: _sending ? null : () => _send(p),
+                            ),
                           ),
                         ),
                     ],

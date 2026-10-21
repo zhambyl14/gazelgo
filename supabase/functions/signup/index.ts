@@ -1,7 +1,13 @@
 // Tasu · signup edge function
 // Email-растаусыз тіркелу: admin.createUser(email_confirm: true).
 // verify_jwt = false (бұл көпшілікке ашық тіркелу endpoint-і).
-import { createClient } from "jsr:@supabase/supabase-js@2";
+//
+// Екі режим:
+//   • `password` берілсе — бұрынғы ағын (ескі қосымша нұсқалары): аккаунт
+//     құрылады, қосымша өзі құпиясөзбен кіреді.
+//   • `password` ЖОҚ болса — жаңа бір қадамдық «Кіру» (tg-login): құпиясөз
+//     кездейсоқ қойылады да, жауапта бірден сессия (access/refresh) қайтады.
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +31,8 @@ Deno.serve(async (req: Request) => {
     return json({ error: "BAD_JSON" }, 400);
   }
 
-  const password = String(body.password ?? "");
+  const passwordless = body.password == null || body.password === "";
+  const password = passwordless ? randomPassword() : String(body.password);
   const fullName = String(body.full_name ?? "").trim();
   const role = String(body.role ?? "client");
   const tgToken = String(body.tg_token ?? "").trim();
@@ -40,6 +47,7 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
   // Телефон Telegram арқылы РАСТАЛҒАН болуы шарт — нөмір клиенттен емес, осы
@@ -83,19 +91,73 @@ Deno.serve(async (req: Request) => {
     user_metadata: { full_name: fullName, phone, role },
   });
 
-  if (error) {
-    const code = /already/i.test(error.message) ? "EMAIL_TAKEN" : error.message;
-    return json({ error: code }, 400);
+  const taken = !!error && /already/i.test(error.message);
+  if (error && !(taken && passwordless)) {
+    return json({ error: taken ? "EMAIL_TAKEN" : error.message }, 400);
   }
-  try {
-    await admin.from("auth_events").insert({ ip, kind: "signup" });
-  } catch (_) { /* журнал жазылмаса да тіркелу сәтті */ }
+  // Құпиясөзсіз режимде нөмір бұрын тіркелген болып шықса (мыс. екі
+  // құрылғыдан қатар) — қате емес: нөмір Telegram-мен расталған, иесін
+  // сол аккаунтқа кіргіземіз.
+  let session: { access_token: string; refresh_token: string } | null = null;
+  if (passwordless) {
+    try {
+      session = await sessionFor(admin, email);
+    } catch (e) {
+      console.error("SIGNUP_SESSION", e);
+      return json({ error: "SERVER_ERROR" }, 500);
+    }
+  }
+  if (!taken) {
+    try {
+      await admin.from("auth_events").insert({ ip, kind: "signup" });
+    } catch (_) { /* журнал жазылмаса да тіркелу сәтті */ }
+  }
   // Верификация токенін жұмсаймыз — қайта тіркеуге қолданылмасын.
   try {
     await admin.from("telegram_verifications").delete().eq("token", tgToken);
   } catch (_) { /* өшпесе де 15 мин соң өзі ескіреді */ }
-  return json({ ok: true, phone }, 200);
+  return json({
+    ok: true,
+    phone,
+    existed: taken,
+    ...(session
+      ? {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      }
+      : {}),
+  }, 200);
 });
+
+/// Құпиясөзсіз тіркелудегі кездейсоқ құпиясөз (адам оны ешқашан көрмейді —
+/// кіру Telegram арқылы).
+function randomPassword(): string {
+  const b = new Uint8Array(24);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/// Құпиясөзсіз сессия (tg-login-мен бірдей): admin magic-link жасап (хат
+/// ЖІБЕРІЛМЕЙДІ), оның hashed_token-ін бірден растаймыз.
+async function sessionFor(admin: SupabaseClient, email: string) {
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  const hashed = data?.properties?.hashed_token;
+  if (error || !hashed) throw new Error(error?.message ?? "NO_LINK");
+  const anon = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+  const { data: v, error: vErr } = await anon.auth.verifyOtp({
+    token_hash: hashed,
+    type: "magiclink",
+  });
+  if (vErr || !v?.session) throw new Error(vErr?.message ?? "NO_SESSION");
+  return v.session;
+}
 
 function json(data: unknown, status: number): Response {
   return new Response(JSON.stringify(data), {

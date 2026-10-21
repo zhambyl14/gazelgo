@@ -21,13 +21,28 @@ import '../core/theme.dart';
 /// емес) жүреді — токен алынған соң «📲 Telegram-ды ашу» түймесі көрінеді.
 class TelegramVerify extends StatefulWidget {
   final void Function(String token, String phone) onVerified;
-  const TelegramVerify({super.key, required this.onVerified});
+
+  /// false болса — «Telegram арқылы растау» батырмасы СҰР әрі басылмайды
+  /// (мыс. нөмір әлі толық жазылмаған). Растау басталып кетсе, әсер етпейді.
+  final bool enabled;
+
+  /// Расталған соң жасыл «Нөмір расталды» карточкасы көрінсін бе. Кіру
+  /// бетінде көрсетілмейді — растау бітісімен келесі қадам басталады.
+  final bool showVerified;
+
+  const TelegramVerify({
+    super.key,
+    required this.onVerified,
+    this.enabled = true,
+    this.showVerified = true,
+  });
 
   @override
   State<TelegramVerify> createState() => _TelegramVerifyState();
 }
 
-class _TelegramVerifyState extends State<TelegramVerify> {
+class _TelegramVerifyState extends State<TelegramVerify>
+    with WidgetsBindingObserver {
   String? _token;
   String? _phone;
   bool _busy = false;
@@ -39,17 +54,34 @@ class _TelegramVerifyState extends State<TelegramVerify> {
   Timer? _poll;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
     super.dispose();
+  }
+
+  /// Telegram-нан қосымшаға ОРАЛҒАН сәтте бірден тексереміз — келесі
+  /// поллинг тигін (2,5 с) күтпей, адам бірден аккаунтына кіреді.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _phone == null) _check();
   }
 
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
       // Токен мен режимді ҚАТАР сұраймыз — күту уақыты қосылмасын.
+      // Тіл боттың жауаптарына беріледі: орысша нұсқадан келгенге орысша.
       final mini = Repo.tgMiniAppEnabled();
-      final token = await Repo.tgStartVerification();
+      final token = await Repo.tgStartVerification(
+        lang: Lang.current.value == AppLang.ru ? 'ru' : 'kk',
+      );
       final miniApp = await mini;
       if (!mounted) return;
       setState(() {
@@ -118,24 +150,35 @@ class _TelegramVerifyState extends State<TelegramVerify> {
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
+  bool _checking = false;
+
   Future<void> _check() async {
     final t = _token;
-    if (t == null) return;
+    if (t == null || _checking || _phone != null) return;
+    _checking = true;
     try {
       final res = await Repo.tgCheckVerification(t);
       if (res['verified'] == true && res['phone'] != null) {
         _poll?.cancel();
-        if (!mounted) return;
+        if (!mounted || _phone != null) return;
         setState(() => _phone = res['phone'] as String);
         widget.onVerified(t, _phone!);
       }
     } catch (_) {
       /* келесі тикте қайталаймыз */
+    } finally {
+      _checking = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_phone != null && !widget.showVerified) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 18),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     if (_phone != null) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -198,11 +241,7 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                       'Құрылғыда Telegram жоқ. Орнатып, «Қайта тексеру» '
                       'түймесін басыңыз.',
                     ),
-                    style: TextStyle(
-                      color: Gz.ink,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(color: Gz.ink, fontSize: 13, height: 1.4),
                   ),
                 ),
               ],
@@ -248,8 +287,10 @@ class _TelegramVerifyState extends State<TelegramVerify> {
                 child: Text(
                   waiting
                       ? (_miniApp
-                          ? t('Telegram-да ашылған терезеде «Бөлісу»-ді басыңыз')
-                          : t('Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз'))
+                            ? t('Telegram-да ашылған терезеде «Бөлісу»-ді басыңыз')
+                            : t(
+                                'Telegram-да «📱 Нөмірімді бөлісу» түймесін басыңыз',
+                              ))
                       : t('Нөмір Telegram арқылы расталады — SMS жоқ, тегін'),
                   style: TextStyle(
                     color: Gz.telegramDark,
@@ -265,11 +306,16 @@ class _TelegramVerifyState extends State<TelegramVerify> {
             style: FilledButton.styleFrom(
               backgroundColor: Gz.telegram,
               foregroundColor: Colors.white,
+              // Шарт орындалмаса — қосымшадағы ортақ «сұр» күй.
+              disabledBackgroundColor: Gz.disabledBg,
+              disabledForegroundColor: Gz.disabledFg,
               minimumSize: const Size.fromHeight(46),
             ),
             // waiting болса — токен бар, тікелей ашамыз (веб үшін маңызды);
             // әйтпесе алдымен токен аламыз (_start), сосын ашылады.
-            onPressed: _busy ? null : (waiting ? _open : _start),
+            onPressed: _busy || (!waiting && !widget.enabled)
+                ? null
+                : (waiting ? _open : _start),
             icon: _busy
                 ? const SizedBox(
                     width: 16,

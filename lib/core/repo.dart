@@ -16,19 +16,30 @@ class Repo {
   static SupabaseClient get c => Supabase.instance.client;
   static String? get uid => c.auth.currentUser?.id;
 
-  // ================= AUTH (телефон + құпиясөз, SMS-сыз) =================
-  /// Телефон + құпиясөзбен кіру. Ішкі жағынан синтетикалық email қолданылады.
+  // ================= AUTH (телефон + Telegram, құпиясөзсіз) =================
+  /// Телефон + құпиясөзбен кіру — тек қызметкерлер (модератор құпиясөзбен
+  /// ашқан аккаунттар) үшін қосалқы жол. Ішкі жағынан синтетикалық email.
   static Future<void> signInPhone(String phone, String password) async {
     final email = Phone.emailOf(phone);
     if (email == null) throw Exception('BAD_PHONE');
     await c.auth.signInWithPassword(email: email, password: password);
   }
 
-  /// Тіркелу — SMS растаусыз, бірден аккаунт құрылып, автоматты кіреді.
-  /// Алдымен `signup` edge function (email растауын айналып өтеді),
-  /// ол қолжетімсіз болса — тікелей auth.signUp арқылы.
   /// Telegram верификация сессиясын бастайды (0026) — токен қайтарады.
-  static Future<String> tgStartVerification() async {
+  /// [lang] — бот пен Mini App қай тілде жауап берсін (0085). Сервер 0085-сіз
+  /// болса (аргументі жоқ ескі функция) — аргументсіз қайталаймыз.
+  static Future<String> tgStartVerification({String? lang}) async {
+    if (lang != null) {
+      try {
+        final res = await c.rpc(
+          'tg_start_verification',
+          params: {'p_lang': lang},
+        );
+        return res as String;
+      } catch (_) {
+        /* ескі сервер — төменде аргументсіз */
+      }
+    }
     final res = await c.rpc('tg_start_verification');
     return res as String;
   }
@@ -57,22 +68,43 @@ class Repo {
     return Map<String, dynamic>.from(res as Map);
   }
 
-  /// Құпиясөзді Telegram растауымен қалпына келтіру: `reset-password` edge
-  /// функциясы нөмір иесіне жаңа құпиясөз қояды, сосын автоматты кіреміз.
-  static Future<void> resetPasswordViaTelegram({
+  /// Бір қадамдық «Кіру»: Telegram-мен расталған нөмірге аккаунт БАР болса —
+  /// бірден кіреді де `true` қайтарады; ЖОҚ болса — `false` (тіркелу
+  /// басталуы керек, токен [signUpTelegram]-ға сақталады).
+  static Future<bool> tgLogin(String tgToken) async {
+    final d = await _invoke('tg-login', {'tg_token': tgToken});
+    if (d['exists'] != true) return false;
+    await _applySession(d);
+    return true;
+  }
+
+  /// Құпиясөзсіз тіркелу (`signup` edge function, password жоқ режим):
+  /// нөмір Telegram растауынан алынады, жауапта бірден сессия келеді.
+  static Future<void> signUpTelegram({
     required String tgToken,
-    required String newPassword,
-    required String phone,
+    required String fullName,
+    required String role, // client | executor
   }) async {
+    final d = await _invoke('signup', {
+      'full_name': fullName.trim(),
+      'role': role,
+      'tg_token': tgToken,
+    });
+    await _applySession(d);
+  }
+
+  /// Edge function шақыру: сервер қатесін `Exception(<код>)` етіп береді
+  /// (errText оны адамға түсінікті мәтінге айналдырады).
+  static Future<Map<String, dynamic>> _invoke(
+    String fn,
+    Map<String, dynamic> body,
+  ) async {
     try {
-      final res = await c.functions.invoke(
-        'reset-password',
-        body: {'tg_token': tgToken, 'new_password': newPassword},
-      );
-      final data = res.data;
-      if (data is Map && data['error'] != null) {
-        throw Exception(data['error'].toString());
-      }
+      final res = await c.functions.invoke(fn, body: body);
+      final d = res.data;
+      if (d is! Map) throw Exception('SERVER_ERROR');
+      if (d['error'] != null) throw Exception(d['error'].toString());
+      return Map<String, dynamic>.from(d);
     } on FunctionException catch (e) {
       final d = e.details;
       if (d is Map && d['error'] != null) {
@@ -80,75 +112,14 @@ class Repo {
       }
       throw Exception('SERVER_ERROR');
     }
-    final n = Phone.normalize(phone);
-    if (n != null) await signInPhone(n, newPassword);
   }
 
-  static Future<void> signUpPhone({
-    required String phone,
-    required String password,
-    required String fullName,
-    required String role, // client | executor
-    required String tgToken, // Telegram-мен расталған сессия токені
-  }) async {
-    final n = Phone.normalize(phone);
-    final email = Phone.emailOf(phone);
-    if (n == null || email == null) throw Exception('BAD_PHONE');
-    try {
-      await c.functions.invoke(
-        'signup',
-        body: {
-          'password': password,
-          'full_name': fullName.trim(),
-          'role': role,
-          'tg_token': tgToken,
-        },
-      );
-    } on FunctionException catch (e) {
-      final d = e.details;
-      if (d is Map && d['error'] != null) {
-        // функция жетті, бірақ валидация қатесін қайтарды
-        final code = d['error'].toString();
-        throw Exception(code == 'EMAIL_TAKEN' ? 'PHONE_TAKEN' : code);
-      }
-      // функция табылмады/рұқсат жоқ (404, 401...) — тікелей тіркелеміз
-      await _directSignUp(
-        email: email,
-        password: password,
-        fullName: fullName,
-        phone: n,
-        role: role,
-      );
-    } catch (e) {
-      if (e.toString().contains('EMAIL_CONFIRM_REQUIRED')) rethrow;
-      // желі қатесі т.б. — тікелей тіркелуді көреміз
-      await _directSignUp(
-        email: email,
-        password: password,
-        fullName: fullName,
-        phone: n,
-        role: role,
-      );
+  static Future<void> _applySession(Map<String, dynamic> d) async {
+    final refresh = d['refresh_token'];
+    if (refresh is! String || refresh.isEmpty) {
+      throw Exception('SERVER_ERROR');
     }
-    await signInPhone(n, password);
-  }
-
-  static Future<void> _directSignUp({
-    required String email,
-    required String password,
-    required String fullName,
-    required String phone,
-    required String role,
-  }) async {
-    final res = await c.auth.signUp(
-      email: email,
-      password: password,
-      data: {'full_name': fullName.trim(), 'phone': phone, 'role': role},
-    );
-    if (res.session == null) {
-      // Supabase-те "Confirm email" қосулы — сессия берілмеді
-      throw Exception('EMAIL_CONFIRM_REQUIRED');
-    }
+    await c.auth.setSession(refresh);
   }
 
   static Future<void> signOut() => c.auth.signOut();
@@ -2563,11 +2534,8 @@ class Repo {
   }
 
   /// Қызметкердің рұқсаттарын толық ауыстырады.
-  static Future<void> modStaffSetPerms(String userId, List<String> perms) =>
-      c.rpc(
-        'mod_staff_set_perms',
-        params: {'p_user': userId, 'p_perms': perms},
-      );
+  static Future<void> modStaffSetPerms(String userId, List<String> perms) => c
+      .rpc('mod_staff_set_perms', params: {'p_user': userId, 'p_perms': perms});
 
   /// `staff-admin` edge функциясы: create | set_password | set_disabled |
   /// delete. Сервер қатесінің кодын (PHONE_TAKEN, WEAK_PASSWORD…) Exception
@@ -2577,7 +2545,10 @@ class Repo {
     Map<String, dynamic> body,
   ) async {
     try {
-      await c.functions.invoke('staff-admin', body: {'action': action, ...body});
+      await c.functions.invoke(
+        'staff-admin',
+        body: {'action': action, ...body},
+      );
     } on FunctionException catch (e) {
       final d = e.details;
       if (d is Map && d['error'] != null) {

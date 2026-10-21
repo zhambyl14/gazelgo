@@ -414,3 +414,101 @@ class MapRoundButton extends StatelessWidget {
     );
   }
 }
+
+/// Таңдалатын чип — дайын хаттар (чат, ұсыныс) мен бағалау тегтері.
+///
+/// Material чипінің түстері тақырыптан «болжанып» алынатын да, таңдалған
+/// сары фонда ақшыл мәтін, қара режимде қою фонда қою мәтін болып, көзге
+/// көрінбей қалатын. Мұнда әр күйдің фоны мен мәтіні ЖҰП болып нақты
+/// берілген — екі режимде де контраст жеткілікті:
+///   • таңдалмаған — жұмсақ фон + негізгі мәтін ([Gz.ink]);
+///   • таңдалған, [tone] жоқ — қою толтыру ([Gz.inkFill]) + ақ мәтін;
+///   • таңдалған, [tone] бар (жасыл «ұнады» / қызыл «ұнамады») — сол
+///     түстің солғын фоны + қалың жиек + негізгі мәтін.
+class GzPickChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool selected;
+  final Color? tone;
+  final VoidCallback? onTap;
+
+  const GzPickChip({
+    super.key,
+    required this.label,
+    this.icon,
+    this.selected = false,
+    this.tone,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final toned = tone;
+    final Color bg;
+    final Color fg;
+    final Color border;
+    final Color iconColor;
+    if (!selected) {
+      bg = Gz.surfaceAlt;
+      fg = enabled ? Gz.ink : Gz.disabledFg;
+      border = Gz.border;
+      iconColor = enabled ? (toned ?? Gz.textSecondary) : Gz.disabledFg;
+    } else if (toned == null) {
+      bg = Gz.inkFill;
+      fg = Colors.white;
+      border = Gz.inkFill;
+      iconColor = Gz.yellow;
+    } else {
+      bg = Gz.tint(toned, 0.16);
+      fg = Gz.ink;
+      border = toned;
+      iconColor = toned;
+    }
+    return PressScale(
+      enabled: enabled,
+      scale: 0.96,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Gz.rSm),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(Gz.rSm),
+              border: Border.all(color: border, width: selected ? 1.6 : 1.2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null || (selected && toned != null)) ...[
+                  Icon(
+                    selected && toned != null
+                        ? Icons.check_circle_rounded
+                        : icon,
+                    size: 16,
+                    color: iconColor,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: fg,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

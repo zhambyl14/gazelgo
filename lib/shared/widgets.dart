@@ -335,10 +335,7 @@ class ConfirmCheck extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       t('Автоматты қойылды — қаласаңыз алып тастаңыз'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Gz.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 11, color: Gz.textSecondary),
                     ),
                   ],
                 ],
@@ -446,11 +443,7 @@ class AddAddressButton extends StatelessWidget {
                       color: Gz.yellow,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      Icons.add_rounded,
-                      size: 15,
-                      color: Gz.onBrand,
-                    ),
+                    child: Icon(Icons.add_rounded, size: 15, color: Gz.onBrand),
                   ),
                   const SizedBox(width: 7),
                   BtnLabel(
@@ -790,10 +783,7 @@ class ProfileBrief extends StatelessWidget {
                     const SizedBox(width: 2),
                     Text(
                       '${p!.trips}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Gz.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                     ),
                   ],
                 ],
@@ -920,11 +910,7 @@ class LoadErrorState extends StatelessWidget {
                 color: Gz.tint(Gz.red, 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.cloud_off_outlined,
-                size: 36,
-                color: Gz.red,
-              ),
+              child: Icon(Icons.cloud_off_outlined, size: 36, color: Gz.red),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1419,10 +1405,7 @@ class OrderPhotosStrip extends StatelessWidget {
                       width: 84,
                       height: 84,
                       color: Gz.bg,
-                      child: Icon(
-                        Icons.broken_image,
-                        color: Gz.textSecondary,
-                      ),
+                      child: Icon(Icons.broken_image, color: Gz.textSecondary),
                     ),
                   ),
                 ),
@@ -1435,15 +1418,21 @@ class OrderPhotosStrip extends StatelessWidget {
   }
 }
 
-/// Заказ аяқталғанда бағалау терезесін ҚАЛҚЫМАЛЫ (dialog) көрсетеді —
-/// экранның төменінде қалып, көрінбей қалмас үшін. Бұрын бағаланған болса
-/// мүлдем ашылмайды.
+/// Осы сессияда бағаланған заказдар: төменнен ашылған терезеде пікір
+/// жіберілсе, экрандағы inline [ReviewPrompt] да бірден «рахмет» күйіне
+/// ауысады (қайта сұрамайды).
+final ValueNotifier<Set<String>> _reviewedOrders = ValueNotifier({});
+
+/// Заказ аяқталғанда бағалау терезесін ТӨМЕННЕН ашады (bottom sheet) —
+/// клиентке де, орындаушыға да бір үлгі. Бұрын бағаланған болса мүлдем
+/// ашылмайды.
 Future<void> maybeShowReviewDialog(
   BuildContext context, {
   required String orderId,
   required String title,
   List<ReviewTag> tags = const [],
 }) async {
+  if (_reviewedOrders.value.contains(orderId)) return;
   try {
     final rows = await Repo.c
         .from('reviews')
@@ -1452,30 +1441,29 @@ Future<void> maybeShowReviewDialog(
         .eq('author_id', Repo.uid ?? '');
     if ((rows as List).isNotEmpty) return;
   } catch (_) {
-    return; // тексере алмасақ — қалқымалыны ашпаймыз (inline нұсқасы қалады)
+    return; // тексере алмасақ — терезені ашпаймыз (inline нұсқасы қалады)
   }
   if (!context.mounted) return;
-  await showDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    builder: (ctx) => Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      backgroundColor: Colors.transparent,
-      child: ReviewPrompt(
-        orderId: orderId,
-        title: title,
-        tags: tags,
-        onDone: () => Navigator.of(ctx).maybePop(),
-      ),
+  await showGzSheet<void>(
+    context,
+    builder: (ctx) => ReviewPrompt(
+      orderId: orderId,
+      title: title,
+      tags: tags,
+      asSheet: true,
+      onDone: () => Navigator.of(ctx).maybePop(),
     ),
   );
 }
 
 /// Пікір қалдыру блогы (клиент те, орындаушы да — екінші тарапты бағалайды).
+/// [asSheet] болса — төменнен ашылатын терезенің толық дизайны, әйтпесе
+/// экран ішіндегі ықшам карточка.
 class ReviewPrompt extends StatefulWidget {
   final String orderId;
   final String title;
   final VoidCallback? onDone;
+  final bool asSheet;
 
   /// Бір басумен белгіленетін тегтер (0081): 4–5 жұлдызда — «не ұнады»,
   /// 1–2-де — «не ұнамады», 3-те — екеуі де.
@@ -1487,6 +1475,7 @@ class ReviewPrompt extends StatefulWidget {
     this.title = 'Бағалаңыз',
     this.tags = const [],
     this.onDone,
+    this.asSheet = false,
   });
 
   @override
@@ -1505,13 +1494,34 @@ class _ReviewPromptState extends State<ReviewPrompt> {
       if (_rating == 3 || (_rating >= 4) == tg.positive) tg,
   ];
 
+  /// Клиент орындаушыны бағалай ма (тегтерге қарап) — иконка үшін.
+  bool get _ratesExecutor => identical(widget.tags, kExecutorReviewTags);
+
   @override
   void initState() {
     super.initState();
-    _check();
+    _reviewedOrders.addListener(_onReviewed);
+    if (widget.asSheet) {
+      _checked = true; // терезе ашылмас бұрын тексерілген
+    } else {
+      _check();
+    }
+  }
+
+  void _onReviewed() {
+    if (!_done && _reviewedOrders.value.contains(widget.orderId) && mounted) {
+      setState(() => _done = true);
+    }
   }
 
   Future<void> _check() async {
+    if (_reviewedOrders.value.contains(widget.orderId)) {
+      setState(() {
+        _done = true;
+        _checked = true;
+      });
+      return;
+    }
     try {
       final rows = await Repo.c
           .from('reviews')
@@ -1531,13 +1541,128 @@ class _ReviewPromptState extends State<ReviewPrompt> {
 
   @override
   void dispose() {
+    _reviewedOrders.removeListener(_onReviewed);
     _comment.dispose();
     super.dispose();
   }
 
+  Future<void> _submit() async {
+    try {
+      // Жұлдыз ауысқанда жасырылып қалған тегтер жіберілмейді.
+      final visible = {for (final tg in _visibleTags) tg.code};
+      await Repo.submitReview(
+        widget.orderId,
+        _rating,
+        _comment.text,
+        tags: [
+          for (final c in _tags)
+            if (visible.contains(c)) c,
+        ].take(6).toList(),
+      );
+      _reviewedOrders.value = {..._reviewedOrders.value, widget.orderId};
+      if (mounted) setState(() => _done = true);
+      if (mounted) showSnack(context, t('Пікіріңіз үшін рахмет!'));
+      widget.onDone?.call();
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  static const _labels = ['Өте нашар', 'Нашар', 'Орташа', 'Жақсы', 'Керемет!'];
+
+  /// Бағаның «көңіл-күй» түсі: 1–2 — қызыл, 3 — сары, 4–5 — жасыл.
+  Color get _moodColor =>
+      _rating <= 2 ? Gz.danger : (_rating == 3 ? Gz.warning : Gz.success);
+
+  Widget _stars({double size = 34}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 1; i <= 5; i++)
+          Semantics(
+            button: true,
+            label: '$i',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _rating = i),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 160),
+                  scale: i == _rating ? 1.15 : 1,
+                  child: Icon(
+                    i <= _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: size,
+                    color: i <= _rating ? Gz.star : Gz.disabledFg,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _tagsBlock({bool center = false}) {
+    if (_visibleTags.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          _rating >= 4
+              ? t('Не ұнады?')
+              : (_rating <= 2 ? t('Не ұнамады?') : t('Қысқаша айтыңыз')),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Gz.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: center ? WrapAlignment.center : WrapAlignment.start,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final tg in _visibleTags)
+              GzPickChip(
+                label: t(tg.label),
+                icon: tg.icon,
+                tone: tg.positive ? Gz.success : Gz.danger,
+                selected: _tags.contains(tg.code),
+                onTap: () => setState(
+                  () => _tags.contains(tg.code)
+                      ? _tags.remove(tg.code)
+                      : _tags.add(tg.code),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _commentField() => TextField(
+    controller: _comment,
+    minLines: 1,
+    maxLines: 3,
+    maxLength: 500,
+    textCapitalization: TextCapitalization.sentences,
+    decoration: InputDecoration(
+      hintText: t('Пікір жазыңыз (міндетті емес)'),
+      counterText: '',
+      prefixIcon: const Icon(Icons.edit_note_rounded),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!_checked) return const SizedBox.shrink();
+    if (widget.asSheet) return _sheet();
     if (_done) {
       return SectionCard(
         child: Row(
@@ -1558,88 +1683,113 @@ class _ReviewPromptState extends State<ReviewPrompt> {
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 1; i <= 5; i++)
-                IconButton(
-                  onPressed: () => setState(() => _rating = i),
-                  icon: Icon(
-                    i <= _rating
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    size: 34,
-                    color: Gz.star,
-                  ),
-                ),
-            ],
-          ),
-          if (_visibleTags.isNotEmpty) ...[
-            Text(
-              _rating >= 4
-                  ? t('Не ұнады?')
-                  : (_rating <= 2 ? t('Не ұнамады?') : t('Қысқаша айтыңыз')),
-              style: Gz.caption,
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final tg in _visibleTags)
-                  FilterChip(
-                    avatar: Icon(
-                      tg.icon,
-                      size: 16,
-                      color: tg.positive ? Gz.success : Gz.danger,
-                    ),
-                    label: Text(t(tg.label)),
-                    selected: _tags.contains(tg.code),
-                    showCheckmark: false,
-                    onSelected: (v) => setState(
-                      () => v ? _tags.add(tg.code) : _tags.remove(tg.code),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
-          TextField(
-            controller: _comment,
-            maxLines: 2,
-            decoration: InputDecoration(
-              hintText: t('Пікір жазыңыз (міндетті емес)'),
+          _stars(),
+          const SizedBox(height: 4),
+          Text(
+            t(_labels[_rating - 1]),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: _moodColor,
             ),
           ),
           const SizedBox(height: 12),
-          BusyButton(
-            label: t('Жіберу'),
-            onPressed: () async {
-              try {
-                // Жұлдыз ауысқанда жасырылып қалған тегтер жіберілмейді.
-                final visible = {for (final tg in _visibleTags) tg.code};
-                await Repo.submitReview(
-                  widget.orderId,
-                  _rating,
-                  _comment.text,
-                  tags: [
-                    for (final c in _tags)
-                      if (visible.contains(c)) c,
-                  ].take(6).toList(),
-                );
-                if (mounted) setState(() => _done = true);
-                if (context.mounted) {
-                  showSnack(context, t('Пікіріңіз үшін рахмет!'));
-                }
-                widget.onDone?.call();
-              } catch (e) {
-                if (context.mounted) {
-                  showSnack(context, errText(e), error: true);
-                }
-              }
-            },
-          ),
+          _tagsBlock(),
+          if (_visibleTags.isNotEmpty) const SizedBox(height: 12),
+          _commentField(),
+          const SizedBox(height: 12),
+          BusyButton(label: t('Жіберу'), onPressed: _submit),
         ],
+      ),
+    );
+  }
+
+  /// Төменнен ашылатын терезенің толық дизайны.
+  Widget _sheet() {
+    return GzSheetBody(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 6),
+            Center(
+              child: Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Gz.tint(Gz.yellow, 0.22),
+                  border: Border.all(color: Gz.yellow, width: 2),
+                ),
+                child: Icon(
+                  _ratesExecutor
+                      ? Icons.local_shipping_rounded
+                      : Icons.person_rounded,
+                  size: 32,
+                  color: Gz.ink,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t(widget.title),
+              textAlign: TextAlign.center,
+              style: Gz.h2.copyWith(color: Gz.ink),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              t('Заказ аяқталды. Бағаңыз сервисті жақсартуға көмектеседі.'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Gz.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            _stars(size: 44),
+            const SizedBox(height: 6),
+            Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Gz.tint(_moodColor, 0.14),
+                  borderRadius: BorderRadius.circular(Gz.rSm),
+                ),
+                child: Text(
+                  t(_labels[_rating - 1]),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: _moodColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              alignment: Alignment.topCenter,
+              child: _tagsBlock(center: true),
+            ),
+            if (_visibleTags.isNotEmpty) const SizedBox(height: 16),
+            _commentField(),
+            const SizedBox(height: 16),
+            BusyButton(
+              label: t('Жіберу'),
+              icon: Icons.send_rounded,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              style: TextButton.styleFrom(foregroundColor: Gz.textSecondary),
+              child: Text(t('Кейінірек')),
+            ),
+          ],
+        ),
       ),
     );
   }
