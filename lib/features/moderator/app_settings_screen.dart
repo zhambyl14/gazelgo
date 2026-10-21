@@ -9,6 +9,7 @@ import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
+import 'staff_screen.dart';
 
 /// Модератордың жалпы баптау экраны: тариф бағасы, Kaspi деректері,
 /// мәжбүрлі жаңарту талабы — бәрі осында, SQL Editor-сыз (0030 миграциясы).
@@ -264,7 +265,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _referralClientPoints.text =
           '${referral['client_points_per_referral'] ?? 1}';
       // Ұмай жолы жеке жүктеледі — қатесі баптау экранын бұғаттамайды.
-      await _loadUmay();
+      if (StaffAccess.can('vehicles')) await _loadUmay();
     } catch (e) {
       _error = errText(e);
     } finally {
@@ -1033,8 +1034,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               onChanged: (v) => _toggleNewBadge(v, board: false),
             ),
           ],
-          const SizedBox(height: 24),
-          ..._umaySection(),
+          // Ұмай атауы мен күйі vehicle_types-та сақталады — оны тек
+          // «Көліктер» рұқсаты барлар өзгерте алады (0084). Рұқсатсыз
+          // қызметкерге «миграция жоқ» деген жалған хабар шықпасын.
+          if (StaffAccess.can('vehicles')) ...[
+            const SizedBox(height: 24),
+            ..._umaySection(),
+          ],
           const SizedBox(height: 24),
           _sectionTitle(t('Хабарландырулар тақтасы')),
           Text(

@@ -18,14 +18,15 @@ class OrderAlert {
   /// Дыбыс қосулы ма ([Prefs.orderSound]) — лентадағы батырма тыңдайды.
   static final ValueNotifier<bool> soundOn = ValueNotifier(true);
 
-  /// Лента өзінің көрініп тұрғанын осы арқылы айтады (лента ашық болғанда
-  /// ғана орнатылады).
-  static bool Function()? feedProbe;
+  /// Лента ашық болғанда орнатады: берілген заказ туралы лента ӨЗІ дабыл
+  /// бере ме (экранда тұр, заказды әлі көрмеген).
+  static bool Function(String orderId)? feedProbe;
 
-  /// Лента қазір экранда ма. Экранда болса — жаңа заказ туралы push
-  /// хабарламасы қосымша ішінде қайта шығарылмайды (дыбыс екі рет
-  /// естілмесін, лента өзі көрсетеді).
-  static bool get feedVisible => feedProbe?.call() ?? false;
+  /// Жаңа заказ push-ын қосымша ішінде көрсетпеуге бола ма — лента оны
+  /// өзі көрсетеді (дыбыс екі рет естілмесін). Бұрыннан көрген заказдың
+  /// қайта ескертуі (escalation) әдеттегідей шығады.
+  static bool feedWillAlert(String? orderId) =>
+      orderId != null && (feedProbe?.call(orderId) ?? false);
 
   static AudioPlayer? _player;
   static DateTime? _lastAt;

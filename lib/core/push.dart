@@ -322,9 +322,12 @@ class Push {
     final title = n?.title ?? m.data['title'] as String?;
     final body = n?.body ?? m.data['body'] as String? ?? '';
     if (title == null || title.isEmpty) return;
-    // Лента экранда тұрса, жаңа заказды ол өзі көрсетеді (дыбыс, жарқыл) —
-    // хабарламаны қайта шығарсақ, дыбыс екі рет естілер еді.
-    if (m.data['type'] == 'new_order' && OrderAlert.feedVisible) return;
+    // Лента экранда тұрып, бұл заказды ӨЗІ көрсететін болса (дыбыс,
+    // жарқыл) — хабарламаны қайта шығармаймыз, дыбыс екі рет естілмесін.
+    if (m.data['type'] == 'new_order' &&
+        OrderAlert.feedWillAlert(m.data['order_id']?.toString())) {
+      return;
+    }
 
     if (kIsWeb) {
       showWebNotification(title, body);

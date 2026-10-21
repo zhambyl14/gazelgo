@@ -132,6 +132,9 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// қарамай). null — алғашқы жүктелу әлі келмеді (онда дыбыс жоқ).
   Set<String>? _seenAll;
 
+  /// [_seenAll] қай қала үшін жиналды (қала ауысса — негіз қайта құрылады).
+  String? _seenCity;
+
   /// Жаңа келген, әлі ашылмаған заказдар — карточкасы жарқырап тұрады.
   final Set<String> _glow = {};
   final Map<String, Timer> _glowTimers = {};
@@ -150,12 +153,12 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     });
     _restoreView();
     OrderAlert.load();
-    OrderAlert.feedProbe = _visible;
+    OrderAlert.feedProbe = _willAlert;
   }
 
   @override
   void dispose() {
-    if (OrderAlert.feedProbe == _visible) OrderAlert.feedProbe = null;
+    if (OrderAlert.feedProbe == _willAlert) OrderAlert.feedProbe = null;
     for (final t in _glowTimers.values) {
       t.cancel();
     }
@@ -175,32 +178,47 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// жасырылған заказда дыбыс ОЙНАМАЙДЫ — тек шынымен жаңа заказ келгенде.
   void _onFeed(List<Order>? list) {
     if (list == null) return;
-    final ids = {
-      for (final o in list)
-        if (!_hidden.contains(o.id)) o.id,
-    };
+    // Негізгі жиынға ЖАСЫРЫЛҒАНДАР да кіреді: оларды кейін қайта көрсеткенде
+    // ескі заказ «жаңа» болып дыбыстамауы керек.
+    final ids = {for (final o in list) o.id};
+    // Қала ауысса (басқа қаланың лентасы) — жаңа қаланың заказдары ескі
+    // заказдар болып саналады, үнсіз негіз болады.
+    final city = ref.read(myExecutorProfileProvider).value?.city;
     final seen = _seenAll;
-    if (seen == null) {
+    if (seen == null || city != _seenCity) {
       _seenAll = ids;
+      _seenCity = city;
       return;
     }
-    final fresh = ids.difference(seen);
+    final fresh = [
+      for (final o in list)
+        if (!seen.contains(o.id) && !_hidden.contains(o.id)) o,
+    ];
     seen.addAll(ids);
     // Ұзақ жұмыста жиын шексіз өспесін.
     if (seen.length > 600) _seenAll = ids;
     if (fresh.isEmpty) return;
-    setState(() {
-      _glow.addAll(fresh);
-      if (_scroll.hasClients && _scroll.offset > 120) {
-        _bannerCount += fresh.length;
-      }
-    });
-    for (final id in fresh) {
-      _glowTimers[id]?.cancel();
-      _glowTimers[id] = Timer(_freshWindow, () {
-        _glowTimers.remove(id);
-        if (mounted) setState(() => _glow.remove(id));
+    // Жарқыл мен жоғарғы жолақ — тек АШЫҚ тұрған қойындыдағы заказдарға
+    // (басқа қойындыдағы заказ үшін «жаңа заказ шықты» деп алдамаймыз).
+    // Дыбыс — кез келген жаңа заказға.
+    final inTab = [
+      for (final o in fresh)
+        if (_inFilter(o)) o.id,
+    ];
+    if (inTab.isNotEmpty) {
+      setState(() {
+        _glow.addAll(inTab);
+        if (_scroll.hasClients && _scroll.offset > 120) {
+          _bannerCount += inTab.length;
+        }
       });
+      for (final id in inTab) {
+        _glowTimers[id]?.cancel();
+        _glowTimers[id] = Timer(_freshWindow, () {
+          _glowTimers.remove(id);
+          if (mounted) setState(() => _glow.remove(id));
+        });
+      }
     }
     if (_bannerCount > 0) {
       _bannerTimer?.cancel();
@@ -209,6 +227,24 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       });
     }
     if (_visible()) OrderAlert.play();
+  }
+
+  bool _inFilter(Order o) => switch (_filter) {
+    _FeedFilter.all => true,
+    _FeedFilter.city => !o.intercity,
+    _FeedFilter.intercity => o.intercity,
+  };
+
+  /// Push келген заказ туралы лента ӨЗІ дабыл бере ме (экранда, негіз
+  /// жүктелген, заказ әлі көрілмеген әрі жасырылмаған). Тек сонда push
+  /// хабарламасы қосымша ішінде қайталанбайды; қайта ескерту (escalation)
+  /// сияқты бұрыннан көрген заказдың push-ы әдеттегідей шығады.
+  bool _willAlert(String orderId) {
+    final seen = _seenAll;
+    return _visible() &&
+        seen != null &&
+        !seen.contains(orderId) &&
+        !_hidden.contains(orderId);
   }
 
   void _scrollToTop() {
@@ -829,6 +865,19 @@ class _FeedToolbar extends StatelessWidget {
                 active: mapView,
                 size: _h,
                 onTap: () => onMapView(!mapView),
+              ),
+              const SizedBox(width: 6),
+              // Жаңа заказ ДЫБЫСЫ: өшірулі болса батырма қараяды. Қосқанда
+              // дыбыс бір рет үлгі ретінде ойнайды.
+              ValueListenableBuilder<bool>(
+                valueListenable: OrderAlert.soundOn,
+                builder: (_, on, _) => _ToolButton(
+                  icon: on ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  tooltip: t('Жаңа заказ дыбысы'),
+                  active: !on,
+                  size: _h,
+                  onTap: () => OrderAlert.setSound(!on),
+                ),
               ),
               const SizedBox(width: 6),
               // Сұрыптау: әдепкі «Ұсынылған» емес рет таңдалса — батырма

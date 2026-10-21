@@ -13,7 +13,8 @@
 --     жазылмайды.
 --   * executor_profiles.is_umay — әйел жүргізуші белгісі. Оны ТЕК
 --     'executors' рұқсаты бар модератор қояды (mod_set_executor_umay);
---     орындаушы өзі өзгерте алмайды (guard_executor_profiles).
+--     орындаушы өзі өзгерте алмайды: UPDATE-те guard_executor_profiles,
+--     жаңа өтінімде (INSERT) guard_executor_profiles_insert.
 --   * exec_can_see — 'umay' заказы тек is_umay жүргізушіге (көлігі
 --     'taxi') көрінеді. Тексеру «профильсіз танысу режимінен» ӘЛДЕҚАЛАЙ
 --     БҰРЫН орындалады. Лента, push, escalate_waiting_orders,
@@ -85,6 +86,27 @@ begin
 end;
 $$;
 
+-- Жаңа өтінім (INSERT) арқылы да белгіні өзіне қоя алмасын: UPDATE
+-- қорғанысы INSERT-ке әсер етпейді, ал exec_insert_own саясаты бағандарды
+-- шектемейді. Тек сервер (service_role) не SECURITY DEFINER RPC қоя алады.
+create or replace function public.guard_executor_profiles_insert()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if current_user not in ('postgres','service_role','supabase_admin') then
+    new.is_umay := false;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_guard_executor_profiles_insert on public.executor_profiles;
+create trigger trg_guard_executor_profiles_insert
+  before insert on public.executor_profiles
+  for each row execute function public.guard_executor_profiles_insert();
+
 -- ------------------------------------------------------------
 -- 4) Модератор әйел жүргізушіні белгілейді / белгісін алады
 -- ------------------------------------------------------------
@@ -97,6 +119,11 @@ begin
   if auth.uid() is null or not public.is_moderator()
      or not public.mod_can('executors') then
     raise exception 'FORBIDDEN';
+  end if;
+  -- Бұғатталған қызметкер (0084) — басқа mod_* сияқты бұл да жабық.
+  if exists (select 1 from public.profiles
+              where id = auth.uid() and blocked_at is not null) then
+    raise exception 'NO_PERMISSION' using errcode = '42501';
   end if;
 
   update public.executor_profiles
@@ -196,7 +223,8 @@ create policy orders_feed on public.orders
                   and ts.expires_at > now())
     and (vehicle_type is distinct from 'umay'
          or exists (select 1 from public.executor_profiles ep
-                    where ep.user_id = auth.uid() and ep.is_umay))
+                    where ep.user_id = auth.uid() and ep.is_umay
+                      and ep.vehicle_type::text = 'taxi'))
   );
 
 -- ------------------------------------------------------------

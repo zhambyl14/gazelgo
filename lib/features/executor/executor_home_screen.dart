@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
-import '../../core/order_alert.dart';
 import '../../core/prefs.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
@@ -89,8 +88,6 @@ class ExecutorHomeScreen extends ConsumerWidget {
                         )
                       else
                         const Spacer(),
-                      const SizedBox(width: 6),
-                      const _OrderSoundButton(),
                       const SizedBox(width: 8),
                       SizedBox(
                         height: _barH,
@@ -481,45 +478,6 @@ class _StatusCard extends StatelessWidget {
 /// инициализацияланады — сол мән арқылы push ҚОСЫМША ЖАБЫҚ болса да келеді
 /// (0028); жергілікті Prefs қосымша тірі/фонда тұрғанда жылдам foreground
 /// хабарлау үшін сақталады.
-/// Лентадағы жаңа заказ ДЫБЫСЫН қосу/өшіру — уведомление таблеткасының
-/// жанындағы шағын дөңгелек батырма (жолақта екінші таблеткаға орын жоқ).
-/// Қосқанда дыбыс бір рет үлгі ретінде ойнайды.
-class _OrderSoundButton extends StatelessWidget {
-  const _OrderSoundButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: OrderAlert.soundOn,
-      builder: (context, on, _) => Tooltip(
-        message: t('Жаңа заказ дыбысы'),
-        child: Material(
-          color: on ? Gz.surface : Gz.surfaceAlt,
-          shape: CircleBorder(
-            side: BorderSide(
-              color: on ? Gz.green.withValues(alpha: 0.45) : Gz.border,
-              width: 1.4,
-            ),
-          ),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () => OrderAlert.setSound(!on),
-            child: SizedBox.square(
-              dimension: _barH,
-              child: Icon(
-                on ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-                size: 20,
-                color: on ? Gz.green : Gz.textTertiary,
-                semanticLabel: t('Жаңа заказ дыбысы'),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _OrderNotifyToggle extends ConsumerStatefulWidget {
   const _OrderNotifyToggle();
 
