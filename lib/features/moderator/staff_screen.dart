@@ -20,9 +20,21 @@ class StaffPerm {
 /// Барлық рұқсаттар — экранда осы ретпен көрсетіледі.
 final List<StaffPerm> kStaffPerms = [
   StaffPerm('support', Icons.support_agent_rounded, () => t('Қолдау чаты')),
-  StaffPerm('executors', Icons.local_shipping_outlined, () => t('Орындаушылар')),
-  StaffPerm('applications', Icons.assignment_ind_outlined, () => t('Өтінімдер')),
-  StaffPerm('topups', Icons.account_balance_wallet_outlined, () => t('Толтырулар')),
+  StaffPerm(
+    'executors',
+    Icons.local_shipping_outlined,
+    () => t('Орындаушылар'),
+  ),
+  StaffPerm(
+    'applications',
+    Icons.assignment_ind_outlined,
+    () => t('Өтінімдер'),
+  ),
+  StaffPerm(
+    'topups',
+    Icons.account_balance_wallet_outlined,
+    () => t('Толтырулар'),
+  ),
   StaffPerm('reports', Icons.flag_outlined, () => t('Шағымдар')),
   StaffPerm('order_chats', Icons.forum_outlined, () => t('Заказ чаттары')),
   StaffPerm('orders', Icons.receipt_long_outlined, () => t('Заказдар')),
@@ -130,9 +142,11 @@ class _StaffScreenState extends State<StaffScreen> {
                 GzNotice(
                   tone: NoticeTone.info,
                   icon: Icons.badge_outlined,
-                  message: t('Қызметкер телефон мен құпиясөзбен кіреді де, '
-                      'тек сіз белгілеген бөлімдерді көреді. Рұқсатты кез '
-                      'келген уақытта өзгертуге болады.'),
+                  message: t(
+                    'Қызметкер телефон мен құпиясөзбен кіреді де, '
+                    'тек сіз белгілеген бөлімдерді көреді. Рұқсатты кез '
+                    'келген уақытта өзгертуге болады.',
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (list.isEmpty)
@@ -294,8 +308,11 @@ class _CreateStaffSheetState extends State<_CreateStaffSheet> {
       return;
     }
     if (password.length < 6) {
-      showSnack(context, t('Құпиясөз тым қысқа (кемінде 6 таңба).'),
-          error: true);
+      showSnack(
+        context,
+        t('Құпиясөз тым қысқа (кемінде 6 таңба).'),
+        error: true,
+      );
       return;
     }
     setState(() => _busy = true);
@@ -331,60 +348,58 @@ class _CreateStaffSheetState extends State<_CreateStaffSheet> {
       child: GzSheetBody(
         title: t('Жаңа қызметкер'),
         showClose: true,
-        child: Flexible(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              TextField(
-                controller: _name,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: t('Аты-жөні'),
-                  prefixIcon: const Icon(Icons.person_outline_rounded),
-                ),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            TextField(
+              controller: _name,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                labelText: t('Аты-жөні'),
+                prefixIcon: const Icon(Icons.person_outline_rounded),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: t('Телефон'),
-                  hintText: '+7 7XX XXX XX XX',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: t('Телефон'),
+                hintText: '+7 7XX XXX XX XX',
+                prefixIcon: const Icon(Icons.phone_outlined),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _password,
-                obscureText: !_showPassword,
-                decoration: InputDecoration(
-                  labelText: t('Құпиясөз'),
-                  helperText: t('Кемінде 6 таңба. Қызметкерге өзіңіз беріңіз.'),
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    onPressed: () =>
-                        setState(() => _showPassword = !_showPassword),
-                    icon: Icon(
-                      _showPassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _password,
+              obscureText: !_showPassword,
+              decoration: InputDecoration(
+                labelText: t('Құпиясөз'),
+                helperText: t('Кемінде 6 таңба. Қызметкерге өзіңіз беріңіз.'),
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                suffixIcon: IconButton(
+                  onPressed: () =>
+                      setState(() => _showPassword = !_showPassword),
+                  icon: Icon(
+                    _showPassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              _PermsPicker(
-                selected: _perms,
-                onChanged: (v) => setState(() => _perms = v),
-              ),
-              const SizedBox(height: 14),
-              GzPrimaryButton(
-                label: _busy ? t('Күте тұрыңыз…') : t('Аккаунт ашу'),
-                icon: Icons.person_add_alt_1_rounded,
-                onPressed: _busy ? null : _save,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            _PermsPicker(
+              selected: _perms,
+              onChanged: (v) => setState(() => _perms = v),
+            ),
+            const SizedBox(height: 14),
+            GzPrimaryButton(
+              label: _busy ? t('Күте тұрыңыз…') : t('Аккаунт ашу'),
+              icon: Icons.person_add_alt_1_rounded,
+              onPressed: _busy ? null : _save,
+            ),
+          ],
         ),
       ),
     );
@@ -442,8 +457,11 @@ class _StaffSheetState extends State<_StaffSheet> {
     );
     if (p == null || !mounted) return;
     if (p.length < 6) {
-      showSnack(context, t('Құпиясөз тым қысқа (кемінде 6 таңба).'),
-          error: true);
+      showSnack(
+        context,
+        t('Құпиясөз тым қысқа (кемінде 6 таңба).'),
+        error: true,
+      );
       return;
     }
     await _run(
@@ -457,8 +475,10 @@ class _StaffSheetState extends State<_StaffSheet> {
       final ok = await confirmDialog(
         context,
         title: t('Аккаунтты өшіру керек пе?'),
-        message: t('Қызметкер кіре алмайды және панельдің ешбір бөлімін '
-            'көрмейді. Кейін қайта қосуға болады.'),
+        message: t(
+          'Қызметкер кіре алмайды және панельдің ешбір бөлімін '
+          'көрмейді. Кейін қайта қосуға болады.',
+        ),
         confirmLabel: t('Өшіру'),
         icon: Icons.block_rounded,
         confirmColor: Gz.red,
@@ -478,8 +498,10 @@ class _StaffSheetState extends State<_StaffSheet> {
     final ok = await confirmDialog(
       context,
       title: t('Қызметкерді жою керек пе?'),
-      message: t('Аккаунт біржола жойылады, нөмірі босайды. Оның әрекеттері '
-          'журналда қалады.'),
+      message: t(
+        'Аккаунт біржола жойылады, нөмірі босайды. Оның әрекеттері '
+        'журналда қалады.',
+      ),
       confirmLabel: t('Жою'),
       icon: Icons.delete_outline_rounded,
       confirmColor: Gz.red,
@@ -502,45 +524,41 @@ class _StaffSheetState extends State<_StaffSheet> {
         title: '${s['full_name'] ?? ''}',
         subtitle: Phone.pretty('${s['phone'] ?? ''}'),
         showClose: true,
-        child: Flexible(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              _PermsPicker(
-                selected: _perms,
-                onChanged: (v) => setState(() => _perms = v),
-              ),
-              const SizedBox(height: 12),
-              GzPrimaryButton(
-                label: t('Рұқсаттарды сақтау'),
-                icon: Icons.check_rounded,
-                onPressed: _busy || !_dirty ? null : _savePerms,
-              ),
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              GzListRow(
-                icon: Icons.password_rounded,
-                color: Gz.blue,
-                title: t('Құпиясөзді ауыстыру'),
-                onTap: _busy ? null : _password,
-              ),
-              GzListRow(
-                icon: _disabled
-                    ? Icons.lock_open_rounded
-                    : Icons.block_rounded,
-                color: _disabled ? Gz.green : Gz.warning,
-                title: _disabled ? t('Аккаунтты қосу') : t('Аккаунтты өшіру'),
-                onTap: _busy ? null : _toggleDisabled,
-              ),
-              GzListRow(
-                icon: Icons.delete_outline_rounded,
-                color: Gz.red,
-                title: t('Жою'),
-                danger: true,
-                onTap: _busy ? null : _delete,
-              ),
-            ],
-          ),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            _PermsPicker(
+              selected: _perms,
+              onChanged: (v) => setState(() => _perms = v),
+            ),
+            const SizedBox(height: 12),
+            GzPrimaryButton(
+              label: t('Рұқсаттарды сақтау'),
+              icon: Icons.check_rounded,
+              onPressed: _busy || !_dirty ? null : _savePerms,
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            GzListRow(
+              icon: Icons.password_rounded,
+              color: Gz.blue,
+              title: t('Құпиясөзді ауыстыру'),
+              onTap: _busy ? null : _password,
+            ),
+            GzListRow(
+              icon: _disabled ? Icons.lock_open_rounded : Icons.block_rounded,
+              color: _disabled ? Gz.green : Gz.warning,
+              title: _disabled ? t('Аккаунтты қосу') : t('Аккаунтты өшіру'),
+              onTap: _busy ? null : _toggleDisabled,
+            ),
+            GzListRow(
+              icon: Icons.delete_outline_rounded,
+              color: Gz.red,
+              title: t('Жою'),
+              danger: true,
+              onTap: _busy ? null : _delete,
+            ),
+          ],
         ),
       ),
     );
