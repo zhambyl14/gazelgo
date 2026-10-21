@@ -293,8 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         const Spacer(),
                         const HelpButton(topic: 'кіру / Вход'),
-                        const SizedBox(width: 4),
-                        const ThemeSwitcher(),
                         const SizedBox(width: 6),
                         const LanguageSwitcher(),
                       ],
