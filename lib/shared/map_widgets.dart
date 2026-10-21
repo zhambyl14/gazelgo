@@ -1090,12 +1090,44 @@ class LiveVehicleFix {
   final double? heading;
   final VehicleType type;
 
+  /// Жүргізуші әлі A-ға келе жатыр ма (`accepted`) — сұр жол тек сонда.
+  final bool toA;
+
   const LiveVehicleFix({
     required this.pos,
     required this.fix,
     required this.type,
     this.heading,
+    this.toA = false,
   });
+}
+
+/// Көліктің [from]→[to] жылжуын ЖОЛ БОЙЫМЕН жасауға бола ма: екі нүкте де
+/// [line] бойында (60 м ішінде) әрі алға қарай жүріп жатса ғана. Әйтпесе
+/// (жолдан ауытқыды, кері бұрылды) — null, түзу жылжу.
+({_PathMeasure m, double s0, double s1})? _planAlong(
+  List<LatLng> line,
+  LatLng from,
+  LatLng to,
+) {
+  if (line.length < 2) return null;
+  final m = _PathMeasure(line);
+  final a = m.locate(from), b = m.locate(to);
+  if (a == null || b == null || a.off > 60 || b.off > 60) return null;
+  final along = b.s - a.s;
+  final straight = Geo.haversineKm(from, to) * 1000;
+  if (along < -5 || along > straight * 3 + 80) return null;
+  return (m: m, s0: a.s, s1: b.s);
+}
+
+/// Жаңа нүктеге дейінгі жылжу ұзақтығы — алдыңғы нүктеден бері өткен
+/// уақыт (көлік келесі жаңарту келгенше тоқтамай жүреді), 1,4–8 с.
+Duration _glideGap(DateTime? last, DateTime now) {
+  const short = Duration(milliseconds: 1400);
+  if (last == null) return short;
+  final gap = now.difference(last);
+  if (gap <= short || gap > const Duration(seconds: 30)) return short;
+  return gap > const Duration(seconds: 8) ? const Duration(seconds: 8) : gap;
 }
 
 /// Жылжып жүрген көлік + (керек болса) оны сұр жолдың басымен қосатын
@@ -1524,7 +1556,8 @@ class RouteMapScreen extends StatefulWidget {
   State<RouteMapScreen> createState() => _RouteMapScreenState();
 }
 
-class _RouteMapScreenState extends State<RouteMapScreen> {
+class _RouteMapScreenState extends State<RouteMapScreen>
+    with SingleTickerProviderStateMixin {
   final _map = MapController();
 
   /// Төменгі панельдің НАҚТЫ биіктігін өлшейтін кілт. Бұрын басқару
@@ -1562,8 +1595,42 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   LatLng? get _me =>
       widget.live == null ? widget.approachFrom : widget.live!.value?.fix;
 
-  bool get _showApproach =>
-      widget.live == null ? widget.approachFrom != null : widget.approachToA;
+  /// Тірі режимде — статусқа қарай (жүргізуші A-ға жетіп, жолға шықса
+  /// сұр жол жоғалады), әйтпесе — орын берілсе.
+  bool get _showApproach => widget.live == null
+      ? widget.approachFrom != null
+      : (widget.live!.value?.toA ?? widget.approachToA);
+
+  // ── Тірі көліктің ӨЗ жылжуы ──────────────────────────────────────────
+  // Астыңғы беттегі [LiveTrackMap]-тың анимациясы толық экран ашық
+  // тұрғанда ТОҚТАП тұрады (Flutter жабылған беттің тикерін өшіреді) —
+  // сол себепті бұл бет жаңа нүктелерді өзі жылжытады.
+  late final AnimationController _glide;
+  LatLng? _gFrom;
+  LatLng? _gTo;
+  ({_PathMeasure m, double s0, double s1})? _gPath;
+  DateTime? _gLastAt;
+
+  (LatLng, double?)? get _glidePos {
+    final to = _gTo;
+    if (to == null) return null;
+    final from = _gFrom;
+    final heading = widget.live?.value?.heading;
+    if (from == null) return (to, heading);
+    final k = _glide.value;
+    final p = _gPath;
+    if (p != null) {
+      final (pt, b) = p.m.at(p.s0 + (p.s1 - p.s0) * k);
+      return (pt, (p.s1 - p.s0).abs() > 3 ? b : heading);
+    }
+    return (
+      LatLng(
+        from.latitude + (to.latitude - from.latitude) * k,
+        from.longitude + (to.longitude - from.longitude) * k,
+      ),
+      heading,
+    );
+  }
 
   @override
   void initState() {
@@ -1572,6 +1639,14 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       _loading = true;
       _loadRoute();
     }
+    // initState-те БІРДЕН жасалады: жалқау (late) болса, тірі емес экранда
+    // алғаш dispose ішінде құрылып, Flutter қате береді.
+    _glide = AnimationController(vsync: this);
+    final v = widget.live?.value;
+    if (v != null) {
+      _gTo = v.pos;
+      _gLastAt = DateTime.now();
+    }
     widget.live?.addListener(_onLive);
     _updateApproach();
   }
@@ -1579,16 +1654,36 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   @override
   void dispose() {
     widget.live?.removeListener(_onLive);
+    _glide.dispose();
     super.dispose();
   }
 
-  /// Тірі көліктің ЖАҢА нүктесі келгенде ғана сұр жол қайта кесіледі
-  /// (әр анимация кадрында емес).
+  /// Тірі көліктің ЖАҢА нүктесі келгенде ғана: жылжу басталады және сұр
+  /// жол қайта кесіледі (әр анимация кадрында емес).
   void _onLive() {
-    final fix = widget.live?.value?.fix;
-    if (fix == null || fix == _approachFix) return;
-    setState(() => _approachFix = fix);
-    _updateApproach();
+    final v = widget.live?.value;
+    if (v == null) return;
+    if (!v.toA && _approachFix != null) {
+      _approach.reset();
+      setState(() => _approachFix = null);
+    }
+    final fix = v.fix;
+    if (fix == _gTo) return;
+    final now = DateTime.now();
+    final from = _glidePos?.$1 ?? fix;
+    final line = v.toA
+        ? (_approach.onRoad ? _approach.points : const <LatLng>[])
+        : _points;
+    _gPath = _planAlong(line, from, fix);
+    _gFrom = from;
+    _gTo = fix;
+    _glide.duration = _glideGap(_gLastAt, now);
+    _gLastAt = now;
+    _glide.forward(from: 0);
+    if (v.toA) {
+      setState(() => _approachFix = fix);
+      _updateApproach();
+    }
   }
 
   void _updateApproach() {
@@ -1749,10 +1844,24 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   ),
                   if (widget.live != null)
                     RepaintBoundary(
-                      child: ValueListenableBuilder<LiveVehicleFix?>(
-                        valueListenable: widget.live!,
-                        builder: (_, f, _) =>
-                            _liveVehicleLayers(f, connect: _showApproach),
+                      child: AnimatedBuilder(
+                        animation: _glide,
+                        builder: (_, _) {
+                          final g = _glidePos;
+                          final v = widget.live!.value;
+                          return _liveVehicleLayers(
+                            g == null || v == null
+                                ? null
+                                : LiveVehicleFix(
+                                    pos: g.$1,
+                                    fix: _gTo!,
+                                    heading: g.$2,
+                                    type: v.type,
+                                    toA: v.toA,
+                                  ),
+                            connect: _showApproach && _approachFix != null,
+                          );
+                        },
                       ),
                     ),
                 ],
@@ -2381,6 +2490,7 @@ class _LiveTrackMapState extends State<LiveTrackMap>
             fix: fix,
             heading: s.$2,
             type: _o.vehicleType,
+            toA: _driving,
           );
   }
 
@@ -2405,18 +2515,10 @@ class _LiveTrackMapState extends State<LiveTrackMap>
   /// де жолдың бойында (60 м ішінде) және алға қарай жүріп жатса ғана.
   /// Әйтпесе (жолдан ауытқыды, кері бұрылды) — түзу жылжу.
   void _planPath(LatLng from, LatLng to) {
-    _path = null;
-    final line = _activeLine;
-    if (line.length < 2) return;
-    final m = _PathMeasure(line);
-    final a = m.locate(from), b = m.locate(to);
-    if (a == null || b == null || a.off > 60 || b.off > 60) return;
-    final along = b.s - a.s;
-    final straight = Geo.haversineKm(from, to) * 1000;
-    if (along < -5 || along > straight * 3 + 80) return;
-    _path = m;
-    _pathS0 = a.s;
-    _pathS1 = b.s;
+    final p = _planAlong(_activeLine, from, to);
+    _path = p?.m;
+    _pathS0 = p?.s0 ?? 0;
+    _pathS1 = p?.s1 ?? 0;
   }
 
   void _loadRoad() {

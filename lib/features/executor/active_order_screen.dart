@@ -69,9 +69,26 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
     Repo.orderChatAvailable().then((v) {
       if (mounted) setState(() => _chatAvailable = v);
     });
+    _refreshQuietPos();
+    // Тірі трекер жұмыс істемесе (live_tracking өшік, т.б.) — орын 15 с
+    // сайын тыныш жаңарады, картадағы өз орны «қатып» қалмайды.
+    _quietTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (TripTracker.position.value == null) _refreshQuietPos();
+    });
+  }
+
+  Timer? _quietTimer;
+
+  void _refreshQuietPos() {
     Geo.quietPosition().then((p) {
       if (mounted && p != null) setState(() => _quietPos = p);
     });
+  }
+
+  @override
+  void dispose() {
+    _quietTimer?.cancel();
+    super.dispose();
   }
 
   void _syncRecipient(Order o) {

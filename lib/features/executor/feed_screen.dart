@@ -110,6 +110,10 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
   /// қысқа маршрутты заказдар жақынырақ деп есептейміз.
   Position? _pos;
 
+  /// Ашық тұрған заказ парағына берілетін орын (парақ жеке бет — лентаның
+  /// setState-і оны қайта салмайды).
+  final _posLive = ValueNotifier<Position?>(null);
+
   /// Кіру анимациясы БІР рет қана ойналған заказдар. Тізімді айналдырып
   /// қайта оралғанда карточка қайта «ұшып кірмеуі» үшін.
   final Set<String> _introduced = <String>{};
@@ -164,6 +168,7 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
     }
     _bannerTimer?.cancel();
     _scroll.dispose();
+    _posLive.dispose();
     super.dispose();
   }
 
@@ -573,17 +578,29 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
       _showGate(gate);
       return;
     }
+    // Орындаушы лента ашылғаннан бері жылжып кеткен болуы мүмкін — парақ
+    // ашылғанда орынды тыныш жаңартамыз; жаңа нүкте келсе картадағы
+    // орындаушы мен A-ға дейінгі сұр жол сол мезетте жаңарады.
+    _posLive.value = _pos;
+    Geo.quietPosition().then((p) {
+      if (!mounted || p == null) return;
+      _posLive.value = p;
+      setState(() => _pos = p);
+    });
     showGzSheet(
       context,
-      builder: (_) => _OrderSheet(
-        order: o,
-        myPos: _pos,
-        myVehicle: ref.read(myExecutorProfileProvider).value?.vehicleType,
-        // Клиент бағасы жоқ заказда «Келісу» мүмкін емес — тек өз баға.
-        onAgree: o.clientPrice == null
-            ? null
-            : () => _makeOffer(o, counter: false),
-        onCounter: () => _makeOffer(o, counter: true),
+      builder: (_) => ValueListenableBuilder<Position?>(
+        valueListenable: _posLive,
+        builder: (_, pos, _) => _OrderSheet(
+          order: o,
+          myPos: pos,
+          myVehicle: ref.read(myExecutorProfileProvider).value?.vehicleType,
+          // Клиент бағасы жоқ заказда «Келісу» мүмкін емес — тек өз баға.
+          onAgree: o.clientPrice == null
+              ? null
+              : () => _makeOffer(o, counter: false),
+          onCounter: () => _makeOffer(o, counter: true),
+        ),
       ),
     );
   }
