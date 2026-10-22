@@ -238,7 +238,8 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
           itemCount: rows.length,
           separatorBuilder: (_, i) => const SizedBox(height: 8),
-          itemBuilder: (_, i) => ExecutorDraftTile(row: rows[i]),
+          itemBuilder: (_, i) =>
+              ExecutorDraftTile(row: rows[i], onChanged: _reload),
         );
       },
     );
@@ -252,7 +253,46 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
 /// орындаушыны қайтарудың ең тез жолы.
 class ExecutorDraftTile extends StatelessWidget {
   final Map<String, dynamic> row;
-  const ExecutorDraftTile({super.key, required this.row});
+
+  /// Аккаунт жойылғаннан кейін тізімді жаңарту.
+  final VoidCallback? onChanged;
+  const ExecutorDraftTile({super.key, required this.row, this.onChanged});
+
+  /// Тіркеуде тұрып қалған адамның аккаунтын жою (тек бас модератор): ол
+  /// кейін таза тіркеле алады. Орындаушы профилі не заказы бар аккаунтты
+  /// сервер жоймайды.
+  Future<void> _delete(BuildContext context) async {
+    final ok = await confirmDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Gz.red,
+      title: t('Аяқталмаған тіркелуді жою керек пе?'),
+      message: t(
+        'Аккаунт пен осы нөмірдің жазбалары өшеді. Адам сол нөмірмен '
+        'қайта таза тіркеле алады.',
+      ),
+      confirmLabel: t('Жою'),
+    );
+    if (!ok || !context.mounted) return;
+    try {
+      await Repo.executorAdmin('delete_draft', {'draft_id': row['id']});
+      if (!context.mounted) return;
+      showSnack(context, t('Жойылды. Енді қайта тіркеле алады'));
+      onChanged?.call();
+    } catch (e) {
+      if (!context.mounted) return;
+      showSnack(
+        context,
+        e.toString().contains('ACCOUNT_IN_USE')
+            ? t(
+                'Бұл аккаунтта орындаушы профилі не заказ бар — '
+                'жоюға болмайды.',
+              )
+            : errText(e),
+        error: true,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -337,6 +377,18 @@ class ExecutorDraftTile extends StatelessWidget {
               ),
             ],
           ),
+          if (StaffAccess.isFull) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _delete(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Gz.red,
+                side: BorderSide(color: Gz.tint(Gz.red, 0.45)),
+              ),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text(t('Аккаунтты жою')),
+            ),
+          ],
           if (phone?.isNotEmpty == true) ...[
             const SizedBox(height: 10),
             ContactButtons(

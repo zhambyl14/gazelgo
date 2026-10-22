@@ -61,7 +61,10 @@ Deno.serve(async (req: Request) => {
   if ((action === "create" || action === "update") && !can("executors_edit")) {
     return json({ error: "NO_PERMISSION" }, 403);
   }
-  if ((action === "delete" || action === "delete_client") && !isFull) {
+  if (
+    (action === "delete" || action === "delete_client" ||
+      action === "delete_draft") && !isFull
+  ) {
     return json({ error: "NO_PERMISSION" }, 403);
   }
 
@@ -71,6 +74,8 @@ Deno.serve(async (req: Request) => {
         return await create(admin, callerId, body);
       case "update":
         return await update(admin, callerId, body);
+      case "delete_draft":
+        return await removeDraft(admin, callerId, body);
       case "delete_client":
         return await removeClient(admin, callerId, body);
       case "delete":
@@ -461,6 +466,79 @@ async function removeClient(admin: Admin, callerId: string, b: Record<string, un
     phone: target.phone ?? null,
   });
   return json({ ok: true }, 200);
+}
+
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/// Тіркелуді аяқтамаған адамның аккаунтын жою (тек толық модератор), ол
+/// қайта таза тіркеле алуы үшін: аккаунт + осы нөмірдің аяқталмаған
+/// жазбалары өшеді. САҚТЫҚ: орындаушы профилі НЕ заказы бар аккаунтқа
+/// тиіспейміз (нағыз пайдаланушы) — қате қайтарамыз. Аккаунт мүлдем
+/// ашылмаған болса (мыс. Telegram растауда тоқтаған) — тек жазба өшеді.
+async function removeDraft(admin: Admin, callerId: string, b: Record<string, unknown>) {
+  const draftId = String(b.draft_id ?? "");
+  if (!draftId) return json({ error: "BAD_USER" }, 400);
+
+  const { data: draft } = await admin
+    .from("registration_drafts")
+    .select("id, draft_key, phone, full_name, completed_at")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (!draft) return json({ error: "NOT_FOUND" }, 404);
+  if (draft.completed_at) return json({ error: "DRAFT_COMPLETED" }, 400);
+
+  // Аккаунтты табу: кілттегі UUID бойынша, болмаса телефон бойынша.
+  const phone = String(draft.phone ?? "").replace(/\D/g, "");
+  let userId: string | null = String(draft.draft_key ?? "").match(UUID_RE)?.[0] ?? null;
+  if (userId) {
+    const { data: p } = await admin.from("profiles").select("id").eq("id", userId).maybeSingle();
+    if (!p) userId = null;
+  }
+  if (!userId && phone.length >= 10) {
+    const { data: p } = await admin.from("profiles").select("id").eq("phone", phone).maybeSingle();
+    userId = (p?.id as string | undefined) ?? null;
+  }
+
+  let deletedAccount = false;
+  if (userId) {
+    if (userId === callerId) return json({ error: "FORBIDDEN" }, 403);
+    const { data: target } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!target || target.role === "moderator") return json({ error: "FORBIDDEN" }, 403);
+
+    const { data: ep } = await admin
+      .from("executor_profiles").select("user_id").eq("user_id", userId).maybeSingle();
+    const { count: orders } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .or(`client_id.eq.${userId},executor_id.eq.${userId}`);
+    if (ep || (orders ?? 0) > 0) return json({ error: "ACCOUNT_IN_USE" }, 400);
+
+    const { error: delErr } = await admin.auth.admin.deleteUser(userId);
+    if (delErr) {
+      if (!(await anonymize(admin, userId))) return json({ error: "SERVER_ERROR" }, 500);
+    }
+    deletedAccount = true;
+  }
+
+  // Осы нөмірдің аяқталмаған жазбалары (және осы жазба) өшеді.
+  await admin.from("registration_drafts").delete().eq("id", draftId);
+  if (phone.length >= 10) {
+    try {
+      await admin.from("registration_drafts").delete()
+        .eq("phone", draft.phone as string).is("completed_at", null);
+    } catch (_) { /* */ }
+  }
+
+  await audit(admin, callerId, "draft_account_delete", userId ?? draftId, {
+    full_name: draft.full_name ?? null,
+    phone: draft.phone ?? null,
+    account_deleted: deletedAccount,
+  });
+  return json({ ok: true, account_deleted: deletedAccount }, 200);
 }
 
 async function audit(

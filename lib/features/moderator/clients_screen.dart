@@ -659,7 +659,7 @@ class _RegistrationDraftsScreenState extends State<RegistrationDraftsScreen> {
                   message: t('Белсенді тіркелу draft-тері жоқ'),
                 ),
               for (final r in rows) ...[
-                ExecutorDraftTile(row: r),
+                ExecutorDraftTile(row: r, onChanged: _reload),
                 const SizedBox(height: 8),
               ],
             ],
