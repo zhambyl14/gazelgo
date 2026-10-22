@@ -2568,6 +2568,31 @@ class Repo {
       throw Exception(e.status == 404 ? 'NO_STAFF_FUNCTION' : 'SERVER_ERROR');
     }
   }
+
+  /// Модератор орындаушыны қолмен қосады ('create') не деректерін өзгертеді
+  /// ('update') — `executor-admin` edge функциясы (аты, телефоны, қаласы,
+  /// көлігі). Кэштегі профиль ескірмеуі үшін тазаланады.
+  static Future<void> executorAdmin(
+    String action,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      await c.functions.invoke(
+        'executor-admin',
+        body: {'action': action, ...body},
+      );
+    } on FunctionException catch (e) {
+      final d = e.details;
+      if (d is Map && d['error'] != null) {
+        throw Exception(d['error'].toString());
+      }
+      throw Exception(
+        e.status == 404 ? 'NO_EXECUTOR_FUNCTION' : 'SERVER_ERROR',
+      );
+    }
+    final id = body['user_id'];
+    if (id is String) forgetProfile(id);
+  }
 }
 
 // ================= RIVERPOD PROVIDERS =================

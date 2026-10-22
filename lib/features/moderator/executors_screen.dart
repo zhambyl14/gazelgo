@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../profile/reviews_screen.dart';
 import 'applications_screen.dart' show DocGallery;
+import 'executor_form.dart';
 import 'order_admin.dart';
 import 'staff_screen.dart' show StaffAccess;
 import 'trust_actions.dart' show kBlockReasonPresets;
@@ -71,8 +72,26 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
     return hay.contains(q) || compact.contains(q.replaceAll(' ', ''));
   }
 
+  Future<void> _add() async {
+    if (await showExecutorForm(context)) _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: StaffAccess.can('executors')
+          ? FloatingActionButton.extended(
+              onPressed: _add,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: Text(t('Орындаушы қосу')),
+            )
+          : null,
+      body: _body(),
+    );
+  }
+
+  Widget _body() {
     return Column(
       children: [
         Padding(
@@ -162,7 +181,7 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
           );
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
           itemCount: rows.length,
           separatorBuilder: (_, i) => const SizedBox(height: 8),
           itemBuilder: (_, i) => _ExecutorTile(
@@ -857,6 +876,22 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  if (StaffAccess.can('executors'))
+                    _actionChip(
+                      Icons.edit_outlined,
+                      t('Өзгерту'),
+                      Gz.blue,
+                      () async {
+                        if (await showExecutorForm(
+                          context,
+                          ep: ep,
+                          profile: p,
+                        )) {
+                          await _refresh();
+                          if (mounted) setState(() {});
+                        }
+                      },
+                    ),
                   if (ep.status == 'approved')
                     _actionChip(
                       Icons.assignment_late_outlined,

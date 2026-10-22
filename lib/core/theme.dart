@@ -960,6 +960,11 @@ String errText(Object e) {
     'NOT_STAFF': 'Бұл аккаунт қызметкер емес.',
     'NO_STAFF_FUNCTION':
         'Серверде staff-admin функциясы әлі deploy жасалмаған.',
+    'NO_EXECUTOR_FUNCTION':
+        'Серверде executor-admin функциясы әлі deploy жасалмаған.',
+    'BAD_BRAND': 'Көлік маркасын жазыңыз.',
+    'BAD_PLATE': 'Мемлекеттік нөмірді жазыңыз.',
+    'BAD_YEAR': 'Шыққан жылы дұрыс емес.',
     'User is banned': 'Аккаунт өшірілген. Модераторға хабарласыңыз.',
     'FORBIDDEN': 'Рұқсат жоқ.',
     'EMAIL_TAKEN': 'Бұл нөмір тіркелген. Кіріп көріңіз.',
