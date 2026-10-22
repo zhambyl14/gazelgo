@@ -69,6 +69,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _techPassport = _PickedDoc(); // көліктің техпаспорты (міндетті)
   final _techPassportSelfie = _PickedDoc(); // техпаспортпен фото (міндетті)
 
+  /// Техпаспорты жоқ орындаушы оның орнына сол көліктің страховкасын
+  /// жүктейді (0091): страховка + онымен фото.
+  late bool _noTech =
+      widget.existing != null &&
+      widget.existing!.techPassportPath == null &&
+      widget.existing!.insurancePath != null;
+  final _insurance = _PickedDoc();
+  final _insuranceSelfie = _PickedDoc();
+
+  /// Көлік құжаты (техпаспорт НЕМЕСЕ страховка) + онымен фото толы ма.
+  bool get _vehicleDocSet => _noTech
+      ? _insurance.isSet && _insuranceSelfie.isSet
+      : _techPassport.isSet && _techPassportSelfie.isSet;
+
   // Көлік фотолары (4 таңбаланған)
   final _vehFront = _PickedDoc();
   final _vehBack = _PickedDoc();
@@ -96,8 +110,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     _isForeign
         ? (t('Шетел паспорты'), _passport.isSet && _passportSelfie.isSet)
         : (t('Жеке куәлік'), _idDoc.isSet && _idSelfie.isSet),
-    if (!_foot)
-      (t('Техпаспорт'), _techPassport.isSet && _techPassportSelfie.isSet),
+    if (!_foot) (_noTech ? t('Страховка') : t('Техпаспорт'), _vehicleDocSet),
     if (!_foot)
       (
         t('Көлік фотолары'),
@@ -129,6 +142,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       _passportSelfie.existingPath = e.passportSelfiePath;
       _techPassport.existingPath = e.techPassportPath;
       _techPassportSelfie.existingPath = e.techPassportSelfiePath;
+      _insurance.existingPath = e.insurancePath;
+      _insuranceSelfie.existingPath = e.insuranceSelfiePath;
       final ph = e.vehiclePhotos;
       if (ph.isNotEmpty) _vehFront.existingPath = ph[0];
       if (ph.length > 1) _vehBack.existingPath = ph[1];
@@ -221,6 +236,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         _passportSelfie.isSet ||
         _techPassport.isSet ||
         _techPassportSelfie.isSet ||
+        _insurance.isSet ||
+        _insuranceSelfie.isSet ||
         vehiclePhotos > 0;
     final year = int.tryParse(_year.text.trim());
     final ready =
@@ -276,6 +293,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 : _idSelfie.isSet,
             'tech_passport': _techPassport.isSet,
             'tech_passport_selfie': _techPassportSelfie.isSet,
+            if (_noTech) ...{
+              'insurance': _insurance.isSet,
+              'insurance_selfie': _insuranceSelfie.isSet,
+            },
             'vehicle_photos': vehiclePhotos,
           },
         },
@@ -302,8 +323,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       return t('Паспорт пен онымен селфи керек');
     }
     if (_foot) return null;
-    if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
-      return t('Техпаспорт пен онымен фото керек');
+    if (!_vehicleDocSet) {
+      return _noTech
+          ? t('Страховка мен онымен фото керек')
+          : t('Техпаспорт пен онымен фото керек');
     }
     if (!_vehFront.isSet ||
         !_vehBack.isSet ||
@@ -356,10 +379,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       );
       return;
     }
-    if (!_foot && (!_techPassport.isSet || !_techPassportSelfie.isSet)) {
+    if (!_foot && !_vehicleDocSet) {
       showSnack(
         context,
-        t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
+        _noTech
+            ? t('Көліктің страховкасы мен онымен фотоны жүктеңіз')
+            : t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
         error: true,
       );
       return;
@@ -401,10 +426,20 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       final passportSelfie = _isForeign
           ? await up(_passportSelfie, 'passport_selfie')
           : null;
-      final techPath = _foot ? null : await up(_techPassport, 'tech_passport');
-      final techSelfie = _foot
-          ? null
-          : await up(_techPassportSelfie, 'tech_passport_selfie');
+      final useTech = !_foot && !_noTech;
+      final useInsurance = !_foot && _noTech;
+      final techPath = useTech
+          ? await up(_techPassport, 'tech_passport')
+          : null;
+      final techSelfie = useTech
+          ? await up(_techPassportSelfie, 'tech_passport_selfie')
+          : null;
+      final insurancePath = useInsurance
+          ? await up(_insurance, 'insurance')
+          : null;
+      final insuranceSelfie = useInsurance
+          ? await up(_insuranceSelfie, 'insurance_selfie')
+          : null;
       final photos = <String>[];
       if (!_foot) {
         for (final (d, n) in [
@@ -432,6 +467,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           passportSelfiePath: passportSelfie,
           techPassportPath: techPath,
           techPassportSelfiePath: techSelfie,
+          insurancePath: insurancePath,
+          insuranceSelfiePath: insuranceSelfie,
           photos: photos,
         );
       } else {
@@ -443,7 +480,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           plate: _foot ? '' : _plate.text,
           // true — жаяу; false тек бұрын жаяу болған өтінімді қайтарғанда
           // (баған 0090 миграциясынсыз жоқ — қалғандарға тиіспейміз).
-          onFoot: _foot ? true : (widget.existing?.deliveryOnFoot == true ? false : null),
+          onFoot: _foot
+              ? true
+              : (widget.existing?.deliveryOnFoot == true ? false : null),
           vehiclePhotos: photos,
           idDocPath: idPath,
           licensePath: licPath,
@@ -453,6 +492,10 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           passportSelfiePath: passportSelfie,
           techPassportPath: techPath,
           techPassportSelfiePath: techSelfie,
+          insurancePath: insurancePath,
+          insuranceSelfiePath: insuranceSelfie,
+          // страховка режимі, не болмаса бұрынғы страховканы тазалау керек
+          sendInsurance: useInsurance || widget.existing?.insurancePath != null,
           isForeignCitizen: _isForeign,
           city: _city,
           isResubmit: widget.existing != null,
@@ -922,70 +965,73 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 ],
                 const SizedBox(height: 20),
                 if (!_foot) ...[
-                Text(
-                  t('Көлік туралы'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _brand,
-                        onChanged: (_) => _scheduleProgressSave(),
-                        onEditingComplete: _saveApplicationProgress,
-                        decoration: InputDecoration(labelText: t('Маркасы')),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? t('Қажет') : null,
-                      ),
+                  Text(
+                    t('Көлік туралы'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _model,
-                        onChanged: (_) => _scheduleProgressSave(),
-                        onEditingComplete: _saveApplicationProgress,
-                        decoration: InputDecoration(labelText: t('Моделі')),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _brand,
+                          onChanged: (_) => _scheduleProgressSave(),
+                          onEditingComplete: _saveApplicationProgress,
+                          decoration: InputDecoration(labelText: t('Маркасы')),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? t('Қажет')
+                              : null,
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _model,
+                          onChanged: (_) => _scheduleProgressSave(),
+                          onEditingComplete: _saveApplicationProgress,
+                          decoration: InputDecoration(labelText: t('Моделі')),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _year,
+                    onChanged: (_) => _scheduleProgressSave(),
+                    onEditingComplete: _saveApplicationProgress,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: t('Көлік шығарылған жыл'),
+                      hintText: t('Мысалы: 2015'),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _year,
-                  onChanged: (_) => _scheduleProgressSave(),
-                  onEditingComplete: _saveApplicationProgress,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: t('Көлік шығарылған жыл'),
-                    hintText: t('Мысалы: 2015'),
+                    validator: (v) {
+                      final y = int.tryParse(v?.trim() ?? '');
+                      if (y == null ||
+                          y < 1980 ||
+                          y > DateTime.now().year + 1) {
+                        return t('Жылын дұрыс жазыңыз');
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (v) {
-                    final y = int.tryParse(v?.trim() ?? '');
-                    if (y == null || y < 1980 || y > DateTime.now().year + 1) {
-                      return t('Жылын дұрыс жазыңыз');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _plate,
-                  onChanged: (_) => _scheduleProgressSave(),
-                  onEditingComplete: _saveApplicationProgress,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: t('Мемлекеттік нөмір'),
-                    hintText: '123 ABC 02',
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _plate,
+                    onChanged: (_) => _scheduleProgressSave(),
+                    onEditingComplete: _saveApplicationProgress,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: t('Мемлекеттік нөмір'),
+                      hintText: '123 ABC 02',
+                    ),
+                    validator: (v) => (v == null || v.trim().length < 4)
+                        ? t('Мемлекеттік нөмір қажет')
+                        : null,
                   ),
-                  validator: (v) => (v == null || v.trim().length < 4)
-                      ? t('Мемлекеттік нөмір қажет')
-                      : null,
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
                 ],
                 Text(
                   t('Құжаттар'),
@@ -996,14 +1042,14 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                 ),
                 const SizedBox(height: 10),
                 if (!_foot) ...[
-                _docTile(t('Жүргізуші куәлігі (права)'), _license),
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Правамен селфи'),
-                  _licenseSelfie,
-                  hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
-                ),
-                const SizedBox(height: 16),
+                  _docTile(t('Жүргізуші куәлігі (права)'), _license),
+                  const SizedBox(height: 8),
+                  _docTile(
+                    t('Правамен селфи'),
+                    _licenseSelfie,
+                    hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
+                  ),
+                  const SizedBox(height: 16),
                 ],
                 Text(
                   t('Азаматтық'),
@@ -1065,55 +1111,83 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ],
                 if (!_foot) ...[
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Көліктің техпаспорты'),
-                  _techPassport,
-                  hint: t('Көлік құжаты (СРТС) — азаматтыққа қарамай қажет'),
-                ),
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Техпаспортпен фото'),
-                  _techPassportSelfie,
-                  hint: t('Техпаспортты қолыңызға ұстап түсіріңіз'),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  t('Көлік фотолары'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                  const SizedBox(height: 8),
+                  if (!_noTech) ...[
+                    _docTile(
+                      t('Көліктің техпаспорты'),
+                      _techPassport,
+                      hint: t(
+                        'Көлік құжаты (СРТС) — азаматтыққа қарамай қажет',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _docTile(
+                      t('Техпаспортпен фото'),
+                      _techPassportSelfie,
+                      hint: t('Техпаспортты қолыңызға ұстап түсіріңіз'),
+                    ),
+                  ] else ...[
+                    _docTile(
+                      t('Көліктің страховкасы'),
+                      _insurance,
+                      hint: t('Осы көлікке берілген сақтандыру полисі'),
+                    ),
+                    const SizedBox(height: 8),
+                    _docTile(
+                      t('Страховкамен фото'),
+                      _insuranceSelfie,
+                      hint: t('Страховканы қолыңызға ұстап түсіріңіз'),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _noTech = !_noTech);
+                      _saveApplicationProgress();
+                    },
+                    child: Text(
+                      _noTech
+                          ? t('Техпаспортым бар — соны жүктеймін')
+                          : t('Техпаспорт жоқ — страховка жүктеймін'),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
-                  style: TextStyle(color: Gz.textSecondary, fontSize: 13),
-                ),
-                const SizedBox(height: 10),
-                _docTile(
-                  t('Алдынан (гос нөмір көрінсін)'),
-                  _vehFront,
-                  hint: t('Көліктің алды, нөмірі анық көрінуі керек'),
-                ),
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Артынан (гос нөмір көрінсін)'),
-                  _vehBack,
-                  hint: t('Көліктің арты, нөмірі анық көрінуі керек'),
-                ),
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Оң жағынан'),
-                  _vehRight,
-                  hint: t('Көлікке қарап тұрсаңыз — оң бүйірі'),
-                ),
-                const SizedBox(height: 8),
-                _docTile(
-                  t('Сол жағынан'),
-                  _vehLeft,
-                  hint: t('Көлікке қарап тұрсаңыз — сол бүйірі'),
-                ),
+                  const SizedBox(height: 20),
+                  Text(
+                    t('Көлік фотолары'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t('Нақ көрсетілген жақтарды түсіріңіз — шатаспаңыз.'),
+                    style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  _docTile(
+                    t('Алдынан (гос нөмір көрінсін)'),
+                    _vehFront,
+                    hint: t('Көліктің алды, нөмірі анық көрінуі керек'),
+                  ),
+                  const SizedBox(height: 8),
+                  _docTile(
+                    t('Артынан (гос нөмір көрінсін)'),
+                    _vehBack,
+                    hint: t('Көліктің арты, нөмірі анық көрінуі керек'),
+                  ),
+                  const SizedBox(height: 8),
+                  _docTile(
+                    t('Оң жағынан'),
+                    _vehRight,
+                    hint: t('Көлікке қарап тұрсаңыз — оң бүйірі'),
+                  ),
+                  const SizedBox(height: 8),
+                  _docTile(
+                    t('Сол жағынан'),
+                    _vehLeft,
+                    hint: t('Көлікке қарап тұрсаңыз — сол бүйірі'),
+                  ),
                 ],
                 const SizedBox(height: 24),
                 // Барлық құжат жүктелмейінше батырма СҰР күйде тұрады

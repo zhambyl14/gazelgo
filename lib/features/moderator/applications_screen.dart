@@ -157,8 +157,18 @@ class _DocsReviewTile extends StatelessWidget {
                       _doc(ep.licenseSelfiePath, t('Правамен селфи')),
                     ],
                     if (ep.docsUpdateFields.contains('tech')) ...[
-                      _doc(ep.techPassportPath, t('Техпаспорт')),
-                      _doc(ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+                      if (ep.techPassportPath != null ||
+                          ep.insurancePath == null) ...[
+                        _doc(ep.techPassportPath, t('Техпаспорт')),
+                        _doc(
+                          ep.techPassportSelfiePath,
+                          t('Техпаспортпен фото'),
+                        ),
+                      ],
+                      if (ep.insurancePath != null) ...[
+                        _doc(ep.insurancePath, t('Страховка')),
+                        _doc(ep.insuranceSelfiePath, t('Страховкамен фото')),
+                      ],
                     ],
                     if (ep.docsUpdateFields.contains('photos'))
                       for (final ph in ep.vehiclePhotos) _doc(ph, t('Көлік')),
@@ -376,8 +386,15 @@ class ApplicationDetailScreen extends StatelessWidget {
                   (ep.passportSelfiePath, t('Паспортпен селфи')),
                 ],
                 if (!ep.onFoot) ...[
-                  (ep.techPassportPath, t('Техпаспорт')),
-                  (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+                  if (ep.techPassportPath != null ||
+                      ep.insurancePath == null) ...[
+                    (ep.techPassportPath, t('Техпаспорт')),
+                    (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+                  ],
+                  if (ep.insurancePath != null) ...[
+                    (ep.insurancePath, t('Страховка')),
+                    (ep.insuranceSelfiePath, t('Страховкамен фото')),
+                  ],
                   for (var i = 0; i < ep.vehiclePhotos.length; i++)
                     (ep.vehiclePhotos[i], '${t('Фото')} ${i + 1}'),
                 ],

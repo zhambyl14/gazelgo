@@ -530,6 +530,12 @@ class Repo {
     String? passportSelfiePath,
     String? techPassportPath,
     String? techPassportSelfiePath,
+    String? insurancePath,
+    String? insuranceSelfiePath,
+    // true — страховка режимі (немесе бұрынғы страховканы тазалау керек):
+    // тек сонда ғана insurance_* бағандары жіберіледі, 0091 миграциясынсыз
+    // қалған өтінімдер бұзылмайды.
+    bool sendInsurance = false,
     bool isForeignCitizen = false,
     String? city,
     required bool isResubmit,
@@ -554,6 +560,10 @@ class Repo {
       'passport_selfie_path': passportSelfiePath,
       'tech_passport_path': techPassportPath,
       'tech_passport_selfie_path': techPassportSelfiePath,
+      if (sendInsurance) ...{
+        'insurance_path': insurancePath,
+        'insurance_selfie_path': insuranceSelfiePath,
+      },
       'is_foreign_citizen': isForeignCitizen,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
       'delivery_on_foot': ?onFoot,
@@ -565,7 +575,8 @@ class Repo {
           .select(
             'status, id_doc_path, license_path, id_selfie_path, '
             'license_selfie_path, passport_path, passport_selfie_path, '
-            'tech_passport_path, tech_passport_selfie_path, vehicle_photos',
+            'tech_passport_path, tech_passport_selfie_path, vehicle_photos'
+            '${sendInsurance ? ', insurance_path, insurance_selfie_path' : ''}',
           )
           .eq('user_id', id)
           .maybeSingle();
@@ -578,6 +589,8 @@ class Repo {
         passportSelfiePath,
         techPassportPath,
         techPassportSelfiePath,
+        insurancePath,
+        insuranceSelfiePath,
         ...vehiclePhotos,
       };
       final oldPaths = <String>[];
@@ -591,6 +604,7 @@ class Repo {
           'passport_selfie_path',
           'tech_passport_path',
           'tech_passport_selfie_path',
+          if (sendInsurance) ...['insurance_path', 'insurance_selfie_path'],
         ]) {
           final p = old[k] as String?;
           if (p != null && !newPaths.contains(p)) oldPaths.add(p);
@@ -1118,11 +1132,16 @@ class Repo {
     String? passportSelfiePath,
     String? techPassportPath,
     String? techPassportSelfiePath,
+    String? insurancePath,
+    String? insuranceSelfiePath,
     List<String>? photos,
   }) async {
     final res = await c.rpc(
       'submit_docs_update',
       params: {
+        // 0091: страховка параметрлері тек жүктелгенде жіберіледі
+        'p_insurance': ?insurancePath,
+        'p_insurance_selfie': ?insuranceSelfiePath,
         'p_id_doc': idDocPath,
         'p_license': licensePath,
         'p_tech': techPassportPath,

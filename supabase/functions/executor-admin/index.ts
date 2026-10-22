@@ -268,6 +268,8 @@ const DOC_PATH_COLUMNS = [
   "passport_selfie_path",
   "tech_passport_path",
   "tech_passport_selfie_path",
+  "insurance_path",
+  "insurance_selfie_path",
 ] as const;
 
 /// Орындаушыны жою (тек толық модератор). Заказ тарихы жоқ болса — аккаунт

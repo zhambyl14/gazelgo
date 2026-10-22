@@ -216,6 +216,10 @@ class ExecutorProfile {
   final String? licensePath;
   final String? techPassportPath;
   final String? techPassportSelfiePath;
+
+  /// Техпаспорт жоқ болса — оның орнына көлік страховкасы (0091).
+  final String? insurancePath;
+  final String? insuranceSelfiePath;
   final String? idSelfiePath;
   final String? licenseSelfiePath;
   final String? passportPath;
@@ -256,6 +260,8 @@ class ExecutorProfile {
       licensePath = m['license_path'] as String?,
       techPassportPath = m['tech_passport_path'] as String?,
       techPassportSelfiePath = m['tech_passport_selfie_path'] as String?,
+      insurancePath = m['insurance_path'] as String?,
+      insuranceSelfiePath = m['insurance_selfie_path'] as String?,
       idSelfiePath = m['id_selfie_path'] as String?,
       licenseSelfiePath = m['license_selfie_path'] as String?,
       passportPath = m['passport_path'] as String?,
@@ -280,7 +286,7 @@ class ExecutorProfile {
     'id' => t('Жеке куәлік'),
     'passport' => t('Шетел паспорты'),
     'license' => t('Жүргізуші куәлігі'),
-    'tech' => t('Техпаспорт'),
+    'tech' => t('Техпаспорт немесе страховка'),
     'photos' => t('Көлік фотолары'),
     _ => f,
   };
@@ -297,10 +303,10 @@ class ExecutorProfile {
   String get vehicleTitle => onFoot
       ? t('Жаяу курьер')
       : [
-    vehicleBrand,
-    vehicleModel,
-    if (vehicleYear != null) '$vehicleYear',
-  ].where((e) => e.trim().isNotEmpty).join(' ');
+          vehicleBrand,
+          vehicleModel,
+          if (vehicleYear != null) '$vehicleYear',
+        ].where((e) => e.trim().isNotEmpty).join(' ');
 }
 
 // ---------- Аралық аялдама (0047) ----------

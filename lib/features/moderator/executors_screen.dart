@@ -561,11 +561,10 @@ class ExecutorModActions {
         case 'request_docs':
           final res = await showDialog<(List<String>, String)>(
             context: context,
-            builder: (ctx) =>
-                _RequestDocsDialog(
-                  isForeign: ep.isForeignCitizen,
-                  onFoot: ep.onFoot,
-                ),
+            builder: (ctx) => _RequestDocsDialog(
+              isForeign: ep.isForeignCitizen,
+              onFoot: ep.onFoot,
+            ),
           );
           if (res == null) return;
           await Repo.modRequestDocs(ep.userId, res.$1, res.$2);
@@ -777,7 +776,7 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
         : ('id', t('Жеке куәлік')),
     if (!widget.onFoot) ...[
       ('license', t('Жүргізуші куәлігі')),
-      ('tech', t('Техпаспорт')),
+      ('tech', t('Техпаспорт немесе страховка')),
       ('photos', t('Көлік фотолары')),
     ],
   ];
@@ -914,8 +913,14 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
       (ep.passportSelfiePath, t('Паспортпен селфи')),
     ],
     if (!ep.onFoot) ...[
-      (ep.techPassportPath, t('Техпаспорт')),
-      (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+      if (ep.techPassportPath != null || ep.insurancePath == null) ...[
+        (ep.techPassportPath, t('Техпаспорт')),
+        (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+      ],
+      if (ep.insurancePath != null) ...[
+        (ep.insurancePath, t('Страховка')),
+        (ep.insuranceSelfiePath, t('Страховкамен фото')),
+      ],
       for (var i = 0; i < ep.vehiclePhotos.length; i++)
         (ep.vehiclePhotos[i], '${t('Көлік')} ${i + 1}'),
     ],
