@@ -23,7 +23,7 @@ const cors = {
 /// 0084-дегі staff_perm_keys()-пен бірдей.
 const PERM_KEYS = new Set([
   "overview", "line", "live_map", "orders", "applications", "executors",
-  "clients", "balance", "topups", "support", "reports", "order_chats",
+  "executors_edit", "executors_block", "clients", "balance", "topups", "support", "reports", "order_chats",
   "broadcast", "news", "vehicles", "settings", "audit",
 ]);
 

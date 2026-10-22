@@ -1221,3 +1221,19 @@ supabase functions deploy signup --no-verify-jwt
 Миграция ЖОҚ. `executor-admin` функциясын deploy жасаңыз: Dashboard →
 Edge Functions → Deploy new function → аты `executor-admin`, коды
 `functions/executor-admin/index.ts`, **Verify JWT = ON**. Жаңа секрет керек емес.
+
+### Қызметкер рұқсаттары дәлдеу + орындаушыны жою: `0087` (2026-10-22)
+
+«Орындаушылар» рұқсаты үшке бөлінді: **қарау** (`executors`), **қосу/өзгерту**
+(`executors_edit`), **бұғаттау** (`executors_block`). Қызметкер рұқсаттарының
+экраны топтарға бөлініп, әр рұқсаттың астында дәл не істей алатыны жазылды.
+Орындаушыны **біржола жою** — тек бас модераторда (қызметкерге берілмейді).
+Заказ тарихы бар орындаушы анонимделеді (delete-account сияқты), тарихы жоқ
+болса аккаунты толық өшеді; белсенді заказы барда жоюға болмайды.
+
+1. `migrations/0087_staff_executor_perms.sql` — SQL Editor-да орындаңыз (0086-дан
+   КЕЙІН). Бұрын `executors` рұқсаты бар қызметкерлерге `executors_block`
+   автоматты беріледі (бұғаттау әрекеті сақталады); `executors_edit` берілмейді.
+2. `executor-admin` функциясын ҚАЙТА deploy жасаңыз (жаңа `delete` әрекеті және
+   `executors_edit` тексеруі), `staff-admin` функциясын да ҚАЙТА deploy жасаңыз
+   (жаңа рұқсат кілттері). Verify JWT = ON.

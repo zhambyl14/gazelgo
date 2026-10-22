@@ -13,51 +13,163 @@ class StaffPerm {
   final String key;
   final IconData icon;
   final String Function() label;
-  final String Function()? hint;
-  const StaffPerm(this.key, this.icon, this.label, [this.hint]);
+
+  /// Дәл не істей алатынын түсіндіретін жол — қызметкерге рұқсат
+  /// бергенде модератор нені ашып жатқанын көрсін.
+  final String Function() hint;
+
+  /// Тәуелді рұқсат: бұл белгіленсе, [requires] да автоматты белгіленеді
+  /// (мыс. бұғаттау үшін орындаушылар тізімін ашу керек).
+  final String? requires;
+  const StaffPerm(this.key, this.icon, this.label, this.hint, {this.requires});
 }
 
-/// Барлық рұқсаттар — экранда осы ретпен көрсетіледі.
+/// Рұқсаттар тобы (экранда тақырыппен бөлінеді).
+class StaffPermGroup {
+  final String Function() title;
+  final List<StaffPerm> perms;
+  const StaffPermGroup(this.title, this.perms);
+}
+
+final List<StaffPermGroup> kStaffPermGroups = [
+  StaffPermGroup(() => t('Қолдау'), [
+    StaffPerm(
+      'support',
+      Icons.support_agent_rounded,
+      () => t('Қолдау чаты'),
+      () => t('Клиент пен орындаушылардың қолдау чатына жауап береді'),
+    ),
+    StaffPerm(
+      'order_chats',
+      Icons.forum_outlined,
+      () => t('Заказ чаттары'),
+      () => t('Клиент пен орындаушы арасындағы заказ чаттарын оқиды'),
+    ),
+    StaffPerm(
+      'reports',
+      Icons.flag_outlined,
+      () => t('Шағымдар'),
+      () => t('Шағымдарды қарап, шешеді (мәртебесін өзгертеді)'),
+    ),
+  ]),
+  StaffPermGroup(() => t('Орындаушылар'), [
+    StaffPerm(
+      'executors',
+      Icons.local_shipping_outlined,
+      () => t('Орындаушыларды қарау'),
+      () => t(
+        'Тізім, іздеу, карточка, құжаттар. Құжат жаңартуды сұрай алады. '
+        'Өзгерте де, бұғаттай да алмайды',
+      ),
+    ),
+    StaffPerm(
+      'executors_edit',
+      Icons.edit_outlined,
+      () => t('Орындаушыны қосу және өзгерту'),
+      () => t(
+        'Жаңа орындаушыны қолмен қосады; атын, телефонын, қаласын, '
+        'көлігін өзгертеді; Ұмай белгісін қояды',
+      ),
+      requires: 'executors',
+    ),
+    StaffPerm(
+      'executors_block',
+      Icons.block_rounded,
+      () => t('Орындаушыны бұғаттау'),
+      () => t(
+        'Орындаушыны бұғаттайды және бұғаттан шығарады. '
+        'Жоя алмайды — жою тек бас модераторға',
+      ),
+      requires: 'executors',
+    ),
+    StaffPerm(
+      'applications',
+      Icons.assignment_ind_outlined,
+      () => t('Өтінімдер'),
+      () => t('Жаңа орындаушылардың құжаттарын қарап, растайды не қабылдамайды'),
+    ),
+    StaffPerm(
+      'balance',
+      Icons.tune_rounded,
+      () => t('Баланс түзету'),
+      () => t('Орындаушы балансына қолмен қосады не шегереді'),
+    ),
+    StaffPerm(
+      'topups',
+      Icons.account_balance_wallet_outlined,
+      () => t('Толтырулар'),
+      () => t('Баланс толтыру сұранымдарын растайды не қабылдамайды'),
+    ),
+  ]),
+  StaffPermGroup(() => t('Заказдар мен бақылау'), [
+    StaffPerm(
+      'orders',
+      Icons.receipt_long_outlined,
+      () => t('Заказдар'),
+      () => t('Барлық заказды қарайды, қажет болса тоқтатады не қайта ашады'),
+    ),
+    StaffPerm(
+      'line',
+      Icons.sensors_rounded,
+      () => t('Линия'),
+      () => t('Қазір желідегі орындаушылар мен күтіп тұрған заказдар'),
+    ),
+    StaffPerm(
+      'live_map',
+      Icons.map_outlined,
+      () => t('Тірі карта'),
+      () => t('Орындаушылар мен заказдарды картада нақты уақытта көреді'),
+    ),
+    StaffPerm(
+      'clients',
+      Icons.people_outline_rounded,
+      () => t('Клиенттер'),
+      () => t('Клиенттер тізімі, карточкасы, аккаунтын бұғаттау'),
+    ),
+  ]),
+  StaffPermGroup(() => t('Жүйе'), [
+    StaffPerm(
+      'overview',
+      Icons.space_dashboard_outlined,
+      () => t('Шолу'),
+      () => t('Статистика, графиктер, түсім'),
+    ),
+    StaffPerm(
+      'broadcast',
+      Icons.campaign_outlined,
+      () => t('Жаппай хабарлама'),
+      () => t('Барлық пайдаланушыға push-хабарлама жібереді'),
+    ),
+    StaffPerm(
+      'news',
+      Icons.auto_stories_outlined,
+      () => t('Жаңалықтар'),
+      () => t('Жаңалықтарды қосады, өзгертеді, өшіреді'),
+    ),
+    StaffPerm(
+      'vehicles',
+      Icons.directions_car_outlined,
+      () => t('Көліктер'),
+      () => t('Көлік түрлерінің каталогын өзгертеді'),
+    ),
+    StaffPerm(
+      'settings',
+      Icons.tune_rounded,
+      () => t('Баптаулар'),
+      () => t('Қосымша баптаулары: бағалар, тарифтер, байланыс'),
+    ),
+    StaffPerm(
+      'audit',
+      Icons.history_rounded,
+      () => t('Әрекеттер журналы'),
+      () => t('Барлық модератор мен қызметкердің әрекеттер тарихын көреді'),
+    ),
+  ]),
+];
+
+/// Барлық рұқсаттар (топтарсыз, жалпақ тізім).
 final List<StaffPerm> kStaffPerms = [
-  StaffPerm('support', Icons.support_agent_rounded, () => t('Қолдау чаты')),
-  StaffPerm(
-    'executors',
-    Icons.local_shipping_outlined,
-    () => t('Орындаушылар'),
-  ),
-  StaffPerm(
-    'applications',
-    Icons.assignment_ind_outlined,
-    () => t('Өтінімдер'),
-  ),
-  StaffPerm(
-    'topups',
-    Icons.account_balance_wallet_outlined,
-    () => t('Толтырулар'),
-  ),
-  StaffPerm('reports', Icons.flag_outlined, () => t('Шағымдар')),
-  StaffPerm('order_chats', Icons.forum_outlined, () => t('Заказ чаттары')),
-  StaffPerm('orders', Icons.receipt_long_outlined, () => t('Заказдар')),
-  StaffPerm('line', Icons.sensors_rounded, () => t('Линия')),
-  StaffPerm('live_map', Icons.map_outlined, () => t('Тірі карта')),
-  StaffPerm('clients', Icons.people_outline_rounded, () => t('Клиенттер')),
-  StaffPerm(
-    'balance',
-    Icons.tune_rounded,
-    () => t('Баланс түзету'),
-    () => t('Орындаушы балансын қолмен өзгерту'),
-  ),
-  StaffPerm(
-    'overview',
-    Icons.space_dashboard_outlined,
-    () => t('Шолу'),
-    () => t('Статистика, графиктер, түсім'),
-  ),
-  StaffPerm('broadcast', Icons.campaign_outlined, () => t('Жаппай хабарлама')),
-  StaffPerm('news', Icons.auto_stories_outlined, () => t('Жаңалықтар')),
-  StaffPerm('vehicles', Icons.directions_car_outlined, () => t('Көліктер')),
-  StaffPerm('settings', Icons.tune_rounded, () => t('Баптаулар')),
-  StaffPerm('audit', Icons.history_rounded, () => t('Әрекеттер журналы')),
+  for (final g in kStaffPermGroups) ...g.perms,
 ];
 
 /// Панельдің ішкі экрандары (мыс. орындаушы мәзіріндегі «Баланс түзету»)
@@ -67,6 +179,10 @@ final List<StaffPerm> kStaffPerms = [
 class StaffAccess {
   static Profile? me;
   static bool can(String perm) => me?.modCan(perm) ?? true;
+
+  /// Толық (бас) модератор ме. Профиль белгісіз болса — жоқ деп есептейміз:
+  /// бұл тек қауіпті әрекеттерді (орындаушыны жою) ашады.
+  static bool get isFull => me?.isFullModerator ?? false;
 }
 
 /// Жаңа қызметкерге әдепкі белгіленетін — қолдаудың негізгі жұмысы.
@@ -232,6 +348,22 @@ class _PermsPicker extends StatelessWidget {
   final ValueChanged<Set<String>> onChanged;
   const _PermsPicker({required this.selected, required this.onChanged});
 
+  /// Рұқсатты қосу/алу. Тәуелділікті сақтайды: «бұғаттау/өзгерту» қосылса,
+  /// «орындаушыларды қарау» да қосылады; «қарау» алынса, тәуелділері де кетеді.
+  Set<String> _toggle(StaffPerm p, bool on) {
+    final next = {...selected};
+    if (on) {
+      next.add(p.key);
+      if (p.requires != null) next.add(p.requires!);
+    } else {
+      next.remove(p.key);
+      for (final q in kStaffPerms) {
+        if (q.requires == p.key) next.remove(q.key);
+      }
+    }
+    return next;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -254,19 +386,39 @@ class _PermsPicker extends StatelessWidget {
             ),
           ],
         ),
-        for (final p in kStaffPerms)
-          CheckboxListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.trailing,
-            secondary: Icon(p.icon, size: 20, color: Gz.textSecondary),
-            title: Text(p.label()),
-            subtitle: p.hint == null ? null : Text(p.hint!()),
-            value: selected.contains(p.key),
-            onChanged: (v) => onChanged(
-              v == true ? {...selected, p.key} : ({...selected}..remove(p.key)),
+        for (final g in kStaffPermGroups) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 2),
+            child: Text(
+              g.title().toUpperCase(),
+              style: Gz.caption.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+              ),
             ),
           ),
+          for (final p in g.perms)
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.trailing,
+              secondary: Icon(p.icon, size: 20, color: Gz.textSecondary),
+              title: Text(p.label()),
+              subtitle: Text(p.hint()),
+              isThreeLine: true,
+              value: selected.contains(p.key),
+              onChanged: (v) => onChanged(_toggle(p, v == true)),
+            ),
+        ],
+        const SizedBox(height: 10),
+        GzNotice(
+          tone: NoticeTone.info,
+          icon: Icons.shield_outlined,
+          message: t(
+            'Тек бас модератор: орындаушыны толық жою, қызметкерлерді '
+            'қосу және олардың рұқсатын өзгерту. Бұларды қызметкерге беру мүмкін емес.',
+          ),
+        ),
       ],
     );
   }

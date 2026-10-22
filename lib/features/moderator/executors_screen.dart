@@ -80,7 +80,7 @@ class _ExecutorsScreenState extends State<ExecutorsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: StaffAccess.can('executors')
+      floatingActionButton: StaffAccess.can('executors_edit')
           ? FloatingActionButton.extended(
               onPressed: _add,
               icon: const Icon(Icons.person_add_alt_1_rounded),
@@ -482,13 +482,19 @@ class ExecutorModActions {
       ),
     if (StaffAccess.can('balance'))
       PopupMenuItem(value: 'balance', child: Text(t('Баланс түзету'))),
-    if (ep.status == 'approved')
+    if (ep.status == 'approved' && StaffAccess.can('executors_block'))
       PopupMenuItem(
         value: 'block',
         child: Text(t('Бұғаттау'), style: TextStyle(color: Gz.red)),
       ),
-    if (ep.status == 'blocked')
+    if (ep.status == 'blocked' && StaffAccess.can('executors_block'))
       PopupMenuItem(value: 'unblock', child: Text(t('Бұғаттан шығару'))),
+    // Біржола жою — тек бас модератор.
+    if (StaffAccess.isFull)
+      PopupMenuItem(
+        value: 'delete',
+        child: Text(t('Жою'), style: TextStyle(color: Gz.red)),
+      ),
   ];
 
   static Future<void> run(
@@ -534,6 +540,37 @@ class ExecutorModActions {
           if (!ok) return;
           await Repo.modSetExecutorStatus(ep.userId, 'approved', '');
           if (context.mounted) showSnack(context, t('Бұғат алынды'));
+        case 'delete':
+          final ok = await confirmDialog(
+            context,
+            icon: Icons.delete_outline_rounded,
+            confirmColor: Gz.red,
+            title: t('Орындаушыны жою керек пе?'),
+            message: t(
+              'Аккаунт пен жеке деректері біржола өшеді, нөмірі босайды. '
+              'Заказ тарихы бар болса, тарих қалады, бірақ орындаушы '
+              'тізімнен кетеді. Қайтару мүмкін емес.',
+            ),
+            confirmLabel: t('Жою'),
+          );
+          if (!ok) return;
+          try {
+            await Repo.executorAdmin('delete', {'user_id': ep.userId});
+          } catch (e) {
+            if (!context.mounted) return;
+            showSnack(
+              context,
+              e.toString().contains('HAS_ACTIVE_ORDERS')
+                  ? t(
+                      'Орындаушыда белсенді заказ бар. Алдымен заказды '
+                      'аяқтаңыз не тоқтатыңыз.',
+                    )
+                  : errText(e),
+              error: true,
+            );
+            return;
+          }
+          if (context.mounted) showSnack(context, t('Орындаушы жойылды'));
         case 'balance':
           final res = await showDialog<(int, String)>(
             context: context,
@@ -759,8 +796,17 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
     if (fresh != null && mounted) setState(() => _ep = fresh);
   }
 
-  Future<void> _act(String action) =>
-      ExecutorModActions.run(context, ep, action, onDone: _refresh);
+  Future<void> _act(String action) => ExecutorModActions.run(
+    context,
+    ep,
+    action,
+    // Жойылған орындаушыны қайта оқуға болмайды — тізімге қайтамыз.
+    onDone: action == 'delete'
+        ? () {
+            if (mounted) Navigator.of(context).pop();
+          }
+        : _refresh,
+  );
 
   bool _umaySaving = false;
 
@@ -876,7 +922,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (StaffAccess.can('executors'))
+                  if (StaffAccess.can('executors_edit'))
                     _actionChip(
                       Icons.edit_outlined,
                       t('Өзгерту'),
@@ -905,19 +951,28 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     Gz.info,
                     () => _act('balance'),
                   ),
-                  if (ep.status == 'approved')
+                  if (ep.status == 'approved' &&
+                      StaffAccess.can('executors_block'))
                     _actionChip(
                       Icons.block_rounded,
                       t('Бұғаттау'),
                       Gz.red,
                       () => _act('block'),
                     ),
-                  if (ep.status == 'blocked')
+                  if (ep.status == 'blocked' &&
+                      StaffAccess.can('executors_block'))
                     _actionChip(
                       Icons.lock_open_rounded,
                       t('Бұғаттан шығару'),
                       Gz.green,
                       () => _act('unblock'),
+                    ),
+                  if (StaffAccess.isFull)
+                    _actionChip(
+                      Icons.delete_outline_rounded,
+                      t('Жою'),
+                      Gz.red,
+                      () => _act('delete'),
                     ),
                 ],
               ),
@@ -1066,7 +1121,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     // Ұмай такси: әйел жүргізуші белгісі. Тек такси
                     // жүргізушісіне (немесе белгісі бар болса — алу үшін).
                     if ((ep.vehicleType == VehicleType.taxi || ep.isUmay) &&
-                        StaffAccess.can('executors'))
+                        StaffAccess.can('executors_edit'))
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
