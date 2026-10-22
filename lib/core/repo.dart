@@ -1766,6 +1766,37 @@ class Repo {
   static Future<Map<String, dynamic>> modOverviewStats() async =>
       Map<String, dynamic>.from(await c.rpc('mod_overview_stats') as Map);
 
+  /// Қала бойынша статистика (0089): клиенттер, орындаушылар, заказдар.
+  /// [days]: 1 — бүгін, 7, 30.
+  static Future<List<Map<String, dynamic>>> modCityStats(int days) async {
+    final res = await c.rpc('mod_city_stats', params: {'p_days': days});
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  /// Заказ статусын КІМ өзгерткені (0089). [orderId] берілсе — сол заказ.
+  static Future<List<Map<String, dynamic>>> modStatusChanges({
+    int limit = 30,
+    String? orderId,
+  }) async {
+    final res = await c.rpc(
+      'mod_status_changes',
+      params: {'p_limit': limit, 'p_order': ?orderId},
+    );
+    return [
+      for (final m in (res as List? ?? const []))
+        Map<String, dynamic>.from(m as Map),
+    ];
+  }
+
+  /// Орындаушыны кім тіркеді/қабылдады/өзгертті (0089).
+  static Future<Map<String, dynamic>> modExecutorHistory(String userId) async =>
+      Map<String, dynamic>.from(
+        await c.rpc('mod_executor_history', params: {'p_user': userId}) as Map,
+      );
+
   /// Модератор Шолуының графиктері (0082): соңғы [days] күннің күндік
   /// көрсеткіштері (ескіден жаңаға қарай).
   static Future<List<Map<String, dynamic>>> modDashboardSeries(int days) async {

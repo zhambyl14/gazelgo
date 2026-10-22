@@ -10,6 +10,7 @@ import '../../shared/widgets.dart';
 import 'dashboard_charts.dart';
 import 'listings_admin_screen.dart';
 import 'moderator_shell.dart';
+import 'overview_extras.dart';
 
 /// Модератордың «Шолу» беті: бүкіл платформаның бір беттегі суреті.
 ///
@@ -271,6 +272,8 @@ class _ModeratorOverviewScreenState extends State<ModeratorOverviewScreen> {
                 ('${e['city']}', (e['count'] as num).toInt()),
             ]),
           ],
+          const CityStatsSection(),
+          const StatusChangesSection(),
 
           // ================= ПАЙДАЛАНУШЫЛАР =================
           const SizedBox(height: 20),

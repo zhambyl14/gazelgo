@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../shared/order_live.dart';
 import '../../shared/widgets.dart';
 import '../chat/order_chat_screen.dart';
+import 'overview_extras.dart' show OrderStatusHistory;
 import 'trust_actions.dart';
 
 /// Модератордың заказ басқару терезесі: детальдар + статусты өзгерту /
@@ -269,6 +270,7 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                         ),
                   ],
                 ),
+                OrderStatusHistory(orderId: o.id),
                 const SizedBox(height: 24),
               ],
             ),

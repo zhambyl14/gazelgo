@@ -9,6 +9,7 @@ import '../profile/reviews_screen.dart';
 import 'applications_screen.dart' show DocGallery;
 import 'executor_form.dart';
 import 'order_admin.dart';
+import 'overview_extras.dart' show ExecutorHistoryCard;
 import 'staff_screen.dart' show StaffAccess;
 import 'trust_actions.dart' show kBlockReasonPresets;
 
@@ -1137,6 +1138,7 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                   ],
                 ),
               ),
+              ExecutorHistoryCard(userId: ep.userId, createdAt: ep.createdAt),
               const SizedBox(height: 16),
               SectionTitle(
                 t('Құжаттар'),
