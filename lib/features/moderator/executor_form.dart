@@ -44,6 +44,10 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
   late final _plate = TextEditingController(text: widget.ep?.vehiclePlate);
   late String? _city = widget.ep?.city;
   late VehicleType _type = widget.ep?.vehicleType ?? VehicleType.gazelle;
+
+  /// Жаяу курьер («Доставка», 0090): көлік деректері керек емес.
+  late bool _onFoot = widget.ep?.deliveryOnFoot ?? false;
+  bool get _foot => _onFoot && _type == VehicleType.delivery;
   bool _busy = false;
 
   bool get _isEdit => widget.ep != null;
@@ -82,11 +86,11 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
       showSnack(context, t('Телефон нөмірі дұрыс емес.'), error: true);
       return;
     }
-    if (_brand.text.trim().isEmpty) {
+    if (!_foot && _brand.text.trim().isEmpty) {
       showSnack(context, t('Көлік маркасын жазыңыз.'), error: true);
       return;
     }
-    if (_plate.text.trim().isEmpty) {
+    if (!_foot && _plate.text.trim().isEmpty) {
       showSnack(context, t('Мемлекеттік нөмірді жазыңыз.'), error: true);
       return;
     }
@@ -102,10 +106,11 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
         'phone': phone,
         'city': _city ?? '',
         'vehicle_type': _type.db,
-        'vehicle_brand': _brand.text.trim(),
-        'vehicle_model': _model.text.trim(),
-        'vehicle_year': year.isEmpty ? null : int.parse(year),
-        'vehicle_plate': _plate.text.trim(),
+        'vehicle_brand': _foot ? '' : _brand.text.trim(),
+        'vehicle_model': _foot ? '' : _model.text.trim(),
+        'vehicle_year': _foot || year.isEmpty ? null : int.parse(year),
+        'vehicle_plate': _foot ? '' : _plate.text.trim(),
+        if (_type == VehicleType.delivery) 'delivery_on_foot': _foot,
       });
       if (!mounted) return;
       showSnack(
@@ -194,6 +199,18 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
               ],
               onChanged: (v) => setState(() => _type = v ?? _type),
             ),
+            if (_type == VehicleType.delivery)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  t('Жаяу курьер'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(t('Көліксіз: көлік деректері керек емес')),
+                value: _onFoot,
+                onChanged: (v) => setState(() => _onFoot = v),
+              ),
+            if (!_foot) ...[
             const SizedBox(height: 10),
             TextField(
               controller: _brand,
@@ -237,6 +254,7 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
                 prefixIcon: const Icon(Icons.pin_outlined),
               ),
             ),
+            ],
             const SizedBox(height: 16),
             GzPrimaryButton(
               label: _busy

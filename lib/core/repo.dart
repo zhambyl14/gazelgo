@@ -533,6 +533,7 @@ class Repo {
     bool isForeignCitizen = false,
     String? city,
     required bool isResubmit,
+    bool? onFoot, // true/false — жаяу курьер белгісі (0090); null — тиіспейді
   }) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
@@ -555,6 +556,7 @@ class Repo {
       'tech_passport_selfie_path': techPassportSelfiePath,
       'is_foreign_citizen': isForeignCitizen,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      'delivery_on_foot': ?onFoot,
     };
     if (isResubmit) {
       // ескі құжат жолдарын жинап, жаңасына сай еместерін өшіреміз

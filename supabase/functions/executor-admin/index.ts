@@ -93,6 +93,7 @@ interface Vehicle {
   vehicle_year: number | null;
   vehicle_plate: string;
   city: string | null;
+  delivery_on_foot?: boolean;
 }
 
 /// Көлік өрістерін тексеріп тазалайды; қате болса мәтінді қайтарады.
@@ -113,8 +114,10 @@ async function readVehicle(
     }
   }
   if (!type || type === "umay") return "BAD_VEHICLE_TYPE";
-  if (!brand) return "BAD_BRAND";
-  if (!plate) return "BAD_PLATE";
+  // Жаяу курьер («Доставка», 0090): көлік деректері керек емес.
+  const onFoot = type === "delivery" && b.delivery_on_foot === true;
+  if (!onFoot && !brand) return "BAD_BRAND";
+  if (!onFoot && !plate) return "BAD_PLATE";
   // Түр каталогта болуы керек (кесте болмаса тексермейміз).
   const { data: vt, error } = await admin
     .from("vehicle_types")
@@ -124,11 +127,15 @@ async function readVehicle(
   if (!error && !vt) return "BAD_VEHICLE_TYPE";
   return {
     vehicle_type: type,
-    vehicle_brand: brand,
-    vehicle_model: model,
-    vehicle_year: year,
-    vehicle_plate: plate,
+    vehicle_brand: onFoot ? "" : brand,
+    vehicle_model: onFoot ? "" : model,
+    vehicle_year: onFoot ? null : year,
+    vehicle_plate: onFoot ? "" : plate,
     city: city || null,
+    // Баған (0090) тек «Доставка» түрінде және клиент жібергенде жазылады.
+    ...(type === "delivery" && typeof b.delivery_on_foot === "boolean"
+      ? { delivery_on_foot: onFoot }
+      : {}),
   };
 }
 

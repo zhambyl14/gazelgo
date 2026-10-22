@@ -51,6 +51,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late VehicleType _vehicleType =
       widget.existing?.vehicleType ?? VehicleType.gazelle;
 
+  /// «Доставка» түрінде жаяу курьер (көліксіз): права, техпаспорт, көлік
+  /// фотолары СҰРАЛМАЙДЫ — тек профиль селфиі және жеке куәлік (0090).
+  late bool _onFoot = widget.existing?.deliveryOnFoot ?? false;
+  bool get _foot => _onFoot && _vehicleType == VehicleType.delivery;
+
   // Профиль селфиі — тіркелу кезінде түсіріледі, кейін профильде көрсетіледі
   final _selfie = _PickedDoc();
 
@@ -79,21 +84,25 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   List<(String, bool)> get _checklist => [
     (t('Селфи'), _selfie.isSet),
     (t('Қала'), _city?.trim().isNotEmpty ?? false),
-    (
-      t('Көлік деректері'),
-      _brand.text.trim().isNotEmpty &&
-          _model.text.trim().isNotEmpty &&
-          _plate.text.trim().isNotEmpty,
-    ),
-    (t('Жүргізуші куәлігі'), _license.isSet && _licenseSelfie.isSet),
+    if (!_foot)
+      (
+        t('Көлік деректері'),
+        _brand.text.trim().isNotEmpty &&
+            _model.text.trim().isNotEmpty &&
+            _plate.text.trim().isNotEmpty,
+      ),
+    if (!_foot)
+      (t('Жүргізуші куәлігі'), _license.isSet && _licenseSelfie.isSet),
     _isForeign
         ? (t('Шетел паспорты'), _passport.isSet && _passportSelfie.isSet)
         : (t('Жеке куәлік'), _idDoc.isSet && _idSelfie.isSet),
-    (t('Техпаспорт'), _techPassport.isSet && _techPassportSelfie.isSet),
-    (
-      t('Көлік фотолары'),
-      _vehFront.isSet && _vehBack.isSet && _vehRight.isSet && _vehLeft.isSet,
-    ),
+    if (!_foot)
+      (t('Техпаспорт'), _techPassport.isSet && _techPassportSelfie.isSet),
+    if (!_foot)
+      (
+        t('Көлік фотолары'),
+        _vehFront.isSet && _vehBack.isSet && _vehRight.isSet && _vehLeft.isSet,
+      ),
   ];
 
   void _onFieldChanged() {
@@ -216,11 +225,12 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     final year = int.tryParse(_year.text.trim());
     final ready =
         _missing == null &&
-        _brand.text.trim().isNotEmpty &&
-        _plate.text.trim().length >= 4 &&
-        year != null &&
-        year >= 1980 &&
-        year <= DateTime.now().year + 1;
+        (_foot ||
+            (_brand.text.trim().isNotEmpty &&
+                _plate.text.trim().length >= 4 &&
+                year != null &&
+                year >= 1980 &&
+                year <= DateTime.now().year + 1));
     final stage = completed || ready
         ? 3
         : hasDocs
@@ -249,6 +259,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           'flow': 'executor_application',
           'city': _city,
           'vehicle_type': _vehicleType.name,
+          if (_foot) 'on_foot': true,
           'vehicle': {
             'brand': _brand.text.trim(),
             'model': _model.text.trim(),
@@ -281,7 +292,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   String? get _missing {
     if (!_selfie.isSet) return t('Профиль селфиін түсіріңіз');
     if (_city == null || _city!.trim().isEmpty) return t('Қалаңызды таңдаңыз');
-    if (!_license.isSet || !_licenseSelfie.isSet) {
+    if (!_foot && (!_license.isSet || !_licenseSelfie.isSet)) {
       return t('Права мен онымен селфи керек');
     }
     if (!_isForeign && (!_idDoc.isSet || !_idSelfie.isSet)) {
@@ -290,6 +301,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     if (_isForeign && (!_passport.isSet || !_passportSelfie.isSet)) {
       return t('Паспорт пен онымен селфи керек');
     }
+    if (_foot) return null;
     if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
       return t('Техпаспорт пен онымен фото керек');
     }
@@ -320,7 +332,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       );
       return;
     }
-    if (!_license.isSet || !_licenseSelfie.isSet) {
+    if (!_foot && (!_license.isSet || !_licenseSelfie.isSet)) {
       showSnack(
         context,
         t('Жүргізуші куәлігі мен онымен селфиді жүктеңіз'),
@@ -344,7 +356,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       );
       return;
     }
-    if (!_techPassport.isSet || !_techPassportSelfie.isSet) {
+    if (!_foot && (!_techPassport.isSet || !_techPassportSelfie.isSet)) {
       showSnack(
         context,
         t('Көліктің техпаспорты мен онымен фотоны жүктеңіз'),
@@ -352,10 +364,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       );
       return;
     }
-    if (!_vehFront.isSet ||
-        !_vehBack.isSet ||
-        !_vehRight.isSet ||
-        !_vehLeft.isSet) {
+    if (!_foot &&
+        (!_vehFront.isSet ||
+            !_vehBack.isSet ||
+            !_vehRight.isSet ||
+            !_vehLeft.isSet)) {
       showSnack(
         context,
         t('Көліктің 4 фотосын да жүктеңіз (алды, арты, оң, сол)'),
@@ -378,25 +391,31 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         _selfie.bytes = null;
       }
 
-      final licPath = await up(_license, 'license');
-      final licSelfie = await up(_licenseSelfie, 'license_selfie');
+      final licPath = _foot ? null : await up(_license, 'license');
+      final licSelfie = _foot
+          ? null
+          : await up(_licenseSelfie, 'license_selfie');
       final idPath = !_isForeign ? await up(_idDoc, 'id') : null;
       final idSelfie = !_isForeign ? await up(_idSelfie, 'id_selfie') : null;
       final passportPath = _isForeign ? await up(_passport, 'passport') : null;
       final passportSelfie = _isForeign
           ? await up(_passportSelfie, 'passport_selfie')
           : null;
-      final techPath = await up(_techPassport, 'tech_passport');
-      final techSelfie = await up(_techPassportSelfie, 'tech_passport_selfie');
+      final techPath = _foot ? null : await up(_techPassport, 'tech_passport');
+      final techSelfie = _foot
+          ? null
+          : await up(_techPassportSelfie, 'tech_passport_selfie');
       final photos = <String>[];
-      for (final (d, n) in [
-        (_vehFront, 'veh_front'),
-        (_vehBack, 'veh_back'),
-        (_vehRight, 'veh_right'),
-        (_vehLeft, 'veh_left'),
-      ]) {
-        final p = await up(d, n);
-        if (p != null) photos.add(p);
+      if (!_foot) {
+        for (final (d, n) in [
+          (_vehFront, 'veh_front'),
+          (_vehBack, 'veh_back'),
+          (_vehRight, 'veh_right'),
+          (_vehLeft, 'veh_left'),
+        ]) {
+          final p = await up(d, n);
+          if (p != null) photos.add(p);
+        }
       }
 
       final e = widget.existing;
@@ -418,10 +437,13 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       } else {
         await Repo.submitExecutorApplication(
           vehicleType: _vehicleType,
-          brand: _brand.text,
-          model: _model.text,
-          year: int.tryParse(_year.text),
-          plate: _plate.text,
+          brand: _foot ? '' : _brand.text,
+          model: _foot ? '' : _model.text,
+          year: _foot ? null : int.tryParse(_year.text),
+          plate: _foot ? '' : _plate.text,
+          // true — жаяу; false тек бұрын жаяу болған өтінімді қайтарғанда
+          // (баған 0090 миграциясынсыз жоқ — қалғандарға тиіспейміз).
+          onFoot: _foot ? true : (widget.existing?.deliveryOnFoot == true ? false : null),
           vehiclePhotos: photos,
           idDocPath: idPath,
           licensePath: licPath,
@@ -852,7 +874,54 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     _saveApplicationProgress();
                   },
                 ),
+                if (_vehicleType == VehicleType.delivery) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    t('Қалай жеткізесіз?'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _citizenChip(
+                          label: t('Авто'),
+                          selected: !_onFoot,
+                          onTap: () {
+                            setState(() => _onFoot = false);
+                            _saveApplicationProgress();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _citizenChip(
+                          label: t('Жаяу'),
+                          selected: _onFoot,
+                          onTap: () {
+                            setState(() => _onFoot = true);
+                            _saveApplicationProgress();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_foot) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      t(
+                        'Жаяу курьерге права, техпаспорт және көлік фотосы '
+                        'керек емес — тек профиль селфиі және жеке куәлік.',
+                      ),
+                      style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 20),
+                if (!_foot) ...[
                 Text(
                   t('Көлік туралы'),
                   style: const TextStyle(
@@ -917,6 +986,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       : null,
                 ),
                 const SizedBox(height: 20),
+                ],
                 Text(
                   t('Құжаттар'),
                   style: const TextStyle(
@@ -925,6 +995,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                if (!_foot) ...[
                 _docTile(t('Жүргізуші куәлігі (права)'), _license),
                 const SizedBox(height: 8),
                 _docTile(
@@ -933,6 +1004,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   hint: t('Правені қолыңызға ұстап, бетіңіз көрінетін селфи'),
                 ),
                 const SizedBox(height: 16),
+                ],
                 Text(
                   t('Азаматтық'),
                   style: const TextStyle(
@@ -992,6 +1064,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     ),
                   ),
                 ],
+                if (!_foot) ...[
                 const SizedBox(height: 8),
                 _docTile(
                   t('Көліктің техпаспорты'),
@@ -1041,6 +1114,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                   _vehLeft,
                   hint: t('Көлікке қарап тұрсаңыз — сол бүйірі'),
                 ),
+                ],
                 const SizedBox(height: 24),
                 // Барлық құжат жүктелмейінше батырма СҰР күйде тұрады
                 // (жүктелсе — сары), астында НЕ жетпейтіні жазылады:

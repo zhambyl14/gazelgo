@@ -1775,7 +1775,7 @@ class _ExecutorCard extends StatelessWidget {
                             ),
                             if (ep != null)
                               Text(
-                                '${ep.vehicleTitle} · ${ep.vehiclePlate}',
+                                ep.vehicleLine,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Gz.caption,

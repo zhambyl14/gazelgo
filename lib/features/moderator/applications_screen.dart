@@ -254,7 +254,7 @@ class _ApplicationTile extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             subtitle: Text(
-              '${ep.vehicleTitle} · ${ep.vehiclePlate}\n'
+              '${ep.vehicleLine}\n'
               '${ep.city ?? '—'} · ${fmtDate(ep.createdAt)}',
               style: const TextStyle(fontSize: 13),
             ),
@@ -344,7 +344,8 @@ class ApplicationDetailScreen extends StatelessWidget {
                   InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                   InfoRow(t('Маркасы'), ep.vehicleTitle),
                   if (ep.city != null) InfoRow(t('Қала'), ep.city!),
-                  InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
+                  if (!ep.onFoot)
+                    InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                   InfoRow(t('Өтінім күні'), fmtDate(ep.createdAt)),
                 ],
               ),
@@ -363,8 +364,10 @@ class ApplicationDetailScreen extends StatelessWidget {
             ),
             DocGallery(
               docs: [
-                (ep.licensePath, t('Жүргізуші куәлігі')),
-                (ep.licenseSelfiePath, t('Правамен селфи')),
+                if (!ep.onFoot) ...[
+                  (ep.licensePath, t('Жүргізуші куәлігі')),
+                  (ep.licenseSelfiePath, t('Правамен селфи')),
+                ],
                 if (!ep.isForeignCitizen) ...[
                   (ep.idDocPath, t('Жеке куәлік')),
                   (ep.idSelfiePath, t('Куәлікпен селфи')),
@@ -372,10 +375,12 @@ class ApplicationDetailScreen extends StatelessWidget {
                   (ep.passportPath, t('Шетел паспорты')),
                   (ep.passportSelfiePath, t('Паспортпен селфи')),
                 ],
-                (ep.techPassportPath, t('Техпаспорт')),
-                (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
-                for (var i = 0; i < ep.vehiclePhotos.length; i++)
-                  (ep.vehiclePhotos[i], '${t('Фото')} ${i + 1}'),
+                if (!ep.onFoot) ...[
+                  (ep.techPassportPath, t('Техпаспорт')),
+                  (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+                  for (var i = 0; i < ep.vehiclePhotos.length; i++)
+                    (ep.vehiclePhotos[i], '${t('Фото')} ${i + 1}'),
+                ],
               ],
             ),
             const SizedBox(height: 16),

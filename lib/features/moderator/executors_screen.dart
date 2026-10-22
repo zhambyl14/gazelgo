@@ -413,7 +413,7 @@ class _ExecutorTile extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: BtnLabel(
-                        '${ep.vehicleTitle} · ${ep.vehiclePlate}'
+                        '${ep.vehicleLine}'
                         '${ep.city != null ? ' · ${ep.city}' : ''}',
                         style: Gz.caption,
                       ),
@@ -510,7 +510,10 @@ class ExecutorModActions {
           final res = await showDialog<(List<String>, String)>(
             context: context,
             builder: (ctx) =>
-                _RequestDocsDialog(isForeign: ep.isForeignCitizen),
+                _RequestDocsDialog(
+                  isForeign: ep.isForeignCitizen,
+                  onFoot: ep.onFoot,
+                ),
           );
           if (res == null) return;
           await Repo.modRequestDocs(ep.userId, res.$1, res.$2);
@@ -705,7 +708,8 @@ class _BalanceDialogState extends State<_BalanceDialog> {
 /// Құжат жаңартуды сұрау диалогы — қай құжатты + түсініктеме.
 class _RequestDocsDialog extends StatefulWidget {
   final bool isForeign;
-  const _RequestDocsDialog({required this.isForeign});
+  final bool onFoot;
+  const _RequestDocsDialog({required this.isForeign, this.onFoot = false});
 
   @override
   State<_RequestDocsDialog> createState() => _RequestDocsDialogState();
@@ -719,9 +723,11 @@ class _RequestDocsDialogState extends State<_RequestDocsDialog> {
     widget.isForeign
         ? ('passport', t('Шетел паспорты'))
         : ('id', t('Жеке куәлік')),
-    ('license', t('Жүргізуші куәлігі')),
-    ('tech', t('Техпаспорт')),
-    ('photos', t('Көлік фотолары')),
+    if (!widget.onFoot) ...[
+      ('license', t('Жүргізуші куәлігі')),
+      ('tech', t('Техпаспорт')),
+      ('photos', t('Көлік фотолары')),
+    ],
   ];
 
   @override
@@ -844,8 +850,10 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
   }
 
   List<(String?, String)> get _docs => [
-    (ep.licensePath, t('Жүргізуші куәлігі')),
-    (ep.licenseSelfiePath, t('Правамен селфи')),
+    if (!ep.onFoot) ...[
+      (ep.licensePath, t('Жүргізуші куәлігі')),
+      (ep.licenseSelfiePath, t('Правамен селфи')),
+    ],
     if (!ep.isForeignCitizen) ...[
       (ep.idDocPath, t('Жеке куәлік')),
       (ep.idSelfiePath, t('Куәлікпен селфи')),
@@ -853,10 +861,12 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
       (ep.passportPath, t('Шетел паспорты')),
       (ep.passportSelfiePath, t('Паспортпен селфи')),
     ],
-    (ep.techPassportPath, t('Техпаспорт')),
-    (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
-    for (var i = 0; i < ep.vehiclePhotos.length; i++)
-      (ep.vehiclePhotos[i], '${t('Көлік')} ${i + 1}'),
+    if (!ep.onFoot) ...[
+      (ep.techPassportPath, t('Техпаспорт')),
+      (ep.techPassportSelfiePath, t('Техпаспортпен фото')),
+      for (var i = 0; i < ep.vehiclePhotos.length; i++)
+        (ep.vehiclePhotos[i], '${t('Көлік')} ${i + 1}'),
+    ],
   ];
 
   @override
@@ -1116,7 +1126,8 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                     InfoRow(t('Көлік түрі'), ep.vehicleType.label),
                     InfoRow(t('Маркасы'), ep.vehicleTitle),
                     if (ep.city != null) InfoRow(t('Қала'), ep.city!),
-                    InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
+                    if (!ep.onFoot)
+                      InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                     InfoRow(t('Баланс'), fmtT(ep.balance)),
                     InfoRow(t('Жалпы табыс'), fmtT(ep.totalEarned)),
                     // Ұмай такси: әйел жүргізуші белгісі. Тек такси

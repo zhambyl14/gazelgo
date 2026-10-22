@@ -232,6 +232,10 @@ class ExecutorProfile {
   final bool docsReviewPending;
   final bool orderPushEnabled;
 
+  /// Жаяу курьер (0090): «Доставка» түріндегі орындаушы көліксіз жүреді —
+  /// права, техпаспорт, көлік фотосы керек емес. Колонка жоқ болса — false.
+  final bool deliveryOnFoot;
+
   /// Әйел жүргізуші (Ұмай такси заказдарын да көреді). Тек модератор қояды;
   /// 0086 миграциясы қолданылмаса баған жоқ — онда false.
   final bool isUmay;
@@ -267,6 +271,7 @@ class ExecutorProfile {
           (m['docs_update_fields'] as List?)?.cast<String>() ?? const [],
       docsReviewPending = m['docs_review_pending'] as bool? ?? false,
       orderPushEnabled = m['order_push_enabled'] as bool? ?? true,
+      deliveryOnFoot = m['delivery_on_foot'] as bool? ?? false,
       isUmay = m['is_umay'] as bool? ?? false,
       createdAt = _dt(m['created_at']);
 
@@ -280,7 +285,18 @@ class ExecutorProfile {
     _ => f,
   };
 
-  String get vehicleTitle => [
+  /// Жаяу курьер ме (тек «Доставка» түрінде мағынасы бар).
+  bool get onFoot => deliveryOnFoot && vehicleType == VehicleType.delivery;
+
+  /// «Марка модель жыл · нөмір» — бос бөліктерсіз (жаяу курьерде нөмір жоқ).
+  String get vehicleLine => [
+    vehicleTitle,
+    vehiclePlate,
+  ].where((e) => e.trim().isNotEmpty).join(' · ');
+
+  String get vehicleTitle => onFoot
+      ? t('Жаяу курьер')
+      : [
     vehicleBrand,
     vehicleModel,
     if (vehicleYear != null) '$vehicleYear',
