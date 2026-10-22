@@ -331,6 +331,7 @@ class Repo {
         .select()
         .eq('has_client_role', true)
         .neq('role', 'moderator')
+        .isFilter('deleted_at', null)
         .order('created_at', ascending: false)
         .limit(500);
     return (rows as List)

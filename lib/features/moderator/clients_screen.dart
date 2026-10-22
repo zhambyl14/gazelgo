@@ -8,6 +8,7 @@ import '../../shared/widgets.dart';
 import '../support/chat_view.dart';
 import 'executors_screen.dart' show ExecutorDraftTile;
 import 'order_admin.dart';
+import 'staff_screen.dart' show StaffAccess;
 import 'trust_actions.dart';
 
 /// Клиенттерді іздеу, профильді тексеру, заказ/чат тарихын көру және
@@ -274,6 +275,41 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     }
   }
 
+  /// Клиентті біржола жою — тек бас модератор.
+  Future<void> _delete() async {
+    final ok = await confirmDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Gz.red,
+      title: t('Клиентті жою керек пе?'),
+      message: t(
+        'Аты, телефоны және басқа жеке деректері біржола өшеді, кіру '
+        'жабылады. Заказ тарихы орындаушылар үшін қалады. Қайтару мүмкін емес.',
+      ),
+      confirmLabel: t('Жою'),
+    );
+    if (!ok || !mounted) return;
+    try {
+      await Repo.executorAdmin('delete_client', {'user_id': _p.id});
+      Repo.forgetProfile(_p.id);
+      if (!mounted) return;
+      showSnack(context, t('Клиент жойылды'));
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      showSnack(
+        context,
+        e.toString().contains('HAS_ACTIVE_ORDERS')
+            ? t(
+                'Клиентте белсенді заказ бар. Алдымен заказды аяқтаңыз не '
+                'тоқтатыңыз.',
+              )
+            : errText(e),
+        error: true,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = _p;
@@ -493,6 +529,18 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   : t('Аккаунтты бұғаттау'),
             ),
           ),
+          if (StaffAccess.isFull) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _delete,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Gz.red,
+                side: BorderSide(color: Gz.tint(Gz.red, 0.45), width: 1.4),
+              ),
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: Text(t('Аккаунтты жою')),
+            ),
+          ],
           const SizedBox(height: 20),
         ],
       ),

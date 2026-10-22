@@ -2,6 +2,7 @@
 // Модератор орындаушыларды қолмен басқарады:
 //   create — жаңа орындаушы аккаунтын ашу (құжатсыз, бірден расталған);
 //   delete — орындаушыны жою (ТЕК толық модератор; тарихы болса анонимделеді);
+//   delete_client — клиентті жою (ТЕК толық модератор; әрқашан анонимделеді);
 //   update — аты, телефоны, қаласы, көлігі (түрі, маркасы, моделі, жылы,
 //            мемлекеттік нөмірі) деректерін өзгерту.
 //
@@ -60,7 +61,7 @@ Deno.serve(async (req: Request) => {
   if ((action === "create" || action === "update") && !can("executors_edit")) {
     return json({ error: "NO_PERMISSION" }, 403);
   }
-  if (action === "delete" && !isFull) {
+  if ((action === "delete" || action === "delete_client") && !isFull) {
     return json({ error: "NO_PERMISSION" }, 403);
   }
 
@@ -70,6 +71,8 @@ Deno.serve(async (req: Request) => {
         return await create(admin, callerId, body);
       case "update":
         return await update(admin, callerId, body);
+      case "delete_client":
+        return await removeClient(admin, callerId, body);
       case "delete":
         return await remove(admin, callerId, body);
       default:
@@ -327,45 +330,19 @@ async function remove(admin: Admin, callerId: string, b: Record<string, unknown>
     .eq("id", id)
     .maybeSingle();
 
-  let hard = true;
-  const { error: delErr } = await admin.auth.admin.deleteUser(id);
-  if (delErr) {
-    hard = false;
-    // Заказ тарихы бар — анонимдеу.
-    await admin.from("profiles").update({
-      full_name: "Өшірілген қолданушы",
-      phone: "",
-      avatar_url: null,
-      deleted_at: new Date().toISOString(),
-    }).eq("id", id);
-    try { await admin.from("push_tokens").delete().eq("user_id", id); } catch (_) { /* */ }
-    const { error: epErr } = await admin
-      .from("executor_profiles")
-      .delete()
-      .eq("user_id", id);
-    if (epErr) {
-      // Тізімде көрінбесе де, кіре алмайтындай болсын.
-      await admin.from("executor_profiles").update({
-        status: "blocked",
-        id_doc_path: null,
-        license_path: null,
-        id_selfie_path: null,
-        license_selfie_path: null,
-        passport_path: null,
-        passport_selfie_path: null,
-        vehicle_photos: [],
-      }).eq("user_id", id);
-    }
-    const { error: lockErr } = await admin.auth.admin.updateUserById(id, {
-      email: `deleted-${id}@${EMAIL_DOMAIN}`,
-      password: crypto.randomUUID() + crypto.randomUUID(),
-      user_metadata: {},
-      ban_duration: "876000h",
-    });
-    if (lockErr) {
-      console.error("EXECUTOR_DELETE_LOCK", lockErr);
-      return json({ error: "SERVER_ERROR" }, 500);
-    }
+  // Клиент ретінде заказы бар аккаунтты біржола өшіруге болмайды:
+  // orders.client_id CASCADE — қарсы тараптың тарихы жоғалар еді.
+  const { count: asClient } = await admin
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", id);
+  let hard = (asClient ?? 0) === 0;
+  if (hard) {
+    const { error: delErr } = await admin.auth.admin.deleteUser(id);
+    if (delErr) hard = false;
+  }
+  if (!hard && !(await anonymize(admin, id))) {
+    return json({ error: "SERVER_ERROR" }, 500);
   }
 
   await audit(admin, callerId, "executor_delete", id, {
@@ -374,6 +351,109 @@ async function remove(admin: Admin, callerId: string, b: Record<string, unknown>
     anonymized: !hard,
   });
   return json({ ok: true, anonymized: !hard }, 200);
+}
+
+/// Аккаунтты АНОНИМДЕУ (delete-account сияқты): жеке дерек өшеді, кіру
+/// жабылады, заказ жазбалары (қарсы тараптың тарихы) қалады, клиент/
+/// орындаушы тізімдерінен кетеді. Сәтті болса true.
+async function anonymize(admin: Admin, id: string): Promise<boolean> {
+  await admin.from("profiles").update({
+    full_name: "Өшірілген қолданушы",
+    phone: "",
+    avatar_url: null,
+    deleted_at: new Date().toISOString(),
+    has_client_role: false,
+    has_executor_role: false,
+  }).eq("id", id);
+  try { await admin.from("push_tokens").delete().eq("user_id", id); } catch (_) { /* */ }
+  const { error: epErr } = await admin
+    .from("executor_profiles")
+    .delete()
+    .eq("user_id", id);
+  if (epErr) {
+    // Тізімде көрінсе де, кіре алмайтындай болсын.
+    await admin.from("executor_profiles").update({
+      status: "blocked",
+      id_doc_path: null,
+      license_path: null,
+      id_selfie_path: null,
+      license_selfie_path: null,
+      passport_path: null,
+      passport_selfie_path: null,
+      vehicle_photos: [],
+    }).eq("user_id", id);
+  }
+  const { error: lockErr } = await admin.auth.admin.updateUserById(id, {
+    email: `deleted-${id}@${EMAIL_DOMAIN}`,
+    password: crypto.randomUUID() + crypto.randomUUID(),
+    user_metadata: {},
+    ban_duration: "876000h",
+  });
+  if (lockErr) {
+    console.error("ACCOUNT_LOCK_ERROR", lockErr);
+    return false;
+  }
+  return true;
+}
+
+/// Клиентті жою (тек толық модератор). Әрқашан анонимдеу: клиенттің
+/// заказдары орындаушылардың табыс/пікір тарихымен байланысты, оларды
+/// өшіруге болмайды. Белсенді заказы барда тоқтатамыз.
+async function removeClient(admin: Admin, callerId: string, b: Record<string, unknown>) {
+  const id = String(b.user_id ?? "");
+  if (!id) return json({ error: "BAD_USER" }, 400);
+  if (id === callerId) return json({ error: "FORBIDDEN" }, 403);
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("role, full_name, phone, avatar_url, deleted_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!target || target.role === "moderator" || target.deleted_at) {
+    return json({ error: "NOT_FOUND" }, 404);
+  }
+
+  const { data: active, error: aErr } = await admin
+    .from("orders")
+    .select("id")
+    .or(`client_id.eq.${id},executor_id.eq.${id}`)
+    .in("status", ACTIVE_ORDER)
+    .limit(1);
+  if (aErr) return json({ error: "SERVER_ERROR" }, 500);
+  if ((active ?? []).length > 0) {
+    return json({ error: "HAS_ACTIVE_ORDERS" }, 400);
+  }
+
+  // Аватар файлы: аяқталған заказы болса 30 күн сақталады, әйтпесе бірден өшеді.
+  const marker = "/avatars/";
+  const url = target.avatar_url as string | null;
+  const idx = url ? url.indexOf(marker) : -1;
+  if (url && idx >= 0) {
+    const path = url.slice(idx + marker.length);
+    const { count: done } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .or(`client_id.eq.${id},executor_id.eq.${id}`)
+      .eq("status", "completed");
+    if ((done ?? 0) > 0) {
+      try {
+        await admin.from("storage_purge_queue").insert({
+          bucket: "avatars",
+          path,
+          purge_after: new Date(Date.now() + 30 * 86400_000).toISOString(),
+        });
+      } catch (_) { /* */ }
+    } else {
+      try { await admin.storage.from("avatars").remove([path]); } catch (_) { /* */ }
+    }
+  }
+
+  if (!(await anonymize(admin, id))) return json({ error: "SERVER_ERROR" }, 500);
+  await audit(admin, callerId, "client_delete", id, {
+    full_name: target.full_name ?? null,
+    phone: target.phone ?? null,
+  });
+  return json({ ok: true }, 200);
 }
 
 async function audit(
