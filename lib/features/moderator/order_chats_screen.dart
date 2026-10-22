@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/lang.dart';
@@ -20,17 +22,55 @@ class OrderChatsScreen extends StatefulWidget {
 
 class _OrderChatsScreenState extends State<OrderChatsScreen> {
   bool _flaggedOnly = false;
+  final _search = TextEditingController();
+  Timer? _debounce;
   late Future<List<Map<String, dynamic>>> _future = _load();
 
   Future<List<Map<String, dynamic>>> _load() =>
-      Repo.modOrderChats(flaggedOnly: _flaggedOnly);
+      Repo.modOrderChats(flaggedOnly: _flaggedOnly, query: _search.text);
 
   void _reload() => setState(() => _future = _load());
 
+  /// Іздеу сервермен жүреді — әр әріпке сұрау жібермеу үшін сәл күтеміз.
+  void _onSearch(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), _reload);
+    setState(() {}); // тазалау түймесі көрінуі үшін
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final searching = _search.text.trim().isNotEmpty;
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+          child: TextField(
+            controller: _search,
+            onChanged: _onSearch,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: t('Заказ нөмірі (#…), аты немесе телефон'),
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        _search.clear();
+                        _onSearch('');
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
           child: Row(
@@ -75,9 +115,17 @@ class _OrderChatsScreenState extends State<OrderChatsScreen> {
               if (list.isEmpty) {
                 return EmptyState(
                   icon: Icons.forum_outlined,
-                  title: _flaggedOnly
+                  title: searching
+                      ? t('Ештеңе табылмады')
+                      : _flaggedOnly
                       ? t('Белгіленген чат жоқ')
                       : t('Заказ чаттары әзірге жоқ'),
+                  subtitle: searching
+                      ? t(
+                          'Бұл заказдың чаты жоқ болуы мүмкін — чат тек '
+                          'хабарлама жазылғанда пайда болады.',
+                        )
+                      : null,
                 );
               }
               return RefreshIndicator(

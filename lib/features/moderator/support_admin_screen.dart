@@ -9,7 +9,12 @@ import '../support/chat_view.dart';
 import 'clients_screen.dart';
 import 'order_admin.dart';
 
+/// Жабылған қолдау чаты архивте қанша күн тұрады (cleanup-storage
+/// функциясындағы SUPPORT_RETENTION_DAYS-пен БІРДЕЙ болуы керек).
+const kSupportArchiveDays = 30;
+
 /// Модератор жағы: барлық қолдау тредтері + әр тредке жауап беру.
+/// Жабылған чаттар [kSupportArchiveDays] күн «Архив» сүзгісінде сақталады.
 class SupportAdminScreen extends StatefulWidget {
   const SupportAdminScreen({super.key});
 
@@ -18,31 +23,75 @@ class SupportAdminScreen extends StatefulWidget {
 }
 
 class _SupportAdminScreenState extends State<SupportAdminScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // жабылған тредтердің ескі суреттерін фондық режимде тазалау
-    Repo.cleanupSupportImages();
-  }
+  /// open | archive | all
+  String _filter = 'open';
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<SupportThread>>(
       stream: Repo.allThreadsStream(),
       builder: (context, snap) {
-        final threads = snap.data ?? [];
-        if (snap.connectionState == ConnectionState.waiting &&
-            threads.isEmpty) {
+        final all = snap.data ?? [];
+        if (snap.connectionState == ConnectionState.waiting && all.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (threads.isEmpty) {
-          return EmptyState(icon: Icons.forum_outlined, title: t('Чат жоқ'));
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: threads.length,
-          separatorBuilder: (_, i) => const SizedBox(height: 8),
-          itemBuilder: (_, i) => _ThreadTile(thread: threads[i]),
+        final threads = [
+          for (final th in all)
+            if (switch (_filter) {
+              'open' => th.isOpen,
+              'archive' => !th.isOpen,
+              _ => true,
+            })
+              th,
+        ];
+        final openCount = all.where((th) => th.isOpen).length;
+        return Column(
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Row(
+                children: [
+                  for (final (key, label) in <(String, String)>[
+                    ('open', '${t('Ашық')} · $openCount'),
+                    ('archive', '${t('Архив')} · ${all.length - openCount}'),
+                    ('all', t('Барлығы')),
+                  ]) ...[
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: _filter == key,
+                      onSelected: (_) => setState(() => _filter = key),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+            if (_filter == 'archive')
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Text(
+                  '${t('Жабылған чат архивте сақталады')}'
+                  ': $kSupportArchiveDays ${t('күн')}',
+                  style: Gz.caption,
+                ),
+              ),
+            Expanded(
+              child: threads.isEmpty
+                  ? EmptyState(
+                      icon: Icons.forum_outlined,
+                      title: _filter == 'archive'
+                          ? t('Архив бос')
+                          : t('Чат жоқ'),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: threads.length,
+                      separatorBuilder: (_, i) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => _ThreadTile(thread: threads[i]),
+                    ),
+            ),
+          ],
         );
       },
     );
@@ -68,7 +117,8 @@ class _ThreadTile extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             subtitle: Text(
-              '${_roleLabel(p?.role)} · ${fmtDate(thread.lastMsgAt)}',
+              '${_roleLabel(p?.role)} · ${fmtDate(thread.lastMsgAt)}'
+              '${_archiveLeft(thread)}',
               style: const TextStyle(fontSize: 13),
             ),
             trailing: Column(
@@ -114,6 +164,14 @@ class _ThreadTile extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Жабық чат үшін: «· архивте N күн қалды» (ашық чатта бос жол).
+  String _archiveLeft(SupportThread th) {
+    final closed = th.closedAt;
+    if (th.isOpen || closed == null) return '';
+    final left = kSupportArchiveDays - DateTime.now().difference(closed).inDays;
+    return ' · ${t('архивте')} ${left < 0 ? 0 : left} ${t('күн қалды')}';
   }
 
   String _roleLabel(String? r) => switch (r) {

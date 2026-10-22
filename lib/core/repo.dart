@@ -1087,17 +1087,6 @@ class Repo {
     }
   }
 
-  /// Жабылған қолдау тредтерінің суреттерін тазалау (модератор ғана).
-  static Future<void> cleanupSupportImages() async {
-    try {
-      final paths = (await c.rpc('mod_pending_support_images') as List)
-          .cast<String>();
-      if (paths.isNotEmpty) {
-        await c.storage.from('support').remove(paths);
-      }
-    } catch (_) {}
-  }
-
   static Future<void> modRequestDocs(
     String userId,
     List<String> fields,
@@ -2353,6 +2342,20 @@ class Repo {
     fresh: fresh,
   );
 
+  /// Заказ чатындағы хабарлама саны (модератор үшін; қате болса 0).
+  static Future<int> orderChatCount(String orderId) async {
+    try {
+      final res = await c
+          .from('order_messages')
+          .select('id')
+          .eq('order_id', orderId)
+          .count(CountOption.exact);
+      return res.count;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   static Future<void> orderChatSend(String orderId, String body) =>
       c.rpc('order_chat_send', params: {'p_order': orderId, 'p_body': body});
 
@@ -2395,10 +2398,16 @@ class Repo {
   /// Модератор: соңғы заказ чаттары.
   static Future<List<Map<String, dynamic>>> modOrderChats({
     bool flaggedOnly = false,
+    String query = '',
   }) async {
+    final q = query.trim();
     final res = await c.rpc(
       'mod_order_chats',
-      params: {'p_limit': 80, 'p_flagged_only': flaggedOnly},
+      params: {
+        'p_limit': q.isEmpty ? 80 : 200,
+        'p_flagged_only': flaggedOnly,
+        if (q.isNotEmpty) 'p_query': q,
+      },
     );
     return [
       for (final m in (res as List? ?? const []))

@@ -1,10 +1,10 @@
 // Tasu · cleanup-storage edge function
 // pg_cron (supabase/migrations/0032_storage_retention_cron.sql) күн сайын
 // осы функцияны шақырады:
-//   (1) 1+ күн бұрын ЖАБЫЛҒАН қолдау тредтерін — хабарламаларымен және
+//   (1) 30+ күн бұрын ЖАБЫЛҒАН (архивтегі) қолдау тредтерін — хабарламаларымен және
 //       Storage суреттерімен қоса — толық өшіреді (support_messages
-//       support_threads-ке ON DELETE CASCADE-пен байланған). Қысқа мерзім,
-//       себебі чатта дау/шағым терезесі жоқ — тек хабарласу тарихы.
+//       support_threads-ке ON DELETE CASCADE-пен байланған). Жабылған чат
+//       30 күн модератор панелінде «Архив» ретінде қаралады.
 //   (2) 5+ күн бұрын аяқталған/бас тартылған/мерзімі өткен заказдардың
 //       Storage-тағы жүк фотоларын өшіреді. Заказдың өзі (тарих, дау
 //       болғанда дәлел ретінде тарифтік/модерация есебі үшін) қалады —
@@ -23,10 +23,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // Тредтің дау/шағым мүмкіндігі жоқ (тек хабарласу тарихы), сол себепті
-// қолдау фотолары қысқа сақталады. Заказ фотолары — шағым/дау дәлелі
+// қолдау чаттары мен фотолары архивте 30 күн сақталады. Заказ фотолары — шағым/дау дәлелі
 // ретінде модераторға керек болуы мүмкін, сол себепті ұзағырақ.
 const ORDER_RETENTION_DAYS = 5;
-const SUPPORT_RETENTION_DAYS = 1;
+const SUPPORT_RETENTION_DAYS = 30; // lib/.../support_admin_screen.dart · kSupportArchiveDays-пен бірдей
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 Deno.serve(async (req: Request) => {
@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
   const supportCutoff = new Date(Date.now() - SUPPORT_RETENTION_DAYS * MS_PER_DAY)
     .toISOString();
 
-  // ---------- 1) 1+ күн бұрын жабылған қолдау тредтері ----------
+  // ---------- 1) 30+ күн бұрын жабылған қолдау тредтері ----------
   let threadsDeleted = 0;
   let supportPhotosDeleted = 0;
   {

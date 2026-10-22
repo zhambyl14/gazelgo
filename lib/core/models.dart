@@ -713,6 +713,7 @@ class SupportThread {
   final String? lastSenderRole;
   final DateTime? lastMsgAt;
   final DateTime? createdAt;
+  final DateTime? closedAt;
 
   SupportThread.fromMap(Map<String, dynamic> m)
     : id = m['id'] as String,
@@ -721,7 +722,8 @@ class SupportThread {
       status = m['status'] as String? ?? 'open',
       lastSenderRole = m['last_sender_role'] as String?,
       lastMsgAt = _dt(m['last_msg_at']),
-      createdAt = _dt(m['created_at']);
+      createdAt = _dt(m['created_at']),
+      closedAt = _dt(m['closed_at']);
 
   bool get isOpen => status == 'open';
 }

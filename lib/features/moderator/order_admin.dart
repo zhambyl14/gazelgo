@@ -35,16 +35,25 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
   Order? _order;
   Map<String, dynamic>? _fraud;
 
+  /// Заказ чатындағы хабарлама саны (null — әлі жүктелмеді).
+  int? _chatCount;
+
   @override
   void initState() {
     super.initState();
     _load();
     _loadFraud();
+    _loadChatCount();
   }
 
   Future<void> _load() async {
     final o = await Repo.orderById(widget.orderId);
     if (mounted) setState(() => _order = o);
+  }
+
+  Future<void> _loadChatCount() async {
+    final n = await Repo.orderChatCount(widget.orderId);
+    if (mounted) setState(() => _chatCount = n);
   }
 
   Future<void> _loadFraud() async {
@@ -180,9 +189,11 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                     ],
                   ),
                 ),
-                if (o.executorId != null) ...[
+                // Заказ чаты (0078): модератор оқиды, қажет болса жазады.
+                // Хабарлама бар болса, орындаушы кейін алынып тасталса да
+                // көрінеді; орындаушы бар, бірақ чат бос болса — да.
+                if (o.executorId != null || (_chatCount ?? 0) > 0) ...[
                   const SizedBox(height: 10),
-                  // Заказ чаты (0078): модератор оқиды, қажет болса жазады.
                   OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -194,7 +205,11 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
                       ),
                     ),
                     icon: const Icon(Icons.forum_outlined),
-                    label: Text(t('Заказ чатын ашу')),
+                    label: Text(
+                      (_chatCount ?? 0) > 0
+                          ? '${t('Заказ чатын ашу')} · $_chatCount'
+                          : t('Заказ чатын ашу'),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 10),
