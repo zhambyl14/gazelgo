@@ -8,11 +8,11 @@ import '../../core/theme.dart';
 import '../../shared/push_router.dart';
 import '../../shared/widgets.dart';
 
-/// Хабарламалар орталығы (0080): келген push-тардың тарихы. Push байқалмай
-/// қалса не телефонда өшірулі болса да, маңызды хабар осында сақталады.
-///
-/// Бет ашылғанда бәрі «оқылды» болып белгіленеді, бірақ осы ашылуда жаңа
-/// хабарлар нүктемен белгіленіп тұрады (не жаңа екені көрінсін).
+/// Хабарламалар орталығы (0080): тек МАҢЫЗДЫ хабарлар (модератор хабары,
+/// жаңалық, баға, баланс, қолдау) — заказдың әр қадамы мұнда жиналмайды
+/// (0095). Бет ашылғанда ештеңе автоматты «оқылды» болмайды: хабарламаны
+/// ашқанда ОЛ ғана оқылады, ал жоғарыдағы батырма бәрін бірден оқылды
+/// етеді — қызыл белгілер көзге түсіп тұрмауы үшін.
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -22,29 +22,20 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  late Future<List<AppNotification>> _future = _load();
+  late Future<List<AppNotification>> _future = Repo.myNotifications();
 
-  Future<List<AppNotification>> _load() async {
-    final list = await Repo.myNotifications();
-    if (list.any((n) => n.unread)) {
-      await Repo.markAllNotificationsRead();
-      ref.invalidate(unreadNotificationsProvider);
-    }
-    return list;
-  }
+  /// Осы бетте оқылды деп белгіленгендер (сервер жауабын күтпей көрсету үшін).
+  final Set<String> _read = {};
+
+  bool _unread(AppNotification n) => n.unread && !_read.contains(n.id);
 
   static (IconData, Color) _look(String? type) => switch (type) {
-    'new_order' => (Icons.local_shipping_outlined, Gz.info),
-    'new_offer' ||
-    'offer_accepted' ||
-    'offer_rejected' => (Icons.local_offer_outlined, Gz.accent),
-    'order_status' ||
-    'order_expired' ||
-    'order_reminder' => (Icons.receipt_long_outlined, Gz.info),
     'support_reply' ||
     'support_message' => (Icons.support_agent_rounded, Gz.violet),
     'topup_approved' => (Icons.account_balance_wallet_outlined, Gz.success),
     'topup_rejected' => (Icons.account_balance_wallet_outlined, Gz.danger),
+    'bonus' => (Icons.card_giftcard_rounded, Gz.success),
+    'review_received' => (Icons.star_rounded, Gz.star),
     'broadcast' => (Icons.campaign_outlined, Gz.yellowDeep),
     _ => (Icons.notifications_none_rounded, Gz.textSecondary),
   };
@@ -59,85 +50,115 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return fmtDate(d).split(' ').first;
   }
 
+  Future<void> _open(AppNotification n) async {
+    if (_unread(n)) {
+      setState(() => _read.add(n.id));
+      await Repo.markNotificationRead(n.id);
+      ref.invalidate(unreadNotificationsProvider);
+    }
+    openPushTarget(n.data);
+  }
+
+  Future<void> _markAll(List<AppNotification> list) async {
+    setState(() => _read.addAll(list.map((n) => n.id)));
+    await Repo.markAllNotificationsRead();
+    ref.invalidate(unreadNotificationsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ru = Lang.current.value == AppLang.ru;
-    return Scaffold(
-      appBar: AppBar(title: Text(t('Хабарламалар'))),
-      body: FutureBuilder<List<AppNotification>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final list = snap.data ?? const <AppNotification>[];
-          if (list.isEmpty) {
-            return EmptyState(
-              icon: Icons.notifications_none_rounded,
-              title: t('Хабарлама әзірге жоқ'),
-              subtitle: t(
-                'Заказ, ұсыныс және қолдау қызметінің жауаптары '
-                'осында сақталады.',
-              ),
-            );
-          }
-          final rows = <Widget>[];
-          String? lastDay;
-          for (final n in list) {
-            final at = n.createdAt?.toLocal();
-            final day = at == null ? '' : _dayLabel(at);
-            if (day != lastDay) {
-              lastDay = day;
-              rows.add(SectionTitle(day));
-            }
-            final (icon, color) = _look(n.data['type'] as String?);
-            final title = ru && (n.titleRu?.isNotEmpty ?? false)
-                ? n.titleRu!
-                : n.title;
-            final body = ru && (n.bodyRu?.isNotEmpty ?? false)
-                ? n.bodyRu!
-                : n.body;
-            final canOpen =
-                n.data['type'] != null || n.data['order_id'] != null;
-            rows.add(
-              GzListRow(
-                icon: icon,
-                color: color,
-                title: title,
-                subtitle: body.isEmpty ? null : body,
-                onTap: canOpen ? () => openPushTarget(n.data) : null,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(fmtTime(at), style: Gz.caption),
-                    if (n.unread) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Gz.danger,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ],
+    return FutureBuilder<List<AppNotification>>(
+      future: _future,
+      builder: (context, snap) {
+        final done = snap.connectionState == ConnectionState.done;
+        final list = snap.data ?? const <AppNotification>[];
+        final hasUnread = done && list.any(_unread);
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(t('Хабарламалар')),
+            actions: [
+              if (hasUnread)
+                IconButton(
+                  tooltip: t('Барлығын оқылды деп белгілеу'),
+                  icon: const Icon(Icons.done_all_rounded),
+                  onPressed: () => _markAll(list),
                 ),
-              ),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() => _future = _load());
-              await _future;
-            },
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: rows,
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+          body: !done
+              ? const Center(child: CircularProgressIndicator())
+              : list.isEmpty
+              ? EmptyState(
+                  icon: Icons.notifications_none_rounded,
+                  title: t('Хабарлама әзірге жоқ'),
+                  subtitle: t(
+                    'Модератор хабарламалары, жаңалықтар, бағалар мен баланс '
+                    'өзгерістері осында сақталады.',
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      _read.clear();
+                      _future = Repo.myNotifications();
+                    });
+                    await _future;
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    children: _rows(list, ru),
+                  ),
+                ),
+        );
+      },
     );
+  }
+
+  List<Widget> _rows(List<AppNotification> list, bool ru) {
+    final rows = <Widget>[];
+    String? lastDay;
+    for (final n in list) {
+      final at = n.createdAt?.toLocal();
+      final day = at == null ? '' : _dayLabel(at);
+      if (day != lastDay) {
+        lastDay = day;
+        rows.add(SectionTitle(day));
+      }
+      final (icon, color) = _look(n.data['type'] as String?);
+      final title = ru && (n.titleRu?.isNotEmpty ?? false)
+          ? n.titleRu!
+          : n.title;
+      final body = ru && (n.bodyRu?.isNotEmpty ?? false) ? n.bodyRu! : n.body;
+      final unread = _unread(n);
+      rows.add(
+        GzListRow(
+          icon: icon,
+          color: color,
+          title: title,
+          subtitle: body.isEmpty ? null : body,
+          onTap: () => _open(n),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(fmtTime(at), style: Gz.caption),
+              if (unread) ...[
+                const SizedBox(width: 6),
+                // Қызыл емес — көзге ұрмайтын жұмсақ түс.
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Gz.info,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return rows;
   }
 }

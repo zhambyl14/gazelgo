@@ -2500,6 +2500,27 @@ class Repo {
 
   // ---- Хабарламалар орталығы (0080) ----
 
+  /// Орталыққа КІРМЕЙТІН түрлер (0095): заказдың әр қадамы — олар заказ
+  /// экранында көрінеді, push-ы бұрынғыдай келеді. Орталықта тек маңыздылар
+  /// (модератор хабары, жаңалық, баға, баланс, қолдау) қалады. Сервер жаңа
+  /// жазбаларды енді сақтамайды; ескі жазбалар мен миграцияға дейінгі
+  /// жағдай үшін қосымша да осы тізіммен сүзеді.
+  static const kInboxHiddenTypes = {
+    'order_chat',
+    'new_order',
+    'new_offer',
+    'offer_accepted',
+    'offer_rejected',
+    'order_status',
+    'order_expired',
+    'order_reminder',
+  };
+
+  static bool _inboxVisible(Object? data) {
+    final type = data is Map ? data['type'] : null;
+    return type is! String || !kInboxHiddenTypes.contains(type);
+  }
+
   static Future<List<AppNotification>> myNotifications() async {
     final me = uid;
     if (me == null) return const [];
@@ -2509,9 +2530,11 @@ class Repo {
           .select()
           .eq('user_id', me)
           .order('created_at', ascending: false)
-          .limit(60);
+          .limit(100);
       return (rows as List)
+          .where((m) => _inboxVisible((m as Map)['data']))
           .map((m) => AppNotification.fromMap(Map<String, dynamic>.from(m)))
+          .take(60)
           .toList();
     } catch (_) {
       return const [];
@@ -2529,11 +2552,13 @@ class Repo {
         try {
           final rows = await c
               .from('notifications')
-              .select('id')
+              .select('id, data')
               .eq('user_id', me)
               .isFilter('read_at', null)
-              .limit(100);
-          return (rows as List).length;
+              .limit(200);
+          return (rows as List)
+              .where((m) => _inboxVisible((m as Map)['data']))
+              .length;
         } catch (_) {
           return 0;
         }
@@ -2546,6 +2571,13 @@ class Repo {
   static Future<void> markAllNotificationsRead() async {
     try {
       await c.rpc('notifications_mark_all_read');
+    } catch (_) {}
+  }
+
+  /// Бір хабарламаны оқылды деп белгілеу (0095) — оны ашқанда.
+  static Future<void> markNotificationRead(String id) async {
+    try {
+      await c.rpc('notification_mark_read', params: {'p_id': id});
     } catch (_) {}
   }
 
