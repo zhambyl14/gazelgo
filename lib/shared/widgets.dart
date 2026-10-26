@@ -1497,6 +1497,9 @@ class _ReviewPromptState extends State<ReviewPrompt> {
   /// Клиент орындаушыны бағалай ма (тегтерге қарап) — иконка үшін.
   bool get _ratesExecutor => identical(widget.tags, kExecutorReviewTags);
 
+  /// Жолаушы такси жүргізушісін бағалай ма — такси иконкасы мен сөздігі.
+  bool get _ratesDriver => identical(widget.tags, kTaxiReviewTags);
+
   @override
   void initState() {
     super.initState();
@@ -1724,7 +1727,9 @@ class _ReviewPromptState extends State<ReviewPrompt> {
                   border: Border.all(color: Gz.yellow, width: 2),
                 ),
                 child: Icon(
-                  _ratesExecutor
+                  _ratesDriver
+                      ? Icons.local_taxi_rounded
+                      : _ratesExecutor
                       ? Icons.local_shipping_rounded
                       : Icons.person_rounded,
                   size: 32,
@@ -1740,7 +1745,11 @@ class _ReviewPromptState extends State<ReviewPrompt> {
             ),
             const SizedBox(height: 4),
             Text(
-              t('Заказ аяқталды. Бағаңыз сервисті жақсартуға көмектеседі.'),
+              t(
+                _ratesDriver
+                    ? 'Сапар аяқталды. Бағаңыз сервисті жақсартуға көмектеседі.'
+                    : 'Заказ аяқталды. Бағаңыз сервисті жақсартуға көмектеседі.',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Gz.textSecondary),
             ),

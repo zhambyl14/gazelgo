@@ -48,6 +48,53 @@ const kExecutorReviewTags = [
   ),
 ];
 
+/// Жолаушы ТАКСИ жүргізушісін бағалағанда (0094): жүкке емес, сапарға
+/// қатысты тегтер. Ортақ кодтар (`punctual`, `polite`, `clean_car`, `late`,
+/// `rude`, `overpriced`) жүктегімен бірдей — профильдегі жиынтық бірге
+/// есептеледі.
+const kTaxiReviewTags = [
+  ReviewTag('punctual', 'Уақытында келді', Icons.schedule_rounded),
+  ReviewTag('safe_driving', 'Қауіпсіз жүрді', Icons.shield_outlined),
+  ReviewTag(
+    'comfortable',
+    'Жайлы жүрді',
+    Icons.airline_seat_recline_normal_rounded,
+  ),
+  ReviewTag('polite', 'Сыпайы', Icons.sentiment_satisfied_alt_rounded),
+  ReviewTag('clean_car', 'Көлігі таза', Icons.local_car_wash_outlined),
+  ReviewTag('knows_route', 'Жолды біледі', Icons.alt_route_rounded),
+  ReviewTag(
+    'late',
+    'Кешікті',
+    Icons.running_with_errors_rounded,
+    positive: false,
+  ),
+  ReviewTag(
+    'rude',
+    'Дөрекі',
+    Icons.sentiment_dissatisfied_rounded,
+    positive: false,
+  ),
+  ReviewTag(
+    'unsafe_driving',
+    'Қауіпті жүрді',
+    Icons.warning_amber_rounded,
+    positive: false,
+  ),
+  ReviewTag(
+    'dirty_car',
+    'Көлігі лас',
+    Icons.cleaning_services_outlined,
+    positive: false,
+  ),
+  ReviewTag(
+    'overpriced',
+    'Келісілгеннен көп сұрады',
+    Icons.money_off_rounded,
+    positive: false,
+  ),
+];
+
 /// Орындаушы КЛИЕНТТІ бағалағанда.
 const kClientReviewTags = [
   ReviewTag(
@@ -79,7 +126,11 @@ const kClientReviewTags = [
 
 /// Тег кодының оқылатын атауы (профильдегі «жиі айтылады» тізімі үшін).
 ReviewTag? reviewTagOf(String code) {
-  for (final tg in [...kExecutorReviewTags, ...kClientReviewTags]) {
+  for (final tg in [
+    ...kExecutorReviewTags,
+    ...kTaxiReviewTags,
+    ...kClientReviewTags,
+  ]) {
     if (tg.code == code) return tg;
   }
   return null;

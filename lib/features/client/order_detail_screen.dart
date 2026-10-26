@@ -148,8 +148,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       maybeShowReviewDialog(
         context,
         orderId: o.id,
-        title: t('Орындаушыны бағалаңыз'),
-        tags: kExecutorReviewTags,
+        title: t(
+          o.vehicleType.isPassenger
+              ? 'Жүргізушіні бағалаңыз'
+              : 'Орындаушыны бағалаңыз',
+        ),
+        tags: o.vehicleType.isPassenger ? kTaxiReviewTags : kExecutorReviewTags,
       );
     });
   }
@@ -487,8 +491,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ],
           ReviewPrompt(
             orderId: o.id,
-            title: t('Орындаушыны бағалаңыз'),
-            tags: kExecutorReviewTags,
+            title: t(
+              o.vehicleType.isPassenger
+                  ? 'Жүргізушіні бағалаңыз'
+                  : 'Орындаушыны бағалаңыз',
+            ),
+            tags: o.vehicleType.isPassenger
+                ? kTaxiReviewTags
+                : kExecutorReviewTags,
           ),
           if (_prefs.available && !favorite) ...[
             const SizedBox(height: 10),
@@ -1748,92 +1758,92 @@ class _ExecutorCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(Gz.rSm),
-                  onTap: onOpen,
-                  child: Row(
-                    children: [
-                      InitialsAvatar(
-                        p?.fullName ?? '?',
-                        radius: 24,
-                        imageUrl: p?.avatarUrl,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(Gz.rSm),
+                      onTap: onOpen,
+                      child: Row(
+                        children: [
+                          InitialsAvatar(
+                            p?.fullName ?? '?',
+                            radius: 24,
+                            imageUrl: p?.avatarUrl,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    p?.fullName ?? t('Орындаушы'),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        p?.fullName ?? t('Орындаушы'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Gz.h3,
+                                      ),
+                                    ),
+                                    if (favorite) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.favorite_rounded,
+                                        size: 15,
+                                        color: Gz.red,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                // Орындаушының РӨЛДІК рейтингі (қос рөл, 0046).
+                                Row(
+                                  children: [
+                                    RatingStars(
+                                      p?.ratingAs('executor') ?? 0,
+                                      count: p?.ratingCountAs('executor') ?? 0,
+                                      size: 14,
+                                    ),
+                                    if ((p?.tripsAs('executor') ?? 0) > 0)
+                                      Text(
+                                        '  · ${p!.tripsAs('executor')} ${t('рейс')}',
+                                        style: Gz.caption,
+                                      ),
+                                  ],
+                                ),
+                                if (ep != null && ep.vehicleTitle.isNotEmpty)
+                                  Text(
+                                    ep.vehicleTitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Gz.h3,
-                                  ),
-                                ),
-                                if (favorite) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.favorite_rounded,
-                                    size: 15,
-                                    color: Gz.red,
-                                  ),
-                                ],
-                              ],
-                            ),
-                            // Орындаушының РӨЛДІК рейтингі (қос рөл, 0046).
-                            Row(
-                              children: [
-                                RatingStars(
-                                  p?.ratingAs('executor') ?? 0,
-                                  count: p?.ratingCountAs('executor') ?? 0,
-                                  size: 14,
-                                ),
-                                if ((p?.tripsAs('executor') ?? 0) > 0)
-                                  Text(
-                                    '  · ${p!.tripsAs('executor')} ${t('рейс')}',
                                     style: Gz.caption,
                                   ),
                               ],
                             ),
-                            if (ep != null && ep.vehicleTitle.isNotEmpty)
-                              Text(
-                                ep.vehicleTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Gz.caption,
-                              ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              OrderChatButton(
-                order: order,
-                title: p?.fullName ?? t('Орындаушы'),
-                myRole: 'client',
-              ),
-              if (showCall && p != null && p.phone.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                IconButton.filled(
-                  tooltip: t('Қоңырау'),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Gz.green,
-                    foregroundColor: Colors.white,
+                  OrderChatButton(
+                    order: order,
+                    title: p?.fullName ?? t('Орындаушы'),
+                    myRole: 'client',
                   ),
-                  onPressed: () => callPhone(context, p.phone),
-                  icon: const Icon(Icons.call),
-                ),
-              ],
-            ],
-          ),
+                  if (showCall && p != null && p.phone.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    IconButton.filled(
+                      tooltip: t('Қоңырау'),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Gz.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => callPhone(context, p.phone),
+                      icon: const Icon(Icons.call),
+                    ),
+                  ],
+                ],
+              ),
               if (showCar) ...[
                 const SizedBox(height: 12),
                 Wrap(
