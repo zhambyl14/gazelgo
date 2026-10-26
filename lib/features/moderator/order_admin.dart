@@ -87,25 +87,16 @@ class _OrderAdminSheetState extends State<_OrderAdminSheet> {
     return '${t('Тексеру қажет болуы мүмкін:')} ${parts.join(' ')}';
   }
 
-  static const _statusesBase = [
-    ('searching', 'Іздеуге қайтару (қайта ұсыну)'),
-    ('accepted', 'Қабылданды'),
-    ('arrived', 'Келді'),
-    ('loading', 'Тиеу'),
-    ('in_transit', 'Тасымалдауда'),
-    ('completed', 'Аяқталды'),
-    ('cancelled', 'Тоқтатылды'),
-  ];
-
-  /// Такси заказында (жолаушы тасымалы) «Тиеу» орнына «Отырғызу» — жолаушы
-  /// жүк емес.
-  List<(String, String)> get _statuses => [
-    for (final s in _statusesBase)
-      if (s.$1 == 'loading' && (_order?.vehicleType.isPassenger ?? false))
-        (s.$1, 'Отырғызу')
-      else
-        s,
-  ];
+  /// Такси заказында (жолаушы тасымалы) статус атаулары такси логикасымен
+  /// (жүргізуші келді → жолаушы отырды → сапарда → сапар аяқталды).
+  List<(String, String)> get _statuses {
+    final steps = tripSteps(taxi: _order?.vehicleType.isPassenger ?? false);
+    return [
+      ('searching', 'Іздеуге қайтару (қайта ұсыну)'),
+      ...steps,
+      ('cancelled', 'Тоқтатылды'),
+    ];
+  }
 
   Future<void> _setStatus(String status) async {
     final label = t(_statuses.firstWhere((s) => s.$1 == status).$2);

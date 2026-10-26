@@ -145,8 +145,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   /// «Тараз қалалық әкімшілігі» бір қала болып есептеледі.)
   bool get _intercity => distinctCities(_points.map((p) => p.city)).length > 1;
 
-  /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸.
-  int get _minPrice => _intercity ? 1000 : 100;
+  /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸. Модератор бұл
+  /// көлік түріне «км-ге минималды сома» қосқан болса (0092) — маршрут
+  /// қашықтығына сай есептелген сома да ескеріледі, екеуінің үлкені алынады.
+  int get _minPrice => _minPriceFor(_route?.distanceKm);
+
+  int _minPriceFor(double? km) {
+    final base = _intercity ? 1000 : 100;
+    if (km == null) return base;
+    // Серверге дәл осы дөңгелектелген қашықтық кетеді (createOrder).
+    final perKm = _vehicle.spec.minPriceFor(double.parse(km.toStringAsFixed(2)));
+    return perKm > base ? perKm : base;
+  }
+
+  /// Минимум км-ге байланысты көтерілген бе (чипте түсіндіру үшін).
+  bool get _minByDistance =>
+      _minPrice > (_intercity ? 1000 : 100) && _vehicle.spec.minPerKmEnabled;
 
   int? get _priceValue =>
       int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));
@@ -667,6 +681,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           finalRoute = retry;
           if (mounted) setState(() => _route = retry);
         }
+      }
+      // Нақты жол шамалаудан ұзағырақ шықса, км бойынша минимум да өседі —
+      // серверден қате алмай тұрып клиентке айтамыз.
+      final finalMin = _minPriceFor(finalRoute.distanceKm);
+      if (clientPrice < finalMin) {
+        if (mounted) {
+          showSnack(
+            context,
+            '${t('Бағаңыз кемінде')} ${fmtT(finalMin)}',
+            error: true,
+          );
+        }
+        return;
       }
       // фотоларды алдын ала жүктейміз
       final photoPaths = <String>[];
@@ -1235,6 +1262,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             fontSize: 13,
                           ),
                         ),
+                        if (_minByDistance) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${t('Ең төменгі баға қашықтыққа байланысты')}: '
+                            '${fmtT(_vehicle.spec.minPerKm)}/${t('км')}',
+                            style: TextStyle(
+                              color: Gz.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         if (_hint != null) ...[
                           _priceHint(_hint!),

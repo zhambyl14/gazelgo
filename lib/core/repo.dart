@@ -726,6 +726,8 @@ class Repo {
     String? emoji,
     bool? isTaxi,
     bool? active,
+    bool? minPerKmEnabled,
+    int? minPerKm,
   }) async {
     final res = await c.rpc(
       'mod_save_vehicle_type',
@@ -739,6 +741,9 @@ class Repo {
         'p_emoji': emoji,
         'p_is_taxi': isTaxi,
         'p_active': active,
+        // 0092 жоқ серверге жаңа параметр жіберілмейді (ескі қолтаңба).
+        'p_min_per_km_enabled': ?minPerKmEnabled,
+        'p_min_per_km': ?minPerKm,
       },
     );
     return Map<String, dynamic>.from(res as Map);

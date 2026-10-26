@@ -774,10 +774,10 @@ class _TripStepperState extends State<_TripStepper>
       (t('Қабылданды'), Icons.thumb_up_alt_rounded),
       (t('Орнында'), Icons.location_on_rounded),
       widget.taxi
-          ? (t('Отырғызу'), Icons.airline_seat_recline_normal_rounded)
+          ? (t('Отырды'), Icons.airline_seat_recline_normal_rounded)
           : (t('Тиеу'), Icons.inventory_2_rounded),
       (
-        t('Жолда'),
+        t(widget.taxi ? 'Сапарда' : 'Жолда'),
         widget.taxi ? Icons.local_taxi_rounded : Icons.local_shipping_rounded,
       ),
       (t('Аяқталды'), Icons.flag_rounded),

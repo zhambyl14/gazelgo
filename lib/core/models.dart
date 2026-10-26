@@ -39,23 +39,42 @@ const kActiveOrderStatuses = [
   'in_transit',
 ];
 
-/// [vehicleType] тек 'loading' статусын нақтылау үшін қажет: такси
-/// (жолаушы тасымалы) заказында «Тиеу» орнына «Отырғызу» дұрысырақ —
-/// жолаушы жүк емес. Қалған түрлерге (жеткізу, спецтехника) әсер етпейді.
-String statusLabel(String s, {VehicleType? vehicleType}) => switch (s) {
-  'searching' => t('Іздеуде'),
-  'accepted' => t('Қабылданды · жолда'),
-  'arrived' => t('Орындаушы келді'),
-  'loading' =>
-    (vehicleType?.isPassenger ?? false)
-        ? t('Отырғызу жүріп жатыр')
-        : t('Тиеу жүріп жатыр'),
-  'in_transit' => t('Тасымалдауда'),
-  'completed' => t('Аяқталды'),
-  'cancelled' => t('Бас тартылды'),
-  'expired' => t('Мерзімі өтті'),
-  _ => s,
-};
+/// [vehicleType] такси (жолаушы тасымалы) заказында статус атауларын
+/// ТАКСИ логикасына келтіреді: жүргізуші жолда → келді → жолаушы отырды →
+/// сапарда → сапар аяқталды (жүктегідей «Тиеу/Тасымалдауда» емес).
+/// Қалған түрлерге (жеткізу, спецтехника) әсер етпейді.
+String statusLabel(String s, {VehicleType? vehicleType}) {
+  final taxi = vehicleType?.isPassenger ?? false;
+  return switch (s) {
+    'searching' => t('Іздеуде'),
+    'accepted' => taxi ? t('Жүргізуші жолда') : t('Қабылданды · жолда'),
+    'arrived' => taxi ? t('Жүргізуші келді') : t('Орындаушы келді'),
+    'loading' => taxi ? t('Жолаушы отырды') : t('Тиеу жүріп жатыр'),
+    'in_transit' => taxi ? t('Сапарда') : t('Тасымалдауда'),
+    'completed' => taxi ? t('Сапар аяқталды') : t('Аяқталды'),
+    'cancelled' => t('Бас тартылды'),
+    'expired' => t('Мерзімі өтті'),
+    _ => s,
+  };
+}
+
+/// Заказдың барыс сатылары (клиент timeline-ы, модератор статус тізімі):
+/// `(статус, атауы)`. Такси үшін — такси сөздігі.
+List<(String, String)> tripSteps({required bool taxi}) => taxi
+    ? const [
+        ('accepted', 'Жүргізуші жолда'),
+        ('arrived', 'Жүргізуші келді'),
+        ('loading', 'Жолаушы отырды'),
+        ('in_transit', 'Сапарда'),
+        ('completed', 'Сапар аяқталды'),
+      ]
+    : const [
+        ('accepted', 'Орындаушы жолда'),
+        ('arrived', 'Келді'),
+        ('loading', 'Тиеу'),
+        ('in_transit', 'Тасымалдауда'),
+        ('completed', 'Аяқталды'),
+      ];
 
 // ---------- Profile ----------
 class Profile {

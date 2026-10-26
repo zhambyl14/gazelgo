@@ -11,6 +11,7 @@ import 'i18n/ru_moderator.dart';
 import 'i18n/ru_news.dart';
 import 'i18n/ru_redesign.dart';
 import 'i18n/ru_shared.dart';
+import 'i18n/ru_taxi_flow.dart';
 import 'i18n/ru_umay.dart';
 import 'prefs.dart';
 import 'repo.dart';
@@ -68,6 +69,8 @@ final Map<String, String> _kkToRu = {
   ...ruRedesign,
   // Ұмай такси (0086) — тек әйел жүргізушілерге арналған такси түрі.
   ...ruUmay,
+  // Такси статустары + км-ге минималды сома (0092).
+  ...ruTaxiFlow,
   // Екі тармақты біріктіру кезінде қосылған мәтіндер — ЕҢ СОҢҒЫ.
   ...ruMerge,
 };

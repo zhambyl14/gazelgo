@@ -251,6 +251,10 @@ class _VehicleTypesScreenState extends ConsumerState<VehicleTypesScreen> {
                             const SizedBox(width: 6),
                             _chip(t('Такси'), Gz.blue),
                           ],
+                          if (s.minPerKmEnabled && s.minPerKm > 0) ...[
+                            const SizedBox(width: 6),
+                            _chip('${fmtT(s.minPerKm)}/${t('км')}', Gz.green),
+                          ],
                         ],
                       ),
                       if (s.descKk.isNotEmpty)
@@ -368,6 +372,15 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
   late bool _isTaxi = widget.spec?.isTaxi ?? false;
   late bool _active = widget.spec?.active ?? true;
 
+  /// Минималды сома км-ге (0092): қосқыш + 1 км бағасы.
+  late bool _minPerKmOn = widget.spec?.minPerKmEnabled ?? false;
+  late final _minPerKm = TextEditingController(
+    text: (widget.spec?.minPerKm ?? 0) > 0 ? '${widget.spec!.minPerKm}' : '',
+  );
+
+  int get _minPerKmValue =>
+      int.tryParse(_minPerKm.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+
   /// Жаңа жүктелген иконканың сілтемесі (әлі сақталмаған).
   String? _iconUrl;
   bool _uploading = false;
@@ -387,6 +400,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
     _labelRu.dispose();
     _descKk.dispose();
     _descRu.dispose();
+    _minPerKm.dispose();
     super.dispose();
   }
 
@@ -437,6 +451,10 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
       showSnack(context, t('Атауын жазыңыз'), error: true);
       return;
     }
+    if (_minPerKmOn && _minPerKmValue <= 0) {
+      showSnack(context, t('1 км үшін соманы жазыңыз'), error: true);
+      return;
+    }
     await Repo.modSaveVehicleType(
       code: _isNew ? _code.text.trim().toLowerCase() : widget.spec!.code,
       labelKk: _labelKk.text.trim(),
@@ -446,6 +464,8 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
       iconUrl: _iconUrl,
       isTaxi: _isTaxi,
       active: _active,
+      minPerKmEnabled: _minPerKmOn,
+      minPerKm: _minPerKmOn ? _minPerKmValue : null,
     );
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -631,6 +651,58 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ---- Минималды сома (км-ге) ----
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _minPerKmOn,
+                  onChanged: (v) => setState(() => _minPerKmOn = v),
+                  title: Text(
+                    t('Минималды сома заказа (км-ге)'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    t(
+                      'Қосулы болса — клиент бұл көлікке А мен Б арасындағы '
+                      'қашықтыққа сай ең төменгі соманың астында баға қоя '
+                      'алмайды. Орындаушы да одан төмен ұсыныс бере алмайды.',
+                    ),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                if (_minPerKmOn) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _minPerKm,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: t('1 км үшін, ₸'),
+                      hintText: '100',
+                      suffixText: '₸ / ${t('км')}',
+                      prefixIcon: const Icon(Icons.route_outlined),
+                    ),
+                  ),
+                  if (_minPerKmValue > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '${t('Мысалы')}: 10 ${t('км')} → '
+                      '${fmtT(_minPerKmValue * 10)}',
+                      style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ],
               ],
             ),
           ),

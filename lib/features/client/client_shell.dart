@@ -72,11 +72,21 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       final prev = _lastStatus[o.id];
       _lastStatus[o.id] = o.status;
       if (!_primed || prev == null || prev == o.status) continue;
+      final taxi = o.vehicleType.isPassenger;
       final msg = switch (o.status) {
-        'accepted' => t('Орындаушы табылды! Жолға шықты 🚚'),
-        'arrived' => t('Орындаушы келді — қарсы алыңыз'),
-        'in_transit' => t('Жүгіңіз жолда'),
-        'completed' => t('Заказ аяқталды. Орындаушыны бағалаңыз ⭐'),
+        'accepted' =>
+          taxi
+              ? t('Жүргізуші табылды! Жолға шықты 🚕')
+              : t('Орындаушы табылды! Жолға шықты 🚚'),
+        'arrived' =>
+          taxi
+              ? t('Жүргізуші келді — көлікке отырыңыз')
+              : t('Орындаушы келді — қарсы алыңыз'),
+        'in_transit' => taxi ? t('Сапар басталды') : t('Жүгіңіз жолда'),
+        'completed' =>
+          taxi
+              ? t('Сапар аяқталды. Жүргізушіні бағалаңыз ⭐')
+              : t('Заказ аяқталды. Орындаушыны бағалаңыз ⭐'),
         'cancelled' => t('Заказ тоқтатылды'),
         'searching' when prev != 'searching' => t(
           'Орындаушы бас тартты — заказыңыз қайта іздеуде 🔄',

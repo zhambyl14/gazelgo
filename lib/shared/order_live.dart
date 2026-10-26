@@ -272,7 +272,14 @@ class WaitingTimerCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('Орындаушы сізді күтіп тұр'), style: Gz.h3),
+                        Text(
+                          t(
+                            isTaxi
+                                ? 'Жүргізуші сізді күтіп тұр'
+                                : 'Орындаушы сізді күтіп тұр',
+                          ),
+                          style: Gz.h3,
+                        ),
                         const SizedBox(height: 2),
                         Text(hint, style: Gz.caption),
                       ],

@@ -450,8 +450,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ],
           const SizedBox(height: 10),
           _Timeline(status: o.status, vehicleType: o.vehicleType),
-          const SizedBox(height: 10),
-          RecipientSection(order: o),
+          // Алушы — тек жүк заказына (такси жолаушысында жүк қабылдаушы жоқ).
+          if (!o.vehicleType.isPassenger) ...[
+            const SizedBox(height: 10),
+            RecipientSection(order: o),
+          ],
           const SizedBox(height: 10),
           SupportOrderButton(orderId: o.id),
           const SizedBox(height: 10),
@@ -468,8 +471,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             showCall: false,
             onOpen: () => _openExecutor(o.executorId!),
           ),
-          const SizedBox(height: 10),
-          RecipientSection(order: o),
+          if (!o.vehicleType.isPassenger) ...[
+            const SizedBox(height: 10),
+            RecipientSection(order: o),
+          ],
           ReviewPrompt(
             orderId: o.id,
             title: t('Орындаушыны бағалаңыз'),
@@ -1222,9 +1227,12 @@ class _SearchingScreenState extends State<_SearchingScreen> {
           const SizedBox(height: 12),
           OrderPhotosStrip(paths: o.photos),
         ],
-        const SizedBox(height: 10),
-        // Алушы және жеткізу коды (0076) — сервер дайын болса ғана.
-        RecipientSection(order: o),
+        // Алушы және жеткізу коды (0076) — сервер дайын болса ғана; такси
+        // жолаушысында жүк алушы жоқ.
+        if (!o.vehicleType.isPassenger) ...[
+          const SizedBox(height: 10),
+          RecipientSection(order: o),
+        ],
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: widget.onCancel,
@@ -1818,20 +1826,10 @@ class _Timeline extends StatelessWidget {
   final VehicleType vehicleType;
   const _Timeline({required this.status, required this.vehicleType});
 
-  static const _steps = [
-    ('accepted', 'Орындаушы жолда'),
-    ('arrived', 'Келді'),
-    ('loading', 'Тиеу'),
-    ('in_transit', 'Тасымалдауда'),
-    ('completed', 'Аяқталды'),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final isTaxi = vehicleType.isPassenger;
     final steps = [
-      for (final s in _steps)
-        (s.$1, t(s.$1 == 'loading' && isTaxi ? 'Отырғызу' : s.$2)),
+      for (final s in tripSteps(taxi: vehicleType.isPassenger)) (s.$1, t(s.$2)),
     ];
     final idx = steps.indexWhere((s) => s.$1 == status);
     return SectionCard(
