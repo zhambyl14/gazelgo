@@ -3,6 +3,31 @@ import 'package:flutter/services.dart';
 
 import 'lang.dart';
 
+/// Көлік бояуының үлгілері (`car_colors.dart`) және ҚР мемлекеттік нөмір
+/// тақташасының түстері — бұл түстер тақырыпқа (ашық/қараңғы) тәуелсіз.
+class GzCar {
+  GzCar._();
+  static const white = Color(0xFFFFFFFF);
+  static const black = Color(0xFF1A1A1A);
+  static const silver = Color(0xFFC0C4CA);
+  static const gray = Color(0xFF8A8F98);
+  static const blue = Color(0xFF1F4FBF);
+  static const lightBlue = Color(0xFF5BB5F0);
+  static const red = Color(0xFFD62828);
+  static const burgundy = Color(0xFF7A1B2B);
+  static const green = Color(0xFF2E8B4F);
+  static const yellow = Color(0xFFF6C900);
+  static const orange = Color(0xFFF28C1E);
+  static const brown = Color(0xFF6B4423);
+  static const beige = Color(0xFFD9C7A3);
+  static const purple = Color(0xFF7B3FA0);
+  static const pink = Color(0xFFF08BB4);
+  static const gold = Color(0xFFC9A227);
+  static const plateInk = Color(0xFF111111);
+  static const flagBlue = Color(0xFF00AFCA);
+  static const flagSun = Color(0xFFFEC50C);
+}
+
 /// GazelGo дизайн-жүйесі.
 ///
 /// ЖАРЫҚ ПАЛИТРА ЕРЕЖЕСІ: әр семантикалық түстің ЕКІ нұсқасы бар —

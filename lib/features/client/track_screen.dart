@@ -86,7 +86,13 @@ class _TrackScreenState extends State<TrackScreen> {
               filterQuality: FilterQuality.medium,
             ),
             const SizedBox(width: 10),
-            Text(t('Жүк қайда?')),
+            Text(
+              t(
+                vehicleTypeFrom(_data?['vehicle_type'] as String?).isPassenger
+                    ? 'Сапар қайда?'
+                    : 'Жүк қайда?',
+              ),
+            ),
           ],
         ),
       ),
@@ -258,23 +264,31 @@ class _StatusHero extends StatelessWidget {
     required this.isRecipient,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final (IconData icon, Color color, String title) = switch (status) {
+  /// Такси (жолаушы тасымалы): жүк емес — сапар сөздігі.
+  (IconData, Color, String) _taxiSpec() {
+    return switch (status) {
       'searching' => (Icons.search_rounded, Gz.info, t('Жүргізуші ізделуде')),
       'accepted' => (
-        Icons.local_shipping_outlined,
+        Icons.local_taxi_rounded,
         Gz.info,
-        t('Жүргізуші жүкті алуға бара жатыр'),
+        t('Жүргізуші жолаушыны алуға бара жатыр'),
       ),
-      'arrived' ||
-      'loading' => (Icons.inventory_2_outlined, Gz.warning, t('Жүк тиелуде')),
+      'arrived' => (Icons.near_me_rounded, Gz.warning, t('Жүргізуші келді')),
+      'loading' => (
+        Icons.airline_seat_recline_normal_rounded,
+        Gz.warning,
+        t('Жолаушы көлікке отырды'),
+      ),
       'in_transit' => (
-        Icons.local_shipping_rounded,
+        Icons.local_taxi_rounded,
         Gz.success,
-        isRecipient ? t('Жүк сізге келе жатыр') : t('Жүк жолда'),
+        t('Жолаушы сапарда'),
       ),
-      'completed' => (Icons.check_circle_rounded, Gz.success, t('Жеткізілді')),
+      'completed' => (
+        Icons.check_circle_rounded,
+        Gz.success,
+        t('Сапар аяқталды'),
+      ),
       'cancelled' => (Icons.cancel_outlined, Gz.danger, t('Заказ тоқтатылды')),
       _ => (
         Icons.schedule_rounded,
@@ -282,6 +296,49 @@ class _StatusHero extends StatelessWidget {
         t('Заказдың мерзімі өтті'),
       ),
     };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (IconData icon, Color color, String title) = vehicle.isPassenger
+        ? _taxiSpec()
+        : switch (status) {
+            'searching' => (
+              Icons.search_rounded,
+              Gz.info,
+              t('Жүргізуші ізделуде'),
+            ),
+            'accepted' => (
+              Icons.local_shipping_outlined,
+              Gz.info,
+              t('Жүргізуші жүкті алуға бара жатыр'),
+            ),
+            'arrived' || 'loading' => (
+              Icons.inventory_2_outlined,
+              Gz.warning,
+              t('Жүк тиелуде'),
+            ),
+            'in_transit' => (
+              Icons.local_shipping_rounded,
+              Gz.success,
+              isRecipient ? t('Жүк сізге келе жатыр') : t('Жүк жолда'),
+            ),
+            'completed' => (
+              Icons.check_circle_rounded,
+              Gz.success,
+              t('Жеткізілді'),
+            ),
+            'cancelled' => (
+              Icons.cancel_outlined,
+              Gz.danger,
+              t('Заказ тоқтатылды'),
+            ),
+            _ => (
+              Icons.schedule_rounded,
+              Gz.textSecondary,
+              t('Заказдың мерзімі өтті'),
+            ),
+          };
     final steps = ['accepted', 'loading', 'in_transit', 'completed'];
     final cur = switch (status) {
       'arrived' => 'loading',

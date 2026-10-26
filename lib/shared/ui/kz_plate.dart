@@ -28,7 +28,7 @@ class KzPlate extends StatelessWidget {
     if (plate.trim().isEmpty) return const SizedBox.shrink();
     final p = splitKzPlate(plate);
     final big = height * 0.56;
-    const ink = Color(0xFF111111);
+    const ink = GzCar.plateInk;
     return Semantics(
       label: plate,
       child: ExcludeSemantics(
@@ -103,15 +103,15 @@ class _Flag extends StatelessWidget {
     width: width,
     height: width * 0.62,
     decoration: BoxDecoration(
-      color: const Color(0xFF00AFCA),
-      borderRadius: BorderRadius.circular(1.5),
+      color: GzCar.flagBlue,
+      borderRadius: BorderRadius.circular(2),
     ),
     alignment: Alignment.center,
     child: Container(
       width: width * 0.3,
       height: width * 0.3,
       decoration: const BoxDecoration(
-        color: Color(0xFFFEC50C),
+        color: GzCar.flagSun,
         shape: BoxShape.circle,
       ),
     ),

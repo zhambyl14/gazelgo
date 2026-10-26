@@ -2605,6 +2605,27 @@ class _LiveTrackMapState extends State<LiveTrackMap>
     // нүктеге қарай бірнеше секунд жылжиды — әйтпесе кадрдың сыртынан
     // «кіріп» келер еді. Сұр жол айналма болса — ол да кадрда.
     final pts = [?_current, ?_animTo, _target, ..._approachLine];
+    // Көліктің орны әлі белгісіз, ал сапар жолда (мақсат — B): B-ға 16
+    // zoom-пен жақындатсақ карта бос көрінеді (сілтемемен бөліскен адам
+    // тек B белгісін көреді) — бүкіл маршрутты (A → аялдамалар → B) көрсетеміз.
+    if (_animTo == null && !_toPickup) {
+      final route = [_a, ..._o.stops, _b];
+      try {
+        if (_degenerate(route)) {
+          _map.move(_b, 16);
+        } else {
+          _map.fitCamera(
+            CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(route),
+              padding: const EdgeInsets.fromLTRB(56, 72, 56, 48),
+            ),
+          );
+        }
+      } catch (_) {
+        // карта әлі өлшенбеген — келесі жаңартуда теңшеледі
+      }
+      return;
+    }
     try {
       if (pts.length < 2 ||
           _degenerate(pts) ||
