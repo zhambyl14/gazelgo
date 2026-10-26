@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../../core/phone.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/ui/kz_plate.dart';
 import '../../shared/widgets.dart';
 import '../auth/executor_apply_screen.dart' show CityPickerSheet;
 
@@ -42,6 +43,9 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
     text: widget.ep?.vehicleYear?.toString() ?? '',
   );
   late final _plate = TextEditingController(text: widget.ep?.vehiclePlate);
+  late String? _color = widget.ep?.vehicleColor.isNotEmpty == true
+      ? widget.ep!.vehicleColor
+      : null;
   late String? _city = widget.ep?.city;
   late VehicleType _type = widget.ep?.vehicleType ?? VehicleType.gazelle;
 
@@ -110,6 +114,8 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
         'vehicle_model': _foot ? '' : _model.text.trim(),
         'vehicle_year': _foot || year.isEmpty ? null : int.parse(year),
         'vehicle_plate': _foot ? '' : _plate.text.trim(),
+        // 0093: түс — тек таңдалса жіберіледі (баған жоқ серверге тиіспейді).
+        if (!_foot && _color != null) 'vehicle_color': _color,
         if (_type == VehicleType.delivery) 'delivery_on_foot': _foot,
       });
       if (!mounted) return;
@@ -253,6 +259,16 @@ class _ExecutorFormSheetState extends State<_ExecutorFormSheet> {
                 labelText: t('Мемлекеттік нөмір'),
                 prefixIcon: const Icon(Icons.pin_outlined),
               ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t('Көлік түсі'),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            CarColorPicker(
+              value: _color,
+              onChanged: (c) => setState(() => _color = c),
             ),
             ],
             const SizedBox(height: 16),

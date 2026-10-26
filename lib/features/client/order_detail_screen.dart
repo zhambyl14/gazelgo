@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/car_colors.dart';
 import '../../core/env.dart';
 import '../../core/geo.dart';
 import '../../core/lang.dart';
@@ -14,6 +15,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/map_widgets.dart';
 import '../../shared/order_live.dart';
+import '../../shared/ui/kz_plate.dart';
 import '../../shared/widgets.dart';
 import '../chat/order_chat_screen.dart';
 import '../support/support_screen.dart';
@@ -1726,9 +1728,19 @@ class _ExecutorCard extends StatelessWidget {
         final p = snap.data?[0] as Profile?;
         final ep = snap.data?[1] as ExecutorProfile?;
         final favorite = prefs.favorites.contains(executorId);
+        // Нөмір мен түс — клиент көлікті көше тауып алуы үшін: тақташа
+        // түрінде және түс үлгісімен (жаяу курьерде көлік жоқ).
+        final showCar =
+            ep != null &&
+            !ep.onFoot &&
+            (ep.vehiclePlate.trim().isNotEmpty ||
+                carColorFor(ep.vehicleColor) != null);
         return SectionCard(
           padding: const EdgeInsets.all(14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+          Row(
             children: [
               Expanded(
                 child: InkWell(
@@ -1781,9 +1793,9 @@ class _ExecutorCard extends StatelessWidget {
                                   ),
                               ],
                             ),
-                            if (ep != null)
+                            if (ep != null && ep.vehicleTitle.isNotEmpty)
                               Text(
-                                ep.vehicleLine,
+                                ep.vehicleTitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Gz.caption,
@@ -1810,6 +1822,20 @@ class _ExecutorCard extends StatelessWidget {
                   ),
                   onPressed: () => callPhone(context, p.phone),
                   icon: const Icon(Icons.call),
+                ),
+              ],
+            ],
+          ),
+              if (showCar) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    KzPlate(ep.vehiclePlate),
+                    CarColorChip(ep.vehicleColor),
+                  ],
                 ),
               ],
             ],

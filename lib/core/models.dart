@@ -230,6 +230,9 @@ class ExecutorProfile {
   final String vehicleModel;
   final int? vehicleYear;
   final String vehiclePlate;
+
+  /// Көлік түсінің коды (0093, `car_colors.dart`); бос — көрсетілмеген.
+  final String vehicleColor;
   final List<String> vehiclePhotos;
   final String? idDocPath;
   final String? licensePath;
@@ -273,6 +276,7 @@ class ExecutorProfile {
       vehicleModel = m['vehicle_model'] as String? ?? '',
       vehicleYear = m['vehicle_year'] == null ? null : _i(m['vehicle_year']),
       vehiclePlate = m['vehicle_plate'] as String? ?? '',
+      vehicleColor = m['vehicle_color'] as String? ?? '',
       vehiclePhotos =
           (m['vehicle_photos'] as List?)?.cast<String>() ?? const [],
       idDocPath = m['id_doc_path'] as String?,

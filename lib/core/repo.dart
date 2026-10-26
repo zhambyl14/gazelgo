@@ -521,6 +521,7 @@ class Repo {
     required String model,
     int? year,
     required String plate,
+    String? color, // көлік түсінің коды (0093); null — тиіспейді
     required List<String> vehiclePhotos,
     String? idDocPath,
     String? licensePath,
@@ -551,6 +552,7 @@ class Repo {
       'vehicle_model': model.trim(),
       'vehicle_year': year,
       'vehicle_plate': plate.trim(),
+      'vehicle_color': ?color,
       'vehicle_photos': vehiclePhotos,
       'id_doc_path': idDocPath,
       'license_path': licensePath,

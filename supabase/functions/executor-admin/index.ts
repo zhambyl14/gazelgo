@@ -99,6 +99,7 @@ interface Vehicle {
   vehicle_plate: string;
   city: string | null;
   delivery_on_foot?: boolean;
+  vehicle_color?: string;
 }
 
 /// Көлік өрістерін тексеріп тазалайды; қате болса мәтінді қайтарады.
@@ -137,6 +138,11 @@ async function readVehicle(
     vehicle_year: onFoot ? null : year,
     vehicle_plate: onFoot ? "" : plate,
     city: city || null,
+    // Көлік түсінің коды (0093): тек клиент жібергенде жазылады — баған
+    // жоқ серверде (миграцияға дейін) бұрынғы мінез сақталады.
+    ...(!onFoot && /^[a-z]{3,12}$/.test(String(b.vehicle_color ?? ""))
+      ? { vehicle_color: String(b.vehicle_color) }
+      : {}),
     // Баған (0090) тек «Доставка» түрінде және клиент жібергенде жазылады.
     ...(type === "delivery" && typeof b.delivery_on_foot === "boolean"
       ? { delivery_on_foot: onFoot }

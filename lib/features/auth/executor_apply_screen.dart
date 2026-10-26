@@ -10,6 +10,7 @@ import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
 import '../../core/theme.dart';
+import '../../shared/ui/kz_plate.dart';
 import '../../shared/vehicle_picker.dart';
 import '../../shared/widgets.dart';
 
@@ -46,6 +47,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late final _plate = TextEditingController(
     text: widget.existing?.vehiclePlate ?? '',
   );
+  late String? _color = widget.existing?.vehicleColor.isNotEmpty == true
+      ? widget.existing!.vehicleColor
+      : null;
   late String? _city = widget.existing?.city;
   late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
   late VehicleType _vehicleType =
@@ -103,7 +107,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         t('Көлік деректері'),
         _brand.text.trim().isNotEmpty &&
             _model.text.trim().isNotEmpty &&
-            _plate.text.trim().isNotEmpty,
+            _plate.text.trim().isNotEmpty &&
+            _color != null,
       ),
     if (!_foot)
       (t('Жүргізуші куәлігі'), _license.isSet && _licenseSelfie.isSet),
@@ -282,6 +287,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
             'model': _model.text.trim(),
             'year': _year.text.trim(),
             'plate': _plate.text.trim(),
+            if (_color != null) 'color': _color,
           },
           'documents': {
             'profile_selfie': _selfie.isSet,
@@ -323,6 +329,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       return t('Паспорт пен онымен селфи керек');
     }
     if (_foot) return null;
+    if (_color == null) return t('Көлік түсін таңдаңыз');
     if (!_vehicleDocSet) {
       return _noTech
           ? t('Страховка мен онымен фото керек')
@@ -478,6 +485,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           model: _foot ? '' : _model.text,
           year: _foot ? null : int.tryParse(_year.text),
           plate: _foot ? '' : _plate.text,
+          color: _foot ? null : _color,
           // true — жаяу; false тек бұрын жаяу болған өтінімді қайтарғанда
           // (баған 0090 миграциясынсыз жоқ — қалғандарға тиіспейміз).
           onFoot: _foot
@@ -1030,6 +1038,22 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     validator: (v) => (v == null || v.trim().length < 4)
                         ? t('Мемлекеттік нөмір қажет')
                         : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    t('Көлік түсі'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CarColorPicker(
+                    value: _color,
+                    onChanged: (c) {
+                      setState(() => _color = c);
+                      _scheduleProgressSave();
+                    },
                   ),
                   const SizedBox(height: 20),
                 ],
