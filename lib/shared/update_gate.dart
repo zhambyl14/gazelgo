@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/lang.dart';
+import '../core/app_version.dart';
 import '../core/repo.dart';
 import '../core/theme.dart';
 import 'widgets.dart';
@@ -43,13 +44,19 @@ class _UpdateGateState extends State<UpdateGate> {
     try {
       final gate = await Repo.appVersionGate();
       final minBuild = _minBuildFor(gate);
-      if (minBuild <= 0) {
+      final minVersion = _minVersionFor(gate);
+      if (minBuild <= 0 && minVersion.isEmpty) {
         if (mounted) setState(() => _checked = true);
         return;
       }
       final info = await PackageInfo.fromPlatform();
       final myBuild = int.tryParse(info.buildNumber) ?? 0;
-      if (myBuild > 0 && myBuild < minBuild) {
+      if (isBelowMin(
+        myVersion: info.version,
+        myBuild: myBuild,
+        minBuild: minBuild,
+        minVersion: minVersion,
+      )) {
         if (mounted) {
           setState(() {
             _blockInfo = gate;
@@ -79,6 +86,18 @@ class _UpdateGateState extends State<UpdateGate> {
       return int.tryParse('${gate['min_build_android'] ?? ''}') ?? generic;
     }
     return generic;
+  }
+
+  /// Осы платформаның минималды НҰСҚАСЫ (`1.0.11`) — модератор build орнына
+  /// дүкендегі нұсқаны жазса. Жоқ болса — ''. Ескі клиенттер бұл өрісті
+  /// білмейді де, `min_build_*`-ке қарай береді.
+  String _minVersionFor(Map<String, dynamic> gate) {
+    final key = (!kIsWeb && Platform.isIOS)
+        ? 'min_version_ios'
+        : (!kIsWeb && Platform.isAndroid)
+        ? 'min_version_android'
+        : '';
+    return key.isEmpty ? '' : '${gate[key] ?? ''}'.trim();
   }
 
   Future<void> _openStore() async {

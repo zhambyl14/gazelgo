@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_version.dart';
 import '../../core/env.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
@@ -237,9 +238,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _kaspiTopupUrl.text = '${payment['kaspi_topup_url'] ?? ''}';
       _minTopup.text = '${payment['min_topup'] ?? 500}';
       // Ескі жалғыз min_build бар болса — екі өріске де көшіріледі.
-      _minBuildAndroid.text =
-          '${gate['min_build_android'] ?? gate['min_build'] ?? 0}';
-      _minBuildIos.text = '${gate['min_build_ios'] ?? gate['min_build'] ?? 0}';
+      _minBuildAndroid.text = MinVersion(
+        int.tryParse('${gate['min_build_android'] ?? gate['min_build'] ?? 0}') ??
+            0,
+        '${gate['min_version_android'] ?? ''}',
+      ).text;
+      _minBuildIos.text = MinVersion(
+        int.tryParse('${gate['min_build_ios'] ?? gate['min_build'] ?? 0}') ?? 0,
+        '${gate['min_version_ios'] ?? ''}',
+      ).text;
       _androidUrl.text = '${gate['android_url'] ?? ''}';
       _iosUrl.text = '${gate['ios_url'] ?? ''}';
       _updateMessage.text = '${gate['message'] ?? ''}';
@@ -785,15 +792,27 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Future<void> _saveVersionGate() async {
-    final android = _int(_minBuildAndroid) ?? 0;
-    final ios = _int(_minBuildIos) ?? 0;
+    // Өріске build (`29`) де, дүкен нұсқасы (`1.0.11`, `1.0.11+35`) да
+    // жазылады. Бұрын сан емес жазу үнсіз 0-ге айналып, шек өшіп қалатын.
+    final android = parseMinVersion(_minBuildAndroid.text);
+    final ios = parseMinVersion(_minBuildIos.text);
+    if (android == null || ios == null) {
+      showSnack(
+        context,
+        t('Нұсқаны дұрыс жазыңыз: 29 немесе 1.0.11'),
+        error: true,
+      );
+      return;
+    }
     await Repo.modUpdateSetting('version_gate', {
-      'min_build_android': android,
-      'min_build_ios': ios,
+      'min_build_android': android.build,
+      'min_build_ios': ios.build,
+      'min_version_android': android.version,
+      'min_version_ios': ios.version,
       // Ескі (build ≤ соңғы шыққанға дейінгі) клиенттер платформаны
       // ажыратпай тек `min_build`-ті оқиды — оларды ешбір платформада
       // ҚАТЕ бұғаттамау үшін екеуінің КІШІсін жазамыз (fail-open).
-      'min_build': android < ios ? android : ios,
+      'min_build': android.build < ios.build ? android.build : ios.build,
       'android_url': _androidUrl.text.trim(),
       'ios_url': _iosUrl.text.trim(),
       'message': _updateMessage.text.trim(),
@@ -1727,10 +1746,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           _sectionTitle(t('Мәжбүрлі жаңарту')),
           Text(
             t(
-              'Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды build нөмірін '
+              'Дүкенде жаңа нұсқа ЖАРИЯЛАНҒАН соң минималды нұсқаны '
               'көтеріңіз — одан төмендегілер тек «Жаңарту» батырмасын '
-              'көреді. iOS санын App Store-да шыққанша көтермеңіз. '
-              'Build = pubspec.yaml-дағы "+N". 0 = тексеру өшулі.',
+              'көреді. Дүкендегі нұсқаны (1.0.11) не build нөмірін (29, '
+              'pubspec.yaml-дағы "+N") жазуға болады. iOS-ты App Store-да '
+              'шыққанша көтермеңіз. 0 = тексеру өшулі.',
             ),
             style: TextStyle(color: Gz.textSecondary, fontSize: 13),
           ),
@@ -1741,18 +1761,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 TextField(
                   controller: _minBuildAndroid,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
-                    labelText: t('Android минималды build'),
+                    labelText: t('Android минималды нұсқа'),
+                    hintText: '1.0.11',
                     prefixIcon: const Icon(Icons.android),
                   ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _minBuildIos,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
-                    labelText: t('iOS минималды build'),
+                    labelText: t('iOS минималды нұсқа'),
+                    hintText: '1.0.11',
                     prefixIcon: const Icon(Icons.apple),
                   ),
                 ),
