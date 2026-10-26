@@ -383,10 +383,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // Сапар жүріп жатқанда (орындаушы жолда/келді/тиеу/жолда) ЕҢ
           // маңыздысы — кім келе жатыр, қоңырау/чат, келу уақыты, «Тиеу
           // басталды» растауы: олар картадан ЖОҒАРЫ тұрады.
+          // Карта мен маршрут картасы «Келуіне дейін» (ETA) блогының дәл
+          // астында, сапар барысы (timeline) алдында тұрады.
           if (live) ...[
-            ..._statusSection(o, vehicle),
-            const SizedBox(height: 14),
-            ...info,
+            ..._statusSection(o, vehicle, mid: info),
           ] else ...[
             ...info,
             const SizedBox(height: 14),
@@ -412,7 +412,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   /// [vehicle] — көліктің тірі орны (бар болса): «N км қалды» үшін.
-  List<Widget> _statusSection(Order o, LatLng? vehicle) {
+  ///
+  /// [mid] — белсенді сапарда ETA/күту блогынан кейін, барыс (timeline)
+  /// алдына қойылатын виджеттер (карта және маршрут картасы).
+  List<Widget> _statusSection(
+    Order o,
+    LatLng? vehicle, {
+    List<Widget> mid = const [],
+  }) {
     switch (o.status) {
       // Іздеу күйінің өз экраны бар — [_SearchingScreen].
       case 'searching':
@@ -450,7 +457,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 10),
+          if (mid.isNotEmpty) ...[const SizedBox(height: 14), ...mid],
+          const SizedBox(height: 14),
           _Timeline(status: o.status, vehicleType: o.vehicleType),
           // Алушы — тек жүк заказына (такси жолаушысында жүк қабылдаушы жоқ).
           if (!o.vehicleType.isPassenger) ...[
