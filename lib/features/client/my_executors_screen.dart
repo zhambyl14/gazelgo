@@ -33,9 +33,9 @@ class _MyExecutorsScreenState extends State<MyExecutorsScreen> {
     if (blocked) {
       final ok = await confirmDialog(
         context,
-        title: t('Бұғаттан шығару керек пе?'),
+        title: t('Шағымды алып тастау керек пе?'),
         message: t('Бұл орындаушы сіздің заказдарыңызды қайта көреді.'),
-        confirmLabel: t('Бұғаттан шығару'),
+        confirmLabel: t('Шағымды алу'),
         icon: Icons.lock_open_rounded,
       );
       if (!ok || !mounted) return;
@@ -60,7 +60,7 @@ class _MyExecutorsScreenState extends State<MyExecutorsScreen> {
           bottom: TabBar(
             tabs: [
               Tab(text: t('Таңдаулылар')),
-              Tab(text: t('Бұғатталғандар')),
+              Tab(text: t('Шағымдарым')),
             ],
           ),
         ),
@@ -89,7 +89,7 @@ class _MyExecutorsScreenState extends State<MyExecutorsScreen> {
                       ? Icons.block_rounded
                       : Icons.favorite_border_rounded,
                   title: blocked
-                      ? t('Бұғатталған орындаушы жоқ')
+                      ? t('Шағым қалдырған орындаушы жоқ')
                       : t('Таңдаулы орындаушы әзірге жоқ'),
                   subtitle: blocked
                       ? null
@@ -182,7 +182,7 @@ class _ExecutorRow extends StatelessWidget {
               ],
             ),
       trailing: IconButton(
-        tooltip: blocked ? t('Бұғаттан шығару') : t('Таңдаулыдан алу'),
+        tooltip: blocked ? t('Шағымды алу') : t('Таңдаулыдан алу'),
         onPressed: onRemove,
         icon: Icon(
           blocked ? Icons.lock_open_rounded : Icons.favorite_rounded,

@@ -1351,6 +1351,12 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
   /// емес, ЖАҢАСЫНА қосылуы үшін.
   int? _lastPrice;
 
+  int? get _basePrice {
+    final cur =
+        _lastPrice ?? widget.order.clientPrice ?? widget.order.displayPrice;
+    return (cur == null || cur <= 0) ? null : cur;
+  }
+
   Future<void> _raise(int add) async {
     // Негіз — клиенттің ағымдағы бағасы. Бұрын `clientPrice ?? 0` еді:
     // баға бос болса «+100» бағаны 100 ₸-ге ТҮСІРІП жіберетін.
@@ -1447,6 +1453,7 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
                         vertical: 10,
                         horizontal: 8,
                       ),
+                      prefixText: '+ ',
                       suffixText: '₸',
                     ),
                   ),
@@ -1470,6 +1477,17 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
                 ),
               ],
             ),
+            if (custom >= 100 && _basePrice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${t('Бағаға қосылады')}: +${fmtT(custom)}  ·  '
+                '${fmtT(_basePrice!)} → ${fmtT(_basePrice! + custom)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ],
         ),
       ),

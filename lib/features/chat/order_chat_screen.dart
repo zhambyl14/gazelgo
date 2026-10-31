@@ -139,7 +139,7 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
         showSnack(
           context,
           e.toString().contains('CHAT_CLOSED')
-              ? t('Чат жабылды — заказ аяқталғанына 24 сағаттан асты.')
+              ? t('Чат жабылды — заказ аяқталғанына 5 минуттан асты.')
               : errText(e),
           error: true,
         );

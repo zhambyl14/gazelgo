@@ -495,13 +495,13 @@ class Order {
       floorTo != null ||
       hasElevator != null;
 
-  /// Чат ашық па: заказ қабылданған соң, аяқталғаннан кейін 24 сағатқа дейін
+  /// Чат ашық па: заказ қабылданған соң, аяқталғаннан кейін 5 минутқа дейін
   /// (сервер `order_chat_send` дәл осылай тексереді).
   bool get chatOpen =>
       const ['accepted', 'arrived', 'loading', 'in_transit'].contains(status) ||
       (status == 'completed' &&
           completedAt != null &&
-          DateTime.now().difference(completedAt!).inHours < 24);
+          DateTime.now().difference(completedAt!).inMinutes < 5);
   bool get isVip => tariff == 'vip';
 
   /// Алдын ала тапсырыс, белгіленген уақыты әлі келмеген — орындаушыға

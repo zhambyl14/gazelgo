@@ -423,6 +423,67 @@ class Repo {
         .eq('id', id);
   }
 
+  // ---- Көлік деректерін өзгерту өтініші (0097) ----
+
+  /// Орындаушының күтіп тұрған өтініші (болса).
+  static Future<Map<String, dynamic>?> myPendingVehicleChange() async {
+    final id = uid;
+    if (id == null) return null;
+    try {
+      final m = await c
+          .from('vehicle_change_requests')
+          .select()
+          .eq('user_id', id)
+          .eq('status', 'pending')
+          .maybeSingle();
+      return m == null ? null : Map<String, dynamic>.from(m);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> requestVehicleChange({
+    required VehicleType type,
+    required String brand,
+    required String model,
+    int? year,
+    required String color,
+    required String plate,
+    String note = '',
+  }) => c.rpc(
+    'request_vehicle_change',
+    params: {
+      'p_type': type.db,
+      'p_brand': brand,
+      'p_model': model,
+      'p_year': year,
+      'p_color': color,
+      'p_plate': plate,
+      'p_note': note,
+    },
+  );
+
+  static Future<List<Map<String, dynamic>>> modVehicleChanges({
+    String status = 'pending',
+  }) async {
+    final rows = await c.rpc(
+      'mod_vehicle_changes',
+      params: {'p_status': status},
+    );
+    return (rows as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
+  }
+
+  static Future<void> modResolveVehicleChange(
+    String id,
+    bool approve, {
+    String? comment,
+  }) => c.rpc(
+    'mod_vehicle_change_resolve',
+    params: {'p_id': id, 'p_approve': approve, 'p_comment': comment},
+  );
+
   /// Аватарды жаңарту: жаңасын жүктеп, ескісін өшіреді.
   static Future<void> updateAvatar(Uint8List bytes) async {
     final id = uid;

@@ -86,13 +86,14 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
     if (kind == 'block') {
       final ok = await confirmDialog(
         context,
-        title: t('Орындаушыны бұғаттау керек пе?'),
+        title: t('Орындаушыға шағым қалдыру керек пе?'),
         message: t(
-          'Ол енді сіздің заказдарыңызды көрмейді және ұсыныс '
-          'жібере алмайды. Кейін мәзірдегі «Менің орындаушыларым» '
-          'бөлімінен шығаруға болады.',
+          'Бұл орындаушы тек сіздің заказдарыңызды көрмейді. Оның '
+          'аккаунтына, рейтингіне және басқа клиенттердің заказдарына '
+          'әсер етпейді. Кейін мәзірдегі «Менің орындаушыларым» '
+          'бөлімінен алып тастауға болады.',
         ),
-        confirmLabel: t('Бұғаттау'),
+        confirmLabel: t('Шағым қалдыру'),
         confirmColor: Gz.red,
         icon: Icons.block_rounded,
       );
@@ -105,7 +106,7 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
       setState(() => _kind = kind);
       showSnack(context, switch (kind) {
         'favorite' => t('Таңдаулыларға қосылды ❤'),
-        'block' => t('Орындаушы бұғатталды'),
+        'block' => t('Шағым қалдырылды'),
         _ => t('Тізімнен алынды'),
       });
       Navigator.pop(context, kind);
@@ -294,8 +295,8 @@ class _ExecutorSheetState extends State<_ExecutorSheet> {
                             icon: const Icon(Icons.block_rounded, size: 18),
                             label: Text(
                               _kind == 'block'
-                                  ? t('Бұғаттан шығару')
-                                  : t('Бұғаттау'),
+                                  ? t('Шағымды алу')
+                                  : t('Шағым қалдыру'),
                             ),
                           ),
                         ),

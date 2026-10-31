@@ -287,87 +287,9 @@ class _LineControlBar extends ConsumerWidget {
       );
     }
 
-    // Ауысымға берілетін заказ саны — модератор баптауы (0056). Бұрын
-    // мұнда «/10» ҚАТЫП тұрған еді: модератор лимитті 20 қойса, орындаушы
-    // «20/10» деген мағынасыз жазуды көретін. Енді нақты баптаудан алынады
-    // (жүктелмей тұрса — қалған саннан кем болмайтын мән).
-    final perShift = ref.watch(appConfigProvider).value?.ordersPerShift;
-    final total = (perShift == null || perShift < s.ordersLeft)
-        ? s.ordersLeft
-        : perShift;
-    final used = (total - s.ordersLeft).clamp(0, total);
-
-    // Тариф белсенді — ЫҚШАМ бір қатарлы жолақ (бұрын екі қатарлы үлкен
-    // жасыл карточка еді — заказдар лентасының орнын алып тұратын).
-    // Жасыл түс — тек «белсенді» белгісінде, фон ақ.
-    final progress = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
-    return Material(
-      color: Gz.surface,
-      borderRadius: BorderRadius.circular(Gz.rMd),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Gz.rMd),
-        onTap: () => _openTariffs(context),
-        child: Container(
-          height: 46,
-          padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Gz.rMd),
-            border: Border.all(color: Gz.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 9,
-                height: 9,
-                decoration: const BoxDecoration(
-                  color: Gz.greenBright,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Flexible(
-                child: Text(
-                  '${t('Белсенді')} · ${_tariffLabel(s, total)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              if (total > 0) ...[
-                const SizedBox(width: 10),
-                // Ауысым лимитінің прогресі — таусылуға жақындағанда сарыға
-                // ауысады (лимит бітсе тариф жабылады).
-                SizedBox(
-                  width: 56,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Gz.rXs),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 6,
-                      backgroundColor: Gz.tint(Gz.greenBright, 0.18),
-                      valueColor: AlwaysStoppedAnimation(
-                        s.ordersLeft <= 2 ? Gz.amber : Gz.greenBright,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              Icon(Icons.chevron_right_rounded, color: Gz.textTertiary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// «Ауысымда 7/10 заказ» — модератор қойған лимитке қатысты нақты сан.
-  String _tariffLabel(ExecutorStats s, int total) {
-    if (s.ordersLeft <= 0) return t('Тариф жоқ');
-    return '${t('Ауысымда')} ${s.ordersLeft}/$total ${t('заказ')}';
+    // Тариф белсенді — «Белсенді · Ауысымда N/M» жолағы басты бетте
+    // көрсетілмейді (орынды заказ лентасына береміз).
+    return const SizedBox.shrink();
   }
 }
 
@@ -539,25 +461,6 @@ class _OrderNotifyToggleState extends ConsumerState<_OrderNotifyToggle> {
                 color: _on ? Gz.green : Gz.textTertiary,
               ),
               const SizedBox(width: 6),
-              // Жазу ҚЫСҚАРДЫ («Заказдарға уведомление» → «Уведомление»):
-              // таблетка жоғарғы жолақтағы бос орынға сыюы керек. Тар
-              // экранда (не жүйе шрифті үлкейтілгенде) FittedBox оны
-              // кішірейтеді — ЕШҚАШАН екінші жолға түспейді.
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    t('Уведомление'),
-                    maxLines: 1,
-                    softWrap: false,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
               // Стандарт Switch таблеткаға сыймайды — кішірейтіп қоямыз.
               Transform.scale(
                 scale: 0.75,

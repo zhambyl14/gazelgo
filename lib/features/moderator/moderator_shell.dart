@@ -26,6 +26,7 @@ import 'reports_screen.dart';
 import 'staff_screen.dart';
 import 'support_admin_screen.dart';
 import 'topups_screen.dart';
+import 'vehicle_changes_screen.dart';
 import 'vehicle_types_screen.dart';
 
 /// Модератор панелі.
@@ -111,6 +112,7 @@ class _ModeratorShellState extends ConsumerState<ModeratorShell> {
     if (me == null) return false;
     return s.perm == null ? me.isFullModerator : me.modCan(s.perm!);
   }
+
   final _scaffold = GlobalKey<ScaffoldState>();
   Map<String, dynamic> _stats = const {};
   Timer? _timer;
@@ -388,7 +390,9 @@ class _ModeratorShellState extends ConsumerState<ModeratorShell> {
         body: EmptyState(
           icon: Icons.lock_outline_rounded,
           title: t('Сізге әлі бөлім ашылмаған'),
-          subtitle: t('Модератор рұқсат бергенде бөлімдер осында пайда болады.'),
+          subtitle: t(
+            'Модератор рұқсат бергенде бөлімдер осында пайда болады.',
+          ),
         ),
       );
     }
@@ -416,10 +420,7 @@ class _ModeratorShellState extends ConsumerState<ModeratorShell> {
         ],
       ),
       drawer: _drawer(context),
-      body: KeyedSubtree(
-        key: ValueKey(current.index),
-        child: current.build(),
-      ),
+      body: KeyedSubtree(key: ValueKey(current.index), child: current.build()),
     );
   }
 
@@ -465,6 +466,18 @@ class _ModeratorShellState extends ConsumerState<ModeratorShell> {
                         if (_allowed(s)) _row(context, s),
                     ],
                   const SizedBox(height: 8),
+                  if ((_me?.modCan('executors') ?? false) ||
+                      (_me?.modCan('applications') ?? false))
+                    _link(
+                      context,
+                      Icons.directions_car_outlined,
+                      t('Көлік өзгерту өтініштері'),
+                      () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const VehicleChangesScreen(),
+                        ),
+                      ),
+                    ),
                   if (_me?.modCan('reports') ?? false)
                     _link(
                       context,

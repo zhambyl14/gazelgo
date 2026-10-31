@@ -22,6 +22,7 @@ import '../executor/earnings_screen.dart';
 import '../legal/legal_screen.dart';
 import '../support/support_screen.dart';
 import 'reviews_screen.dart';
+import 'vehicle_change_sheet.dart';
 
 /// Ортақ профиль экраны (клиент те, орындаушы да қолданады).
 ///
@@ -40,6 +41,51 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _uploadingAvatar = false;
+
+  /// Көлік өзгерту өтініші модераторда күтіп тұр ма (0097).
+  bool _vehPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Repo.myPendingVehicleChange().then((m) {
+      if (mounted && m != null) setState(() => _vehPending = true);
+    });
+  }
+
+  /// Атын ӨТІНІШСІЗ өзгерту (клиент те, орындаушы да).
+  Future<void> _editName(Profile p) async {
+    final name = await gzInputDialog(
+      context,
+      title: t('Атыңызды өзгерту'),
+      hint: t('Аты-жөніңіз'),
+      initial: p.fullName,
+      confirmLabel: t('Сақтау'),
+      icon: Icons.edit_outlined,
+      required: true,
+      maxLines: 1,
+    );
+    final v = name?.trim() ?? '';
+    if (v.length < 2 || v == p.fullName || !mounted) return;
+    try {
+      await Repo.updateProfile(fullName: v);
+      ref.invalidate(myProfileProvider);
+      if (mounted) showSnack(context, t('Аты жаңартылды'));
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    }
+  }
+
+  Future<void> _requestVehicleChange(ExecutorProfile ep) async {
+    final sent = await showGzSheet<bool>(
+      context,
+      builder: (_) => VehicleChangeSheet(ep: ep),
+    );
+    if (sent == true && mounted) {
+      setState(() => _vehPending = true);
+      showSnack(context, t('Өтініш модераторға жіберілді'));
+    }
+  }
 
   Future<void> _changeAvatar() async {
     final f = await ImagePicker().pickImage(
@@ -206,6 +252,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ep: isExec ? ep : null,
                   uploading: _uploadingAvatar,
                   onAvatarTap: _uploadingAvatar ? null : _changeAvatar,
+                  onNameTap: () => _editName(p),
                   onReviewsTap: () => _open(
                     ReviewsScreen(
                       userId: p.id,
@@ -236,6 +283,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _VehicleCard(
                       ep: ep,
                       onChangeCity: () => _changeCity(context),
+                      onRequestChange: () => _requestVehicleChange(ep),
+                      pending: _vehPending,
                     ),
                   ],
                   // Бонус бағдарламасы өшірулі болса — көрінбейді (0059).
@@ -325,6 +374,7 @@ class _ProfileHero extends StatelessWidget {
   final ExecutorProfile? ep;
   final bool uploading;
   final VoidCallback? onAvatarTap;
+  final VoidCallback? onNameTap;
   final VoidCallback onReviewsTap;
 
   const _ProfileHero({
@@ -332,6 +382,7 @@ class _ProfileHero extends StatelessWidget {
     required this.ep,
     required this.uploading,
     required this.onAvatarTap,
+    this.onNameTap,
     required this.onReviewsTap,
   });
 
@@ -403,24 +454,41 @@ class _ProfileHero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          p.fullName,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.4,
-            color: Gz.ink,
-            height: 1.2,
+        GestureDetector(
+          onTap: onNameTap,
+          behavior: HitTestBehavior.opaque,
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: p.fullName),
+                if (onNameTap != null)
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 16,
+                        color: Gz.textSecondary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
+              color: Gz.ink,
+              height: 1.2,
+            ),
           ),
         ),
         const SizedBox(height: 3),
-        Text(
-          p.phone,
-          style: TextStyle(color: Gz.textSecondary, fontSize: 14),
-        ),
+        Text(p.phone, style: TextStyle(color: Gz.textSecondary, fontSize: 14)),
         const SizedBox(height: 10),
         Wrap(
           alignment: WrapAlignment.center,
@@ -709,7 +777,14 @@ class _NavRow extends StatelessWidget {
 class _VehicleCard extends StatelessWidget {
   final ExecutorProfile ep;
   final VoidCallback onChangeCity;
-  const _VehicleCard({required this.ep, required this.onChangeCity});
+  final VoidCallback onRequestChange;
+  final bool pending;
+  const _VehicleCard({
+    required this.ep,
+    required this.onChangeCity,
+    required this.onRequestChange,
+    required this.pending,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -717,7 +792,7 @@ class _VehicleCard extends StatelessWidget {
       if (ep.vehiclePlate.isNotEmpty) ep.vehiclePlate,
       ?ep.city,
     ].join(' · ');
-    return SectionCard(
+    final card = SectionCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
       child: Row(
         children: [
@@ -751,10 +826,7 @@ class _VehicleCard extends StatelessWidget {
                     meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Gz.textSecondary,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                   ),
                 ],
               ],
@@ -776,6 +848,36 @@ class _VehicleCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: pending
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 8, 2),
+                  child: Text(
+                    t('Көлік өзгерту өтініші модераторда қаралуда…'),
+                    style: TextStyle(
+                      color: Gz.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : TextButton.icon(
+                  onPressed: onRequestChange,
+                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                  label: BtnLabel(
+                    t('Көлік деректерін өзгертуге өтініш'),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
@@ -800,10 +902,7 @@ class _AccountSettingsScreen extends StatelessWidget {
               leading: Icon(Icons.delete_forever_outlined, color: Gz.red),
               title: Text(
                 t('Аккаунтты өшіру'),
-                style: TextStyle(
-                  color: Gz.red,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: Gz.red, fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 t('Барлық деректер біржола жойылады'),
@@ -1080,10 +1179,7 @@ class _ReferralCardState extends ConsumerState<_ReferralCard> {
                   child: Text(
                     '${t('Сіз')} ${p.referralCount} '
                     '${t('адам шақырдыңыз')}',
-                    style: TextStyle(
-                      color: Gz.textSecondary,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                   ),
                 ),
               ],

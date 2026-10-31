@@ -85,7 +85,7 @@ class VehicleTypeCarousel extends StatefulWidget {
 
   /// Карточка биіктігі — картаның орнын бекер жемеу үшін ЫҚШАМ (клиенттің
   /// басты бетінде панель картаны ысырады, әр пиксель маңызды).
-  static const cardHeight = 62.0;
+  static const cardHeight = 52.0;
 
   const VehicleTypeCarousel({
     super.key,
@@ -99,9 +99,9 @@ class VehicleTypeCarousel extends StatefulWidget {
 }
 
 class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
-  static const _cardW = 74.0;
+  static const _cardW = 64.0;
   static const _cardH = VehicleTypeCarousel.cardHeight;
-  static const _gap = 7.0;
+  static const _gap = 6.0;
 
   /// Таңдалған түр тізімде болмаса (мыс. орындаушы такси таңдап қойған, ал
   /// модератор кейін такси бөлімін өшірген) — оны басына қосамыз: таңдау
@@ -151,11 +151,7 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
             height: 16,
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: Gz.textSecondary,
-                ),
+                Icon(Icons.info_outline, size: 14, color: Gz.textSecondary),
                 const SizedBox(width: 5),
                 Expanded(
                   child: FittedBox(
@@ -203,14 +199,14 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               curve: Curves.easeOut,
               width: _cardW,
               height: _cardH,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
               decoration: BoxDecoration(
                 // Таңдалған карточка — градиентті «түнгі» фон + сары жиек
                 // әрі жылы сәуле: каруселде қайсысы таңдалғаны бір қарағанда
                 // көрінеді (бұрын жалаң қара шаршы еді).
                 gradient: sel ? Gz.heroGradient : null,
                 color: sel ? null : Gz.surfaceAlt,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: sel ? Gz.yellow : Gz.border,
                   width: sel ? 2 : 1.2,
@@ -222,14 +218,14 @@ class _VehicleTypeCarouselState extends State<VehicleTypeCarousel> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  vehicleIcon(v, size: 25, color: fg),
-                  const SizedBox(height: 4),
+                  vehicleIcon(v, size: 20, color: fg),
+                  const SizedBox(height: 3),
                   // FittedBox: атау рамкаға сыймаса — кішірейеді (қиылмайды,
                   // екінші жолға түспейді). Тұрақты өлшемді box (ені + биіктігі)
                   // жүйе шрифті масштабы үлкейгенде де асып кетуді болдырмайды.
                   SizedBox(
                     width: double.infinity,
-                    height: 13,
+                    height: 12,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
