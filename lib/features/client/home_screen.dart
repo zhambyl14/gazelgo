@@ -75,6 +75,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   /// таңдау көрінеді. Өшулі болса экран баяғыдай — бір ғана көлік каруселі.
   VehicleCategory _category = VehicleCategory.cargo;
 
+  /// Клиент санатты өзі таңдағанша — такси қосулы болысымен «Такси» негізгі
+  /// болып тұрады (көпшілік такси шақырады). Қолмен таңдаса, тиіспейміз.
+  bool _categoryAuto = true;
+
   /// Спецтехника санатындағы соңғы таңдау — таксиге ауысып, қайта
   /// оралғанда жоғалмауы үшін бөлек сақталады.
   VehicleType _cargoVehicle = VehicleType.gazelle;
@@ -367,6 +371,14 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     // «Такси» бөлімі қосулы ма (0046). Желі жоқта/жүктелгенше — false, яғни
     // экран баяғы қалпында (жалғыз карусель) болады.
     final taxiOn = ref.watch(taxiEnabledProvider).value ?? false;
+    if (taxiOn && _categoryAuto) {
+      _categoryAuto = false;
+      if (_category != VehicleCategory.taxi) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _setVehicle(() => _category = VehicleCategory.taxi);
+        });
+      }
+    }
     // Модератор бөлімді жаңа ғана ӨШІРСЕ, таксиде тұрған клиент тұйықта
     // қалмауы керек — жүк санатына қайтарамыз.
     if (!taxiOn && _category == VehicleCategory.taxi) {
@@ -644,8 +656,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                       if (taxiOn) ...[
                                         VehicleCategoryTabs(
                                           selected: _category,
-                                          onChanged: (c) =>
-                                              _setVehicle(() => _category = c),
+                                          onChanged: (c) {
+                                            _categoryAuto = false;
+                                            _setVehicle(() => _category = c);
+                                          },
                                           // «ЖАҢА» белгісін модератор алып
                                           // тастай алады (0058).
                                           showNewBadge:

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/kz_cities.dart';
 import '../../core/lang.dart';
@@ -27,16 +29,31 @@ class ExecutorApplyScreen extends ConsumerStatefulWidget {
       _ExecutorApplyScreenState();
 }
 
+/// Бір сурет. Түсірілген бойда фонда серверге жүктеледі (`uploading`),
+/// жолы `existingPath`-қа түседі. Жүктелмесе (`failed`) байттар сақталады —
+/// сурет ЖОҒАЛМАЙДЫ, қайта жүктеуге болады.
 class _PickedDoc {
+  _PickedDoc(this.key);
+
+  /// Сервердегі файл атының негізі.
+  final String key;
   Uint8List? bytes;
   String? existingPath;
+
+  /// `bytes` әлі серверге жеткен жоқ.
+  bool dirty = false;
+  bool uploading = false;
+  bool failed = false;
+  Future<void>? job;
+
   bool get isSet => bytes != null || existingPath != null;
+  bool get pendingUpload => bytes != null && dirty;
 }
 
 class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   final _form = GlobalKey<FormState>();
   late final _brand = TextEditingController(
-    text: widget.existing?.vehicleBrand ?? 'ГАЗель',
+    text: widget.existing?.vehicleBrand ?? '',
   );
   late final _model = TextEditingController(
     text: widget.existing?.vehicleModel ?? '',
@@ -53,7 +70,11 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late String? _city = widget.existing?.city;
   late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
   late VehicleType _vehicleType =
-      widget.existing?.vehicleType ?? VehicleType.gazelle;
+      widget.existing?.vehicleType ?? VehicleType.taxi;
+
+  /// Орындаушы көлік түрін өзі таңдағанша әдепкі — «Такси». Бөлім өшулі
+  /// болса (тізімде жоқ) газельге түседі.
+  bool _typeTouched = false;
 
   /// «Доставка» түрінде жаяу курьер (көліксіз): права, техпаспорт, көлік
   /// фотолары СҰРАЛМАЙДЫ — тек профиль селфиі және жеке куәлік (0090).
@@ -61,17 +82,21 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   bool get _foot => _onFoot && _vehicleType == VehicleType.delivery;
 
   // Профиль селфиі — тіркелу кезінде түсіріледі, кейін профильде көрсетіледі
-  final _selfie = _PickedDoc();
+  final _selfie = _PickedDoc('selfie');
 
   // Құжаттар
-  final _license = _PickedDoc(); // жүргізуші куәлігі (права)
-  final _licenseSelfie = _PickedDoc(); // правамен селфи
-  final _idDoc = _PickedDoc(); // жеке куәлік (ҚР азаматына)
-  final _idSelfie = _PickedDoc(); // куәлікпен селфи
-  final _passport = _PickedDoc(); // шетел паспорты (шетел азаматына)
-  final _passportSelfie = _PickedDoc(); // паспортпен селфи
-  final _techPassport = _PickedDoc(); // көліктің техпаспорты (міндетті)
-  final _techPassportSelfie = _PickedDoc(); // техпаспортпен фото (міндетті)
+  final _license = _PickedDoc('license'); // жүргізуші куәлігі (права)
+  final _licenseSelfie = _PickedDoc('license_selfie'); // правамен селфи
+  final _idDoc = _PickedDoc('id'); // жеке куәлік (ҚР азаматына)
+  final _idSelfie = _PickedDoc('id_selfie'); // куәлікпен селфи
+  final _passport = _PickedDoc('passport'); // шетел паспорты (шетел азаматына)
+  final _passportSelfie = _PickedDoc('passport_selfie'); // паспортпен селфи
+  final _techPassport = _PickedDoc(
+    'tech_passport',
+  ); // көліктің техпаспорты (міндетті)
+  final _techPassportSelfie = _PickedDoc(
+    'tech_passport_selfie',
+  ); // техпаспортпен фото (міндетті)
 
   /// Техпаспорты жоқ орындаушы оның орнына сол көліктің страховкасын
   /// жүктейді (0091): страховка + онымен фото.
@@ -79,8 +104,8 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       widget.existing != null &&
       widget.existing!.techPassportPath == null &&
       widget.existing!.insurancePath != null;
-  final _insurance = _PickedDoc();
-  final _insuranceSelfie = _PickedDoc();
+  final _insurance = _PickedDoc('insurance');
+  final _insuranceSelfie = _PickedDoc('insurance_selfie');
 
   /// Көлік құжаты (техпаспорт НЕМЕСЕ страховка) + онымен фото толы ма.
   bool get _vehicleDocSet => _noTech
@@ -88,13 +113,97 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       : _techPassport.isSet && _techPassportSelfie.isSet;
 
   // Көлік фотолары (4 таңбаланған)
-  final _vehFront = _PickedDoc();
-  final _vehBack = _PickedDoc();
-  final _vehRight = _PickedDoc();
-  final _vehLeft = _PickedDoc();
+  final _vehFront = _PickedDoc('veh_front');
+  final _vehBack = _PickedDoc('veh_back');
+  final _vehRight = _PickedDoc('veh_right');
+  final _vehLeft = _PickedDoc('veh_left');
 
   final _picker = ImagePicker();
   Timer? _draftTimer;
+
+  /// Жіберілетін өтінімге ҚАЖЕТТІ суреттер (режимге қарай).
+  List<_PickedDoc> get _activeDocs => [
+    _selfie,
+    if (!_foot) ...[_license, _licenseSelfie],
+    if (_isForeign) ...[_passport, _passportSelfie] else ...[_idDoc, _idSelfie],
+    if (!_foot) ...[
+      if (_noTech) ...[
+        _insurance,
+        _insuranceSelfie,
+      ] else ...[
+        _techPassport,
+        _techPassportSelfie,
+      ],
+      _vehFront,
+      _vehBack,
+      _vehRight,
+      _vehLeft,
+    ],
+  ];
+
+  List<_PickedDoc> get _allDocs => [
+    _selfie,
+    _license,
+    _licenseSelfie,
+    _idDoc,
+    _idSelfie,
+    _passport,
+    _passportSelfie,
+    _techPassport,
+    _techPassportSelfie,
+    _insurance,
+    _insuranceSelfie,
+    _vehFront,
+    _vehBack,
+    _vehRight,
+    _vehLeft,
+  ];
+
+  /// Жүктелген суреттердің жолдары құрылғыда да сақталады: қосымша жабылып,
+  /// қайта ашылса да орындаушы бәрін басынан түсірмейді.
+  String get _prefsKey => 'exec_apply_docs_${Repo.uid}';
+
+  Future<void> _persistDocs() async {
+    if (widget.existing != null || Repo.uid == null) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      final map = <String, String>{
+        for (final d in _allDocs)
+          if (d != _selfie && d.existingPath != null) d.key: d.existingPath!,
+      };
+      if (map.isEmpty) {
+        await p.remove(_prefsKey);
+      } else {
+        await p.setString(_prefsKey, jsonEncode(map));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _restoreDocs() async {
+    if (widget.existing != null || Repo.uid == null) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_prefsKey);
+      if (raw == null || raw.isEmpty) return;
+      final map = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      if (!mounted) return;
+      setState(() {
+        for (final d in _allDocs) {
+          final path = map[d.key];
+          if (d != _selfie && !d.isSet && path is String && path.isNotEmpty) {
+            d.existingPath = path;
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _clearPersistedDocs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.remove(_prefsKey);
+    } catch (_) {}
+  }
 
   /// Өтінімнің қадамдары — жоғарыдағы жолақта «4/7 · Келесі: …» болып
   /// көрінеді. Ұзын форманың қай жерінде тұрғаны мен не қалғаны бірден
@@ -158,9 +267,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
     // Жаңа орындаушы өтінімі қай жерге дейін толтырылғанын модератор көре
     // алады. Қайта жіберіліп жатқан ескі өтінімді "аяқталмаған" деп қоспаймыз.
     if (widget.existing == null) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _saveApplicationProgress(),
-      );
+      _restoreDocs().then((_) => _saveApplicationProgress());
     }
   }
 
@@ -198,10 +305,83 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
 
   Future<void> _pickDoc(_PickedDoc doc) async {
     final bytes = await _pick();
-    if (bytes != null) {
-      setState(() => doc.bytes = bytes);
+    if (bytes != null && mounted) {
+      setState(() {
+        doc.bytes = bytes;
+        doc.dirty = true;
+        doc.failed = false;
+      });
+      _upload(doc);
       _saveApplicationProgress();
     }
+  }
+
+  /// Суретті ФОНДА жүктейді (3 әрекет, әрқайсысы ≤60 с). Бұрын бәрі «Жіберу»
+  /// басылғанда тізбектеп жүктелетін: ұзақ күту, желі үзілсе — қате және
+  /// суреттердің бәрі жоғалатын. Енді әр сурет түсірілген бойда кетеді,
+  /// жіберілмесе де байттар сақталады.
+  Future<void> _upload(_PickedDoc d) {
+    final bytes = d.bytes;
+    if (bytes == null) return Future.value();
+    if (mounted) {
+      setState(() {
+        d.uploading = true;
+        d.failed = false;
+      });
+    }
+    Future<String> once() async {
+      if (identical(d, _selfie)) {
+        await Repo.updateAvatar(bytes).timeout(const Duration(seconds: 60));
+        return 'avatar';
+      }
+      return Repo.uploadDoc(
+        '${d.key}.jpg',
+        bytes,
+      ).timeout(const Duration(seconds: 60));
+    }
+
+    final job = () async {
+      String? path;
+      for (var attempt = 0; attempt < 3 && path == null; attempt++) {
+        try {
+          path = await once();
+        } catch (_) {
+          if (attempt < 2) {
+            await Future<void>.delayed(Duration(seconds: 1 + attempt * 2));
+          }
+        }
+      }
+      // Күту кезінде орындаушы суретті ауыстырып жіберсе — ескі нәтиже
+      // жаңасын басып кетпесін.
+      if (!identical(d.bytes, bytes)) return;
+      d.uploading = false;
+      if (path != null) {
+        d.existingPath = path;
+        d.dirty = false;
+        d.failed = false;
+        _persistDocs();
+      } else {
+        d.failed = true;
+      }
+      if (mounted) setState(() {});
+    }();
+    d.job = job;
+    return job;
+  }
+
+  /// «Жіберу» алдында: жүріп жатқан жүктеулерді күтеді, жүктелмегенін қайта
+  /// жүктейді. Бәрі жеткен болса true.
+  Future<bool> _ensureUploaded() async {
+    final docs = _activeDocs;
+    await Future.wait([
+      for (final d in docs)
+        if (d.uploading && d.job != null) d.job!,
+    ]);
+    await Future.wait([
+      for (final d in docs)
+        if (d.pendingUpload) _upload(d),
+    ]);
+    return !docs.any((d) => d.pendingUpload);
   }
 
   Future<void> _pickCity() async {
@@ -409,53 +589,37 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
       return;
     }
     try {
-      Future<String?> up(_PickedDoc d, String name) async {
-        if (d.bytes != null) {
-          final path = await Repo.uploadDoc('$name.jpg', d.bytes!);
-          d.bytes = null; // жүктелген соң жадыны бірден босату
-          return path;
+      if (!await _ensureUploaded()) {
+        if (mounted) {
+          showSnack(
+            context,
+            t(
+              'Кейбір сурет жүктелмеді. Интернетті тексеріп, қайта басыңыз — '
+              'суреттер жоғалмайды.',
+            ),
+            error: true,
+          );
         }
-        return d.existingPath;
+        return;
       }
+      String? up(_PickedDoc d) => d.existingPath;
 
-      if (_selfie.bytes != null) {
-        await Repo.updateAvatar(_selfie.bytes!);
-        _selfie.bytes = null;
-      }
-
-      final licPath = _foot ? null : await up(_license, 'license');
-      final licSelfie = _foot
-          ? null
-          : await up(_licenseSelfie, 'license_selfie');
-      final idPath = !_isForeign ? await up(_idDoc, 'id') : null;
-      final idSelfie = !_isForeign ? await up(_idSelfie, 'id_selfie') : null;
-      final passportPath = _isForeign ? await up(_passport, 'passport') : null;
-      final passportSelfie = _isForeign
-          ? await up(_passportSelfie, 'passport_selfie')
-          : null;
+      final licPath = _foot ? null : up(_license);
+      final licSelfie = _foot ? null : up(_licenseSelfie);
+      final idPath = !_isForeign ? up(_idDoc) : null;
+      final idSelfie = !_isForeign ? up(_idSelfie) : null;
+      final passportPath = _isForeign ? up(_passport) : null;
+      final passportSelfie = _isForeign ? up(_passportSelfie) : null;
       final useTech = !_foot && !_noTech;
       final useInsurance = !_foot && _noTech;
-      final techPath = useTech
-          ? await up(_techPassport, 'tech_passport')
-          : null;
-      final techSelfie = useTech
-          ? await up(_techPassportSelfie, 'tech_passport_selfie')
-          : null;
-      final insurancePath = useInsurance
-          ? await up(_insurance, 'insurance')
-          : null;
-      final insuranceSelfie = useInsurance
-          ? await up(_insuranceSelfie, 'insurance_selfie')
-          : null;
+      final techPath = useTech ? up(_techPassport) : null;
+      final techSelfie = useTech ? up(_techPassportSelfie) : null;
+      final insurancePath = useInsurance ? up(_insurance) : null;
+      final insuranceSelfie = useInsurance ? up(_insuranceSelfie) : null;
       final photos = <String>[];
       if (!_foot) {
-        for (final (d, n) in [
-          (_vehFront, 'veh_front'),
-          (_vehBack, 'veh_back'),
-          (_vehRight, 'veh_right'),
-          (_vehLeft, 'veh_left'),
-        ]) {
-          final p = await up(d, n);
+        for (final d in [_vehFront, _vehBack, _vehRight, _vehLeft]) {
+          final p = up(d);
           if (p != null) photos.add(p);
         }
       }
@@ -515,6 +679,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
         } catch (_) {}
       }
       await _saveApplicationProgress(completed: true);
+      _clearPersistedDocs();
       ref.invalidate(myExecutorProfileProvider);
       ref.invalidate(myProfileProvider);
       if (mounted) {
@@ -616,19 +781,42 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                     style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                   ),
                 Text(
-                  doc.isSet ? t('Жүктелді ✓') : t('Фото қажет'),
+                  doc.uploading
+                      ? t('Жүктелуде…')
+                      : doc.failed
+                      ? t('Жүктелмеді — қайта жүктеңіз')
+                      : doc.isSet
+                      ? t('Жүктелді ✓')
+                      : t('Фото қажет'),
                   style: TextStyle(
                     fontSize: 12,
-                    color: doc.isSet ? Gz.green : Gz.textSecondary,
+                    fontWeight: doc.failed ? FontWeight.w700 : null,
+                    color: doc.failed
+                        ? Gz.red
+                        : doc.isSet && !doc.uploading
+                        ? Gz.green
+                        : Gz.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => _pickDoc(doc),
-            child: Text(doc.isSet ? t('Ауыстыру') : t('Жүктеу')),
-          ),
+          if (doc.uploading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+            )
+          else if (doc.failed)
+            TextButton(onPressed: () => _upload(doc), child: Text(t('Қайта')))
+          else
+            TextButton(
+              onPressed: () => _pickDoc(doc),
+              child: Text(doc.isSet ? t('Ауыстыру') : t('Жүктеу')),
+            ),
         ],
       ),
     );
@@ -651,6 +839,19 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   @override
   Widget build(BuildContext context) {
     final resubmit = widget.existing != null;
+    // Такси бөлімі өшулі болса, әдепкі «Такси» орнына газель қалады.
+    final taxiState = ref.watch(taxiEnabledProvider);
+    if (!resubmit &&
+        !_typeTouched &&
+        taxiState.hasValue &&
+        taxiState.value == false &&
+        _vehicleType == VehicleType.taxi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_typeTouched) {
+          setState(() => _vehicleType = VehicleType.gazelle);
+        }
+      });
+    }
     // Клиент рөлі ашық болса — «шығу» орнына «клиентке қайту» ұсынамыз.
     // Экран ЛЕНТАНЫҢ ҮСТІНЕ ашылған болса (0063 — өтінім енді мәжбүрлі
     // емес) қарапайым «артқа» көрсеткіші бар, шығатын жол бұрыннан
@@ -921,6 +1122,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       ? VehicleType.values.withoutUmay()
                       : kCargoVehicleTypes,
                   onChanged: (v) {
+                    _typeTouched = true;
                     setState(() => _vehicleType = v);
                     _saveApplicationProgress();
                   },
