@@ -29,10 +29,30 @@ void main() {
       expect(spec().minPriceFor(0), 0);
     });
 
+    test('қалааралықта км есепке алынбайды — түрақты минимум (0098)', () {
+      // Астана—Тараз ~1200 км: 120 000 ₸ емес, түрақты 1000 ₸.
+      expect(spec().minPriceFor(1200, intercity: true), 1000);
+      expect(spec(on: false).minPriceFor(1200, intercity: true), 1000);
+      final custom = VehicleSpec(
+        code: 'taxi',
+        labelKk: 'Такси',
+        minPerKmEnabled: true,
+        minPerKm: 100,
+        minIntercity: 2500,
+      );
+      expect(custom.minPriceFor(1200, intercity: true), 2500);
+      // қала ішінде бұрынғыша км бойынша
+      expect(custom.minPriceFor(10), 1000);
+    });
+
     test('fromMap/toMap бұрынғы қатарларда да жұмыс істейді', () {
-      final old = VehicleSpec.fromMap({'code': 'gazelle', 'label_kk': 'Газель'});
+      final old = VehicleSpec.fromMap({
+        'code': 'gazelle',
+        'label_kk': 'Газель',
+      });
       expect(old.minPerKmEnabled, isFalse);
       expect(old.minPerKm, 0);
+      expect(old.minIntercity, 1000);
       final withMin = VehicleSpec.fromMap({
         'code': 'taxi',
         'label_kk': 'Такси',
@@ -46,30 +66,47 @@ void main() {
 
   group('statusLabel: такси логикасы', () {
     test('такси заказында жүргізуші/сапар сөздігі', () {
-      expect(statusLabel('accepted', vehicleType: VehicleType.taxi),
-          'Жүргізуші жолда');
-      expect(statusLabel('arrived', vehicleType: VehicleType.taxi),
-          'Жүргізуші келді');
-      expect(statusLabel('loading', vehicleType: VehicleType.umay),
-          'Жолаушы отырды');
-      expect(statusLabel('in_transit', vehicleType: VehicleType.taxi), 'Сапарда');
-      expect(statusLabel('completed', vehicleType: VehicleType.taxi),
-          'Сапар аяқталды');
+      expect(
+        statusLabel('accepted', vehicleType: VehicleType.taxi),
+        'Жүргізуші жолда',
+      );
+      expect(
+        statusLabel('arrived', vehicleType: VehicleType.taxi),
+        'Жүргізуші келді',
+      );
+      expect(
+        statusLabel('loading', vehicleType: VehicleType.umay),
+        'Жолаушы отырды',
+      );
+      expect(
+        statusLabel('in_transit', vehicleType: VehicleType.taxi),
+        'Сапарда',
+      );
+      expect(
+        statusLabel('completed', vehicleType: VehicleType.taxi),
+        'Сапар аяқталды',
+      );
     });
 
     test('жүк заказында бұрынғы сөздік өзгермейді', () {
-      expect(statusLabel('arrived', vehicleType: VehicleType.gazelle),
-          'Орындаушы келді');
-      expect(statusLabel('in_transit', vehicleType: VehicleType.delivery),
-          'Тасымалдауда');
+      expect(
+        statusLabel('arrived', vehicleType: VehicleType.gazelle),
+        'Орындаушы келді',
+      );
+      expect(
+        statusLabel('in_transit', vehicleType: VehicleType.delivery),
+        'Тасымалдауда',
+      );
       expect(statusLabel('completed'), 'Аяқталды');
     });
 
     test('tripSteps: екі тізім де 5 сатыдан тұрады', () {
       expect(tripSteps(taxi: true).length, 5);
       expect(tripSteps(taxi: false).length, 5);
-      expect(tripSteps(taxi: true).map((s) => s.$1),
-          tripSteps(taxi: false).map((s) => s.$1));
+      expect(
+        tripSteps(taxi: true).map((s) => s.$1),
+        tripSteps(taxi: false).map((s) => s.$1),
+      );
     });
   });
 }

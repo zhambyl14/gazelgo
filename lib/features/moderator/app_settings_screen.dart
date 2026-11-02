@@ -11,6 +11,7 @@ import '../../core/repo.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'staff_screen.dart';
+import 'taxi_classes_screen.dart';
 
 /// Модератордың жалпы баптау экраны: тариф бағасы, Kaspi деректері,
 /// мәжбүрлі жаңарту талабы — бәрі осында, SQL Editor-сыз (0030 миграциясы).
@@ -36,6 +37,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   /// орындаушы да такси түрін таңдай алмайды.
   bool _taxiEnabled = false;
   bool _taxiSaving = false;
+
+  /// «Орындаушылар тегін жұмыс істейді» (0099): тариф та, баланс та керек емес.
+  bool _execFree = false;
+  bool _execFreeSaving = false;
 
   /// «Ұмай такси» (0086): `vehicle_types` кестесіндегі 'umay' жолы. null —
   /// сервер жолды қайтармады (0086 миграциясы әлі қолданылмаған не желі
@@ -197,6 +202,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       // Кілт мүлдем жоқ болса — белгі КӨРІНЕДІ (сервердегі `new_badges()`
       // де солай әдепкіленеді, екеуі бір-бірімен сәйкес болуы шарт).
       _boardNewBadge = board['new_badge'] != false;
+      _execFree = ((s['executors_free'] as Map?) ?? {})['enabled'] == true;
       final taxi = (s['taxi'] as Map?) ?? {};
       _taxiEnabled = taxi['enabled'] == true;
       _taxiNewBadge = taxi['new_badge'] != false;
@@ -239,7 +245,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _minTopup.text = '${payment['min_topup'] ?? 500}';
       // Ескі жалғыз min_build бар болса — екі өріске де көшіріледі.
       _minBuildAndroid.text = MinVersion(
-        int.tryParse('${gate['min_build_android'] ?? gate['min_build'] ?? 0}') ??
+        int.tryParse(
+              '${gate['min_build_android'] ?? gate['min_build'] ?? 0}',
+            ) ??
             0,
         '${gate['min_version_android'] ?? ''}',
       ).text;
@@ -689,6 +697,30 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
+  /// Орындаушылар тегін режимі — бірден сақталады (0099).
+  Future<void> _toggleExecFree(bool v) async {
+    setState(() {
+      _execFree = v;
+      _execFreeSaving = true;
+    });
+    try {
+      await Repo.modSetExecutorsFree(v);
+      if (mounted) {
+        showSnack(
+          context,
+          v ? t('Орындаушылар ТЕГІН жұмыс істейді') : t('Тариф қайта қосылды'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _execFree = !v);
+        showSnack(context, errText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _execFreeSaving = false);
+    }
+  }
+
   /// «Жаңалықтар» (сторис) бөлімін қосу/өшіру — бірден сақталады.
   Future<void> _toggleNews(bool v) async {
     setState(() {
@@ -1052,6 +1084,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               offLabel: t('Жапсырмасыз (бөлімнің өзі жұмыс істей береді)'),
               onChanged: (v) => _toggleNewBadge(v, board: false),
             ),
+            // Такси санаттары (0098): Эконом / Комфорт / Бизнес.
+            const SizedBox(height: 8),
+            SectionCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.workspace_premium_outlined),
+                title: Text(
+                  t('Такси санаттары'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  t(
+                    'Эконом / Комфорт / Бизнес: таксистерді бөлу және ережелер',
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TaxiClassesScreen()),
+                ),
+              ),
+            ),
           ],
           // Ұмай атауы мен күйі vehicle_types-та сақталады — оны тек
           // «Көліктер» рұқсаты барлар өзгерте алады (0084). Рұқсатсыз
@@ -1087,6 +1141,27 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             onLabel: t('Мәзірдегі картада «Жаңа» жапсырмасы тұр'),
             offLabel: t('Жапсырмасыз (бөлімнің өзі орнында қалады)'),
             onChanged: (v) => _toggleNewBadge(v, board: true),
+          ),
+          const SizedBox(height: 24),
+          _sectionTitle(t('Орындаушылар: тегін режим')),
+          Text(
+            t(
+              'Қосулы болса — орындаушыға тариф сатып алудың да, баланс '
+              'толтырудың да қажеті жоқ: ол әрқашан линияда, заказды тегін '
+              'қабылдайды. Басты беттегі баланс пен тариф жасырылады. '
+              'Өшірсеңіз — төмендегі тариф (мыс. 24 сағатқа 200 ₸) қайта '
+              'күшіне енеді, баланс пен тариф қайта көрінеді.',
+            ),
+            style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _toggleCard(
+            enabled: _execFree,
+            saving: _execFreeSaving,
+            icon: _execFree ? Icons.volunteer_activism : Icons.paid_outlined,
+            onLabel: t('Орындаушылар тегін жұмыс істейді'),
+            offLabel: t('Орындаушылар тариф бойынша жұмыс істейді'),
+            onChanged: _toggleExecFree,
           ),
           const SizedBox(height: 24),
           _sectionTitle(t('Тариф бағасы')),

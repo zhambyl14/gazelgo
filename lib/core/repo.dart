@@ -602,6 +602,7 @@ class Repo {
     String? city,
     required bool isResubmit,
     bool? onFoot, // true/false — жаяу курьер белгісі (0090); null — тиіспейді
+    String? taxiClass, // такси санаты (0098); null — тиіспейді
   }) async {
     final id = uid;
     if (id == null) throw Exception('AUTH');
@@ -630,6 +631,7 @@ class Repo {
       'is_foreign_citizen': isForeignCitizen,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
       'delivery_on_foot': ?onFoot,
+      'taxi_class': ?taxiClass,
     };
     if (isResubmit) {
       // ескі құжат жолдарын жинап, жаңасына сай еместерін өшіреміз
@@ -791,6 +793,7 @@ class Repo {
     bool? active,
     bool? minPerKmEnabled,
     int? minPerKm,
+    int? minIntercity,
   }) async {
     final res = await c.rpc(
       'mod_save_vehicle_type',
@@ -807,6 +810,8 @@ class Repo {
         // 0092 жоқ серверге жаңа параметр жіберілмейді (ескі қолтаңба).
         'p_min_per_km_enabled': ?minPerKmEnabled,
         'p_min_per_km': ?minPerKm,
+        // 0098 жоқ серверге де жіберілмейді.
+        'p_min_intercity': ?minIntercity,
       },
     );
     return Map<String, dynamic>.from(res as Map);
@@ -1149,6 +1154,68 @@ class Repo {
     await c.rpc(
       'mod_set_executor_umay',
       params: {'p_user': userId, 'p_on': on},
+    );
+    forgetProfile(userId);
+  }
+
+  /// Орындаушылар тегін режимін қосу/өшіру (0099). Қосқанда бәрі линияға шығады.
+  static Future<void> modSetExecutorsFree(bool on) =>
+      c.rpc('mod_set_executors_free', params: {'p_enabled': on});
+
+  // ================= ТАКСИ САНАТТАРЫ (0098) =================
+  /// Такси санаттары қосулы ма. Желі қатесінде/миграция жоқта `false` —
+  /// таңдау мүлдем көрінбейді, ештеңе сынбайды.
+  static Future<bool> taxiClassesEnabled() async {
+    try {
+      return (await c.rpc('taxi_classes_enabled')) as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Модератор: қосқыш күйі, ережелер және санат бойынша жүргізуші саны.
+  static Future<Map<String, dynamic>> modTaxiClasses() async =>
+      Map<String, dynamic>.from(await c.rpc('mod_taxi_classes') as Map);
+
+  /// Қосу/өшіру. Қосқанда санаты жоқ таксистер автомат бөлінеді —
+  /// бөлінген жүргізуші санын қайтарады.
+  static Future<int> modSetTaxiClassesEnabled(bool on) async =>
+      (await c.rpc('mod_set_taxi_classes_enabled', params: {'p_enabled': on}))
+          as int? ??
+      0;
+
+  static Future<void> modSaveTaxiClassRule({
+    required String brand,
+    String model = '',
+    int minYear = 0,
+    required String taxiClass,
+    String? id,
+  }) => c.rpc(
+    'mod_save_taxi_class_rule',
+    params: {
+      'p_brand': brand,
+      'p_model': model,
+      'p_min_year': minYear,
+      'p_class': taxiClass,
+      'p_id': id,
+    },
+  );
+
+  static Future<void> modDeleteTaxiClassRule(String id) =>
+      c.rpc('mod_delete_taxi_class_rule', params: {'p_id': id});
+
+  /// БАРЛЫҚ таксистің санатын ережеге сай қайта есептейді.
+  static Future<int> modReassignTaxiClasses() async =>
+      (await c.rpc('mod_reassign_taxi_classes')) as int? ?? 0;
+
+  static Future<void> modSetExecutorTaxiClass(
+    String userId,
+    String taxiClass,
+  ) async {
+    forgetProfile(userId);
+    await c.rpc(
+      'mod_set_executor_taxi_class',
+      params: {'p_user': userId, 'p_class': taxiClass},
     );
     forgetProfile(userId);
   }
@@ -2849,6 +2916,12 @@ final boardEnabledProvider = FutureProvider<bool>((ref) => Repo.boardEnabled());
 /// «Такси» бөлімі қосулы ма (0046). Модератор Баптаулардан қосқанда/
 /// өшіргенде `ref.invalidate(taxiEnabledProvider)` шақырылады.
 final taxiEnabledProvider = FutureProvider<bool>((ref) => Repo.taxiEnabled());
+
+/// Такси санаттары (Эконом/Комфорт/Бизнес) қосулы ма (0098). Модератор
+/// қосқышты өзгерткенде `ref.invalidate(taxiClassesEnabledProvider)`.
+final taxiClassesEnabledProvider = FutureProvider<bool>(
+  (ref) => Repo.taxiClassesEnabled(),
+);
 
 /// «ЖАҢА» белгілері көрінсін бе (0058) — фича ескіргенде модератор
 /// Баптаулардан әрқайсысын бөлек алып тастайды.

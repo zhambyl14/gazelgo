@@ -146,21 +146,26 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool get _intercity => distinctCities(_points.map((p) => p.city)).length > 1;
 
   /// §2 Минимум баға: қала ішінде 100 ₸, межгород 1000 ₸. Модератор бұл
-  /// көлік түріне «км-ге минималды сома» қосқан болса (0092) — маршрут
-  /// қашықтығына сай есептелген сома да ескеріледі, екеуінің үлкені алынады.
+  /// көлік түріне минимум қойған болса: қала ішінде — маршрут қашықтығына
+  /// сай км бойынша сома (0092), қалааралықта — км есепке алынбайтын
+  /// түрақты сома (0098, әдепкі 1000 ₸). Екеуінің үлкені алынады.
   int get _minPrice => _minPriceFor(_route?.distanceKm);
 
   int _minPriceFor(double? km) {
     final base = _intercity ? 1000 : 100;
     if (km == null) return base;
     // Серверге дәл осы дөңгелектелген қашықтық кетеді (createOrder).
-    final perKm = _vehicle.spec.minPriceFor(double.parse(km.toStringAsFixed(2)));
-    return perKm > base ? perKm : base;
+    final byType = _vehicle.spec.minPriceFor(
+      double.parse(km.toStringAsFixed(2)),
+      intercity: _intercity,
+    );
+    return byType > base ? byType : base;
   }
 
-  /// Минимум км-ге байланысты көтерілген бе (чипте түсіндіру үшін).
+  /// Минимум көлік түрінің км бойынша есебінен көтерілген бе (чипте
+  /// түсіндіру үшін). Тек қала ішінде: қалааралықта км есепке алынбайды.
   bool get _minByDistance =>
-      _minPrice > (_intercity ? 1000 : 100) && _vehicle.spec.minPerKmEnabled;
+      !_intercity && _minPrice > 100 && _vehicle.spec.minPerKmEnabled;
 
   int? get _priceValue =>
       int.tryParse(_price.text.replaceAll(RegExp(r'\D'), ''));

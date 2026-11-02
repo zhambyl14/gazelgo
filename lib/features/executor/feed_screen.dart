@@ -438,8 +438,11 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 24, 12, 0),
               child: _FeedEmpty(
-                title: t('Әзірге заказ жоқ'),
-                subtitle: t('Жаңа заказдар осы жерде автоматты пайда болады.'),
+                title: t('Сізге заказ іздеп жатырмыз ✨'),
+                subtitle: t(
+                  'Қазір бос заказ аз, бірақ жаңалары жиі түседі. Қосымшаны '
+                  'ашық ұстаңыз — заказ шығысымен дыбыспен хабарлаймыз.',
+                ),
                 onRefresh: _manualRefresh,
               ),
             ),
@@ -455,10 +458,10 @@ class _ExecutorFeedBodyState extends ConsumerState<ExecutorFeedBody> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
                     child: _FeedEmpty(
-                      title: t('Бұл бөлімде заказ жоқ'),
+                      title: t('Бұл бөлімде әзірге тыныш'),
                       subtitle: t(
-                        'Басқа қойындыны ашыңыз немесе жаңа заказдарды '
-                        'күтіңіз.',
+                        'Басқа қойындыны қарап көріңіз — не жаңа заказдарды '
+                        'күтіңіз, олар осы жерде өздігінен шығады.',
                       ),
                       onRefresh: _manualRefresh,
                     ),

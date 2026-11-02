@@ -12,6 +12,7 @@ import '../features/client/my_executors_screen.dart';
 import '../features/client/my_orders_screen.dart';
 import '../features/executor/balance_screen.dart';
 import '../features/executor/bonus_widgets.dart';
+import '../features/executor/dashboard_screen.dart';
 import '../features/executor/earnings_screen.dart';
 import '../features/legal/legal_screen.dart';
 import '../features/news/news_card.dart';
@@ -213,13 +214,29 @@ class AppDrawer extends ConsumerWidget {
                                 ?.length ??
                             0,
                       ),
-                      _item(
-                        context,
-                        Icons.account_balance_wallet_outlined,
-                        Gz.yellowDeep,
-                        t('Баланс'),
-                        () => _open(context, const BalanceScreen()),
-                      ),
+                      // Тегін режимде (0099) тариф та, баланс та жоқ — мәзірден
+                      // жасырылады. Әйтпесе басты беттегі «Тарифке кіру»
+                      // картасы жасырылған кезде тарифті осы жерден ашады.
+                      if (ref
+                              .watch(executorStatsStreamProvider)
+                              .value
+                              ?.freeMode !=
+                          true) ...[
+                        _item(
+                          context,
+                          Icons.bolt_outlined,
+                          Gz.yellowDark,
+                          t('Тариф'),
+                          () => _open(context, const ExecutorDashboardScreen()),
+                        ),
+                        _item(
+                          context,
+                          Icons.account_balance_wallet_outlined,
+                          Gz.yellowDeep,
+                          t('Баланс'),
+                          () => _open(context, const BalanceScreen()),
+                        ),
+                      ],
                       _item(
                         context,
                         Icons.payments_outlined,
@@ -296,11 +313,7 @@ class AppDrawer extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.language,
-                          size: 21,
-                          color: Gz.textSecondary,
-                        ),
+                        Icon(Icons.language, size: 21, color: Gz.textSecondary),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
@@ -554,10 +567,7 @@ class _RoleSwitchCardState extends ConsumerState<_RoleSwitchCard> {
                       alignment: Alignment.centerLeft,
                       child: BtnLabel(
                         _subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Gz.textSecondary,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Gz.textSecondary),
                       ),
                     ),
                   ],

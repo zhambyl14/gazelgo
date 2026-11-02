@@ -1429,53 +1429,60 @@ class _RaisePriceHintState extends State<_RaisePriceHint> {
               ),
             ),
             const SizedBox(height: 6),
+            // Бұрын «−  [+ 100 ₸]  +  Қолдану» бір қатарда тұратын: тар
+            // телефонда өріс қысылып, ішіндегі сан («+100») көрінбей
+            // қалатын. Енді сан өрісі өз қатарында, толық енде; «Қолдану»
+            // батырмасы астында.
             Row(
               children: [
                 GzStepButton(
                   icon: Icons.remove_rounded,
-                  size: 40,
+                  size: 44,
                   onTap: _busy ? null : () => _stepCustom(-100),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: _customCtrl,
                     enabled: !_busy,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
+                    onChanged: (_) => setState(() {}),
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
                     ),
                     decoration: const InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 8,
+                        vertical: 12,
+                        horizontal: 4,
                       ),
-                      prefixText: '+ ',
-                      suffixText: '₸',
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 GzStepButton(
                   icon: Icons.add_rounded,
-                  size: 40,
+                  size: 44,
                   onTap: _busy ? null : () => _stepCustom(100),
                 ),
-                const SizedBox(width: 10),
-                FilledButton(
-                  onPressed: (_busy || custom < 100)
-                      ? null
-                      : () => _raise(custom),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                  ),
-                  child: Text(t('Қолдану')),
-                ),
               ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: (_busy || custom < 100)
+                    ? null
+                    : () => _raise(custom),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+                child: Text(
+                  custom >= 100
+                      ? '${t('Қолдану')}: +${fmtT(custom)}'
+                      : t('Қолдану'),
+                ),
+              ),
             ),
             if (custom >= 100 && _basePrice != null) ...[
               const SizedBox(height: 8),

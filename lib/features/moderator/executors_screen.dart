@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
+import '../../core/taxi_class.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import '../profile/reviews_screen.dart';
@@ -900,6 +901,25 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
     }
   }
 
+  bool _classSaving = false;
+
+  /// Таксистке такси санатын қолмен қою (0098).
+  Future<void> _setTaxiClass(TaxiClass c) async {
+    if (_classSaving || ep.taxiClass == c.code) return;
+    setState(() => _classSaving = true);
+    try {
+      await Repo.modSetExecutorTaxiClass(ep.userId, c.code);
+      await _refresh();
+      if (mounted) {
+        showSnack(context, '${t('Такси санаты')}: ${c.label}');
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, errText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _classSaving = false);
+    }
+  }
+
   List<(String?, String)> get _docs => [
     if (!ep.onFoot) ...[
       (ep.licensePath, t('Жүргізуші куәлігі')),
@@ -1187,6 +1207,32 @@ class _ExecutorDetailScreenState extends State<ExecutorDetailScreen> {
                       InfoRow(t('Мемлекеттік нөмір'), ep.vehiclePlate),
                     InfoRow(t('Баланс'), fmtT(ep.balance)),
                     InfoRow(t('Жалпы табыс'), fmtT(ep.totalEarned)),
+                    // Такси санаты (0098): санаттар қосылғанда әр таксистте
+                    // болады (қосылмаса — баған бос, бөлім көрінбейді).
+                    if (ep.vehicleType == VehicleType.taxi &&
+                        ep.taxiClass != null) ...[
+                      InfoRow(
+                        t('Такси санаты'),
+                        TaxiClass.from(ep.taxiClass)?.label ?? '—',
+                      ),
+                      if (StaffAccess.can('executors_edit'))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              for (final c in TaxiClass.values)
+                                ChoiceChip(
+                                  label: Text(c.label),
+                                  selected: ep.taxiClass == c.code,
+                                  onSelected: _classSaving
+                                      ? null
+                                      : (_) => _setTaxiClass(c),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                     // Ұмай такси: әйел жүргізуші белгісі. Тек такси
                     // жүргізушісіне (немесе белгісі бар болса — алу үшін).
                     if ((ep.vehicleType == VehicleType.taxi || ep.isUmay) &&

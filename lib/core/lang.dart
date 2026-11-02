@@ -11,6 +11,7 @@ import 'i18n/ru_moderator.dart';
 import 'i18n/ru_news.dart';
 import 'i18n/ru_redesign.dart';
 import 'i18n/ru_shared.dart';
+import 'i18n/ru_taxi_classes.dart';
 import 'i18n/ru_taxi_flow.dart';
 import 'i18n/ru_umay.dart';
 import 'prefs.dart';
@@ -71,6 +72,8 @@ final Map<String, String> _kkToRu = {
   ...ruUmay,
   // Такси статустары + км-ге минималды сома (0092).
   ...ruTaxiFlow,
+  // Қалаішілік/қалааралық минимум бөлек + такси санаттары (0098).
+  ...ruTaxiClasses,
   // Екі тармақты біріктіру кезінде қосылған мәтіндер — ЕҢ СОҢҒЫ.
   ...ruMerge,
 };

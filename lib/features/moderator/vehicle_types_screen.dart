@@ -381,6 +381,14 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
   int get _minPerKmValue =>
       int.tryParse(_minPerKm.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
 
+  /// Қалааралық түрақты минимум (0098): км есепке алынбайды, әдепкі 1000 ₸.
+  late final _minIntercity = TextEditingController(
+    text: '${widget.spec?.minIntercity ?? 1000}',
+  );
+
+  int get _minIntercityValue =>
+      int.tryParse(_minIntercity.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+
   /// Жаңа жүктелген иконканың сілтемесі (әлі сақталмаған).
   String? _iconUrl;
   bool _uploading = false;
@@ -401,6 +409,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
     _descKk.dispose();
     _descRu.dispose();
     _minPerKm.dispose();
+    _minIntercity.dispose();
     super.dispose();
   }
 
@@ -466,6 +475,10 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
       active: _active,
       minPerKmEnabled: _minPerKmOn,
       minPerKm: _minPerKmOn ? _minPerKmValue : null,
+      // Өзгермесе жіберілмейді: 0098 қолданылмаған серверде де сақтау істейді.
+      minIntercity: _minIntercityValue != (widget.spec?.minIntercity ?? 1000)
+          ? _minIntercityValue
+          : null,
     );
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -656,7 +669,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
           ),
           const SizedBox(height: 12),
 
-          // ---- Минималды сома (км-ге) ----
+          // ---- Минималды сома: қала ішінде (км-ге) ----
           SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,7 +679,7 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                   value: _minPerKmOn,
                   onChanged: (v) => setState(() => _minPerKmOn = v),
                   title: Text(
-                    t('Минималды сома заказа (км-ге)'),
+                    t('Қала ішінде: минималды сома (км-ге)'),
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
@@ -674,9 +687,10 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                   ),
                   subtitle: Text(
                     t(
-                      'Қосулы болса — клиент бұл көлікке А мен Б арасындағы '
-                      'қашықтыққа сай ең төменгі соманың астында баға қоя '
-                      'алмайды. Орындаушы да одан төмен ұсыныс бере алмайды.',
+                      'Қосулы болса — қала ІШІНДЕГІ заказда клиент А мен Б '
+                      'арасындағы қашықтыққа сай ең төменгі соманың астында '
+                      'баға қоя алмайды. Орындаушы да одан төмен ұсыныс бере '
+                      'алмайды.',
                     ),
                     style: const TextStyle(fontSize: 12),
                   ),
@@ -703,6 +717,43 @@ class _VehicleTypeEditorState extends State<_VehicleTypeEditor> {
                     ),
                   ],
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ---- Минималды сома: қалааралық (түрақты) ----
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t('Қалааралық: минималды сома'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  t(
+                    'Қалааралық (межгород) заказда километр есепке АЛЫНБАЙДЫ — '
+                    'тек осы түрақты сома. Мыс. Астана—Тараз 1200 км болса да '
+                    'минимум осы сома болады.',
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _minIntercity,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t('Қалааралық минимум, ₸'),
+                    hintText: '1000',
+                    suffixText: '₸',
+                    prefixIcon: const Icon(Icons.alt_route_rounded),
+                  ),
+                ),
               ],
             ),
           ),

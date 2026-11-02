@@ -79,13 +79,17 @@ class _OfferSheetState extends State<_OfferSheet> {
     super.dispose();
   }
 
-  /// Ең төменгі баға: 100 ₸, ал көлік түріне «км-ге минималды сома» қосылған
-  /// болса (0092) — қашықтыққа сай сома (сервер де осыдан төменін қабылдамайды).
+  /// Ең төменгі баға: қала ішінде 100 ₸ (қалааралықта 1000 ₸), ал көлік
+  /// түріне минимум қойылған болса — қала ішінде км бойынша сома (0092),
+  /// қалааралықта түрақты сома (0098). Сервер де осыдан төменін қабылдамайды.
   int get _floor {
-    final byKm = widget.order.vehicleType.spec.minPriceFor(
-      widget.order.distanceKm,
+    final o = widget.order;
+    final byType = o.vehicleType.spec.minPriceFor(
+      o.distanceKm,
+      intercity: o.intercity,
     );
-    return byKm > 100 ? byKm : 100;
+    final base = o.intercity ? 1000 : 100;
+    return byType > base ? byType : base;
   }
 
   void _bump(int delta) =>

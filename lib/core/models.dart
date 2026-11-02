@@ -265,6 +265,10 @@ class ExecutorProfile {
   /// Әйел жүргізуші (Ұмай такси заказдарын да көреді). Тек модератор қояды;
   /// 0086 миграциясы қолданылмаса баған жоқ — онда false.
   final bool isUmay;
+
+  /// Такси санаты (0098): `economy` / `comfort` / `business`. Санаттар
+  /// өшірулі не такси емес болса — null.
+  final String? taxiClass;
   final DateTime? createdAt;
 
   ExecutorProfile.fromMap(Map<String, dynamic> m)
@@ -302,6 +306,7 @@ class ExecutorProfile {
       orderPushEnabled = m['order_push_enabled'] as bool? ?? true,
       deliveryOnFoot = m['delivery_on_foot'] as bool? ?? false,
       isUmay = m['is_umay'] as bool? ?? false,
+      taxiClass = m['taxi_class'] as String?,
       createdAt = _dt(m['created_at']);
 
   /// Құжат өрісінің атауы (ағымдағы тілде).
@@ -815,6 +820,10 @@ class ExecutorStats {
   final bool onLine;
   final String? city;
 
+  /// Модератор «орындаушылар тегін» режимін қосқан (0099): баланс пен тариф
+  /// көрсетілмейді, орындаушы әрқашан линияда.
+  final bool freeMode;
+
   /// Орындаушы өтінімі ӘЛІ ТОЛТЫРЫЛМАҒАН (0063 «танысу режимі»). Мұндай
   /// адам лентаны толық көреді, бірақ ұсыныс бере де, тариф ала да алмайды.
   /// Экрандар мұны `myExecutorProfileProvider` арқылы да біледі — бұл өріс
@@ -839,6 +848,7 @@ class ExecutorStats {
       isNight = m['is_night'] as bool? ?? false,
       price = _i(m['price'] ?? m['price_simple']),
       onLine = m['on_line'] as bool? ?? true,
+      freeMode = m['free_mode'] as bool? ?? false,
       city = m['city'] as String?,
       // Ескі backend (0063 қолданылмаған) бұл кілтті қайтармайды — ондай
       // жағдайда өтімсіз орындаушыға RPC бәрібір қате шығарады, сондықтан

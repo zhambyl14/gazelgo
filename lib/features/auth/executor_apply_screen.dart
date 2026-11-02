@@ -11,6 +11,7 @@ import '../../core/kz_cities.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
+import '../../core/taxi_class.dart';
 import '../../core/theme.dart';
 import '../../shared/ui/kz_plate.dart';
 import '../../shared/vehicle_picker.dart';
@@ -71,6 +72,15 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   late bool _isForeign = widget.existing?.isForeignCitizen ?? false;
   late VehicleType _vehicleType =
       widget.existing?.vehicleType ?? VehicleType.taxi;
+
+  /// Такси санаты (0098): модератор «Таксист түрлерін бөлу» қосқанда ғана
+  /// таңдалады. Бекітілген жүргізуші өзі өзгерте алмайды (сервер де тыйады).
+  late String? _taxiClass = widget.existing?.taxiClass;
+
+  bool get _needsTaxiClass =>
+      (ref.read(taxiClassesEnabledProvider).value ?? false) &&
+      _vehicleType == VehicleType.taxi &&
+      widget.existing?.status != 'approved';
 
   /// Орындаушы көлік түрін өзі таңдағанша әдепкі — «Такси». Бөлім өшулі
   /// болса (тізімде жоқ) газельге түседі.
@@ -499,6 +509,9 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
   String? get _missing {
     if (!_selfie.isSet) return t('Профиль селфиін түсіріңіз');
     if (_city == null || _city!.trim().isEmpty) return t('Қалаңызды таңдаңыз');
+    if (_needsTaxiClass && _taxiClass == null) {
+      return t('Такси санатын таңдаңыз');
+    }
     if (!_foot && (!_license.isSet || !_licenseSelfie.isSet)) {
       return t('Права мен онымен селфи керек');
     }
@@ -650,6 +663,7 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
           year: _foot ? null : int.tryParse(_year.text),
           plate: _foot ? '' : _plate.text,
           color: _foot ? null : _color,
+          taxiClass: _needsTaxiClass ? _taxiClass : null,
           // true — жаяу; false тек бұрын жаяу болған өтінімді қайтарғанда
           // (баған 0090 миграциясынсыз жоқ — қалғандарға тиіспейміз).
           onFoot: _foot
@@ -1172,6 +1186,44 @@ class _ExecutorApplyScreenState extends ConsumerState<ExecutorApplyScreen> {
                       style: TextStyle(color: Gz.textSecondary, fontSize: 13),
                     ),
                   ],
+                ],
+                // watch — санаттар қосқышы жүктелгенде бөлім өзі шығады.
+                if (ref.watch(taxiClassesEnabledProvider).value == true &&
+                    _needsTaxiClass) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    t('Такси санаты'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t(
+                      'Көлігіңізге сай санатты таңдаңыз. Модератор қажет болса өзгертеді.',
+                    ),
+                    style: TextStyle(color: Gz.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      for (final c in TaxiClass.values) ...[
+                        Expanded(
+                          child: _citizenChip(
+                            label: c.label,
+                            selected: _taxiClass == c.code,
+                            onTap: () {
+                              setState(() => _taxiClass = c.code);
+                              _saveApplicationProgress();
+                            },
+                          ),
+                        ),
+                        if (c != TaxiClass.values.last)
+                          const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 20),
                 if (!_foot) ...[

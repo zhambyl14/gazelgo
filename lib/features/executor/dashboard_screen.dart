@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/lang.dart';
 import '../../core/models.dart';
 import '../../core/repo.dart';
+import '../../core/taxi_class.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets.dart';
 import 'balance_screen.dart';
@@ -129,6 +130,13 @@ class ExecutorDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              // Такси санаты (0098): санаттар қосулы болса жүргізуші өзінің
+              // қай тарифте екенін осы жерден көреді.
+              if (TaxiClass.from(ep?.taxiClass) != null &&
+                  (ref.watch(taxiClassesEnabledProvider).value ?? false)) ...[
+                const SizedBox(height: 12),
+                _TaxiClassCard(cls: TaxiClass.from(ep!.taxiClass)!),
+              ],
               ..._notices(context, s),
               const SizedBox(height: 20),
               Text(
@@ -245,6 +253,56 @@ class ExecutorDashboardScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) showSnack(context, errText(e), error: true);
     }
+  }
+}
+
+/// «Сіз … тарифтесіз» картасы — жүргізушінің такси санаты.
+class _TaxiClassCard extends StatelessWidget {
+  final TaxiClass cls;
+  const _TaxiClassCard({required this.cls});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cls.color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cls.color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(cls.icon, color: cls.color, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t('Такси санатыңыз'),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                ),
+                Text(
+                  cls.label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: cls.color,
+                  ),
+                ),
+                Text(
+                  t(
+                    'Көлігіңіздің маркасы мен жылына сай. Қате болса — '
+                    'модераторға жазыңыз.',
+                  ),
+                  style: TextStyle(color: Gz.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

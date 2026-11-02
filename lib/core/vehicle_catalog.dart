@@ -136,10 +136,14 @@ class VehicleSpec {
   /// Қосымшамен бірге жеткен (өшіруге болмайтын) түр бе.
   final bool builtIn;
 
-  /// Минималды соманы км-ге есептеу (0092): қосулы болса, заказ бағасы
-  /// кемінде `км × [minPerKm]` ₸ болуы керек. Модератор әр түрге жеке қояды.
+  /// Минималды соманы км-ге есептеу (0092): қосулы болса, ҚАЛА ІШІНДЕГІ
+  /// заказ бағасы кемінде `км × [minPerKm]` ₸ болуы керек. Модератор әр түрге
+  /// жеке қояды. Қалааралықта км есепке алынбайды — түрақты [minIntercity].
   final bool minPerKmEnabled;
   final int minPerKm;
+
+  /// Қалааралық заказдың түрақты минималды бағасы, ₸ (0098, әдепкі 1000).
+  final int minIntercity;
 
   const VehicleSpec({
     required this.code,
@@ -156,13 +160,16 @@ class VehicleSpec {
     this.builtIn = false,
     this.minPerKmEnabled = false,
     this.minPerKm = 0,
+    this.minIntercity = 1000,
   });
 
-  /// Берілген қашықтыққа ең төменгі сома (₸); қосылмаған болса — 0.
-  /// Сервердегі `vehicle_min_price` (0092) формуласымен ДӘЛ бірдей: км
-  /// жүзден біріне дейін дөңгелектенеді, нәтиже 10 ₸-ге жоғары қарай.
-  /// Бүтін санмен есептеледі — double қатесі серверден айырмашылық бермейді.
-  int minPriceFor(double km) {
+  /// Көлік түрінің ең төменгі сомасы (₸); жоқ болса — 0.
+  /// Қалааралықта ([intercity]) км есепке алынбайды — түрақты [minIntercity].
+  /// Қала ішінде сервердегі `vehicle_min_price` (0092) формуласымен ДӘЛ
+  /// бірдей: км жүзден біріне дейін дөңгелектенеді, нәтиже 10 ₸-ге жоғары
+  /// қарай. Бүтін санмен есептеледі — double қатесі серверден айырмашылық бермейді.
+  int minPriceFor(double km, {bool intercity = false}) {
+    if (intercity) return minIntercity > 0 ? minIntercity : 0;
     if (!minPerKmEnabled || minPerKm <= 0 || km <= 0) return 0;
     final cents = (km * 100).round();
     return ((cents * minPerKm + 999) ~/ 1000) * 10;
@@ -196,6 +203,7 @@ class VehicleSpec {
       builtIn: m['built_in'] == true,
       minPerKmEnabled: m['min_per_km_enabled'] == true,
       minPerKm: (m['min_per_km'] as num?)?.toInt() ?? 0,
+      minIntercity: (m['min_intercity'] as num?)?.toInt() ?? 1000,
     );
   }
 
@@ -213,6 +221,7 @@ class VehicleSpec {
     'built_in': builtIn,
     'min_per_km_enabled': minPerKmEnabled,
     'min_per_km': minPerKm,
+    'min_intercity': minIntercity,
   };
 
   VehicleType get type => VehicleType(code);

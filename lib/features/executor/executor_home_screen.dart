@@ -88,18 +88,21 @@ class ExecutorHomeScreen extends ConsumerWidget {
                         )
                       else
                         const Spacer(),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: _barH,
-                        child: _BalancePill(
-                          balance: s?.balance,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const BalanceScreen(),
+                      // Тегін режимде (0099) баланс таблеткасы жасырылады.
+                      if (s?.freeMode != true) ...[
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: _barH,
+                          child: _BalancePill(
+                            balance: s?.balance,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const BalanceScreen(),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
